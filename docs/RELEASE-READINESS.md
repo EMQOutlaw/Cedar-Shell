@@ -1,4 +1,4 @@
-# Release readiness — 0.1.0-dev.3
+# Release readiness — 0.1.0-dev.4
 
 **Private development candidate. Not a complete public release.** No first-party license or artwork redistribution grant has been selected. Required upstream notices and approved local KJV content remain intact.
 

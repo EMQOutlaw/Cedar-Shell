@@ -22,13 +22,17 @@ def runtime_extras(base,known):
 
 def inspect(root,config,plugins,upstream):
     """Return an exact, private snapshot of the providers this trial preserves."""
-    if config.get('bar',{}).get('id')!='omacale.bar':return None
+    selected=config.get('bar',{}).get('id')=='omacale.bar'
+    # A cloned locker has its own service lifetime. Changing the bar does not
+    # remove it, so discover enabled provider roles independently of bar.id.
+    lock_clones=[p for p in plugins if p.get('enabled') and not p.get('firstParty') and p.get('clonedFrom')=='omarchy.lock']
+    if not selected and not lock_clones:return None
     rules=d.read_json(root/'integrations/omarchy/omacale.json')
     base=Path.home()/'.config/omarchy/plugins'
     bar=base/'omacale.bar'
     for name,checksum in rules['barFiles'].items():verified_file(bar,name,checksum)
     runtime_extras(bar,rules['barFiles'])
-    if not any(p.get('id')=='omacale.bar' and p.get('active') for p in plugins):raise d.Refused('Omacale is selected but its running bar could not be verified.')
+    if selected and not any(p.get('id')=='omacale.bar' and p.get('active') for p in plugins):raise d.Refused('Omacale is selected but its running bar could not be verified.')
     record={'version':rules['version'],'providers':[],'disable':[],'lockId':None}
     active=[p for p in plugins if p.get('enabled') and not p.get('firstParty') and p.get('id')!='omacale.bar']
     for p in active:

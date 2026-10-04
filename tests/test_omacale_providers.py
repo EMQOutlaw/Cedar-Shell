@@ -65,8 +65,26 @@ class OmacaleProviders(unittest.TestCase):
     def test_no_authentication_clone_enabled_implicitly(self):
         self.config['disabledPlugins'].remove('omarchy.lock')
         with self.assertRaisesRegex(d.Refused,'Both stock and cloned'):self.inspect()
-    def test_non_omacale_selection_not_adopted(self):
-        self.config['bar']['id']='another.bar'
+    def test_locker_remains_discoverable_after_switching_to_stock_bar(self):
+        self.config['bar']['id']='omarchy.bar'
+        self.rows[0].update(active=False,enabled=False)
+        self.rows.append({'id':'omarchy.bar','enabled':True,'active':True,'firstParty':True})
+        original=copy.deepcopy(self.config)
+        record=self.inspect()
+        self.assertEqual(record['lockId'],'local.lock')
+        self.assertNotIn('local.lock',s.transformed(self.config,record)['disabledPlugins'])
+        self.assertEqual(self.config,original)
+        p.verify(self.root,record)
+    def test_installed_but_disabled_omacale_is_not_adopted(self):
+        self.config['bar']['id']='omarchy.bar'
+        for row in self.rows:row.update(active=False,enabled=False)
         self.assertIsNone(self.inspect())
+    def test_non_omacale_bar_does_not_bypass_locker_validation(self):
+        self.config['bar']['id']='omarchy.bar';self.rows[0].update(active=False,enabled=False)
+        (self.plugins/'local.lock/Service.qml').write_text('modified authentication')
+        with self.assertRaisesRegex(d.Refused,'Unreviewed or stale'):self.inspect()
+    def test_selected_omacale_still_requires_running_bar(self):
+        self.rows[0].update(active=False,enabled=False)
+        with self.assertRaisesRegex(d.Refused,'running bar'):self.inspect()
 
 if __name__=='__main__':unittest.main()

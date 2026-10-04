@@ -1,3 +1,9 @@
+# 0.1.0-dev.4 — detect retained lockers independently of the bar
+
+- Discover enabled lock clones even when Omacale is no longer the selected bar.
+- Retain all provider source, lifecycle, capability and live authentication checks. An installed but disabled plugin is not treated as a running provider.
+- Add regressions for retained lockers, inactive installations, modified lock code and selected-but-inactive bars. Native handoff remains unverified.
+
 # 0.1.0-dev.3 — installation diagnostics and source boundaries
 
 - Report session refusals without Python tracebacks, including clear trial-first instructions.
