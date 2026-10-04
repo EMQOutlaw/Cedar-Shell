@@ -16,6 +16,16 @@ Do not update Omacale or Omarchy during a trial; restore the original desktop fi
 
 ## Trial and confirmation
 
+### Reviewed companion plugins
+
+With the reviewed Omacale locker present, candidate 5 can also recognize the supplied Aegis 1.0.0 bar and the inspected Omaland, Omacord and VoxType OSD 1.0.0 sources. `integrations/omarchy/companions.json` records exact source fingerprints, lifecycle contracts and upstream revisions. Version labels alone do not qualify. The private Aegis source, manifest, author and plugin identifier are not redistributed; its installed identity is discovered locally. The imported OmaConnect helper files are checked as well. This is a compatibility review, not a sandbox or a native test certificate.
+
+Only the selected bar is replaced. Companion plugins stay enabled; notification/OSD clones are the only additional entries disabled. A dictation overlay is distinct from the volume OSD. The adapter reports all unknown companion profiles together, with local plugin IDs and the first mismatching file where available. Disabled plugins are ignored; an enabled plugin with `active: false` still needs review.
+
+Aegis focus timers must finish or be canceled in Aegis first. Close its Operations panel and wait for its telemetry/backend readiness. Those conditions are checked again before preparation and the final bar switch. CEDAR does not cancel timers or overwrite tasks, profiles or EQ preferences. The independent Aegis EQ service remains as it was; CEDAR does not adopt its controls. Existing Aegis bar shortcuts remain configured but will not operate its unloaded bar.
+
+Omarchy reloads non-resident plugins when integration files change. Omaland may recreate its own launcher entry; close its editor before switching. Omacord reruns its existing theme installer, which refreshes the current Omarchy theme and invokes existing app-retint hooks. VoxType may briefly recreate its overlay/audio bridge; its independent dictation daemon is not stopped. These behaviors are disclosed in the trial plan. CEDAR does not undo third-party theme-installer effects when restoring its own configuration. Do not update these plugins during a trial. Unknown enabled phone-service implementations still need their own lifecycle review; a reviewed bar import does not automatically approve an independently enabled service.
+
 1. Install the candidate, then run `cedar try` and approve the listed changes.
 2. Run `cedar keep` within 120 seconds of the desktop becoming ready to keep the current session.
 3. Optionally run `cedar activate` to approve starting CEDAR at login.
@@ -30,7 +40,7 @@ The detached supervisor runs as a uniquely named user systemd service with resta
 - Existing keyboard shortcuts remain unchanged. The bridge forwards Omarchy's notification dismissal/history/action and OSD IPC to CEDAR without rebinding keys. Existing Omarchy application/menu shortcuts continue using their original destinations; CEDAR Go is available from its bar.
 - Trailwatch stays in the project but does not replace the existing authentication service in this integration. Native authentication handoff needs separate device validation.
 - This is not an authentication sandbox. Omarchy and CEDAR remain trusted local code.
-- Third-party service plugins outside the reviewed Omacale providers and prior CEDAR theme-switch hooks require their own review. The adapter refuses those conflicts.
+- Plugins outside the reviewed Omacale providers and companion fingerprints, and prior CEDAR theme-switch hooks, require their own review. The adapter refuses those conflicts.
 - No claim is made that upstream software or other applications have no network traffic. CEDAR's private defaults are preserved.
 
 ## Offline recovery

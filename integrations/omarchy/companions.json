@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "notice": "Reviewed source fingerprints only; no third-party code is installed or redistributed. Exact match is not native compatibility certification. These plugins remain trusted in-process code.",
+  "profiles": [
+    {
+      "key": "aegis-1",
+      "name": "Aegis 1.0.0",
+      "contract": {
+        "schemaVersion": 1,
+        "version": "1.0.0",
+        "kinds": [
+          "bar"
+        ],
+        "entryPoints": {
+          "bar": "Aegis.qml"
+        },
+        "keepLoaded": false
+      },
+      "files": {
+        "Aegis.qml": "15df178d86451a6727c64fcae5d012881df98b39cc2cc6769d1735bd94646302",
+        "ArcGauge.qml": "80314976f77ef5dd906e632b1da2ab6d5ee49a630aaccbcec2ad064a499174ef",
+        "AudioMatrix.qml": "c500281e620e978af80a5b14cf5b8395bff16a0ba55c25863b26b357c7b3d6c9",
+        "HudButton.qml": "c6579a47d51dc1ec92c8bc83b33962fd35d105ba3de794baebc0615e4f1d99dd",
+        "Operations.qml": "c4b6bb86dd30b16b0d914df322f3624bcc7869b118467fbbaa427763e13a69b0",
+        "Sparkline.qml": "fbfaf3e884e084e6f16b51f372d2375e54d53f586c8e42c19fad23e451f38e9e",
+        "aegis-eq.py": "de9140f4bef5c577e6055499df5be52db2c924a9541b494e878ccc6a55d3599d",
+        "operations.py": "781b0f0c2c01ea9118976591c56a1abd3ede35457708492e187f28cdb63ba3e8",
+        "spectrum.py": "b7e59e348a9402e7f49a2e52c2777b43d503051366e8dc01853bbfa41874fc6a",
+        "telemetry.py": "41f5cbaa39bfa7b9ebd99f09f7db80b108ce12b9149182566b287c91c3148807"
+      },
+      "policy": "replace-bar",
+      "notes": "The selected Aegis bar and its child panels unload. Existing EQ service, audio settings, saved tasks and profiles remain. Finish focus timers first. Existing Aegis shortcuts remain but its bar IPC is unavailable while CEDAR is selected.",
+      "source": "Privately supplied source-only review; no private source or manifest redistributed.",
+      "dependencies": [
+        {
+          "directory": "omaconnect",
+          "files": {
+            "BarWidget.qml": "07290380ee3e231ffd55e14b835f4e4a2e14c69be0a5b3844c8bc6960ba6849e",
+            "KdeConnectController.qml": "a56b814c2b2a72ed1cd79d396af1142c5f2e46b71daeeb207b65a865af9ed381",
+            "Panel.qml": "70ade96912db9bb39dc12cfe3dae3ea36d1114d1862703225480fb60b95e03e7",
+            "Service.qml": "f08600010777aa7f1c36f6268c06df642f7eb78f04011294e3abae9359cd6154",
+            "bridge/Bridge.qml": "14af08da6d865c6813e11fb89ecc100e0ba5b20c1c553e579beb71b98693aaf3",
+            "bridge/qmldir": "89d9c6715a3fd8e17ea8286918088fa6fcde0ad5a387bef7d9be47075d60f6ab",
+            "components/ActionToolbar.qml": "cfb7afb300406c223866e49dfb07b00d3b818208813fdd0b3a9ded3395bfc03d",
+            "components/ComposerSection.qml": "e3ee945511fd0a8b86353a2affb5d31012386e2f30031f6282021a60b9e4a451",
+            "components/DeviceSection.qml": "acdbdcd7dbff6fddae7e275485e80aec56ce24a313b905f5625eba8d0c2ab165",
+            "components/MediaPlayerSection.qml": "f2c52eaf4709c66996215b61d4512fad89cfcafce979beacbaa14810549a72fc",
+            "components/NetworkSection.qml": "40f72647350316510877a8f5be03da0443979a3b798378b21135800b114deb0f",
+            "components/RemoteCommandsSection.qml": "b5dccd7f87ee344f900b08630fa130dbc7a0b66d527d04f01f19a62b06aaf292",
+            "scripts/discover_devices.sh": "09384e602192c201e28ce64d3e471d8e0f7b0f49124616367854f1e06eedaa86",
+            "scripts/install_dependencies.sh": "a0f10967d537efecd93c5e3b0851a76ef6ca964909ad32accde5cf33e8d99613",
+            "scripts/media_control.sh": "ab85e9b6f018758a18a991637ed2a4a3b13b10157d82a2a9f98266485f2311c7",
+            "scripts/open_app.sh": "53b02903286aa5f599ebc369b44599398bc8109a41d85f79425d69bed96ad0c0",
+            "scripts/open_sms.sh": "f0fce3543b60d5b808e046863b2528062ded793498704f31f33f0f3214062803",
+            "scripts/pick_file.sh": "cd134d2958d1b96538b74472e592d41f4600f99cdecccd3647803b7771e8f96c",
+            "scripts/setup_firewall.sh": "8837d610a7af9affd95c748a377823a02bdfd48354a87334718d851bb73fffcd",
+            "scripts/update_custom_address.sh": "f929e1b0fe3d9fc1c2dc971d4e9819586d72bea098038bad3dcbf29e5d30f846",
+            "scripts/validate.sh": "97e539ed22a171960b987a88ebce90e76b254d3da400969d4c640939edaf3b60"
+          }
+        }
+      ]
+    },
+    {
+      "key": "omaland-1",
+      "name": "Omaland 1.0.0",
+      "contract": {
+        "schemaVersion": 1,
+        "version": "1.0.0",
+        "kinds": [
+          "panel",
+          "service"
+        ],
+        "entryPoints": {
+          "panel": "Panel.qml",
+          "service": "Service.qml"
+        },
+        "keepLoaded": false
+      },
+      "files": {
+        ".gitignore": "b222020a8964c4b663636cd4f3b11e85888881ede41d278228dfa966cc77e90b",
+        "LuaConfig.js": "4a5ed79fed67611f344bee7f3e96f54f4f51f260b9a33c16d658b771dfffe600",
+        "OptionRow.qml": "18d5c6ea44ecd9e645d53a0dba0d1dcfda9cb005f59a8145d34e7822d01e1529",
+        "Panel.qml": "43d9fa05b57f1e5cca13b43247808c5b733442ef53c17ef8576aecc5b49fccac",
+        "Paths.js": "207a37b667833a8c3acf5b73d5a95cc8342aacbeabfe496870baa1d03f20eda0",
+        "Schema.js": "84d9840c1b6845c679dc4c0de5ad6d967514efeefbc14cebb1700a38c822544c",
+        "Service.qml": "e1ed6349b796660f5ce18784af5ca90eda1228b12b2b63b4c5ce19ba04529c5b",
+        "omaland.desktop": "a1393f266b198f81ee2ef2a5244a9ab9901ac7fbf7c5befcd9e5434a2142ac2b",
+        "read.lua": "89ac0126ec71e4786004cd86867d3d2bee4cda05f4439f23e26500f141144721"
+      },
+      "policy": "preserve",
+      "notes": "Leave enabled. Close its settings panel before switching. Omarchy plugin reload may recreate its managed launcher entry.",
+      "source": "https://github.com/bobby-nicholas/omaland/tree/48d1c64acd78cd3a2862ccaad17c8045be3dda38"
+    },
+    {
+      "key": "omacord-1",
+      "name": "Omacord 1.0.0",
+      "contract": {
+        "schemaVersion": 1,
+        "version": "1.0.0",
+        "kinds": [
+          "service"
+        ],
+        "entryPoints": {
+          "service": "Service.qml"
+        },
+        "keepLoaded": false
+      },
+      "files": {
+        ".gitignore": "1cde1a2c2f1ffccb40674a89fdfdd8ade15709b9c0ca9eab9a10456ab78c8849",
+        "Service.qml": "61c7918fd76e8a749d61100230fff069363cd5dd4f07b927a3e5c85e194185a8",
+        "assets/discord/base.css": "6db30361204bc9cd3960070139bcd8fc79d821f6dd33cc6010fee80c91bdb7c5",
+        "assets/discord/layers/compact.css": "ee2544f19e38d3f452a2f25534b6fefe964d4fa3200ad77a60e70a9aaeb7752c",
+        "assets/discord/layers/flat.css": "20a75b4f5191a908486ed0be96401c0ee3ff9cac2d5cc8264b8920b02cc5ae14",
+        "assets/discord/layers/rounded.css": "f2b5367879eacf6c00705e133f96adfa41f5bab5b4da2279369096f66a812c94",
+        "assets/discord/layers/transparent.css": "c68aa144964cd6e23165f9c6faca7a2b2f3d139703ad8b7ca6a8c896c34212c2",
+        "assets/omarchy/omacord.palette.css.tpl": "fa7232ce32080c532b2aa3e94337f11eac391319cfce4bb8cb2ed22b438f8936",
+        "check.sh": "ad932d6bd2db242b90e0acb979c8e2afad611ef9373c7519a29c710a9abad1ba",
+        "install.sh": "f98ce6d90dbd537fb8964ba0d999b6d82cd032c82f2875b12dd00dc3dd65af1b",
+        "omarchy/lib.sh": "6b209ff93fcddcd46b967924aebb60669728697146e4a9ac5d7d41e4ddba7c5e",
+        "omarchy/theme-set-hook": "d4f999a04eba0b8833a8693c7e98d6c1758f7d46c5bb6d30d0a765269855246e",
+        "uninstall.sh": "0c27ca693d5489bd3ae6d1e5e711f7c865427c380214a5420d079bb1450c07fd"
+      },
+      "policy": "preserve",
+      "notes": "Leave enabled. Omarchy plugin reload reruns its theme installer and refreshes the current Omarchy theme, including existing app-retint hooks. These third-party effects are not undone by CEDAR restore.",
+      "source": "https://github.com/ASwenia/omacord/tree/7b2fbddcb5059389c24a7399f28d4a702d61732f"
+    },
+    {
+      "key": "voxtype-1",
+      "name": "VoxType OSD 1.0.0",
+      "contract": {
+        "schemaVersion": 1,
+        "version": "1.0.0",
+        "kinds": [
+          "overlay"
+        ],
+        "entryPoints": {
+          "overlay": "VoxTypeOsdOverlay.qml"
+        },
+        "keepLoaded": false
+      },
+      "files": {
+        ".gitignore": "c4216225f39be6ffa2f98887080a6f4418cf470a3162271ed1df89a1ff45a063",
+        "EnginePicker.qml": "d6640231940f0cf5a3f1aedaf3c13e65a86ab5036f49198ac54681742c6a21c8",
+        "MeetingControls.qml": "7fc6e196e08741f048fe60e376372c469c4d3753f4e48bd24612223f7cbea88b",
+        "OsdSurface.qml": "ab25601d45ded764b53cda999951352a8aeffdf6007510ac7cce498b840edfe3",
+        "VoxTypeOsdOverlay.qml": "622e04617c3bc2afa7e71e12ce60dfd243be5169db53704c14a168f45dcaa83c",
+        "bin/restore": "6d913c8c3312bb7d49b9d346756d243ca984688491df3288a01d0d36ce955533",
+        "bin/setup": "4af88604ccf7d37c8cf5bfb7521da3abc7b1e29fbf449808e123cc41b428d557",
+        "bin/uninstall": "fb2149b352558c00737f34cd6794f95b25de4a79da0034c122d04cc4910b58fd",
+        "lib/checkpoint.sh": "162ad59bb853b78387bb04640b124a7f6e02751f0c92644b0eabb77d58e39f2b",
+        "lib/keybindings.sh": "ded7048903fbf7733bc7ab75b1f31932dca56005f342ce0d6a2034109c919798",
+        "lib/qml-installer.sh": "22734f05dacbe2f42470ed63afb6b7e9be16e38c4278a096b0394f4d35b5df0e",
+        "lib/service.sh": "7ab83083d02c97f1c8853fc2d8f22e803d2ae87ce3ae345b261bd5649de00386",
+        "lib/transaction.sh": "3b54bc9038cc098dd2fd39941513c4e26c9c46bea368769a192d18f5432001f3",
+        "lib/voxtype-config.sh": "c0830a03ca11edf968b1b21359084eae1553db448e824bc68d6c1e8e11a15c3d",
+        "shell.qml": "8cfc3fe3e25449cc6b71776dc57cfcfa7b1f7664ea1fa48858ef12ac34bd5e26",
+        "voxtype-shared/AudioBridge.qml": "6b406fe7c6a02ba0c7bbc5c2e831e6286cc4c95f45e76814400f9de6abd1e42a",
+        "voxtype-shared/StateReader.qml": "425d5488a802833e2f851a98b5b42fb867bc0b9f5cd208635be59b20497f11d7",
+        "voxtype-shared/Theme.qml": "39604dd16f67c0b74025039aeb927aef659b41006a28c07011499f843685cf1c",
+        "voxtype-shared/ThemeReveal.qml": "00fd74adca4fa81ebb5075db3d29675eb639626955d30018c495e0afce9418f2",
+        "voxtype-shared/VadGate.qml": "8fc49dfee0b6372308ba895090a1011506049aeba27f35e174122c367bec1396",
+        "voxtype-shared/WaveformMeter.qml": "f37a358d5ed7a2eb821aa1d1ac6312364445097742bb91dea92be578886d7dc5",
+        "voxtype-shared/qmldir": "13a82039382cb750c20d4f41954db15194d0cd594de2d8684100999eb15fc30e"
+      },
+      "policy": "preserve",
+      "notes": "Leave the dictation overlay enabled. Omarchy reload may briefly recreate its UI and audio bridge; the separate dictation daemon is not stopped.",
+      "source": "https://github.com/Blizl/Omarchy-Voxtype-OSD/tree/4283c22b3e8e7a4e3e24453952758b62667c231a"
+    }
+  ]
+}

@@ -1,3 +1,10 @@
+# 0.1.0-dev.5 — reviewed custom bar and companion handoff
+
+- Recognize reviewed Aegis source without publishing its private source or manifest; validate its imported helper files and preserve the existing Omacale locker.
+- Preserve inspected Omaland, Omacord and VoxType OSD plugins by exact source/lifecycle checks; disclose their reload behavior before approval.
+- Refuse active Aegis focus sessions and unfinished/open Operations UI before switching. Preserve independent EQ, tasks and profiles.
+- Report unknown companion plugins together. Add source, lifecycle, helper, privacy and activity-state regressions. Native desktop handoff remains unverified.
+
 # 0.1.0-dev.4 — detect retained lockers independently of the bar
 
 - Discover enabled lock clones even when Omacale is no longer the selected bar.

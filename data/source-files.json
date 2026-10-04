@@ -92,6 +92,7 @@
   "install.sh",
   "integrations/omarchy/Bridge.qml",
   "integrations/omarchy/adapter.json",
+  "integrations/omarchy/companions.json",
   "integrations/omarchy/manifest.json",
   "integrations/omarchy/omacale-guard/Service.qml",
   "integrations/omarchy/omacale-guard/manifest.json",

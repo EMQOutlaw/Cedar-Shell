@@ -87,4 +87,84 @@ class OmacaleProviders(unittest.TestCase):
         self.rows[0].update(active=False,enabled=False)
         with self.assertRaisesRegex(d.Refused,'running bar'):self.inspect()
 
+    def add_companion(self,identity='custom.bar',key='fixture-bar',selected=True):
+        directory=self.plugins/identity;directory.mkdir()
+        (directory/'Bar.qml').write_text('reviewed companion fixture')
+        (directory/'worker.py').write_text('# reviewed helper fixture')
+        contract={'schemaVersion':1,'version':'1','kinds':['bar'],'entryPoints':{'bar':'Bar.qml'},'keepLoaded':False}
+        d.write_json(directory/'manifest.json',{**contract,'id':identity})
+        helper=self.plugins/'shared';helper.mkdir(exist_ok=True);(helper/'Support.qml').write_text('fixture support')
+        spec={'key':key,'name':'Fixture companion','contract':contract,'files':{n:d.digest(directory/n) for n in ('Bar.qml','worker.py')},
+              'dependencies':[{'directory':'shared','files':{'Support.qml':d.digest(helper/'Support.qml')}}],
+              'policy':'replace-bar','notes':'Fixture lifecycle'}
+        d.write_json(self.root/'integrations/omarchy/companions.json',{'profiles':[spec]})
+        self.rows.append({'id':identity,'enabled':True,'firstParty':False,'active':selected,'kinds':['bar']})
+        if selected:self.config['bar']['id']=identity;self.rows[0]['active']=False
+        return directory
+
+    def test_reviewed_bar_is_replaced_without_disabling_companions_or_locker(self):
+        self.add_companion();original=copy.deepcopy(self.config)
+        record=self.inspect();p.verify(self.root,record)
+        value=s.transformed(self.config,record)
+        self.assertNotIn('custom.bar',value['disabledPlugins'])
+        self.assertNotIn('local.lock',value['disabledPlugins'])
+        self.assertEqual(value['bar']['id'],'cedar.integration')
+        self.assertEqual(self.config,original)
+        self.assertEqual(record['providers'][-1]['role'],'companion')
+
+    def test_review_uses_source_and_contract_not_custom_identity(self):
+        self.add_companion('renamed.bar')
+        self.assertEqual(self.inspect()['providers'][-1]['id'],'renamed.bar')
+
+    def test_companion_change_and_helper_change_are_refused(self):
+        directory=self.add_companion();record=self.inspect()
+        for file in [directory/'Bar.qml',directory/'worker.py',self.plugins/'shared/Support.qml',directory/'manifest.json']:
+            original=file.read_bytes();file.write_bytes(original+b' changed')
+            with self.assertRaises(d.Refused):p.verify(self.root,record)
+            file.write_bytes(original)
+
+    def test_companion_cannot_gain_authentication_or_new_entry_points(self):
+        directory=self.add_companion();file=directory/'manifest.json';original=d.read_json(file)
+        for value in [{**original,'omarchy':{'capabilities':['authentication']}},{**original,'entryPoints':{'bar':'Bar.qml','service':'Bar.qml'}},{**original,'keepLoaded':True}]:
+            d.write_json(file,value)
+            with self.assertRaisesRegex(d.Refused,'Plugin review incomplete'):self.inspect()
+
+    def test_extra_helper_and_symlinked_dependency_refused(self):
+        directory=self.add_companion();extra=directory/'unknown.py';extra.write_text('custom')
+        with self.assertRaisesRegex(d.Refused,'Additional companion helper'):self.inspect()
+        extra.unlink();helper=self.plugins/'shared/Support.qml';helper.unlink()
+        target=self.base/'external';target.write_text('fixture support');helper.symlink_to(target)
+        with self.assertRaisesRegex(d.Refused,'Symlinked'):self.inspect()
+
+    def test_reports_all_unknown_plugins_in_one_read_only_pass(self):
+        self.add_companion()
+        for identity in ('unknown.one','unknown.two'):
+            directory=self.plugins/identity;directory.mkdir();d.write_json(directory/'manifest.json',{'id':identity})
+            self.rows.append({'id':identity,'enabled':True})
+        with self.assertRaises(d.Refused) as result:self.inspect()
+        self.assertIn('unknown.one',str(result.exception));self.assertIn('unknown.two',str(result.exception))
+
+    def test_inactive_does_not_mean_disabled(self):
+        self.add_companion(selected=False)
+        self.assertTrue(any(x.get('role')=='companion' for x in self.inspect()['providers']))
+
+    def test_aegis_focus_blocks_switch_without_exposing_task_data(self):
+        self.add_companion(key='aegis-1')
+        state=Path.home()/'.local/state/omarchy/aegis-operations.json'
+        d.write_json(state,{'focus':{'end':123},'tasks':['synthetic-private-task']})
+        original=state.read_bytes()
+        with self.assertRaisesRegex(d.Refused,'focus session') as result:self.inspect()
+        self.assertNotIn('synthetic-private-task',str(result.exception));self.assertEqual(state.read_bytes(),original)
+        d.write_json(state,{'focus':None});self.inspect()
+
+    def test_aegis_live_status_requires_ready_closed_nonfocus_state(self):
+        self.add_companion(key='aegis-1');record=self.inspect()
+        row={'omacale':record,'omarchyShell':'fixture'}
+        import json
+        good={'healthy':True,'operationsReady':True,'focusActive':False,'operationsOpen':False}
+        for value in ({},[],{**good,'healthy':False},{**good,'focusActive':True},{**good,'operationsOpen':True}):
+            with patch.object(s,'ipc',return_value=json.dumps(value)):
+                with self.assertRaises(d.Refused):s.companions_ready(row)
+        with patch.object(s,'ipc',return_value=json.dumps(good)):s.companions_ready(row)
+
 if __name__=='__main__':unittest.main()

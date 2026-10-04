@@ -746,8 +746,8 @@
     {
       "id": "cedar.omarchy-integration",
       "name": "Omarchy resident-authentication session adapter",
-      "version": "0.1.0-dev.4",
-      "cedarCompatibility": "0.1.0-dev.4",
+      "version": "0.1.0-dev.5",
+      "cedarCompatibility": "0.1.0-dev.5",
       "kind": "first-party integration; trusted code, not sandboxed",
       "status": "Experimental: implemented, live acceptance pending",
       "entryPoint": "scripts/omarchy_session.py",
@@ -761,7 +761,8 @@
         "scripts/omarchy_providers.py",
         "integrations/omarchy/omacale.json",
         "integrations/omarchy/omacale-guard/manifest.json",
-        "integrations/omarchy/omacale-guard/Service.qml"
+        "integrations/omarchy/omacale-guard/Service.qml",
+        "integrations/omarchy/companions.json"
       ],
       "releaseArtifacts": [
         "integrations/omarchy/manifest.json",
@@ -773,7 +774,8 @@
         "scripts/omarchy_providers.py",
         "integrations/omarchy/omacale.json",
         "integrations/omarchy/omacale-guard/manifest.json",
-        "integrations/omarchy/omacale-guard/Service.qml"
+        "integrations/omarchy/omacale-guard/Service.qml",
+        "integrations/omarchy/companions.json"
       ],
       "dependencies": [
         "qs",

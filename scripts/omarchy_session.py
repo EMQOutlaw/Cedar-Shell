@@ -67,6 +67,17 @@ def verify_session_api(row):
     verify_upstream(row['root'],Path(row['omarchyShell']).parent.parent)
     if row.get('omacale'):providers.verify(row['root'],row['omacale'])
 
+def companions_ready(row):
+    record=row.get('omacale')
+    providers.ready(record)
+    if not record or not any(p.get('profile')=='aegis-1' and p.get('selected') for p in record['providers']):return
+    try:state=json.loads(ipc(row['omarchyShell'],'aegis','status'))
+    except (ValueError,d.Refused):raise d.Refused('Aegis status is unavailable; leave its desktop running.')
+    if not isinstance(state,dict) or state.get('healthy') is not True or state.get('operationsReady') is not True:
+        raise d.Refused('Wait for Aegis to finish starting before trying CEDAR.')
+    if state.get('focusActive') is not False:raise d.Refused('Finish or cancel the Aegis focus session before switching.')
+    if state.get('operationsOpen') is not False:raise d.Refused('Close the Aegis Operations panel before switching so pending actions can finish.')
+
 def transformed(config,omacale=None):
     if not isinstance(config,dict) or config.get('version')!=1:raise d.Refused('Unsupported Omarchy shell configuration.')
     value=copy.deepcopy(config)
@@ -114,6 +125,7 @@ def inspect(root):
     row={'format':1,'adapter':'omarchy-4-resident-lock','omarchyVersion':version,'omarchyShell':str(source),'omarchyPid':running[0]['pid'],'root':str(root),'config':str(config),'original':original}
     if omacale:row['omacale']=omacale
     unlocked(row)
+    companions_ready(row)
     reviewed={p['id'] for p in omacale['providers']} if omacale else set()
     for item in plugins:
         if item.get('enabled') and 'service' in item.get('kinds',[]) and not item.get('firstParty') and item.get('id') not in reviewed:
@@ -138,8 +150,9 @@ def trial(root,approved=False):
         if row.get('omacale'):
             plan['changes'].extend(['Pause Omacale notification/OSD repair watchers until restoration','Temporarily disable reviewed notification/OSD clones alongside their stock providers'])
             plan['preserve'].append('Existing Omacale lock clone, PAM, lock view and all Omacale files/settings; no authentication handover')
+            plan['reviewedCompanions']=[{'name':p['name'],'action':p['policy'],'details':p['notes']} for p in row['omacale']['providers'] if p.get('role')=='companion']
         d.approve(plan,approved)
-        print(d.validate(root));unlocked(row)
+        print(d.validate(root));unlocked(row);companions_ready(row)
         tx=d.Transaction('omarchy-session')
         row.update({'id':uuid.uuid4().hex,'stage':'prepared','journal':str(tx.path),'deadline':time.time()+120,'login':False})
         row['generation']=uuid.uuid4().hex
@@ -181,7 +194,7 @@ def spawn_supervisor(row):
     d.command([*args,'--',sys.executable,str(helper),'supervise',row['id'],row['generation']])
 
 def prepare(row):
-    verify_session_api(row);unlocked(row);journal=Path(row['journal']);tx=d.Transaction.__new__(d.Transaction)
+    verify_session_api(row);unlocked(row);companions_ready(row);journal=Path(row['journal']);tx=d.Transaction.__new__(d.Transaction)
     tx.path=journal;tx.directory=journal.parent;tx.record=d.read_json(journal)
     source=Path(row['root']);entries=tx.record['files']
     # Bridge first; configuration becomes effective only after the files exist.
@@ -200,6 +213,7 @@ def prepare(row):
 def coordinated(row):
     verify_session_api(row);unlocked(row)
     if ipc(row['omarchyShell'],'cedarOmacaleGuard','ready')!='true':raise d.Refused('Waiting for Omacale notification/OSD operations to finish; locker preserved.')
+    companions_ready(row)
     tx=d.Transaction.__new__(d.Transaction);tx.path=Path(row['journal']);tx.directory=tx.path.parent;tx.record=d.read_json(tx.path)
     data=(json.dumps(row['configAfter'],indent=2)+'\n').encode()
     tx.replace_owned_file(tx.record['files'][0],data)

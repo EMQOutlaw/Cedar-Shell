@@ -147,7 +147,7 @@ class OmarchySession(unittest.TestCase):
         original_config={**self.config,'bar':{'id':'omacale.bar'},'plugins':[{'id':'local.lock'}],'disabledPlugins':['omarchy.lock','omarchy.idle']}
         d.write_json(config,original_config);original=d.info(config)
         locker=config.parent/'plugins/local.lock/Service.qml';d.atomic(locker,b'existing authentication');locker_before=d.info(locker)
-        row=self.row();row.update({'original':original_config,'adapter':'fixture','omarchyPid':1,'config':str(config),'omacale':{'lockId':'local.lock','disable':['local.osd']}})
+        row=self.row();row.update({'original':original_config,'adapter':'fixture','omarchyPid':1,'config':str(config),'omacale':{'lockId':'local.lock','disable':['local.osd'],'providers':[]}})
         with patch.object(s,'inspect',return_value=row),patch.object(d,'validate',return_value='Fixture'),patch.object(s,'unlocked'),patch.object(s,'spawn_supervisor'),contextlib.redirect_stdout(io.StringIO()):s.trial(d.ROOT,True)
         with patch.object(s,'unlocked'):s.prepare(s.read_record())
         row=s.read_record();self.assertEqual(row['stage'],'coordinating')

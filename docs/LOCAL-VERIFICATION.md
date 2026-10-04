@@ -2,7 +2,7 @@
 
 These checks ran against the private distribution candidate. They do not certify a public release or native desktop activation.
 
-- Existing and new Python unit suite: 180 tests passed after the Omarchy adapter changes.
+- Existing and new Python unit suite: 189 tests passed after the Omarchy adapter changes.
 - Distribution and recovery suite: 21 tests passed, including failure injection, backup verification, restoration conflicts, repeated-install idempotence, full uninstall-chain preflight, concurrency, archive rejection, private defaults, and custom XDG paths.
 - QML syntax parsing: 136 files passed.
 - Real offscreen Quickshell import, navigation, identity, and Trailwatch component checks passed. Component loading does not prove authentication or session-lock security.
@@ -20,3 +20,5 @@ Not tested here: clean-machine package bootstrapping, Zsh/Fish entry behavior, l
 Development candidate 3 adds eight provider-validation fixtures and an offscreen test of the actual Omacale coordinator against controlled handovers, including in-flight work and binding restoration. The coordinator also loaded against the reviewed real Omacale 0.45.0 QML plus Omarchy Commons in a disposable offscreen environment with external commands unavailable. Reviewed source and a generated Omarchy 4.0.4 lock clone passed the provider check; this did not run authentication. Standalone installed-style CLI refusals, nested-clone/private-file exclusion and interrupted second-stage recovery passed.
 
 Development candidate 4: three additional provider regressions plus the revised inactive-installation regression passed. Enabled lock clones are discovered independently of the selected bar, with the same source/contract validation. This corrects the skipped detection path in candidate 3; it does not certify a native handoff.
+
+Development candidate 5: all 20 provider fixtures passed, including nine new regressions for companion source/contract/helper validation, arbitrary local identities, preserved services, aggregated refusals and Aegis activity gating. The four actual reviewed source trees matched their generated profiles in a disposable directory; no third-party helper was executed. All supplied review-bundle checksums matched. The offscreen external-lock mirror and coordinator tests passed again. Source-only review does not prove that the other machine has those exact companion revisions or certify Aegis unload/restore, Omacord reload effects, native authentication or live desktop switching.
