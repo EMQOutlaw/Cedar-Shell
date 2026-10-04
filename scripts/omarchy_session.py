@@ -33,7 +33,7 @@ def guard():
     finally:lock.__exit__(None,None,None)
 
 def instances():
-    value=json.loads(d.command(['qs','list','-j'],timeout=5))
+    value=json.loads(d.command(['qs','list','--all','-j'],timeout=5))
     if not isinstance(value,list):raise d.Refused('Could not inspect Quickshell instances.')
     return value
 
@@ -57,6 +57,13 @@ def lock_state(row):
 def unlocked(row):
     if lock_state(row):raise d.Refused('Session locked; integration changes deferred until unlock.')
 
+def verify_upstream(root,upstream):
+    rules=d.read_json(Path(root)/'integrations/omarchy/adapter.json')
+    for name,hashes in rules['sourceHashes'].items():
+        if not (upstream/name).is_file() or d.digest(upstream/name) not in hashes:raise d.Refused('Omarchy integration API differs from the audited version: '+name+'. Existing authentication preserved; offline recovery remains available.')
+
+def verify_session_api(row):verify_upstream(row['root'],Path(row['omarchyShell']).parent.parent)
+
 def transformed(config):
     if not isinstance(config,dict) or config.get('version')!=1:raise d.Refused('Unsupported Omarchy shell configuration.')
     value=copy.deepcopy(config)
@@ -74,9 +81,7 @@ def inspect(root):
     version=d.command(['omarchy','version']).strip()
     if not re.search(r'\b4\.0\.(?:4|0\.alpha)(?:\b|$)',version):raise d.Refused('This adapter covers inspected Omarchy 4.0.4 sources only; detected '+version)
     upstream=Path(os.environ.get('OMARCHY_PATH','/usr/share/omarchy')).resolve()
-    rules=d.read_json(root/'integrations/omarchy/adapter.json')
-    for name,hashes in rules['sourceHashes'].items():
-        if not (upstream/name).is_file() or d.digest(upstream/name) not in hashes:raise d.Refused('Omarchy integration API differs from the audited version: '+name+'. Existing desktop preserved.')
+    verify_upstream(root,upstream)
     source=upstream/'shell/shell.qml';rows=instances();running=matching(rows,source)
     if len(running)!=1:raise d.Refused('Expected exactly one running Omarchy shell on this display.')
     if any('cedar' in str(r.get('config_path','')).lower() or 'foxfire' in str(r.get('config_path','')).lower() for r in rows):raise d.Refused('Another CEDAR installation is running; preserve it and finish its migration separately.')
@@ -154,7 +159,7 @@ def spawn_supervisor(row):
     d.command([*args,'--',sys.executable,str(helper),'supervise',row['id'],row['generation']])
 
 def prepare(row):
-    unlocked(row);journal=Path(row['journal']);tx=d.Transaction.__new__(d.Transaction)
+    verify_session_api(row);unlocked(row);journal=Path(row['journal']);tx=d.Transaction.__new__(d.Transaction)
     tx.path=journal;tx.directory=journal.parent;tx.record=d.read_json(journal)
     source=Path(row['root']);entries=tx.record['files']
     # Bridge first; configuration becomes effective only after the files exist.
@@ -180,7 +185,7 @@ def check_omarchy(row):
     return matches[0]
 
 def start_cedar(row):
-    check_omarchy(row);unlocked(row)
+    verify_session_api(row);check_omarchy(row);unlocked(row)
     plugins=json.loads(ipc(row['omarchyShell'],'shell','listPlugins'))
     if not any(p.get('id')=='cedar.integration' and p.get('active') for p in plugins):raise d.Refused('Omarchy has not loaded the CEDAR bridge yet.')
     if any(p.get('id') in DISABLE and p.get('enabled') for p in plugins):raise d.Refused('Overlapping Omarchy plugins have not stopped yet.')
@@ -203,7 +208,7 @@ def healthy(row):
 def restore(row):
     if no_graphical_session():
         d.restore_journal(Path(row['journal']));row['stage']='restored';row['login']=False;save(row);publish(True);return
-    unlocked(row)
+    verify_session_api(row);unlocked(row)
     d.check_restore_journal(Path(row['journal'])) # Refuse later user edits before stopping a working UI.
     try:ipc(row['omarchyShell'],'cedarBridge','disable')
     except d.Refused:pass # A failed bridge may never have registered; never stop its host.
@@ -292,6 +297,8 @@ def login():
     with guard():
         row=read_record()
         if not row or row['stage']=='restored':return
+        try:verify_session_api(row)
+        except d.Refused as error:row['error']=str(error);save(row);raise
         signature=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
         if signature and row.get('sessionSignature')==signature and row['stage'] in ('starting','trial','kept'):return
         row['generation']=uuid.uuid4().hex

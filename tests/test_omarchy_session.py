@@ -12,6 +12,7 @@ class OmarchySession(unittest.TestCase):
         env={'HOME':str(self.base/'home'),**{'XDG_'+k+'_HOME':str(self.base/k.lower()) for k in ['CONFIG','DATA','STATE','CACHE']}}
         self.environment=patch.dict(os.environ,env);self.environment.start();self.addCleanup(self.environment.stop)
         wait=patch.object(s,'wait_for_trial');wait.start();self.addCleanup(wait.stop)
+        api=patch.object(s,'verify_session_api');api.start();self.addCleanup(api.stop)
         self.config={'version':1,'bar':{'layout':{'left':[{'id':'example.widget'}]}},'idle':{'lock':420},'disabledPlugins':['omarchy.weather'],'custom':{'keep':'unchanged'}}
     def row(self,stage='trial'):
         return {'id':'fixture','stage':stage,'root':str(d.ROOT),'omarchyShell':'/example/shell.qml','login':False,'deadline':time.time()+120}
@@ -20,6 +21,12 @@ class OmarchySession(unittest.TestCase):
         self.assertEqual(self.config,original);self.assertEqual(out['idle'],original['idle']);self.assertEqual(out['custom'],original['custom'])
         self.assertEqual(out['bar']['layout'],original['bar']['layout']);self.assertEqual(out['bar']['id'],'cedar.integration')
         self.assertEqual(out['disabledPlugins'],['omarchy.weather',*s.DISABLE])
+    def test_discovery_does_not_depend_on_default_qs_config(self):
+        with patch.object(d,'command',return_value='[]') as command:
+            self.assertEqual(s.instances(),[])
+            command.assert_called_once_with(['qs','list','--all','-j'],timeout=5)
+    def test_modified_upstream_api_refused(self):
+        with self.assertRaises(d.Refused):s.verify_upstream(d.ROOT,self.base/'unknown-upstream')
     def test_protected_services_never_enabled_or_disabled(self):
         for name in s.PROTECTED:
             config=copy.deepcopy(self.config);config['disabledPlugins'].append(name)

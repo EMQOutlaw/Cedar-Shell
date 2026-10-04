@@ -2,7 +2,7 @@
 
 These checks ran against the private distribution candidate. They do not certify a public release or native desktop activation.
 
-- Existing and new Python unit suite: 162 tests passed after the Omarchy adapter changes.
+- Existing and new Python unit suite: 164 tests passed after the Omarchy adapter changes.
 - Distribution and recovery suite: 17 tests passed, including failure injection, backup verification, restoration conflicts, repeated-install idempotence, full uninstall-chain preflight, concurrency, archive rejection, private defaults, and custom XDG paths.
 - QML syntax parsing: 135 files passed.
 - Real offscreen Quickshell import, navigation, identity, and Trailwatch component checks passed. Component loading does not prove authentication or session-lock security.
@@ -13,6 +13,6 @@ These checks ran against the private distribution candidate. They do not certify
 
 The final repository/archive must be rebuilt and rechecked after subsequent changes. No GitHub upload or remote CI result is recorded by these local checks.
 
-The Omarchy adapter adds 20 controlled fixture tests, including timeout/crash recovery, lock-state deferral, protected services, trial → Keep → login → restore transactions, interruption, and stale supervisor generations. Actual offscreen Quickshell validates the bridge and fails closed for missing/stale/invalid external lock status. Production lock-wiring and consolidated navigation regressions also pass. No native handoff was performed against the active desktop to obtain these results.
+The Omarchy adapter adds 22 controlled fixture tests, including timeout/crash recovery, lock-state deferral, protected services, trial → Keep → login → restore transactions, interruption, stale supervisor generations, explicit all-config discovery and upstream API mismatch. Actual offscreen Quickshell validates the bridge and fails closed for missing/stale/invalid external lock status. Production lock-wiring and consolidated navigation regressions also pass. No native handoff was performed against the active desktop to obtain these results.
 
 Not tested here: clean-machine package bootstrapping, Zsh/Fish entry behavior, live desktop takeover, login/reboot, native lock/PAM behavior, real suspend/hotplug, GPU compatibility, external integration acceptance, or measured local-only outbound traffic. See RELEASE-READINESS.md for implementation gaps and release gates.
