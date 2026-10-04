@@ -5,7 +5,7 @@
   "environments": [
     {
       "id": "arch-omarchy",
-      "adapterVersion": 2,
+      "adapterVersion": 3,
       "status": "Experimental",
       "evidence": "Inspected upstream Omarchy v4.0.4 commit c668141e9c42b13c80c9ca4ea108e11708c5e8a5; guarded resident-authentication trial implemented; fixture/offscreen tests; live target acceptance pending",
       "versions": {
@@ -19,6 +19,17 @@
       "trialImplemented": true,
       "omarchySourceGate": "integrations/omarchy/adapter.json",
       "authentication": "Existing Omarchy locker and idle services retained"
+    },
+    {
+      "id": "omarchy-4.0.4-omacale-0.45.0",
+      "adapterVersion": 1,
+      "status": "Experimental",
+      "evidence": "Upstream source review, provider hash/contract fixtures, generated clone validation and offscreen coordinator tests. User reports existing Omacale health command returns ok; native CEDAR handoff not yet tested.",
+      "installOnly": true,
+      "trialImplemented": true,
+      "takeoverCertified": false,
+      "providerSourceGate": "integrations/omarchy/omacale.json",
+      "authentication": "Retain the existing reviewed Omacale clone and lock view; no authentication replacement"
     },
     {
       "id": "plain-hyprland",

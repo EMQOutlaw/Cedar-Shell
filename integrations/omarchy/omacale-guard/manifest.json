@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "cedar.omacale-guard",
+  "name": "CEDAR Omacale handover",
+  "version": "0.1.0-dev.3",
+  "kinds": ["service"],
+  "keepLoaded": true,
+  "entryPoints": {"service": "Service.qml"}
+}

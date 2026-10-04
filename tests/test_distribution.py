@@ -1,4 +1,4 @@
-import hashlib,importlib.util,io,json,os,stat,sys,tarfile,tempfile,unittest
+import hashlib,importlib.util,io,json,os,shutil,stat,subprocess,sys,tarfile,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
@@ -31,6 +31,13 @@ class Distribution(unittest.TestCase):
         with patch.object(d,'atomic',side_effect=OSError('disk full')):
             with self.assertRaises(OSError):tx.apply_file(e,b'new')
         self.assertEqual(file.read_text(),'old');d.restore_journal(tx.path)
+    def test_interrupted_second_owned_write_restores_baseline(self):
+        file=self.root/'shell-config';file.write_text('original');before=d.info(file)
+        tx=d.Transaction('session');entry=tx.backup(file);tx.apply_file(entry,b'coordinating')
+        with patch.object(d,'atomic',side_effect=OSError('interrupted second stage')):
+            with self.assertRaises(OSError):tx.replace_owned_file(entry,b'active')
+        self.assertEqual(file.read_text(),'coordinating')
+        d.restore_journal(tx.path);self.assertEqual(d.info(file),before)
     def test_stage_injection_and_concurrency(self):
         tx=d.Transaction('test')
         with patch.dict(os.environ,{'CEDAR_INJECT_FAILURE':'prepare'}):
@@ -102,5 +109,40 @@ class Distribution(unittest.TestCase):
         with patch.object(d,'command',side_effect=d.Refused('bad signature')),patch.object(d,'safe_extract') as extract:
             with self.assertRaises(d.Refused):d.update(Path('archive'),Path('sig'),Path('key'))
             extract.assert_not_called()
+    def test_standalone_recovery_cli_reports_session_refusals(self):
+        recovery=self.root/'standalone recovery';recovery.mkdir()
+        for name in ('distribution.py','omarchy_session.py','omarchy_providers.py'):
+            shutil.copy2(d.ROOT/'scripts'/name,recovery/name)
+        for action in ('keep','activate'):
+            result=subprocess.run([sys.executable,str(recovery/'distribution.py'),action],cwd=self.root,text=True,capture_output=True)
+            self.assertEqual(result.returncode,1)
+            self.assertIn('CEDAR: No CEDAR trial is running.',result.stderr)
+            self.assertIn('cedar try',result.stderr)
+            self.assertNotIn('Traceback',result.stderr)
+    def test_source_inventory_excludes_nested_clone_and_private_extras(self):
+        source=self.root/'source';(source/'data').mkdir(parents=True)
+        (source/'shell.qml').write_text('fixture shell')
+        names=['data/source-files.json','shell.qml']
+        d.write_json(source/'data/source-files.json',names)
+        nested=source/'cedar-shell';(nested/'.git').mkdir(parents=True)
+        (nested/'shell.qml').write_text('duplicate clone')
+        (source/'settings.json').write_text('private local preferences')
+        (source/'local-link').symlink_to(self.root)
+        self.assertEqual([str(rel) for _,rel in d.files(source)],names)
+        from package_release import package
+        archive=self.root/'candidate.tar.gz';package(source,archive)
+        with tarfile.open(archive) as tar:
+            self.assertEqual(set(tar.getnames()),{'cedar-shell/'+n for n in [*names,'ARTIFACT-CONTENTS.json']})
+        self.assertTrue((nested/'shell.qml').is_file())
+    def test_source_inventory_rejects_missing_assets_and_symlink_parents(self):
+        source=self.root/'source';(source/'data').mkdir(parents=True)
+        manifest=source/'data/source-files.json'
+        for names in [['missing.qml'],['../escape'],['/absolute'],['data/source-files.json']*2]:
+            d.write_json(manifest,names)
+            with self.assertRaises(d.Refused):d.files(source)
+        outside=self.root/'outside';outside.mkdir();(outside/'asset').write_text('private')
+        (source/'assets').symlink_to(outside)
+        d.write_json(manifest,['assets/asset'])
+        with self.assertRaises(d.Refused):d.files(source)
 
 if __name__=='__main__':unittest.main()

@@ -18,6 +18,14 @@ git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-She
 
 The repository is currently private, so your GitHub account needs access and Git authentication must be configured. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop; the separate Omarchy trial below activates CEDAR. Run it from a folder that does not already contain a `cedar-shell` directory.
 
+**Already cloned into your home folder?** Update that checkout instead of cloning again:
+
+```bash
+cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
+```
+
+If Git reports local changes or divergent history, stop and preserve your edits; do not reset or delete the checkout. The installer copies only the reviewed source inventory, so an accidentally nested clone or local settings file is not included and is left untouched.
+
 For a provided private candidate archive:
 
 1. Download the CEDAR archive.
@@ -49,6 +57,8 @@ Start a 120-second trial of the **full CEDAR desktop**:
 ```
 
 Read and approve its plan. CEDAR supplies the bar, Core, Canopy, Field Station, Settings and notifications. Omarchy keeps its existing lockscreen, idle handling, privileged authentication prompts, wallpaper and keyboard shortcuts. Trailwatch authentication is not activated by this trial. No compositor restart, logout, or package change is performed.
+
+This adapter requires Omarchy's existing lock service and live authentication interface. It also supports the reviewed Omacale 0.45.0 lock clone on Omarchy 4.0.4, retaining its locker and view. An unrecognized or modified clone stops safely; do not enable a second locker to bypass that check. For Omacale, the plan explicitly pauses its notification/OSD repair watchers before switching those providers; restoration resumes their original bindings. Omacale files and settings remain untouched. Other disabled services, including idle handling, stay disabled. `keep` and `activate` only work after a successful `try`; reinstalling alone does not start a trial.
 
 If it works, run this before the trial expires:
 
@@ -89,3 +99,5 @@ CEDAR takes inspiration from the cedar of Lebanon in Scripture: patient growth i
 ## Maintainers
 
 Build a private candidate with `python3 scripts/package_release.py /tmp/cedar-shell-development.tar.gz`, then test those exact bytes with `python3 tests/check_artifact.py /tmp/cedar-shell-development.tar.gz`. CI is read-only and never publishes releases or installs updates on users' machines. Public publication requires licensing, the documented acceptance gates and explicit owner approval.
+
+When adding or removing source files, stage only the intended files, run `python3 scripts/update_source_inventory.py`, and review/stage `data/source-files.json`. CI verifies that the inventory matches tracked files. Installation and archive extraction do not require Git.

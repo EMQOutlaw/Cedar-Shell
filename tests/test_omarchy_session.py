@@ -30,7 +30,12 @@ class OmarchySession(unittest.TestCase):
     def test_protected_services_never_enabled_or_disabled(self):
         for name in s.PROTECTED:
             config=copy.deepcopy(self.config);config['disabledPlugins'].append(name)
-            with self.assertRaises(d.Refused):s.transformed(config)
+            if name=='omarchy.lock':
+                with self.assertRaisesRegex(d.Refused,'omarchy.lock'):s.transformed(config)
+            else:
+                original=copy.deepcopy(config)
+                self.assertIn(name,s.transformed(config)['disabledPlugins'])
+                self.assertEqual(config,original)
         self.assertFalse(set(s.DISABLE)&set(s.PROTECTED))
     def test_invalid_schema_refused(self):
         for value in [None,[],{'version':2,'bar':{}},{'version':1},{'version':1,'bar':{},'disabledPlugins':'oops'}]:
@@ -137,5 +142,25 @@ class OmarchySession(unittest.TestCase):
             with self.assertRaises(OSError):s.prepare(s.read_record())
         with patch.object(s,'no_graphical_session',return_value=True):s.restore(s.read_record())
         self.assertEqual(d.info(config),original)
+    def test_omacale_guard_precedes_swap_and_restores_without_touching_clone(self):
+        config=Path.home()/'.config/omarchy/shell.json'
+        original_config={**self.config,'bar':{'id':'omacale.bar'},'plugins':[{'id':'local.lock'}],'disabledPlugins':['omarchy.lock','omarchy.idle']}
+        d.write_json(config,original_config);original=d.info(config)
+        locker=config.parent/'plugins/local.lock/Service.qml';d.atomic(locker,b'existing authentication');locker_before=d.info(locker)
+        row=self.row();row.update({'original':original_config,'adapter':'fixture','omarchyPid':1,'config':str(config),'omacale':{'lockId':'local.lock','disable':['local.osd']}})
+        with patch.object(s,'inspect',return_value=row),patch.object(d,'validate',return_value='Fixture'),patch.object(s,'unlocked'),patch.object(s,'spawn_supervisor'),contextlib.redirect_stdout(io.StringIO()):s.trial(d.ROOT,True)
+        with patch.object(s,'unlocked'):s.prepare(s.read_record())
+        row=s.read_record();self.assertEqual(row['stage'],'coordinating')
+        self.assertEqual(d.read_json(config)['bar']['id'],'omacale.bar')
+        with patch.object(s,'unlocked'),patch.object(s,'ipc',return_value='false'):
+            with self.assertRaises(d.Refused):s.coordinated(row)
+        self.assertEqual(d.read_json(config)['bar']['id'],'omacale.bar')
+        with patch.object(s,'unlocked'),patch.object(s,'ipc',return_value='true'):s.coordinated(row)
+        self.assertEqual(d.read_json(config)['bar']['id'],'cedar.integration')
+        self.assertEqual(d.info(locker),locker_before)
+        self.assertNotIn('local.lock',d.read_json(config)['disabledPlugins'])
+        with patch.object(s,'no_graphical_session',return_value=True):s.restore(s.read_record())
+        self.assertEqual(d.info(config),original);self.assertEqual(d.info(locker),locker_before)
+        self.assertFalse((config.parent/'plugins/cedar.omacale-guard/manifest.json').exists())
 
 if __name__=='__main__':unittest.main()

@@ -1,5 +1,5 @@
 {
-  "adapterVersion": 1,
+  "adapterVersion": 3,
   "status": "Experimental; fixture/offscreen tests, live target confirmation required",
   "upstream": "https://github.com/omacom/omarchy/tree/c668141e9c42b13c80c9ca4ea108e11708c5e8a5",
   "sourceHashes": {

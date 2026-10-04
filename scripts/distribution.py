@@ -2,9 +2,11 @@
 """CEDAR distribution transactions. Stdlib recovery works without Qt or a display."""
 import argparse, contextlib, fcntl, hashlib, json, os, shutil, stat, subprocess, sys, tarfile, tempfile, time, uuid
 from pathlib import Path
+# The session helper imports this module. Keep one exception class when this
+# file is the installed executable as well as when it is imported by tests.
+if __name__=='__main__':sys.modules['distribution']=sys.modules[__name__]
 ROOT=Path(__file__).resolve().parents[1]
 FORMAT=1
-IGNORED={'.git','__pycache__','.pytest_cache','dist','screenshots-local'}
 
 class Refused(RuntimeError):pass
 
@@ -61,14 +63,22 @@ def exclusive():
         yield
 
 def files(root):
+    # Use the same explicit inventory in checkouts and extracted archives.
+    # Never recursively copy local settings or an accidentally nested checkout.
+    inventory=root/'data/source-files.json'
+    if inventory.is_symlink():raise Refused('Source inventory must be a regular file.')
+    names=read_json(inventory)
+    if not isinstance(names,list) or any(not isinstance(name,str) for name in names):raise Refused('Invalid source inventory.')
+    if len(names)!=len(set(names)):raise Refused('Duplicate source inventory entry.')
     result=[]
-    for p in sorted(root.rglob('*')):
-        rel=p.relative_to(root)
-        if any(x in IGNORED for x in rel.parts) or p.suffix in ('.pyc','.log','.qslog','.bak') or p.name.startswith('.consolidation-'):continue
-        if p.is_symlink():raise Refused('Release source contains a symlink: '+str(rel))
-        if p.is_file():
-            if p.read_bytes()[:80].startswith(b'version https://git-lfs.github.com/spec/'):raise Refused('Unresolved LFS asset: '+str(rel))
-            result.append((p,rel))
+    for name in sorted(names):
+        rel=Path(name)
+        if not name or rel.is_absolute() or '..' in rel.parts or str(rel)!=name or '.git' in rel.parts:raise Refused('Unsafe source inventory entry.')
+        p=root/rel
+        if any((root/Path(*rel.parts[:i])).is_symlink() for i in range(1,len(rel.parts)+1)):raise Refused('Release source contains a symlink: '+name)
+        if not p.is_file():raise Refused('Required release source is missing: '+name)
+        if p.read_bytes()[:80].startswith(b'version https://git-lfs.github.com/spec/'):raise Refused('Unresolved LFS asset: '+name)
+        result.append((p,rel))
     return result
 
 def verify_tree(root,inventory):
@@ -108,6 +118,13 @@ class Transaction:
         entry['after']={'type':'link','target':str(target)};self.save()
         temporary=path.with_name('.cedar-link-'+uuid.uuid4().hex)
         temporary.symlink_to(target);os.replace(temporary,path)
+    def replace_owned_file(self,entry,data,mode=0o600):
+        """A second journaled write, retaining every recoverable intermediate."""
+        path=Path(entry['path'])
+        if not entry.get('after') or not same(info(path),entry['after']):raise Refused('Integration changed during preparation; later edits preserved.')
+        entry.setdefault('intermediate',[]).append(entry['after'])
+        entry['after']={'type':'file','sha256':hashlib.sha256(data).hexdigest(),'mode':mode};self.save()
+        atomic(path,data,mode)
     def commit(self):self.stage('commit')
 
 def check_restore_journal(journal):
@@ -118,7 +135,7 @@ def check_restore_journal(journal):
         if entry.get('retainOnRestore'):continue
         now=info(Path(entry['path']))
         if same(now,entry['before']):continue
-        if not entry['after'] or not same(now,entry['after']):raise Refused('Later user edit preserved; review backup: '+entry['path'])
+        if not any(same(now,record) for record in [entry['after'],*entry.get('intermediate',[])] if record):raise Refused('Later user edit preserved; review backup: '+entry['path'])
         if entry['before']['type']=='file' and digest(journal.parent/entry['backup'])!=entry['before']['sha256']:raise Refused('Recovery backup checksum mismatch.')
     return value
 
@@ -268,6 +285,7 @@ def install(root,approved=False,plan_only=False):
         destination=Path(plan['release']);current=paths()['data']/'current';binary=paths()['bin']
         recovery=paths()['data']/'recovery/distribution.py'
         session_recovery=paths()['data']/'recovery/omarchy_session.py'
+        provider_recovery=paths()['data']/'recovery/omarchy_providers.py'
         if binary.exists() or binary.is_symlink():
             if not binary.is_file() or b'# CEDAR distribution launcher' not in binary.read_bytes():raise Refused('The cedar command is already owned elsewhere. Existing installation preserved.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
@@ -283,8 +301,8 @@ def install(root,approved=False,plan_only=False):
         validation=validate(root)
         tx=Transaction('install')
         try:
-            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery,session_recovery]}
-            for p in (recovery,session_recovery):entries[str(p)]['retainOnRestore']=True
+            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery,session_recovery,provider_recovery]}
+            for p in (recovery,session_recovery,provider_recovery):entries[str(p)]['retainOnRestore']=True
             tx.save();tx.stage('back-up')
             destination.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
             if not destination.exists():
@@ -297,6 +315,7 @@ def install(root,approved=False,plan_only=False):
                 tx.record['release']=str(destination);tx.save();tx.stage('prepare');os.replace(temporary,destination)
             else:verify_tree(destination,read_json(destination/'release-files.json'))
             tx.stage('validate')
+            tx.apply_file(entries[str(provider_recovery)],(root/'scripts/omarchy_providers.py').read_bytes(),0o700)
             tx.apply_file(entries[str(session_recovery)],(root/'scripts/omarchy_session.py').read_bytes(),0o700)
             tx.apply_file(entries[str(recovery)],(root/'scripts/distribution.py').read_bytes(),0o700)
             launcher='#!/bin/sh\n# CEDAR distribution launcher\nexec python3 '+__import__('shlex').quote(str(recovery))+' "$@"\n'

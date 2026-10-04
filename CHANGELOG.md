@@ -1,3 +1,11 @@
+# 0.1.0-dev.3 — installation diagnostics and source boundaries
+
+- Report session refusals without Python tracebacks, including clear trial-first instructions.
+- Package only the reviewed source inventory; preserve and exclude nested clones and untracked local files.
+- Preserve intentionally disabled idle, wallpaper and polkit services. Support the reviewed Omacale 0.45.0 lock clone without replacing authentication; reject unknown providers.
+- Pause/resume Omacale notification/OSD repair watchers through an optional coordinator, with interrupted two-stage configuration recovery.
+- Add standalone recovery CLI and archive-boundary regressions. Native activation remains unverified.
+
 # 0.1.0-dev.2 — experimental Omarchy desktop activation
 
 - Add a full desktop trial, independent recovery supervisor, explicit Keep, separate login opt-in and restoration using the existing ownership journal.

@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "version": "0.45.0",
+  "upstream": "https://github.com/AyushKr2003/omacale/tree/14761b31a2d3886d186e08210300301cac148980",
+  "omarchySource": "https://github.com/omacom/omarchy/tree/c668141e9c42b13c80c9ca4ea108e11708c5e8a5",
+  "notice": "Hashes describe upstream files already installed by the user. No Omacale source is redistributed. Source review and fixture validation do not certify native authentication.",
+  "barFiles": {
+    "Bar.qml": "db4df91c21da9a571ed5512ca2177a1c361d9c6d9d909b57ec8c8ab296e6c414",
+    "assets/lock/LockView.qml": "711596b88c199e7c520a277f7b87a7a5c55968b4f9094fc12ffbd28b0f3c4a45",
+    "components/Anim.qml": "57694b9d75838cc3c1faa766dac65092fc28f39c21e044c120e5fdbd715d8a15",
+    "components/CAnim.qml": "b87b306f049edc978dd71cbaeb3581983f8cc253521dab8c6ade1491a56a6231",
+    "components/ColouredIcon.qml": "f8ea003502a02d7154867112ed8d757d3f2e51937c4662b1f872b3bbefe2e88b",
+    "components/CoverArt.qml": "82e1b4991f91c528f4a6f979dfdc2eca2ac3cb13bb3c083cfa3fbdfa8eea4430",
+    "components/FocusRing.qml": "5654445299fc6af95c6c76bd0e87f9bf1d865aab94d0a9ef0bac99c2b5baa8d1",
+    "components/KeyNav.qml": "e44119ded18a29647dbecf3c84d067bbab71170f9647ced0ace722437539f20e",
+    "components/LoadingIndicator.qml": "5d2296d52e66232179d4ed2a284794ac49aba82a0d2a5ca239da674f33d33069",
+    "components/LogoIcon.qml": "ea0711014df3a0d511a30e1d73f800791b751ef3bd0c92ecc68d7ec670bf8cc2",
+    "components/Logos.js": "39ed2ec0f64defa4a9d08094936134b6671e7f76f057419751bf57efab1c137c",
+    "components/MIcon.qml": "1f3a4a3fa5fb14262d054f8f7587c67b628d16ea9799fa874fa2097cbe55a149",
+    "components/MProgress.qml": "c38ba4a1d24203a508074c689122ae7fd8af9817022b4f1f3d779f9fe119c010",
+    "components/MText.qml": "9148ef38b3e2cbb2dfaf34185dd55c9e1101d745af439039e1b8827d6935793b",
+    "components/MorphIndicator.qml": "e93c394a14b604dc37cc2b9513c8b85f0f126a3f390f43b7195217d7dd1135f5",
+    "components/NavCursor.qml": "00a1de5c0f390f2700ba7cb6c1dce7fb1f97422de75fae8980d4a4104d20de5a",
+    "components/Pill.qml": "b30ea4ed09ffe38ca8900c34ddb3630a3cea4beee1b7e656ba0d1a5722d101f1",
+    "components/SectionHeader.qml": "f776afa176b5a0b9ae6c690a39a9f31cd4c2a2acb3ea78a4151c3cca256b2fbb",
+    "components/StateLayer.qml": "39c12d3fb43c01476f89f204bd0af304e985eb0402f9d12be7f6ad276f14fc1f",
+    "components/containers/FadeFlickable.qml": "661c26df9468a4790c59fd9c36c1e2d0442e0bf4fa31deee8356ac1a0072226d",
+    "components/containers/FadeListView.qml": "26491d20aa911b8b4381fd699e53227471ec37d4e19a0777f15f1c8e7a1ab0d6",
+    "components/containers/MFlickable.qml": "7f13ca71761a959a6f4212e1e157cec5b9242ad706d962c5f11fa14fb101ebf5",
+    "components/containers/MListView.qml": "ca1a5e119daf91ee32e7af86361a49d47a60a350e521418900dcc892db8aec7b",
+    "components/controls/BigButton.qml": "9bb31955c80c12b74d36224409fbb17531ea7a4e8268b3a59971ae5ef9f7cfdd",
+    "components/controls/BlobPopup.qml": "3c0d8e944a00f01e1c144e70f200d107e8d51ad4debade3c61106d17b2e583b6",
+    "components/controls/ButtonRow.qml": "ff6c5cce701b1073383d94b15a8536c60d0e5580700da2b0fff761db8055f9fb",
+    "components/controls/CircularProgress.qml": "77812eb3ca3e54569a2893d26861f3ac30b3da357075e9ad5bf481a6ffbb8436",
+    "components/controls/FilledSlider.qml": "6466c41785f0dde9ddd1b0eb263cbd4a421307b9a11d7f7cda275c95532ab810",
+    "components/controls/IconButton.qml": "67da922206f58b5fa978b1f7682dd350cd6437ca606bde5c0bccb586c809f5ac",
+    "components/controls/IconTextButton.qml": "bae22fc48a0043b247375d0dc2b04f096ff0f9cf4c110d89ee44bca720ad4a8f",
+    "components/controls/MScrollBar.qml": "b70981f7fa555c29dc6e435695b65a8336992df7dbb76e3a7e3bfcae98431feb",
+    "components/controls/MSlider.qml": "be79f5443bd8ff7c80a65ac59935a15a7c1fb97b5a79b1166bd309482d5b75b5",
+    "components/controls/MSwitch.qml": "24962cb95fd60985fd4dc10df362bafd963491b31b5d8503b454f0e4546bbcf2",
+    "components/controls/MTextField.qml": "5e746eb9c72d7800cd0e60f5e337f75e52638dc72b6cf4173660ffeb5967dc70",
+    "components/controls/OutlinedField.qml": "05ce83ce4d733ce9e5d067e090d957cf470f40ea934290f2ac249a1d5d0bb3ad",
+    "components/controls/SplitSelect.qml": "bfaa647df896df7f8e8e2fb798cebebc15c58176989fbbaea73b59cd48e4c1f0",
+    "components/controls/Toggle.qml": "87f002d73bd80b5d1dcfafa0f91256721b7cbd2d0d1a7b27613bbcc5d6658156",
+    "components/effects/Elevation.qml": "42f84a8d1911c4ae0efa1e3c61bf30528c4d3db2b744b5678cc3e717f6028f5d",
+    "components/effects/ShaderMaskEffect.qml": "c184f30aa81448e5a99427641de8347ed7443b341edd0457055709dfad0c1638",
+    "components/filedialog/FileDialog.qml": "0ace885f7849ea4d34a404509ede1d775500264a857a43fa59cd177d724f596e",
+    "components/filedialog/FileDialogButtons.qml": "b2e75d4fd439f3575abd2105c394a588c2dc6849e4205e932e976cbb09ef3ecb",
+    "components/filedialog/FileDialogCurrent.qml": "81a5ca6f998674ef6f923d7c916ff93dabf94e824728754804605ad5442303e6",
+    "components/filedialog/FileDialogHeader.qml": "5278955eca942b8ee83f914eeeec413915bff58f6788c62348e60c4a55f02b39",
+    "components/filedialog/FileDialogSidebar.qml": "beed2eec35a0b0b8e98359fa02079f870614c63247b8b53f8322a86013cd5c27",
+    "components/filedialog/FolderContents.qml": "8b4c5e0eb28b0e93e590d4dbf9be96d29abf73ebd91f948d564169d75f428c8d",
+    "components/shapes/BlobDeform.qml": "f879a34b3a05674646e41c57b1bc7d041d9b921fb54fcfcaedad87673a9fa4b6",
+    "components/shapes/BlobFill.js": "896cc0e43dc2352868bd1dd2aa7dec2700a8299185a32f7bc6738dbdfd812d57",
+    "components/shapes/BlobSurface.qml": "d86341a3aaed33d075114d0db69908f2b25da0c14c1822f4f942638542258cb4",
+    "components/shapes/ConnectedRect.qml": "847a70865227332f54a56a30ccc6eaddebbe419c1b0866a5558861f64ffb03c2",
+    "components/shapes/MShape.qml": "fdcb2bc55bac3b979765acda32a29494488ccc5371cf85a445b63734777b6c84",
+    "components/shapes/ShapeGeom.js": "bda565b6a03a7c7161c23a54b21dd37b5d18effb13af53e2d90b0110736ed480",
+    "components/shapes/Sparkline.qml": "0979b47346c589f553c688ec371990adf7d135bccdfba6043453f41d48217410",
+    "components/shapes/WavyLine.qml": "b16da34cf398a311de7d29839fcbb0ab5f3cb0cfec9e837dbfdbc0f2314b45b7",
+    "core/Colours.qml": "d6367daf95ceb0e16c232a9e1be728dc405ed0ebaf01bd718c79bd1abfba41d5",
+    "core/Config.qml": "52b5ded908e02789e7fe41914bea1280bc7032945bf3bccd79265eaf89a1f6ba",
+    "core/Defaults.js": "165a7a67dedfbcd0df85310033ff1d89fe0967a79a9a5d8752fd134b32ce0593",
+    "core/Tk.qml": "b2bae5a3df268c348af66dbd0b2c35c5343e883aeaed4f878e81653fa73b1f4b",
+    "core/WallLuminance.qml": "0fa331c8f363f549694f8a3b86b42a8eed9b6ecacf6f2dee885d979a5be12c9d",
+    "manifest.json": "3176b72afa4a862bac5896fe0da1593c12f51e6e0e9c0e462e0ce45a7bffa3f2",
+    "modules/background/Background.qml": "6661fcd8e8ac0e69b4930afd6a4c4fd85ee9d900e8eea45a8b7cd3faa70fa484",
+    "modules/background/DesktopClock.qml": "531f0c02c4af8af9f4525d9c3cce4584be4dda285c6de2dceeb70e5494c3480a",
+    "modules/background/Visualiser.qml": "7d4bea4a6ba461ffccc154153cbda06b3235183a7b2d7fdbb1b5e38e9c35a442",
+    "modules/background/VisualiserBars.qml": "e27a2053e2154e69252d9bcfa595953ab5a60b14b5b361215379763ee752ba4c",
+    "modules/bar/BarContent.qml": "f5f3196cd76fbe432f64ac33c2b157e91c678a78f407d9b7efae4523b99b63e8",
+    "modules/bar/BarWidgetSlot.qml": "80e664ee0e26e914b36958c8ed084fcb097b89b2350aa77a9cb8ad1b877dc04a",
+    "modules/bar/PluginBarFacade.qml": "c2ae74b5c7e79e898e6d63b91880dcc063731d104fad004585d9bf7b31cea5b9",
+    "modules/bar/PopoutContent.qml": "e2901d959c5a086559cc643bd7f634f64c7c516561f1ac9960a30b08a90f4402",
+    "modules/bar/workspaces/ActiveIndicator.qml": "7337d5a64f4d4907989b254eaec0c2c5bc2499c801287473820f9d24ac5f2a32",
+    "modules/bar/workspaces/SpecialWorkspaces.qml": "dbf0a0ba0e221970252842fbf79fa98e9ba352f93462bdd76fb5f3e93748e70c",
+    "modules/bar/workspaces/Workspaces.qml": "663877faa1990e387907aacd297f90158049990efb0a74b765b01707dcf76b27",
+    "modules/dashboard/Dashboard.qml": "bd6068cb25e9937d23216264a5c45d0e6722b5e0c430c99b335d5d7d25e65b95",
+    "modules/dashboard/MediaTab.qml": "0dfcc3b6daada5cc28268d0d70608a8294c21dcc72c5fbfdde516da4cfa522e0",
+    "modules/dashboard/PerfTab.qml": "1c1af66c6492f90a87b1451f392d2562a8a6306e14b2873f857387369214cd6c",
+    "modules/dashboard/WeatherTab.qml": "00a91e41e7176546232de3c6cebb95ba627876e266beaf7af8d8366a9842b389",
+    "modules/drawers/ScreenScope.qml": "40bd3f5964709047e52c5ca455703d508c5cb1f9a0a920f839af5fb2730b33bc",
+    "modules/launcher/ClipboardItem.qml": "8eb1f0302c6cb3e5fdbb9e6a305aa2afd43e9cc9f6458cc800a22f73d1219770",
+    "modules/launcher/ClipboardPreview.qml": "157b5e8933e034bb3a8d57201ce4bdbbef9a0ff566f11ec285b891e4f9e467ef",
+    "modules/launcher/Launcher.qml": "2bba98cb513c5fa65f996e20db844c0218993ea3b5bce6d00dd1b189e4eec461",
+    "modules/launcher/WallpaperItem.qml": "691c04ef36e2b965a1722f0c1a58545bd3c51c016e892517d346021aca9e15d8",
+    "modules/launcher/WallpaperList.qml": "d9ed87b2a22f9dbdd58d54fcda25958f83377fb381bd96fa1b78fbaacca85a39",
+    "modules/lock/LockCenter.qml": "038014030aedc2a9c9c7758e9191f629d5eed517d5495041502eaaad65f241ed",
+    "modules/lock/LockContent.qml": "be68c76fb0b683ab275c6ff0b709d3af10ecc6d6849dd779ed49312f4d5e156b",
+    "modules/lock/LockFetch.qml": "0c102013080e51cf2b589978f39fe22cb56c471dc4108832d6d99dbd46176dba",
+    "modules/lock/LockMedia.qml": "1a2f903f751a6491e5aa3ad5dfd8e03cc35d0d060c53820ed6b230f7828bb20f",
+    "modules/lock/LockMessage.qml": "b7a02c8bb8e9a4049dfa2ea4882aa48fe15c18e68548c4d20a672b05cb57a7be",
+    "modules/lock/LockNotifs.qml": "70f1ee9a520c6de0e9fc6e2b3cd47ec14eb66a0596f5f394b575761c278e492d",
+    "modules/lock/LockPanel.qml": "3d1f8808e5ce6c84e80dda83dbef204dbe2e5b1612578019e9b0ec2b042351b6",
+    "modules/lock/LockPassword.qml": "e7a44ff17a19e499a349a89975ebfefe8e2097547fcfb76dd945043e9a0e1f19",
+    "modules/lock/LockResources.qml": "4775084c9fec0b137fcbf2a1047023cde3320f85702bd1a2698fb49ed2927bff",
+    "modules/lock/LockUi.qml": "7f3d746e02225567711c6d3902681a19e49e1c77c3bbff4c2c8a3b9cda6ab0ab",
+    "modules/lock/LockUnlockFx.qml": "c6afbf4a1b8e16a0faee2f71ceec1822c773f77267b59c4c4fe9b5b5507800f9",
+    "modules/lock/LockWeather.qml": "4f470c3c92a3403ed27c554d6a30f13f71c599fc943c09fd89f829b0d5206e77",
+    "modules/notifications/NotifPopups.qml": "6d602345f765039b5e292a73da2ed60c4e011ddab87c52f325b1e33686f2870c",
+    "modules/notifications/NotifToast.qml": "d8ce0cb5a1ff0d2bae72db371770ccb25cefc1ef4e00b7c578f853bca117d280",
+    "modules/osd/Osd.qml": "6e98130c1a07118c2610d353a37c9a0421520bb3f679f2ca3531c0f6a20f429f",
+    "modules/overview/Overview.qml": "8f65eef460352761b2ed5560d33245f384a3079bf71ae8e0e1a32b4dae569427",
+    "modules/overview/OverviewWindow.qml": "649f91ff6191737b9676f7b6f5b7e64994ff1252c0eeccf49b9e8608550f2eda",
+    "modules/session/Session.qml": "298416bdae5868f43da46c1d677d207574f7c0acbbb75b2fb527b886a5f98adc",
+    "modules/settings/Settings.qml": "9198fa557f8f55cf4a46f289defa6c7f0564f4692bf4676aa93ef62d65f69b02",
+    "modules/settings/SettingsModel.js": "94a404060abe03fad0f87023d08fc714fe33c256e4cd1284be41f0dfff8fbad0",
+    "modules/settings/SettingsPage.qml": "dd52a552a019646f5e70ddf9ade7e7ef201dd8ec62039e308579ebcca09be3bd",
+    "modules/settings/cards/AboutCard.qml": "4f1ef72d71d6bea4c8dee99ceefa7e8ff8b796b4e2ded3461f0429454a405b37",
+    "modules/settings/cards/KeybindsCard.qml": "be9ed6a127cfe0074e14bed0b40d66126b206b16a39b61ca87b487f179f6e0d4",
+    "modules/settings/cards/LockCard.qml": "06350ca3177be91191f863a4635421b3d4d5be19410a9590e373f1448c139458",
+    "modules/settings/cards/LogoPicker.qml": "15ba1555e061371da965b5ad57946f959612846b6ecec88fabd41ed158d92767",
+    "modules/settings/cards/LookNFeelCard.qml": "6641e6639284401abe481489649f55b1757d412933e3bd1e26aa3b57a2e0cd31",
+    "modules/settings/cards/NotifCard.qml": "52ce20ebcbb773b9db51a3855c92b3fbf63cf6b29305c57bef8c37188bf08e55",
+    "modules/settings/cards/OsdCard.qml": "a01a64848fc180963a151bf9ac7d5b65268f20c7e8d536670fa0860a02d65fa5",
+    "modules/settings/cards/SeedPicker.qml": "03e10788c6606bbe413db7fec197a4d77edffe16fcd659cd08c1bf27d4ef1362",
+    "modules/settings/cards/StylePreview.qml": "9d9ede29d66765b4562b1852e840834e25a3bb9a981e1593f9d8075510b129d2",
+    "modules/settings/common/InfoRow.qml": "e995a7ad5c13ec29662f9ca299ea546fac8ee362d6bba47176aff7a167c69092",
+    "modules/settings/common/ItemList.qml": "b74a196de3f41258fd2bbd6ade938ec50eb37fe08cdbcc8f96590cd0d86c5e53",
+    "modules/settings/common/PopupRow.qml": "48498c4b3c84980c831d7db9bf0edb80c5b1723b6e09c78cf57c33f60e9ab31c",
+    "modules/settings/common/RowButton.qml": "cb7ae6b8a5a0a22b1ca2d538a8768207346eb41485ae9d03d224dc457ab501ef",
+    "modules/settings/common/RowLabel.qml": "dfb728324519b1a5c6e6ef299d87317f363cc119ccb8974ebbe616a2fca8cec1",
+    "modules/settings/pages/AllApps.qml": "963d3030e870309c2389958a94a88c654066ff9b3753a15e0ff697df820aee40",
+    "modules/settings/pages/AppInfo.qml": "ceda990925761cf66649077e9f868e72b09dea516efc71616083ba922d02bc04",
+    "modules/settings/pages/AppVolumes.qml": "a3c2378760342f5049e5697ec8ac7b5ba1ca6a8cbc221948d625ee7eb9ee394d",
+    "modules/settings/pages/AppsPage.qml": "96f7bb9b1c1cc3cb7c5bd4d30aff0aad17f6d4a28acf72e4677742235026ab9a",
+    "modules/settings/pages/AudioDeviceList.qml": "a0cd69e7974945168643dec4e704e1c82e7a9ff892920b98c78ce6c511c0ccc1",
+    "modules/settings/pages/AudioPage.qml": "41c7462d84a9d4bd188bb477ce654624ad03b5f46eec218f1c8b1aa4edfe6bb1",
+    "modules/settings/pages/AudioSlider.qml": "e462ff723926c82bd05e5272f3287c9d5c6127bc965fb98badd02a917b651009",
+    "modules/settings/pages/BluetoothPage.qml": "d502474b673b872c33aec04a23d1a151b2b5a9f7ce70548129a4983d816bde30",
+    "modules/settings/pages/BtDevice.qml": "63d9a2ff8eb57a0192bcee1c4bf3653a61a0726fe77b553d766c30e00605029c",
+    "modules/settings/pages/BtDeviceRow.qml": "81dfd7b43d1eec52d782e7a3e7f12b837fc43592c41d2d5a8c4409178fcb91e7",
+    "modules/settings/pages/BtPairing.qml": "e1ef318be2b4f8db2f12331da28917138bb9d2a08aee1087aa2059c314e6554d",
+    "modules/settings/pages/NetworkDetail.qml": "3442b4dcd3dba5e10be01b4e14e65a1bf7aa9ad447fef4e87c41a35d95c08e0a",
+    "modules/settings/pages/NetworkPage.qml": "46d68c62f4fcb2addaeedf8a3e110fd1488e88f1a33d85a09d32460d62e7c686",
+    "modules/settings/pages/PinnedPlugins.qml": "ccf023f0d197b7c6b017d255f14ab3a2c25a7e453263a11aff65a13c659f78d6",
+    "modules/settings/pages/PluginInfo.qml": "ecadb9c29eb677984371e1e9d5e2d1687b9242fe361570fb163721c2d363b931",
+    "modules/settings/pages/PluginsPage.qml": "9f639545b39279c4a03cd253101f99497617d1a771c61ce7fb50937022ccb197",
+    "modules/settings/pages/TrayIcons.qml": "ff918c46e06a508100d94233f7f2d02ad1bf25f28304c6a45f9f1dfd7b204688",
+    "modules/settings/pages/WallpaperGrid.qml": "b0009d928a3f2d19a4a3c763933ac0b5202e6a57f7ff391744b77d9a38d90592",
+    "modules/settings/rows/RowNav.qml": "aabad7c4d4192e9e0c44be977f31c1b4c612a15df66f2c824a491f1987dcb5d4",
+    "modules/settings/rows/RowSelect.qml": "b8a34942a7005b2ddcc4176937e928326147faec69d16d53a8c9f45c5478240a",
+    "modules/settings/rows/RowSlider.qml": "20fb4d1a5001c8ad3e2149937442801755d1a6a910a52dace0fb4c7916987690",
+    "modules/settings/rows/RowStepper.qml": "12474e6e9806d2d1bd8a13a23568d09bd637f50a246f2cc7ba4b3733658d6771",
+    "modules/settings/rows/RowText.qml": "d05903d0a2e2c6ab7f627bf0df379fb5267f8a3daf4182d9203cd997d59edc7d",
+    "modules/settings/rows/RowToggle.qml": "af911e1a8a4bee89d64b1734c92cd9a15a98c5be0ec8de2cd670426e93779710",
+    "modules/sidebar/NotifGroup.qml": "6210058548b6ea26bd2ab148f767cb48b03c0ef22670c6ef7813fea81773432a",
+    "modules/sidebar/NotifItem.qml": "c48c4660219f1eb1e416e9f84d4b8723b51139bbba2a42c7d08278b5701683d1",
+    "modules/sidebar/Sidebar.qml": "bc1e777cc0501ec4e5f1fd9816acda59875f0878dc61ea1ead0f9f8cff769237",
+    "modules/utilities/IdleInhibitCard.qml": "7307805f9c50451d21dd4e7344fa98988cc19bad0995ac2ac8109f01665b855f",
+    "modules/utilities/QuickToggles.qml": "daf62d31c0c3867af1ae7881720c316a02f2b7f233ac97e67ee6084588d237ec",
+    "modules/utilities/RecordCard.qml": "de819b379488a66391367f08c6481a817e7485717590ed01b600ec79477e212a",
+    "modules/utilities/RecordingList.qml": "4d943b5052c19245b93425cc7ad12c7451cd12ff3d0288581ea33f19fe313686",
+    "modules/utilities/ToastItem.qml": "1d7bad48ef97ad8f97a5bba9e3e88145e352f3e06770eda05255f10253acb72c",
+    "modules/utilities/Toasts.qml": "d0dc909ce2e135d9178e9a8bc3debb967f619305ce9414900239f4b848d090c9",
+    "modules/utilities/Utilities.qml": "5248d21680fd4deb14e9eb518347afda1e0b44c52e06fe8160bd6c1c423cb21f",
+    "modules/windowinfo/WindowInfo.qml": "0a69750d7cb8eaf1408e746650b819b4d745171967ff0ee90051cc5da9f32f77",
+    "modules/windowinfo/WinfoButtons.qml": "284c2935883ec266393566dd158b25f57f240ac7afc95454d4e8f2b03a4fff0c",
+    "modules/windowinfo/WinfoDetails.qml": "7fdeb2d1ffdd6795ff8d8c0db157cba4f932153db7c200e257c3a9a63de7f61c",
+    "modules/windowinfo/WinfoPreview.qml": "f7c4a272e9e2a00f0f8c28290e1e31e8cb4a3e221acb39578d6223a256ab589b",
+    "qmldir": "c142706d42a47ebc7551d31855564c04cc2c96c07d6bee12031f879baa898b31",
+    "scripts/cava.sh": "87186a2257612e3c9503053de91a46b6ad9bad56b1bffebca316ed37c30f4dac",
+    "scripts/gen-logos.py": "8ddf5bfc0d4ba2a4ceaaefce636b78cb48e19e42cea5c9e613e43e5864ed8646",
+    "scripts/gpu.sh": "a45ade55de6458d21cf70bd25b8eb823b83ec8c1eb336ee6dd161ec5cea25e04",
+    "scripts/handover.py": "6c0b19c19aae507528a6bf882fe98dda6e3b5892fc557b6ceda7e32dcc4e8581",
+    "scripts/lock-screen": "0e5a8f36745514e3a851c9f2d28e59a83539e43d55b2cd35753dcfb0ec24195a",
+    "scripts/lyrics.sh": "ba5b83fee27c68b1da4aee330f4a2a7c1c59911f7a3ef6771562624ffde41a32",
+    "scripts/notif-popups": "04f5f1287d929cd1e5761f1fb70da6bae2927f031439699d6dadffe1342fa4f1",
+    "scripts/notifs.py": "0b57ab988efd56f094676d6845c756dd3d6161250eb3b8dd64894aad04ee0181",
+    "scripts/omacale": "4dd035d68f7d6415508ca5e636b6d93f5ee593db1235f3498137b37334620abb",
+    "scripts/osd-handover": "894247372e043c2eab2d2de07d98a7f19e11b20ad160df3fc3d7bdfb084f9d70",
+    "scripts/switcher.sh": "962af73b5b30f1ba8272ac5268bba9fba9932e2f49e51f2d524a2435298d325d",
+    "scripts/upstream-check": "c93235201542607a5b1042e039b4a7c41122717e9240964649708c16b52db1ef",
+    "scripts/weather.sh": "344d4322dd4d05cf73ecf1f2b089824d398288f506de37df54dff0c0e22a4f9a",
+    "services/AppService.qml": "e80da59264b236f7909ca59beedebd10669a422347cc8d35abe45954cb3b4ecd",
+    "services/AudioService.qml": "641504ebec2392e9e8cd37b023fe17cb81da9dc20a9b02b81f9671438feefbba",
+    "services/BtService.qml": "28885d2d2f789faece4085e6a88cc90b2ab0b70e59ec5be88bbae34449678599",
+    "services/Calc.js": "a5ba3a7a789c9787f224e14c4892433f86583f7cd7e4dddc6feed4df3ca0857f",
+    "services/ClipboardService.qml": "f084715db003d11fcc51cb1fb225adfe80f1b6f063186af858648ed2ca09b3ca",
+    "services/GameMode.qml": "69e3ed1a83dd4d6cec4e11b958469435a7b6dff8ca7447fada5895da1483927a",
+    "services/Handover.qml": "e736bec3d6d8177e295d7806530f3ee8bc7f108a11db850ef9aa9a8485011969",
+    "services/HyprLook.qml": "14ad8a9e902676d27cd8467c755f46bc026774e657f8dacc9bebad3a8d78f421",
+    "services/IdleService.qml": "0074ca711140a46935d6c5776821f3a82365cb12460abf95fdfe880338c8a9c5",
+    "services/KbService.qml": "220b6f021c271b362fa075fcdba2d5b9d4a8a904a86c6a7e67b7389c79fea50c",
+    "services/LockFx.qml": "bcd12b46ba78ceab7c3d21276a21574f6fda5745afc7232750b824f3315cc2eb",
+    "services/LockService.qml": "ea2cf99863849fa367093743c02c1bce88de7fe00ff37723c694471c6d2e397d",
+    "services/MenuService.qml": "b4e350488baeaddd522f745c8038d3647865594b4cf9090fb675bae56ab54842",
+    "services/NetService.qml": "9f1d8b626215e7c449d060061243afe1fe49667e590c382a7f170a87df21188b",
+    "services/NotifHandover.qml": "d9936bf0610b54c7a0156f7c893f42302c2a503d09e0991b9c56282a335b5ad5",
+    "services/NotifService.qml": "3a3b2dacaaae7d4c9782ecc2955eaeeb7976e62ca94483cb417d9139c494ea48",
+    "services/OsdHandover.qml": "4cd2b7196de30f5807c28eacd9366d0e50f9d601d9147f2e3ab47fab90dbd6c6",
+    "services/OsdService.qml": "abcad08438aacbb4e4454761c71c822072e4f63c80dcbd9b515547dcc84a19fa",
+    "services/PluginService.qml": "09e52c70425af67db237a516c7bdfaed1da4549226f05f5cce7c47efc167e67b",
+    "services/RecordService.qml": "be8baff64dc1ab8a0a973f0e098e2ca0d32358378987ce460d4f934fe1d19178",
+    "services/Sys.qml": "fc337b251a1e30a1d824fa76927ef6ce0ca5d5b89fd2e9de88d045ba138bdde2",
+    "services/Toaster.qml": "7f69911797b02a0c112e3c9f3e6d147faaee5feb68893971c93e2121fc009ed7",
+    "services/UpdateService.qml": "bae343673ba9f9eb7393581700e7ebac9a5479756b1db96315e7df6425df1865",
+    "services/Wallpapers.qml": "79d892e80e3d265c6b82d7f1ada13cc841094655460c34e9783ba8c7286e0f77",
+    "services/WindowIcons.qml": "55e048709cea7386140c8c43d4cc5522854eaba445c4a3e22cf8fbc787d88675",
+    "shaders/blob.frag.qsb": "5fdc11a2ed229505e712bd594b921fed6753e5c8427190e076611116996cbf8c",
+    "shaders/visualiser.frag.qsb": "5e496193473ee4ddfaa3c3ae0b173d7ec83f7e1c1f5aa6dc581c22421cff496c"
+  },
+  "roles": {
+    "omarchy.lock": {
+      "contract": {
+        "schemaVersion": 1,
+        "kinds": [
+          "service"
+        ],
+        "keepLoaded": true,
+        "entryPoints": {
+          "service": "Service.qml"
+        }
+      },
+      "capabilities": [
+        "authentication"
+      ],
+      "variants": [
+        {
+          "LockView.qml": "9b174cf3ba8569dede528968be38994491ac73d9ca708f7e9451beeec7b4d066",
+          "Service.qml": "3f0a265a09f7957e8f5d74666595d3136ec64899c414426190460f9e2098e701"
+        },
+        {
+          "LockView.qml": "711596b88c199e7c520a277f7b87a7a5c55968b4f9094fc12ffbd28b0f3c4a45",
+          "Service.qml": "3f0a265a09f7957e8f5d74666595d3136ec64899c414426190460f9e2098e701",
+          "StockLockView.qml": "9b174cf3ba8569dede528968be38994491ac73d9ca708f7e9451beeec7b4d066"
+        }
+      ]
+    },
+    "omarchy.notifications": {
+      "contract": {
+        "schemaVersion": 1,
+        "kinds": [
+          "service"
+        ],
+        "keepLoaded": true,
+        "entryPoints": {
+          "service": "Service.qml"
+        }
+      },
+      "capabilities": [],
+      "variants": [
+        {
+          "NotificationLogic.js": "99e82df6524ee1ee1d52673b2a1496f62b14b220288f186c41fd8deed77a69bd",
+          "Service.qml": "11665542e70df80ccd3c785a6143dee2daefd2082e4f75c740adc2c9947cf7c2",
+          "components/NotificationCard.qml": "3f023446cfe26b9f70570d7088baab31e56ca374c4a206a7c098b09d36cdff3d"
+        },
+        {
+          "NotificationLogic.js": "99e82df6524ee1ee1d52673b2a1496f62b14b220288f186c41fd8deed77a69bd",
+          "Service.qml": "f0656d6330c18a7196bec7f6fdb2f316d76fc6ea323ef4d56f7735327d71cbf1",
+          "Service.qml.omacale-orig": "11665542e70df80ccd3c785a6143dee2daefd2082e4f75c740adc2c9947cf7c2",
+          "components/NotificationCard.qml": "3f023446cfe26b9f70570d7088baab31e56ca374c4a206a7c098b09d36cdff3d"
+        }
+      ]
+    },
+    "omarchy.osd": {
+      "contract": {
+        "schemaVersion": 1,
+        "kinds": [
+          "panel"
+        ],
+        "keepLoaded": true,
+        "entryPoints": {
+          "panel": "Osd.qml"
+        }
+      },
+      "capabilities": [],
+      "variants": [
+        {
+          "Osd.qml": "a139b64d45f89a6b55ebcbd1233347f75b541b020e24b4286d6e00a6d5f5c50c",
+          "OsdModel.js": "ad8cc27c204587a9aac9a7ec0513c72a1a33fe6e83090ee91b4e2c2bfe5fe35c"
+        },
+        {
+          "Osd.qml": "97d00bb61e6f8a2e4383bfc1c69757ab605b0a24e8779f590b60c648e72806c1",
+          "Osd.qml.omacale-orig": "a139b64d45f89a6b55ebcbd1233347f75b541b020e24b4286d6e00a6d5f5c50c",
+          "OsdModel.js": "ad8cc27c204587a9aac9a7ec0513c72a1a33fe6e83090ee91b4e2c2bfe5fe35c"
+        }
+      ]
+    },
+    "omarchy.idle": {
+      "contract": {
+        "schemaVersion": 1,
+        "kinds": [
+          "service"
+        ],
+        "keepLoaded": true,
+        "entryPoints": {
+          "service": "Service.qml"
+        }
+      },
+      "capabilities": [],
+      "variants": [
+        {
+          "IdleModel.js": "58226a67d5fc2f33b1a23b55cb32764a8b2091cc94c4d02af1b67f369440b9b8",
+          "Service.qml": "50f5c81e2e94fab32395a5bc3cce982e30a10ab1b3f56cc58f29055951518a51"
+        }
+      ]
+    },
+    "omarchy.menu": {
+      "contract": {
+        "schemaVersion": 1,
+        "kinds": [
+          "menu",
+          "bar-widget"
+        ],
+        "keepLoaded": true,
+        "entryPoints": {
+          "menu": "Menu.qml",
+          "barWidget": "BarWidget.qml"
+        }
+      },
+      "capabilities": [],
+      "variants": [
+        {
+          "BarWidget.qml": "ad201156483711ba77ec97303183bc02922248e97ac0c0b8ea30d250e57cd0af",
+          "Menu.qml": "0154d0ec3855fbb48aa06eaa724a19f3c07c377494d4a3de65daed2d7d9100e3",
+          "MenuModel.js": "ff6b265ca477d0d04297b0d9a5d9715960069db6da44603160d329e087e55fd8"
+        }
+      ]
+    }
+  }
+}

@@ -7,8 +7,9 @@ The adapter only accepts audited upstream source and requires live provider chec
 import contextlib, copy, hashlib, json, os, re, shlex, shutil, subprocess, sys, time, uuid
 from pathlib import Path
 import distribution as d
+import omarchy_providers as providers
 
-ACTIVE={'prepared','starting','trial','kept','restore-requested','deferred','failed'}
+ACTIVE={'prepared','coordinating','starting','trial','kept','restore-requested','deferred','failed'}
 DISABLE=['omarchy.notifications','omarchy.osd']
 PROTECTED=['omarchy.lock','omarchy.idle','omarchy.polkit','omarchy.background']
 
@@ -62,17 +63,28 @@ def verify_upstream(root,upstream):
     for name,hashes in rules['sourceHashes'].items():
         if not (upstream/name).is_file() or d.digest(upstream/name) not in hashes:raise d.Refused('Omarchy integration API differs from the audited version: '+name+'. Existing authentication preserved; offline recovery remains available.')
 
-def verify_session_api(row):verify_upstream(row['root'],Path(row['omarchyShell']).parent.parent)
+def verify_session_api(row):
+    verify_upstream(row['root'],Path(row['omarchyShell']).parent.parent)
+    if row.get('omacale'):providers.verify(row['root'],row['omacale'])
 
-def transformed(config):
+def transformed(config,omacale=None):
     if not isinstance(config,dict) or config.get('version')!=1:raise d.Refused('Unsupported Omarchy shell configuration.')
     value=copy.deepcopy(config)
     if not isinstance(value.get('bar'),dict):raise d.Refused('Omarchy bar configuration is missing.')
     disabled=value.get('disabledPlugins',[])
     if not isinstance(disabled,list):raise d.Refused('Invalid disabledPlugins configuration.')
-    if any(name in disabled for name in PROTECTED):raise d.Refused('A required existing Omarchy service is disabled; no service will be silently enabled.')
+    # Preserve deliberately disabled idle, polkit and wallpaper providers.
+    # Only the resident locker is a prerequisite for this adapter's boundary.
+    if 'omarchy.lock' in disabled and not (omacale and omacale.get('lockId')):raise d.Refused('Omarchy lockscreen (omarchy.lock) is disabled and no reviewed enabled Omacale clone was found. Existing locker preserved; do not enable competing lockers together.')
     value['bar']['id']='cedar.integration'
-    value['disabledPlugins']=list(dict.fromkeys([*disabled,*DISABLE]))
+    value['disabledPlugins']=list(dict.fromkeys([*disabled,*DISABLE,*(omacale['disable'] if omacale else [])]))
+    if omacale:value=with_guard(value)
+    return value
+
+def with_guard(config):
+    value=copy.deepcopy(config);entries=value.setdefault('plugins',[])
+    if not isinstance(entries,list):raise d.Refused('Unsupported Omarchy plugin configuration.')
+    entries.append({'id':providers.GUARD})
     return value
 
 def inspect(root):
@@ -84,23 +96,27 @@ def inspect(root):
     verify_upstream(root,upstream)
     source=upstream/'shell/shell.qml';rows=instances();running=matching(rows,source)
     if len(running)!=1:raise d.Refused('Expected exactly one running Omarchy shell on this display.')
-    if any('cedar' in str(r.get('config_path','')).lower() or 'foxfire' in str(r.get('config_path','')).lower() for r in rows):raise d.Refused('Another CEDAR installation is running; preserve it and finish its migration separately.')
+    if any(Path(r.get('config_path','')).name=='shell.qml' and any(n in str(r.get('config_path','')).lower() for n in ('cedar','foxfire')) for r in rows):raise d.Refused('Another CEDAR installation is running; preserve it and finish its migration separately.')
     # These are the paths the audited Omarchy source actually reads, not guessed XDG paths.
     config=Path.home()/'.config/omarchy/shell.json'
-    for p in [config,config.parent/'plugins/cedar.integration/manifest.json',config.parent/'plugins/cedar.integration/Bridge.qml',config.parent/'hooks/post-boot.d/95-cedar-session']:
+    for p in [config,config.parent/'plugins/cedar.integration/manifest.json',config.parent/'plugins/cedar.integration/Bridge.qml',config.parent/'hooks/post-boot.d/95-cedar-session',config.parent/'plugins'/providers.GUARD/'manifest.json',config.parent/'plugins'/providers.GUARD/'Service.qml']:
         if p.is_symlink() or any(parent.is_symlink() for parent in p.parents):raise d.Refused('Managed Omarchy integration target requires manual integration: '+str(p))
         if p!=config and p.exists():raise d.Refused('An existing integration entry is not owned by this trial: '+str(p))
     # Legacy theme hooks can stop the authentication host; never run both strategies.
     for group in ['post-boot.d','theme-set.d']:
         if any((config.parent/'hooks'/group).glob('*cedar*')) or any((config.parent/'hooks'/group).glob('*foxfire*')):raise d.Refused('Legacy CEDAR theme handoff found. Existing integration preserved.')
     original=d.read_json(config if config.exists() else upstream/'config/omarchy/shell.json')
-    transformed(original)
-    row={'format':1,'adapter':'omarchy-4-resident-lock','omarchyVersion':version,'omarchyShell':str(source),'omarchyPid':running[0]['pid'],'root':str(root),'config':str(config),'original':original}
-    unlocked(row)
+    if not isinstance(original,dict) or not isinstance(original.get('bar'),dict):raise d.Refused('Unsupported Omarchy shell configuration.')
     plugins=json.loads(ipc(source,'shell','listPlugins'))
     if not isinstance(plugins,list):raise d.Refused('Omarchy plugin inventory unavailable.')
+    omacale=providers.inspect(root,original,plugins,upstream)
+    transformed(original,omacale)
+    row={'format':1,'adapter':'omarchy-4-resident-lock','omarchyVersion':version,'omarchyShell':str(source),'omarchyPid':running[0]['pid'],'root':str(root),'config':str(config),'original':original}
+    if omacale:row['omacale']=omacale
+    unlocked(row)
+    reviewed={p['id'] for p in omacale['providers']} if omacale else set()
     for item in plugins:
-        if item.get('enabled') and 'service' in item.get('kinds',[]) and not item.get('id','').startswith('omarchy.'):
+        if item.get('enabled') and 'service' in item.get('kinds',[]) and not item.get('firstParty') and item.get('id') not in reviewed:
             raise d.Refused('An enabled third-party service needs a separate integration review.')
     if notification_owner()!=row['omarchyPid']:raise d.Refused('Notifications are owned by another provider. No provider will be stopped.')
     return row
@@ -119,6 +135,9 @@ def trial(root,approved=False):
         plan={'action':'Try CEDAR for 120 seconds','adapter':row['adapter'],'changes':['Select the CEDAR empty-bar bridge in Omarchy user settings','Temporarily disable Omarchy notification and OSD plugins','Start the full CEDAR bar, Core, Canopy, Settings and notifications','Create a temporary post-boot recovery hook'],
               'preserve':['Omarchy lockscreen, PAM, idle handling, polkit agent, wallpaper, secret service and portals','Display configuration, existing keyboard shortcuts and applications'],
               'confirmation':'Run cedar keep before the timer expires; login startup needs cedar activate afterwards','recovery':'Independent supervisor restores the recorded configuration after timeout or a CEDAR crash; it defers while locked.'}
+        if row.get('omacale'):
+            plan['changes'].extend(['Pause Omacale notification/OSD repair watchers until restoration','Temporarily disable reviewed notification/OSD clones alongside their stock providers'])
+            plan['preserve'].append('Existing Omacale lock clone, PAM, lock view and all Omacale files/settings; no authentication handover')
         d.approve(plan,approved)
         print(d.validate(root));unlocked(row)
         tx=d.Transaction('omarchy-session')
@@ -126,9 +145,12 @@ def trial(root,approved=False):
         row['generation']=uuid.uuid4().hex
         row['sessionSignature']=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
         row['unit']='cedar-session-'+row['id']+'-'+row['generation'][:8]
-        row['configAfter']=transformed(row.pop('original'))
+        original=row.pop('original')
+        row['configAfter']=transformed(original,row.get('omacale'))
+        if row.get('omacale'):row['configCoordinating']=with_guard(original)
         row['configAfter']['bar']['cedarShellPath']=str(root/'shell.qml')
         targets=[Path(row['config']),Path(row['config']).parent/'plugins/cedar.integration/manifest.json',Path(row['config']).parent/'plugins/cedar.integration/Bridge.qml',Path(row['config']).parent/'hooks/post-boot.d/95-cedar-session']
+        if row.get('omacale'):targets.extend(Path(row['config']).parent/'plugins'/providers.GUARD/name for name in ('manifest.json','Service.qml'))
         tx.record['files']=[];tx.save()
         for p in targets:tx.backup(p)
         tx.stage('back-up');save(row)
@@ -166,11 +188,22 @@ def prepare(row):
     for entry in entries[1:3]:
         if entry.get('after') and d.same(d.info(Path(entry['path'])),entry['after']):continue
         tx.apply_file(entry,(source/'integrations/omarchy'/Path(entry['path']).name).read_bytes())
+    for entry in entries[4:]:
+        if entry.get('after') and d.same(d.info(Path(entry['path'])),entry['after']):continue
+        tx.apply_file(entry,(source/'integrations/omarchy/omacale-guard'/Path(entry['path']).name).read_bytes())
     helper=d.paths()['data']/'recovery/omarchy_session.py'
     hook=('#!/bin/bash\n# CEDAR-owned trial recovery and confirmed login startup\nexec '+shlex.quote(sys.executable)+' '+shlex.quote(str(helper))+' login\n').encode()
     if not entries[3].get('after') or not d.same(d.info(Path(entries[3]['path'])),entries[3]['after']):tx.apply_file(entries[3],hook,0o700)
-    if not entries[0].get('after') or not d.same(d.info(Path(entries[0]['path'])),entries[0]['after']):tx.apply_file(entries[0],(json.dumps(row['configAfter'],indent=2)+'\n').encode())
-    tx.stage('activate');row['stage']='starting';row['readyDeadline']=time.time()+25;save(row)
+    if not entries[0].get('after') or not d.same(d.info(Path(entries[0]['path'])),entries[0]['after']):tx.apply_file(entries[0],(json.dumps(row.get('configCoordinating',row['configAfter']),indent=2)+'\n').encode())
+    tx.stage('activate');row['stage']='coordinating' if row.get('omacale') else 'starting';row['readyDeadline']=time.time()+25;save(row)
+
+def coordinated(row):
+    verify_session_api(row);unlocked(row)
+    if ipc(row['omarchyShell'],'cedarOmacaleGuard','ready')!='true':raise d.Refused('Waiting for Omacale notification/OSD operations to finish; locker preserved.')
+    tx=d.Transaction.__new__(d.Transaction);tx.path=Path(row['journal']);tx.directory=tx.path.parent;tx.record=d.read_json(tx.path)
+    data=(json.dumps(row['configAfter'],indent=2)+'\n').encode()
+    tx.replace_owned_file(tx.record['files'][0],data)
+    row['stage']='starting';row['readyDeadline']=time.time()+25;save(row)
 
 def publish(locked):d.write_json(status_path(),{'locked':locked,'updated':time.time()*1000})
 
@@ -188,7 +221,9 @@ def start_cedar(row):
     verify_session_api(row);check_omarchy(row);unlocked(row)
     plugins=json.loads(ipc(row['omarchyShell'],'shell','listPlugins'))
     if not any(p.get('id')=='cedar.integration' and p.get('active') for p in plugins):raise d.Refused('Omarchy has not loaded the CEDAR bridge yet.')
-    if any(p.get('id') in DISABLE and p.get('enabled') for p in plugins):raise d.Refused('Overlapping Omarchy plugins have not stopped yet.')
+    disabled=DISABLE+row.get('omacale',{}).get('disable',[])
+    if any(p.get('id') in disabled and p.get('enabled') for p in plugins):raise d.Refused('Overlapping Omarchy plugins have not stopped yet.')
+    if row.get('omacale') and ipc(row['omarchyShell'],'cedarOmacaleGuard','ready')!='true':raise d.Refused('Omacale handover coordination is not ready.')
     if ipc(row['omarchyShell'],'cedarBridge','enable')!='true':raise d.Refused('Keyboard IPC bridge did not become ready.')
     source=Path(row['root']);d.verify_tree(source,d.read_json(source/'release-files.json'))
     env={**os.environ,'CEDAR_OMARCHY_SESSION':'1','CEDAR_SESSION_STATUS':str(status_path()),'CEDAR_SESSION_HELPER':str(d.paths()['data']/'recovery/omarchy_session.py'),'CEDAR_SHELL_PATH':str(source/'shell.qml'),'CEDAR_QS_BIN':shutil.which('qs'),'QS_DISABLE_FILE_WATCHER':'1','QS_NO_RELOAD_POPUP':'1'}
@@ -198,6 +233,7 @@ def start_cedar(row):
 
 def healthy(row):
     check_omarchy(row);rows=cedar_rows(row)
+    if row.get('omacale') and ipc(row['omarchyShell'],'cedarOmacaleGuard','ready')!='true':raise d.Refused('Omacale coordination stopped; returning to the recorded desktop.')
     if len(rows)!=1:raise d.Refused('CEDAR is not running.')
     data=json.loads(ipc(Path(row['root'])/'shell.qml','shell','sessionInfo'))
     if data.get('externalLock') is not True:raise d.Refused('CEDAR lock delegation was not enabled.')
@@ -250,12 +286,19 @@ def supervise(identity,generation=None):
                     time.sleep(1);continue
                 known_unlocked=True
                 if row['stage']=='prepared':prepare(row)
+                if row['stage']=='coordinating':
+                    try:coordinated(row)
+                    except (d.Refused,OSError,ValueError,subprocess.SubprocessError) as error:
+                        row['error']=str(error)[:500]
+                        if time.time()>row['readyDeadline']:row['stage']='restore-requested'
+                        save(row)
                 if row['stage']=='starting':
                     try:
                         if not cedar_rows(row):start_cedar(row)
                         healthy(row)
                         row['stage']='kept' if row.get('login') else 'trial';row['deadline']=time.time()+120;save(row)
-                    except (d.Refused,OSError,ValueError,subprocess.SubprocessError):
+                    except (d.Refused,OSError,ValueError,subprocess.SubprocessError) as error:
+                        row['error']=str(error)[:500];save(row)
                         if time.time()>row['readyDeadline']:row['stage']='restore-requested';save(row)
                 elif row['stage'] in ('trial','kept'):
                     try:healthy(row)
@@ -272,7 +315,8 @@ def supervise(identity,generation=None):
 def keep(login=False,approved=False):
     with guard():
         row=read_record()
-        if not row or row['stage'] not in ('trial','kept'):raise d.Refused('No healthy trial is ready. Run cedar status; wait for startup or resolve its reported error.')
+        if not row or row['stage']=='restored':raise d.Refused('No CEDAR trial is running. Start one with cedar try, then run cedar keep only after the full desktop appears.')
+        if row['stage'] not in ('trial','kept'):raise d.Refused('The trial is not ready. Run cedar status; wait for startup or resolve its reported error.')
         unlocked(row);healthy(row)
         if row['stage']=='trial' and time.time()>row['deadline']:raise d.Refused('Trial expired. Let recovery finish and start a new trial.')
         if login:

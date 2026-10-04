@@ -1,4 +1,4 @@
-# Release readiness — 0.1.0-dev.2
+# Release readiness — 0.1.0-dev.3
 
 **Private development candidate. Not a complete public release.** No first-party license or artwork redistribution grant has been selected. Required upstream notices and approved local KJV content remain intact.
 
@@ -14,7 +14,7 @@ The new distribution path provides versioned copied code, explicit-path IPC, an 
 
 Outstanding gates:
 
-- Native acceptance of the new Omarchy 4 resident-authentication trial, independent supervisor, Keep and login opt-in. These are implemented and fixture-tested; other environments still lack certified adapters. Existing Omarchy authentication remains responsible for locking.
+- Native acceptance of the new Omarchy 4 resident-authentication trial, independent supervisor, Keep and login opt-in. These are implemented and fixture-tested; other environments still lack certified adapters. Existing Omarchy authentication remains responsible for locking, including the newly reviewed Omacale 0.45.0 clone adapter. Its native trial remains unverified.
 - Fresh clean-system package bootstrap and package failure/signature/canceled-auth tests on supported package sources.
 - Uniform plugin enable/disable resource lifecycle and isolated optional native imports beyond the currently required complete Quickshell build.
 - Cross-version settings checkpoints integrated with the new release transaction; legacy migration tests exist, but distribution installation does not silently run a migration over current preferences.

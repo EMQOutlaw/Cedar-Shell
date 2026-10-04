@@ -746,8 +746,8 @@
     {
       "id": "cedar.omarchy-integration",
       "name": "Omarchy resident-authentication session adapter",
-      "version": "0.1.0-dev.2",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.3",
+      "cedarCompatibility": "0.1.0-dev.3",
       "kind": "first-party integration; trusted code, not sandboxed",
       "status": "Experimental: implemented, live acceptance pending",
       "entryPoint": "scripts/omarchy_session.py",
@@ -757,7 +757,11 @@
         "integrations/omarchy/adapter.json",
         "scripts/omarchy_session.py",
         "scripts/shim/qs",
-        "services/SessionIntegration.qml"
+        "services/SessionIntegration.qml",
+        "scripts/omarchy_providers.py",
+        "integrations/omarchy/omacale.json",
+        "integrations/omarchy/omacale-guard/manifest.json",
+        "integrations/omarchy/omacale-guard/Service.qml"
       ],
       "releaseArtifacts": [
         "integrations/omarchy/manifest.json",
@@ -765,7 +769,11 @@
         "integrations/omarchy/adapter.json",
         "scripts/omarchy_session.py",
         "scripts/shim/qs",
-        "services/SessionIntegration.qml"
+        "services/SessionIntegration.qml",
+        "scripts/omarchy_providers.py",
+        "integrations/omarchy/omacale.json",
+        "integrations/omarchy/omacale-guard/manifest.json",
+        "integrations/omarchy/omacale-guard/Service.qml"
       ],
       "dependencies": [
         "qs",
@@ -779,7 +787,8 @@
       "capabilities": [
         "Private configuration backup and scoped Omarchy shell.json edits",
         "User systemd supervision",
-        "Local IPC for notification ownership and lock state"
+        "Local IPC for notification ownership and lock state",
+        "Reversible pause of reviewed Omacale notification/OSD repair watchers; locker unchanged"
       ],
       "external": false,
       "settings": "Private session transaction; existing CEDAR preferences unchanged",
@@ -787,7 +796,9 @@
       "lifecycle": "Stop only the owned CEDAR instance; retain Omarchy authentication host; restore recorded configuration and hook on cancellation",
       "tests": [
         "tests/test_omarchy_session.py",
-        "tests/check_session_ui.py"
+        "tests/check_session_ui.py",
+        "tests/test_omacale_providers.py",
+        "tests/check_omacale_guard.py"
       ]
     }
   ],

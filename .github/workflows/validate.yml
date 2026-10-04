@@ -16,11 +16,13 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p test_distribution.py
           python3 -m unittest discover -s tests -p test_omarchy_session.py
+          python3 -m unittest discover -s tests -p test_omacale_providers.py
       - name: Python syntax and shell bootstrap
         run: |
           python3 -m compileall -q scripts
           bash -n install.sh
           python3 scripts/audit_public.py
+          python3 scripts/update_source_inventory.py --check
       - name: Build and test exact candidate contents
         run: |
           python3 scripts/package_release.py /tmp/cedar-shell-development.tar.gz

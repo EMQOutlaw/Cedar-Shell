@@ -2,9 +2,17 @@
 
 `cedar try` runs the actual CEDAR shell from its installed, verified release path. This is separate from the ordinary-window fixture preview. The first adapter targets inspected Omarchy 4.0.4 interfaces; source hashes and upstream revision are recorded in `integrations/omarchy/adapter.json`. Unexpected versions, modified interfaces, competing providers, managed target files, or unknown lock state stop the handoff.
 
-The adapter uses Omarchy's existing bar-plugin and `disabledPlugins` mechanisms. It selects the included empty `cedar.integration` bar and disables only `omarchy.notifications` and `omarchy.osd`. It never kills or restarts the Omarchy process. Omarchy's lock, idle, polkit, background, secret service and portals remain in place. CEDAR suppresses its own locker and wallpaper in this mode, mirrors the existing lock state, and delegates Lock/Suspend to the existing locker. Suspend requires explicit secure-lock confirmation. Missing/stale supervisor state blocks unlocked CEDAR controls. The existing Omarchy configuration has not been replaced by an authentication overlay.
+The adapter uses Omarchy's existing bar-plugin and `disabledPlugins` mechanisms. It selects the included empty `cedar.integration` bar and disables only `omarchy.notifications` and `omarchy.osd`. It never kills or restarts the Omarchy process. Omarchy's lock remains required. Existing idle, polkit, background, secret service and portal configuration is preserved; disabled services are not enabled. A disabled stock lock requires a reviewed enabled Omacale clone; unknown lockers stop safely. CEDAR suppresses its own locker and wallpaper in this mode, mirrors the existing lock state, and delegates Lock/Suspend to the existing locker. Suspend requires explicit secure-lock confirmation. Missing/stale supervisor state blocks unlocked CEDAR controls. The existing Omarchy configuration has not been replaced by an authentication overlay.
 
 The source/API review used [Omarchy v4.0.4](https://github.com/omacom/omarchy/tree/c668141e9c42b13c80c9ca4ea108e11708c5e8a5). That version reads its user shell, plugin and hook files from `~/.config/omarchy` directly; the adapter follows the inspected upstream paths while CEDAR code/state continue using XDG locations.
+
+## Omacale 0.45.0
+
+The optional adapter preserves the existing Omacale lock clone, its view, PAM and authentication host. It never edits or removes Omacale code, settings, packages or clone files. `integrations/omarchy/omacale.json` records the inspected public source revision and runtime hashes. Clone identities are discovered locally from `clonedFrom`, enabled state and matching files/contracts, never inferred from an account name. Symlinked, stale, modified or additional runtime code requires separate review.
+
+A small CEDAR-owned service first pauses the existing notification and OSD handover timers, file watchers and update callbacks through reversible QML bindings. It waits for in-flight work to finish. Only then does a second journaled configuration write select CEDAR and disable overlapping stock/clone notification and OSD entries. The lock clone remains enabled throughout. Both configuration states can be restored after interruption; later user edits cause a conflict instead of being overwritten. Removing the coordinator restores original bindings. No health response is spoofed and no third-party helper is executed by the Python adapter.
+
+Do not update Omacale or Omarchy during a trial; restore the original desktop first. Their existing processes, including any previously enabled upstream network activity, remain outside CEDAR's local-only guarantee. Existing Omacale shortcuts are preserved but may target its now-inactive bar; use CEDAR's visible controls. Native locking, login and full switching remain unverified. A source hash match is not proof of authentication correctness.
 
 ## Trial and confirmation
 
@@ -22,7 +30,7 @@ The detached supervisor runs as a uniquely named user systemd service with resta
 - Existing keyboard shortcuts remain unchanged. The bridge forwards Omarchy's notification dismissal/history/action and OSD IPC to CEDAR without rebinding keys. Existing Omarchy application/menu shortcuts continue using their original destinations; CEDAR Go is available from its bar.
 - Trailwatch stays in the project but does not replace the existing authentication service in this integration. Native authentication handoff needs separate device validation.
 - This is not an authentication sandbox. Omarchy and CEDAR remain trusted local code.
-- Third-party service plugins and prior CEDAR theme-switch hooks require their own review. The adapter refuses those conflicts.
+- Third-party service plugins outside the reviewed Omacale providers and prior CEDAR theme-switch hooks require their own review. The adapter refuses those conflicts.
 - No claim is made that upstream software or other applications have no network traffic. CEDAR's private defaults are preserved.
 
 ## Offline recovery
