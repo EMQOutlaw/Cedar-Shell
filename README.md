@@ -10,6 +10,14 @@ CEDAR is an existing Qt Quick/Quickshell shell, previously Foxfire. It includes 
 
 ## Installation and preview
 
+With Git installed, copy and paste this command into your terminal:
+
+```bash
+git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh
+```
+
+The repository is currently private, so your GitHub account needs access and Git authentication must be configured. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop; activation is not included yet. Run it from a folder that does not already contain a `cedar-shell` directory.
+
 For a provided private candidate archive:
 
 1. Download the CEDAR archive.
