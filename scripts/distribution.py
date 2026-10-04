@@ -244,6 +244,15 @@ def approve(plan,noninteractive=False):
     if not sys.stdin.isatty():raise Refused('No terminal for approval. Use the specific --approve-install-only flag after reviewing --plan.')
     if input('Apply this plan? [y/N] ').strip().lower() not in ('y','yes'):raise Refused('Canceled. No installation changes made.')
 
+def installation_next_steps():
+    launcher=__import__('shlex').quote(str(paths()['bin']))
+    print('\nNext: open the isolated preview window:')
+    print('  '+launcher+' preview')
+    print('Inspect local health:')
+    print('  '+launcher+' doctor')
+    print('Full desktop activation is not implemented in this development candidate.')
+    print('The preview is a separate window; your existing desktop remains running.')
+
 def install(root,approved=False,plan_only=False):
     plan=plan_install(root)
     if plan_only:print(json.dumps(plan,indent=2));return
@@ -258,6 +267,7 @@ def install(root,approved=False,plan_only=False):
         if current.is_symlink() and current.resolve()==destination and binary.is_file() and recovery.is_file():
             verify_tree(destination,read_json(destination/'release-files.json'))
             print('This candidate is already installed. No files or recovery checkpoints changed.')
+            installation_next_steps()
             return
         ancestor=destination.parent
         while not ancestor.exists():ancestor=ancestor.parent
@@ -289,6 +299,7 @@ def install(root,approved=False,plan_only=False):
             tx.stage('confirm');tx.commit()
             print('Files installed and verified. '+validation+' Desktop activation: not performed.')
             print('Recovery: python3 '+str(recovery)+' restore')
+            installation_next_steps()
         except BaseException:
             restore_journal(tx.path);raise
 

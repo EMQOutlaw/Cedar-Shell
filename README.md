@@ -30,6 +30,14 @@ The installer shows an **Install Only** plan and copies complete source into ver
 
 `cedar preview` opens an ordinary window with explicitly labeled fixtures, isolated preferences and local-only operation. It does not own notifications, replace wallpaper, reserve desktop space or lock the session. **Try/Keep/login takeover is a release blocker and currently refuses**; this candidate will not guess how to disable another shell.
 
+After installation, open that preview with this command (it also works when `~/.local/bin` is not on your PATH):
+
+```bash
+"$HOME/.local/bin/cedar" preview
+```
+
+If the installer says **Desktop activation: not performed**, installation succeeded. The preview is currently the available way to try the interface; switching your full desktop to CEDAR is not implemented in this distribution candidate yet.
+
 ## Recovery and updates
 
 `cedar doctor` performs local read-only checks. `cedar restore`, `cedar rollback` and the standalone Python recovery tool use recorded hashes and preserve later edits. Read [offline recovery](docs/RECOVERY.md) before testing an installation. Uninstall keeps preferences, backups, source releases, recovery and shared dependencies by default.
