@@ -1,0 +1,4 @@
+#%PAM-1.0
+# Uses Arch's maintained auth stack, including local policy and faillock.
+auth include system-auth
+account include system-auth

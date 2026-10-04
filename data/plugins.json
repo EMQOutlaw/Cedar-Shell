@@ -1,0 +1,763 @@
+{
+  "schemaVersion": 1,
+  "security": "In-process QML is trusted code, not a permission sandbox. No community plugin is auto-enabled. Existing component bundles do not yet offer a uniform unload API.",
+  "plugins": [
+    {
+      "id": "cedar.bar",
+      "name": "Bar, six styles and center navigation",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "components/BarButton.qml",
+      "files": [
+        "components/BarButton.qml",
+        "components/BarCoreControls.qml",
+        "components/NetworkIndicator.qml",
+        "modules/Bar.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml",
+        "modules/BarLayoutPreview.qml"
+      ],
+      "dependencies": [
+        "qs",
+        "hyprctl"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Monitor-local bars; destroyed with host window",
+      "lifecycle": "Monitor-local bars; destroyed with host window",
+      "tests": [
+        "tests/check_core_bars.py",
+        "tests/check_navigation.py"
+      ],
+      "releaseArtifacts": [
+        "components/BarButton.qml",
+        "components/BarCoreControls.qml",
+        "components/NetworkIndicator.qml",
+        "modules/Bar.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml",
+        "modules/BarLayoutPreview.qml"
+      ]
+    },
+    {
+      "id": "cedar.core",
+      "name": "Core, Signals and OSD",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "components/core/CoreDetails.qml",
+      "files": [
+        "components/core/Activities.js",
+        "components/core/CoreDetails.qml",
+        "components/core/CoreHost.qml",
+        "components/core/CoreHub.qml",
+        "components/core/CoreMedia.qml",
+        "components/core/CoreSurface.qml",
+        "components/core/CoreVolume.qml",
+        "components/core/ForestPolicy.js",
+        "components/core/qmldir",
+        "modules/CedarCore.qml",
+        "modules/CoreWindow.qml",
+        "modules/Osd.qml",
+        "scripts/core_actions.py",
+        "scripts/core_probe.py",
+        "services/CoreActivityModel.qml",
+        "services/CoreProbe.qml",
+        "services/CoreService.qml",
+        "services/CoreSources.qml",
+        "services/CoreTimer.qml"
+      ],
+      "dependencies": [
+        "qs",
+        "hyprctl"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Shared activity model, bounded histories and explicit OSD lifetime",
+      "lifecycle": "Shared activity model, bounded histories and explicit OSD lifetime",
+      "tests": [
+        "tests/check_core_ui.py",
+        "tests/check_core_host.py",
+        "tests/check_core_persistence.py"
+      ],
+      "releaseArtifacts": [
+        "components/core/Activities.js",
+        "components/core/CoreDetails.qml",
+        "components/core/CoreHost.qml",
+        "components/core/CoreHub.qml",
+        "components/core/CoreMedia.qml",
+        "components/core/CoreSurface.qml",
+        "components/core/CoreVolume.qml",
+        "components/core/ForestPolicy.js",
+        "components/core/qmldir",
+        "modules/CedarCore.qml",
+        "modules/CoreWindow.qml",
+        "modules/Osd.qml",
+        "scripts/core_actions.py",
+        "scripts/core_probe.py",
+        "services/CoreActivityModel.qml",
+        "services/CoreProbe.qml",
+        "services/CoreService.qml",
+        "services/CoreSources.qml",
+        "services/CoreTimer.qml"
+      ]
+    },
+    {
+      "id": "cedar.canopy",
+      "name": "Canopy and Instruments",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "modules/AudioCanopy.qml",
+      "files": [
+        "modules/AudioCanopy.qml",
+        "modules/CalendarCanopy.qml",
+        "modules/CanopyPanel.qml",
+        "modules/CanopyWindow.qml",
+        "modules/ClipboardCanopy.qml",
+        "modules/ControlCenter.qml",
+        "modules/ControlPanel.qml",
+        "modules/NotificationCanopy.qml",
+        "modules/QuickControls.qml",
+        "modules/SessionControls.qml",
+        "modules/SystemCanopy.qml",
+        "modules/TrailCanopy.qml",
+        "modules/WeatherCanopy.qml",
+        "services/Canopy.qml"
+      ],
+      "dependencies": [
+        "qs"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "One shared surface; pinned surface persists until close/lock",
+      "lifecycle": "One shared surface; pinned surface persists until close/lock",
+      "tests": [
+        "tests/check_canopy.py",
+        "tests/check_navigation.py"
+      ],
+      "releaseArtifacts": [
+        "modules/AudioCanopy.qml",
+        "modules/CalendarCanopy.qml",
+        "modules/CanopyPanel.qml",
+        "modules/CanopyWindow.qml",
+        "modules/ClipboardCanopy.qml",
+        "modules/ControlCenter.qml",
+        "modules/ControlPanel.qml",
+        "modules/NotificationCanopy.qml",
+        "modules/QuickControls.qml",
+        "modules/SessionControls.qml",
+        "modules/SystemCanopy.qml",
+        "modules/TrailCanopy.qml",
+        "modules/WeatherCanopy.qml",
+        "services/Canopy.qml"
+      ]
+    },
+    {
+      "id": "cedar.field-station",
+      "name": "Field Station and ROOTED",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "components/CedarAtmosphere.qml",
+      "files": [
+        "components/CedarAtmosphere.qml",
+        "components/StationCore.qml",
+        "data/branding.json",
+        "modules/FieldStation.qml",
+        "modules/Hud.qml"
+      ],
+      "dependencies": [
+        "qs"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Atmosphere stops when inactive; offline Scripture shared with About",
+      "lifecycle": "Atmosphere stops when inactive; offline Scripture shared with About",
+      "tests": [
+        "tests/check_identity.py"
+      ],
+      "releaseArtifacts": [
+        "components/CedarAtmosphere.qml",
+        "components/StationCore.qml",
+        "data/branding.json",
+        "modules/FieldStation.qml",
+        "modules/Hud.qml"
+      ]
+    },
+    {
+      "id": "cedar.settings",
+      "name": "Settings, About, displays/input/keybinds/default apps",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "Branding.qml",
+      "files": [
+        "Branding.qml",
+        "Config.qml",
+        "ShellState.qml",
+        "Theme.qml",
+        "components/SettingsCard.qml",
+        "components/SettingsFields.qml",
+        "components/SettingsHeading.qml",
+        "components/SettingsSchema.js",
+        "modules/AboutSettings.qml",
+        "modules/AppearanceSettings.qml",
+        "modules/AudioSettings.qml",
+        "modules/BluetoothSettings.qml",
+        "modules/ConnectionSettings.qml",
+        "modules/CoreSettings.qml",
+        "modules/DefaultAppsSettings.qml",
+        "modules/DesktopSettingsPage.qml",
+        "modules/DisplaySettings.qml",
+        "modules/InputSettings.qml",
+        "modules/KeybindSettings.qml",
+        "modules/PowerSettings.qml",
+        "modules/Settings.qml",
+        "modules/SettingsOverview.qml",
+        "modules/SettingsPanel.qml",
+        "modules/SystemSettings.qml",
+        "modules/TimeSettings.qml",
+        "modules/TopBarSettings.qml",
+        "modules/WeatherLocationSettings.qml",
+        "scripts/control.py",
+        "scripts/default_apps.py",
+        "scripts/desktop.py",
+        "scripts/settings_info.py"
+      ],
+      "dependencies": [
+        "qs",
+        "python3",
+        "gi",
+        "hyprctl"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Changes use existing services; explicit Apply for system edits",
+      "lifecycle": "Changes use existing services; explicit Apply for system edits",
+      "tests": [
+        "tests/check_desktop_ui.py",
+        "tests/test_desktop.py",
+        "tests/test_settings_remaster.py"
+      ],
+      "releaseArtifacts": [
+        "Branding.qml",
+        "Config.qml",
+        "ShellState.qml",
+        "Theme.qml",
+        "components/SettingsCard.qml",
+        "components/SettingsFields.qml",
+        "components/SettingsHeading.qml",
+        "components/SettingsSchema.js",
+        "modules/AboutSettings.qml",
+        "modules/AppearanceSettings.qml",
+        "modules/AudioSettings.qml",
+        "modules/BluetoothSettings.qml",
+        "modules/ConnectionSettings.qml",
+        "modules/CoreSettings.qml",
+        "modules/DefaultAppsSettings.qml",
+        "modules/DesktopSettingsPage.qml",
+        "modules/DisplaySettings.qml",
+        "modules/InputSettings.qml",
+        "modules/KeybindSettings.qml",
+        "modules/PowerSettings.qml",
+        "modules/Settings.qml",
+        "modules/SettingsOverview.qml",
+        "modules/SettingsPanel.qml",
+        "modules/SystemSettings.qml",
+        "modules/TimeSettings.qml",
+        "modules/TopBarSettings.qml",
+        "modules/WeatherLocationSettings.qml",
+        "scripts/control.py",
+        "scripts/default_apps.py",
+        "scripts/desktop.py",
+        "scripts/settings_info.py"
+      ]
+    },
+    {
+      "id": "cedar.go",
+      "name": "Go launcher and Omarchy bridge",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Incomplete",
+      "entryPoint": "modules/Menu.qml",
+      "files": [
+        "components/MenuModel.js",
+        "menus/cedar-menu.jsonc",
+        "modules/Menu.qml",
+        "scripts/plugins.py",
+        "scripts/shim/omarchy-shell",
+        "scripts/with-shim",
+        "services/Go.qml"
+      ],
+      "dependencies": [
+        "qs",
+        "systemd-run",
+        "bash",
+        "gtk-launch"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Installed apps supported; extensive Omarchy command providers require that adapter. Omarchy plugin manager is NOT a CEDAR plugin runtime",
+      "lifecycle": "Installed apps supported; extensive Omarchy command providers require that adapter. Omarchy plugin manager is NOT a CEDAR plugin runtime",
+      "tests": [
+        "tests/check_desktop_ui.py"
+      ],
+      "releaseArtifacts": [
+        "components/MenuModel.js",
+        "menus/cedar-menu.jsonc",
+        "modules/Menu.qml",
+        "scripts/plugins.py",
+        "scripts/shim/omarchy-shell",
+        "scripts/with-shim",
+        "services/Go.qml"
+      ]
+    },
+    {
+      "id": "cedar.notifications",
+      "name": "Notification server, history and popups",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "modules/NotificationCanopy.qml",
+      "files": [
+        "modules/NotificationCanopy.qml",
+        "modules/NotificationServer.qml",
+        "modules/Notifications.qml",
+        "services/NoticeStore.qml"
+      ],
+      "dependencies": [
+        "qs"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Notification ownership only in live shell; history remains session-local",
+      "lifecycle": "Notification ownership only in live shell; history remains session-local",
+      "tests": [
+        "tests/notifications.py",
+        "tests/check_canopy.py"
+      ],
+      "releaseArtifacts": [
+        "modules/NotificationCanopy.qml",
+        "modules/NotificationServer.qml",
+        "modules/Notifications.qml",
+        "services/NoticeStore.qml"
+      ]
+    },
+    {
+      "id": "cedar.trailwatch",
+      "name": "Trailwatch Wayland lock and PAM",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Incomplete",
+      "entryPoint": "components/LockAuth.qml",
+      "files": [
+        "components/LockAuth.qml",
+        "components/trailwatch/Complication.qml",
+        "components/trailwatch/FieldText.qml",
+        "components/trailwatch/Instrument.qml",
+        "components/trailwatch/LockTerminal.qml",
+        "components/trailwatch/Metric.qml",
+        "components/trailwatch/Policy.js",
+        "components/trailwatch/Topo.qml",
+        "components/trailwatch/WatchFace.qml",
+        "modules/LockScreen.qml",
+        "modules/TrailwatchView.qml",
+        "scripts/trailwatch.py",
+        "services/Trailwatch.qml",
+        "trailwatch-preview.qml"
+      ],
+      "dependencies": [
+        "qs",
+        "python3"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Session lock implemented, PAM currently Omarchy service; cross-host authentication/hotplug/suspend and crash recovery NOT certified",
+      "lifecycle": "Session lock implemented, PAM currently Omarchy service; cross-host authentication/hotplug/suspend and crash recovery NOT certified",
+      "tests": [
+        "tests/check_lock_auth.py",
+        "tests/check_lock_wiring.py",
+        "tests/check_trailwatch.py",
+        "tests/test_trailwatch.py"
+      ],
+      "releaseArtifacts": [
+        "components/LockAuth.qml",
+        "components/trailwatch/Complication.qml",
+        "components/trailwatch/FieldText.qml",
+        "components/trailwatch/Instrument.qml",
+        "components/trailwatch/LockTerminal.qml",
+        "components/trailwatch/Metric.qml",
+        "components/trailwatch/Policy.js",
+        "components/trailwatch/Topo.qml",
+        "components/trailwatch/WatchFace.qml",
+        "modules/LockScreen.qml",
+        "modules/TrailwatchView.qml",
+        "scripts/trailwatch.py",
+        "services/Trailwatch.qml",
+        "trailwatch-preview.qml"
+      ]
+    },
+    {
+      "id": "cedar.audio",
+      "name": "Audio, media, routing, scenes and optional spectrum",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "components/AudioSpectrum.qml",
+      "files": [
+        "components/AudioSpectrum.qml",
+        "modules/AudioCanopy.qml",
+        "modules/AudioSettings.qml",
+        "scripts/audio_instruments.py",
+        "scripts/spectrum.py",
+        "services/Audio.qml",
+        "services/AudioInstruments.qml",
+        "services/Media.qml"
+      ],
+      "dependencies": [
+        "qs",
+        "pactl"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "PipeWire/MPRIS shared subscriptions; spectrum only when requested; EQ controls honestly unavailable",
+      "lifecycle": "PipeWire/MPRIS shared subscriptions; spectrum only when requested; EQ controls honestly unavailable",
+      "tests": [
+        "tests/test_instruments.py",
+        "tests/check_canopy.py"
+      ],
+      "releaseArtifacts": [
+        "components/AudioSpectrum.qml",
+        "modules/AudioCanopy.qml",
+        "modules/AudioSettings.qml",
+        "scripts/audio_instruments.py",
+        "scripts/spectrum.py",
+        "services/Audio.qml",
+        "services/AudioInstruments.qml",
+        "services/Media.qml"
+      ]
+    },
+    {
+      "id": "cedar.connections",
+      "name": "NetworkManager and Bluetooth",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "modules/BluetoothSettings.qml",
+      "files": [
+        "modules/BluetoothSettings.qml",
+        "modules/ConnectionSettings.qml",
+        "scripts/bluetooth.py",
+        "scripts/connections.py",
+        "services/BluetoothService.qml",
+        "services/Network.qml"
+      ],
+      "dependencies": [
+        "qs",
+        "dbus",
+        "gi",
+        "nmcli"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "One network poller; hardware absent state; pairing agent lifecycle per operation",
+      "lifecycle": "One network poller; hardware absent state; pairing agent lifecycle per operation",
+      "tests": [
+        "tests/test_network_selection.py",
+        "tests/check_canopy.py"
+      ],
+      "releaseArtifacts": [
+        "modules/BluetoothSettings.qml",
+        "modules/ConnectionSettings.qml",
+        "scripts/bluetooth.py",
+        "scripts/connections.py",
+        "services/BluetoothService.qml",
+        "services/Network.qml"
+      ]
+    },
+    {
+      "id": "cedar.telemetry",
+      "name": "Real local system readings",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "services/Brightness.qml",
+      "files": [
+        "scripts/performance.py",
+        "scripts/telemetry.py",
+        "services/Brightness.qml",
+        "services/Controls.qml",
+        "services/SystemStats.qml"
+      ],
+      "dependencies": [
+        "python3"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Bounded polling; optional sensor/GPU providers, no invented measurements",
+      "lifecycle": "Bounded polling; optional sensor/GPU providers, no invented measurements",
+      "tests": [
+        "tests/check_motion.py"
+      ],
+      "releaseArtifacts": [
+        "scripts/performance.py",
+        "scripts/telemetry.py",
+        "services/Brightness.qml",
+        "services/Controls.qml",
+        "services/SystemStats.qml"
+      ]
+    },
+    {
+      "id": "cedar.forest",
+      "name": "Pulse, Forest States, Echoes, Whispers and Trails",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "modules/TrailCanopy.qml",
+      "files": [
+        "components/core/ForestPolicy.js",
+        "modules/TrailCanopy.qml",
+        "services/Forest.qml"
+      ],
+      "dependencies": [
+        "qs"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Activity-derived states; Trails opt-in; bounded transient history",
+      "lifecycle": "Activity-derived states; Trails opt-in; bounded transient history",
+      "tests": [
+        "tests/core/forest_test.js"
+      ],
+      "releaseArtifacts": [
+        "components/core/ForestPolicy.js",
+        "modules/TrailCanopy.qml",
+        "services/Forest.qml"
+      ]
+    },
+    {
+      "id": "cedar.clipboard",
+      "name": "Opt-in clipboard history",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "modules/ClipboardCanopy.qml",
+      "files": [
+        "modules/ClipboardCanopy.qml",
+        "scripts/clipboard_item.py",
+        "services/Clipboard.qml"
+      ],
+      "dependencies": [
+        "wl-copy",
+        "wl-paste"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Private session history cleared on lock; bounded; watcher stops when disabled",
+      "lifecycle": "Private session history cleared on lock; bounded; watcher stops when disabled",
+      "tests": [
+        "tests/check_canopy.py"
+      ],
+      "releaseArtifacts": [
+        "modules/ClipboardCanopy.qml",
+        "scripts/clipboard_item.py",
+        "services/Clipboard.qml"
+      ]
+    },
+    {
+      "id": "cedar.weather",
+      "name": "Sky Watch and optional location",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Implemented",
+      "entryPoint": "modules/WeatherCanopy.qml",
+      "files": [
+        "modules/WeatherCanopy.qml",
+        "modules/WeatherLocationSettings.qml",
+        "scripts/network_policy.py",
+        "scripts/weather_location.py",
+        "services/Weather.qml",
+        "services/WeatherLocation.qml"
+      ],
+      "dependencies": [
+        "python3"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": true,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Off by default; explicit network permissions; shared cache and bounded polling",
+      "lifecycle": "Off by default; explicit network permissions; shared cache and bounded polling",
+      "tests": [
+        "tests/check_weather.py",
+        "tests/test_weather_location.py"
+      ],
+      "releaseArtifacts": [
+        "modules/WeatherCanopy.qml",
+        "modules/WeatherLocationSettings.qml",
+        "scripts/network_policy.py",
+        "scripts/weather_location.py",
+        "services/Weather.qml",
+        "services/WeatherLocation.qml"
+      ]
+    },
+    {
+      "id": "cedar.themes",
+      "name": "Theme and wallpaper helpers",
+      "version": "0.1.0-dev.1",
+      "cedarCompatibility": "0.1.0-dev.1",
+      "kind": "built-in component bundle; not an isolated third-party plugin",
+      "status": "Incomplete",
+      "entryPoint": "modules/Background.qml",
+      "files": [
+        "backgrounds/README.md",
+        "backgrounds/field-station.svg",
+        "modules/Background.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "scripts/export-themes.py",
+        "scripts/theme-hook",
+        "scripts/theme-sync.py",
+        "scripts/wallpaper.py",
+        "scripts/wallpapers.py",
+        "themes/backgrounds/01-cedar-woods.png",
+        "themes/backgrounds/02-field-station-grid.png",
+        "themes/backgrounds/03-cedar-mycelium.png",
+        "themes/backgrounds/field-station.png",
+        "themes/btop.theme",
+        "themes/cedar.lua",
+        "themes/colors.toml",
+        "themes/hyprland.conf",
+        "themes/hyprland.lua",
+        "themes/kitty.conf",
+        "themes/neovim.lua",
+        "themes/preview.png"
+      ],
+      "dependencies": [
+        "qs",
+        "python3"
+      ],
+      "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
+      "capabilities": [
+        "local UI and system service access"
+      ],
+      "external": false,
+      "settings": "Config.qml and components/SettingsSchema.js",
+      "dataSources": "Assets shipped; desktop application currently uses Omarchy helpers; never changed at install",
+      "lifecycle": "Assets shipped; desktop application currently uses Omarchy helpers; never changed at install",
+      "tests": [
+        "tests/check_identity.py"
+      ],
+      "releaseArtifacts": [
+        "backgrounds/README.md",
+        "backgrounds/field-station.svg",
+        "modules/Background.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "scripts/export-themes.py",
+        "scripts/theme-hook",
+        "scripts/theme-sync.py",
+        "scripts/wallpaper.py",
+        "scripts/wallpapers.py",
+        "themes/backgrounds/01-cedar-woods.png",
+        "themes/backgrounds/02-field-station-grid.png",
+        "themes/backgrounds/03-cedar-mycelium.png",
+        "themes/backgrounds/field-station.png",
+        "themes/btop.theme",
+        "themes/cedar.lua",
+        "themes/colors.toml",
+        "themes/hyprland.conf",
+        "themes/hyprland.lua",
+        "themes/kitty.conf",
+        "themes/neovim.lua",
+        "themes/preview.png"
+      ]
+    }
+  ],
+  "planned": [
+    "Rituals",
+    "Constellation",
+    "general CEDAR plugin runtime",
+    "Home Assistant",
+    "full desktop profiles",
+    "global download detection",
+    "account calendar sync",
+    "advanced DSP/EQ backend",
+    "game FPS/1% low"
+  ],
+  "obsolete": [
+    "separate right-side Control Center",
+    "raw network interface bar label",
+    "timer.running as OSD visibility"
+  ]
+}

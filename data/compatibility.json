@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-04",
+  "architecture": "x86_64",
+  "environments": [
+    {
+      "id": "arch-omarchy",
+      "adapterVersion": 1,
+      "status": "Experimental",
+      "evidence": "Observed native versions plus isolated offscreen tests only",
+      "versions": {
+        "quickshell": "0.3.1",
+        "qt": "6.11.2",
+        "hyprland": "0.56.2"
+      },
+      "installOnly": true,
+      "preview": "Requires complete compatible Quickshell build",
+      "takeoverCertified": false
+    },
+    {
+      "id": "plain-hyprland",
+      "adapterVersion": 1,
+      "status": "Experimental",
+      "evidence": "No live integration evidence",
+      "versions": {},
+      "installOnly": true,
+      "preview": "Requires complete compatible Quickshell build",
+      "takeoverCertified": false
+    },
+    {
+      "id": "caelestia",
+      "adapterVersion": 1,
+      "status": "Unsupported",
+      "evidence": "No live integration evidence",
+      "versions": {},
+      "installOnly": true,
+      "preview": "Requires complete compatible Quickshell build",
+      "takeoverCertified": false
+    },
+    {
+      "id": "ryoku",
+      "adapterVersion": 1,
+      "status": "Unsupported",
+      "evidence": "No live integration evidence",
+      "versions": {},
+      "installOnly": true,
+      "preview": "Requires complete compatible Quickshell build",
+      "takeoverCertified": false
+    },
+    {
+      "id": "generic-quickshell",
+      "adapterVersion": 1,
+      "status": "Unsupported",
+      "evidence": "No live integration evidence",
+      "versions": {},
+      "installOnly": true,
+      "preview": "Requires complete compatible Quickshell build",
+      "takeoverCertified": false
+    }
+  ],
+  "notTested": [
+    "Fresh-system install without Quickshell",
+    "Logout/login/reboot",
+    "GPU vendor matrix",
+    "real PAM and lock coverage",
+    "suspend/resume",
+    "physical fractional scaling",
+    "live provider handoff"
+  ]
+}

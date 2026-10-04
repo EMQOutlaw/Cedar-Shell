@@ -1,0 +1,9 @@
+[Unit]
+Description=CEDAR: watch for overlapping desktop shell launches
+
+[Path]
+PathChanged=%t/quickshell/by-id
+Unit=cedar-theme-guard.service
+
+[Install]
+WantedBy=default.target

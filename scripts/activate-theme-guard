@@ -1,0 +1,6 @@
+#!/bin/sh
+# Run in the desktop session to load the guard and reconcile the current overlap.
+set -eu
+systemctl --user daemon-reload
+systemctl --user start cedar-theme-guard.path
+exec systemctl --user start cedar-theme-guard.service

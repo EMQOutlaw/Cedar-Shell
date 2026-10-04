@@ -1,0 +1,20 @@
+[
+ {"id":"browser","label":"Web browser","description":"Web links and HTML pages.","types":["x-scheme-handler/http","x-scheme-handler/https","text/html","application/xhtml+xml"],"categories":["WebBrowser"],"launchKey":"browser"},
+ {"id":"editor","label":"Text & code editor","description":"Plain text, empty files and common source-code files.","types":["text/plain","application/x-zerosize","text/x-python","text/x-c","text/x-c++","text/x-csrc","text/x-c++src","text/x-shellscript","application/x-shellscript","application/javascript","text/javascript","text/x-qml","text/x-rust"],"categories":["TextEditor","IDE"],"launchKey":"editor"},
+ {"id":"files","label":"File manager","description":"Folders and directory links.","types":["inode/directory"],"categories":["FileManager"],"launchKey":"files"},
+ {"id":"terminal","label":"Terminal","description":"The terminal opened by CEDAR quick-launch controls.","types":[],"categories":["TerminalEmulator"],"launchKey":"terminal"},
+ {"id":"email","label":"Email client","description":"Email address links.","types":["x-scheme-handler/mailto"],"categories":["Email"]},
+ {"id":"pdf","label":"PDF reader","description":"PDF documents.","types":["application/pdf"],"categories":["Viewer"]},
+ {"id":"images","label":"Image viewer","description":"PNG, JPEG, GIF, WebP, AVIF, BMP and TIFF images.","types":["image/png","image/jpeg","image/gif","image/webp","image/avif","image/bmp","image/tiff"],"categories":["Viewer"]},
+ {"id":"vector","label":"Vector images","description":"SVG artwork and illustrations.","types":["image/svg+xml"],"categories":["VectorGraphics"]},
+ {"id":"audio","label":"Music player","description":"MP3, FLAC, Ogg, WAV and AAC audio.","types":["audio/mpeg","audio/flac","audio/ogg","audio/x-wav","audio/aac"],"categories":["Audio","Player"]},
+ {"id":"video","label":"Video player","description":"MP4, Matroska, WebM, AVI and QuickTime video.","types":["video/mp4","video/x-matroska","video/webm","video/x-msvideo","video/quicktime"],"categories":["Video","Player"]},
+ {"id":"archives","label":"Archive manager","description":"ZIP, 7-Zip, RAR, TAR, gzip and compressed TAR archives.","types":["application/zip","application/x-7z-compressed","application/vnd.rar","application/x-rar","application/x-tar","application/gzip","application/x-compressed-tar","application/x-xz-compressed-tar"],"categories":["Archiving"]},
+ {"id":"documents","label":"Word processor","description":"OpenDocument Text and Microsoft Word documents.","types":["application/vnd.oasis.opendocument.text","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"],"categories":["WordProcessor"]},
+ {"id":"spreadsheets","label":"Spreadsheets","description":"OpenDocument spreadsheets, Excel workbooks and CSV files.","types":["application/vnd.oasis.opendocument.spreadsheet","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","text/csv"],"categories":["Spreadsheet"]},
+ {"id":"presentations","label":"Presentations","description":"OpenDocument presentations and PowerPoint slides.","types":["application/vnd.oasis.opendocument.presentation","application/vnd.ms-powerpoint","application/vnd.openxmlformats-officedocument.presentationml.presentation"],"categories":["Presentation"]},
+ {"id":"calendar","label":"Calendar","description":"Calendar invitations and web calendar links.","types":["text/calendar","x-scheme-handler/webcal"],"categories":["Calendar"]},
+ {"id":"torrents","label":"Torrent client","description":"Torrent files and magnet links.","types":["application/x-bittorrent","x-scheme-handler/magnet"],"categories":["P2P"]},
+ {"id":"markdown","label":"Markdown editor","description":"Markdown notes and documents.","types":["text/markdown","text/x-markdown"],"categories":["TextEditor","IDE"]},
+ {"id":"json","label":"JSON viewer / editor","description":"JSON data and configuration files.","types":["application/json"],"categories":["TextEditor","IDE"]}
+]

@@ -1,0 +1,29 @@
+name: Private candidate validation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-and-recovery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Stdlib recovery, privacy and archive failure tests
+        run: python3 -m unittest discover -s tests -p test_distribution.py
+      - name: Python syntax and shell bootstrap
+        run: |
+          python3 -m compileall -q scripts
+          bash -n install.sh
+          python3 scripts/audit_public.py
+      - name: Build and test exact candidate contents
+        run: |
+          python3 scripts/package_release.py /tmp/cedar-shell-development.tar.gz
+          python3 tests/check_artifact.py /tmp/cedar-shell-development.tar.gz
+      - name: Record untested gates
+        run: |
+          echo 'Native Quickshell, Hyprland, PAM, GPU and full desktop handoff require separate controlled runners. These jobs do not certify them.' >> "$GITHUB_STEP_SUMMARY"
+# No release publishing, secrets, elevated pull_request_target workflow, or user auto-update.

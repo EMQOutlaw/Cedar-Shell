@@ -1,0 +1,28 @@
+{
+  "name": "CEDAR",
+  "acronym": "Contextual Environment & Desktop Automation Runtime",
+  "tagline": "A living desktop environment for Hyprland.",
+  "identity": "Rooted in faith. Built with care.",
+  "rooted": "CEDAR takes inspiration from the cedar of Lebanon in Scripture—a reminder of steadfast faith, patient growth, and care in what we build.",
+  "why": "CEDAR takes its name from the cedar tree and its place in Scripture. Psalm 92:12 describes the righteous as growing like a cedar in Lebanon, and 1 Kings 6:9–10 describes cedar used in the building of Solomon’s temple.\n\nFor this project, that imagery is a reminder of steadfast faith, patient growth, and care in what we build. The woodland atmosphere reflects the name, while the software is designed to be useful, dependable, and welcoming to everyone.",
+  "foundation": "CEDAR’s Christian inspiration is reflected in its name and in the message of God’s love and salvation expressed in John 3:16–17.",
+  "psalm": {
+    "reference": "Psalm 92:12",
+    "translation": "King James Version",
+    "text": "The righteous shall flourish like the palm tree: he shall grow like a cedar in Lebanon."
+  },
+  "john": {
+    "reference": "John 3:16–17",
+    "translation": "King James Version (KJV)",
+    "verses": [
+      {
+        "reference": "John 3:16",
+        "text": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."
+      },
+      {
+        "reference": "John 3:17",
+        "text": "For God sent not his Son into the world to condemn the world; but that the world through him might be saved."
+      }
+    ]
+  }
+}

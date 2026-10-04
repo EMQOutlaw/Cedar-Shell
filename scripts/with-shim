@@ -1,0 +1,6 @@
+#!/bin/bash
+# Run a command with CEDAR's omarchy-shell stand-in first on PATH, so Omarchy
+# helpers that prompt through the shell menu (keybindings, plugin picker,
+# timezone, reminders) open CEDAR's Go menu instead of a stopped shell.
+export PATH="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/shim:$PATH"
+exec "$@"

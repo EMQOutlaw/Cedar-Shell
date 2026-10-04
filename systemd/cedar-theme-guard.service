@@ -1,0 +1,13 @@
+[Unit]
+Description=Reconcile known Omarchy shell overlap while CEDAR is selected
+
+[Service]
+Type=oneshot
+# Let a newly launched instance finish writing its runtime metadata.
+ExecStartPre=/usr/bin/sleep 1
+ExecStart=/usr/bin/python3 %h/.config/quickshell/cedar/scripts/theme-sync.py --reconcile-only
+TimeoutStartSec=30
+# Retry only temporary failures (such as an active or unqueryable locker).
+Restart=on-failure
+RestartPreventExitStatus=1
+RestartSec=5

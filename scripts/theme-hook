@@ -1,0 +1,5 @@
+#!/bin/sh
+# The theme picker belongs to the shell being replaced. Run the handoff in a
+# separate systemd user service so stopping that shell cannot kill the hook.
+exec systemd-run --user --collect --quiet \
+    python3 "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/cedar/scripts/theme-sync.py"

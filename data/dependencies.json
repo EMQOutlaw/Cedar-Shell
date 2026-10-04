@@ -1,0 +1,1370 @@
+{
+  "supported": "Private development candidate. Arch/Omarchy offscreen fixtures exercised; no certified desktop takeover adapter.",
+  "verifiedRuntime": {
+    "quickshell": "0.3.1",
+    "qt": "6.11.2",
+    "hyprland": "0.56.2"
+  },
+  "versionPolicy": "These are observed development versions, not a promise of compatibility with arbitrary versions. Installation verifies QML parsing and required imports through the UI harness.",
+  "commands": [
+    {
+      "command": "qs",
+      "feature": "QML shell and native service imports",
+      "status": "required",
+      "archPackage": "quickshell",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "core",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/export-themes.py",
+        "scripts/smoke.py",
+        "scripts/settings_info.py",
+        "scripts/theme-sync.py",
+        "scripts/cedar_cli.py",
+        "scripts/audit_public.py",
+        "scripts/distribution.py",
+        "scripts/shim/omarchy-shell",
+        "modules/KeybindSettings.qml",
+        "modules/CoreSettings.qml",
+        "menus/cedar-menu.jsonc"
+      ]
+    },
+    {
+      "command": "hyprctl",
+      "feature": "Hyprland integration",
+      "status": "required",
+      "archPackage": "hyprland",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "core",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/settings_info.py",
+        "scripts/desktop.py",
+        "scripts/theme-sync.py",
+        "scripts/cedar_cli.py",
+        "scripts/distribution.py",
+        "modules/SessionControls.qml"
+      ]
+    },
+    {
+      "command": "python3",
+      "feature": "System helpers and installation",
+      "status": "required",
+      "archPackage": "python",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "core",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/export-themes.py",
+        "scripts/theme-hook",
+        "scripts/install.py",
+        "scripts/smoke.py",
+        "scripts/document.py",
+        "scripts/wallpaper.py",
+        "scripts/wallpapers.py",
+        "scripts/plugins.py",
+        "scripts/bluetooth.py",
+        "scripts/control.py",
+        "scripts/settings_info.py",
+        "scripts/desktop.py",
+        "scripts/core_actions.py",
+        "scripts/core_probe.py",
+        "scripts/default_apps.py",
+        "scripts/theme-sync.py",
+        "scripts/audio_instruments.py",
+        "scripts/clipboard_item.py",
+        "scripts/performance.py",
+        "scripts/spectrum.py",
+        "scripts/telemetry.py",
+        "scripts/migrate.py",
+        "scripts/cedar",
+        "scripts/cedar_cli.py",
+        "scripts/trailwatch.py",
+        "scripts/audit_public.py",
+        "scripts/weather_location.py",
+        "scripts/connections.py",
+        "scripts/distribution.py",
+        "scripts/shim/omarchy-shell",
+        "services/Brightness.qml",
+        "services/BluetoothService.qml",
+        "services/CoreProbe.qml",
+        "services/Clipboard.qml",
+        "services/Go.qml",
+        "services/SystemStats.qml",
+        "services/Weather.qml",
+        "modules/WallpaperPicker.qml",
+        "components/ServiceRequest.qml",
+        "components/AudioSpectrum.qml"
+      ]
+    },
+    {
+      "command": "systemctl",
+      "feature": "Session integration",
+      "status": "feature-required",
+      "archPackage": "systemd",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/install.py",
+        "scripts/settings_info.py",
+        "scripts/activate-theme-guard",
+        "scripts/cedar_cli.py",
+        "scripts/trailwatch.py",
+        "modules/LockScreen.qml",
+        "modules/SessionControls.qml",
+        "menus/cedar-menu.jsonc"
+      ]
+    },
+    {
+      "command": "systemd-run",
+      "feature": "Application launch and shell supervision",
+      "status": "feature-required",
+      "archPackage": "systemd",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/theme-hook",
+        "scripts/theme-sync.py",
+        "services/Go.qml",
+        "modules/FieldStation.qml",
+        "menus/cedar-menu.jsonc"
+      ]
+    },
+    {
+      "command": "omarchy",
+      "feature": "Current supported theme, session, and PAM integration",
+      "status": "feature-required",
+      "archPackage": "omarchy",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/install.py",
+        "scripts/document.py",
+        "scripts/wallpapers.py",
+        "scripts/plugins.py",
+        "scripts/with-shim",
+        "scripts/control.py",
+        "scripts/settings_info.py",
+        "scripts/core_actions.py",
+        "scripts/default_apps.py",
+        "scripts/theme-sync.py",
+        "scripts/cedar_cli.py",
+        "scripts/trailwatch.py",
+        "scripts/distribution.py",
+        "scripts/shim/omarchy-shell",
+        "services/CoreSources.qml",
+        "services/Go.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "modules/Background.qml",
+        "components/MenuModel.js",
+        "components/SettingsSchema.js",
+        "menus/cedar-menu.jsonc"
+      ]
+    },
+    {
+      "command": "omarchy-hyprland-session-locked",
+      "feature": "Fail-closed activation guard",
+      "status": "feature-required",
+      "archPackage": "omarchy",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/theme-sync.py",
+        "scripts/cedar_cli.py",
+        "scripts/distribution.py"
+      ]
+    },
+    {
+      "command": "nmcli",
+      "feature": "Network controls",
+      "status": "feature-required",
+      "archPackage": "networkmanager",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/telemetry.py",
+        "scripts/connections.py"
+      ]
+    },
+    {
+      "command": "pactl",
+      "feature": "Audio routing and scenes",
+      "status": "feature-required",
+      "archPackage": "libpulse",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/audio_instruments.py"
+      ]
+    },
+    {
+      "command": "wl-copy",
+      "feature": "Clipboard actions",
+      "status": "feature-required",
+      "archPackage": "wl-clipboard",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/core_actions.py",
+        "scripts/clipboard_item.py"
+      ]
+    },
+    {
+      "command": "wl-paste",
+      "feature": "Opt-in clipboard history",
+      "status": "feature-required",
+      "archPackage": "wl-clipboard",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/clipboard_item.py",
+        "services/Clipboard.qml"
+      ]
+    },
+    {
+      "command": "powerprofilesctl",
+      "feature": "Power profiles",
+      "status": "feature-required",
+      "archPackage": "power-profiles-daemon",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/control.py",
+        "services/Go.qml"
+      ]
+    },
+    {
+      "command": "brightnessctl",
+      "feature": "Backlight",
+      "status": "feature-required",
+      "archPackage": "brightnessctl",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/telemetry.py",
+        "components/SettingsSchema.js"
+      ]
+    },
+    {
+      "command": "xdg-open",
+      "feature": "Open files and URLs",
+      "status": "feature-required",
+      "archPackage": "xdg-utils",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/core_actions.py",
+        "modules/AboutSettings.qml",
+        "components/SettingsSchema.js"
+      ]
+    },
+    {
+      "command": "gtk-launch",
+      "feature": "Default editor launcher",
+      "status": "feature-required",
+      "archPackage": "gtk3",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/default_apps.py",
+        "services/DefaultApps.qml",
+        "services/Go.qml"
+      ]
+    },
+    {
+      "command": "jq",
+      "feature": "Omarchy menu shim",
+      "status": "feature-required",
+      "archPackage": "jq",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/shim/omarchy-shell"
+      ]
+    },
+    {
+      "command": "gio",
+      "feature": "Desktop application associations",
+      "status": "feature-required",
+      "archPackage": "glib2",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/core_actions.py",
+        "scripts/weather_location.py",
+        "services/WeatherLocation.qml",
+        "modules/Background.qml",
+        "modules/WeatherLocationSettings.qml",
+        "modules/CoreWindow.qml",
+        "modules/Bar.qml",
+        "modules/BarIslands.qml",
+        "modules/CanopyWindow.qml"
+      ]
+    },
+    {
+      "command": "journalctl",
+      "feature": "System logs",
+      "status": "feature-required",
+      "archPackage": "systemd",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/settings_info.py"
+      ]
+    },
+    {
+      "command": "pkexec",
+      "feature": "Explicit system service restart",
+      "status": "feature-required",
+      "archPackage": "polkit",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/settings_info.py"
+      ]
+    },
+    {
+      "command": "cava",
+      "feature": "Opt-in audio spectrum",
+      "status": "feature-required",
+      "archPackage": "cava",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/audio_instruments.py",
+        "scripts/spectrum.py"
+      ]
+    },
+    {
+      "command": "checkupdates",
+      "feature": "Update count",
+      "status": "feature-required",
+      "archPackage": "pacman-contrib",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/core_actions.py"
+      ]
+    },
+    {
+      "command": "sensors",
+      "feature": "Temperature fallback",
+      "status": "feature-required",
+      "archPackage": "lm_sensors",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/telemetry.py",
+        "services/CoreSources.qml"
+      ]
+    },
+    {
+      "command": "nvidia-smi",
+      "feature": "NVIDIA GPU telemetry",
+      "status": "feature-required",
+      "archPackage": "nvidia-utils",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/performance.py",
+        "scripts/trailwatch.py"
+      ]
+    },
+    {
+      "command": "xrandr",
+      "feature": "Optional X11 preferred display hint",
+      "status": "feature-required",
+      "archPackage": "xorg-xrandr",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/desktop.py"
+      ]
+    },
+    {
+      "command": "mmcli",
+      "feature": "Modem information",
+      "status": "feature-required",
+      "archPackage": "modemmanager",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/telemetry.py"
+      ]
+    },
+    {
+      "command": "grim",
+      "feature": "Developer screenshots",
+      "status": "development",
+      "archPackage": "grim",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "development",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/smoke.py"
+      ]
+    },
+    {
+      "command": "magick",
+      "feature": "Developer asset renderer",
+      "status": "development",
+      "archPackage": "imagemagick",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "development",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/wallpaper.py"
+      ]
+    },
+    {
+      "command": "bash",
+      "feature": "Helpers, recovery or explicit update verification",
+      "status": "feature-required",
+      "scope": "feature",
+      "archPackage": "bash",
+      "source": "Configured Arch repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Local observed version",
+      "verification": [
+        "command-presence"
+      ],
+      "whenUnavailable": "Needs Setup",
+      "consumers": [
+        "scripts/document.py"
+      ]
+    },
+    {
+      "command": "openssl",
+      "feature": "Helpers, recovery or explicit update verification",
+      "status": "feature-required",
+      "scope": "feature",
+      "archPackage": "openssl",
+      "source": "Configured Arch repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Local observed version",
+      "verification": [
+        "command-presence"
+      ],
+      "whenUnavailable": "Needs Setup",
+      "consumers": [
+        "scripts/distribution.py"
+      ]
+    },
+    {
+      "command": "nmtui",
+      "feature": "Helpers, recovery or explicit update verification",
+      "status": "feature-required",
+      "scope": "feature",
+      "archPackage": "networkmanager",
+      "source": "Configured Arch repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Local observed version",
+      "verification": [
+        "command-presence"
+      ],
+      "whenUnavailable": "Needs Setup",
+      "consumers": []
+    },
+    {
+      "command": "pgrep",
+      "feature": "Helpers, recovery or explicit update verification",
+      "status": "feature-required",
+      "scope": "feature",
+      "archPackage": "procps-ng",
+      "source": "Configured Arch repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Local observed version",
+      "verification": [
+        "command-presence"
+      ],
+      "whenUnavailable": "Needs Setup",
+      "consumers": []
+    },
+    {
+      "command": "ps",
+      "feature": "Helpers, recovery or explicit update verification",
+      "status": "feature-required",
+      "scope": "feature",
+      "archPackage": "procps-ng",
+      "source": "Configured Arch repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Local observed version",
+      "verification": [
+        "command-presence"
+      ],
+      "whenUnavailable": "Needs Setup",
+      "consumers": [
+        "scripts/export-themes.py",
+        "scripts/install.py",
+        "scripts/smoke.py",
+        "scripts/wallpaper.py",
+        "scripts/wallpapers.py",
+        "scripts/plugins.py",
+        "scripts/bluetooth.py",
+        "scripts/control.py",
+        "scripts/settings_info.py",
+        "scripts/desktop.py",
+        "scripts/core_actions.py",
+        "scripts/core_probe.py",
+        "scripts/default_apps.py",
+        "scripts/audio_instruments.py",
+        "scripts/clipboard_item.py",
+        "scripts/performance.py",
+        "scripts/telemetry.py",
+        "scripts/migrate.py",
+        "scripts/cedar_cli.py",
+        "scripts/trailwatch.py",
+        "scripts/audit_public.py",
+        "scripts/weather_location.py",
+        "scripts/connections.py",
+        "scripts/distribution.py"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "name": "QtQuick",
+      "archPackage": "qt6-declarative",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "notification-test.qml",
+        "Theme.qml",
+        "Branding.qml",
+        "trailwatch-preview.qml",
+        "Config.qml",
+        "ShellState.qml",
+        "shell.qml",
+        "preview.qml",
+        "components/GlowText.qml",
+        "components/HudPanel.qml",
+        "components/HudButton.qml",
+        "components/Overlay.qml",
+        "components/HudField.qml",
+        "components/HudToggle.qml",
+        "components/HudSlider.qml",
+        "components/StationButton.qml",
+        "components/ActivityTrace.qml",
+        "components/StationPanel.qml",
+        "components/StationField.qml",
+        "components/LockAuth.qml",
+        "components/ServiceRequest.qml",
+        "components/SettingsHeading.qml",
+        "components/SettingsCard.qml",
+        "components/SettingsFields.qml",
+        "components/SettingControl.qml",
+        "components/SettingRow.qml",
+        "components/StationCombo.qml",
+        "components/StationToggle.qml",
+        "components/StationSlider.qml",
+        "components/ArcGauge.qml",
+        "components/StationCore.qml",
+        "components/AudioSpectrum.qml",
+        "components/BarButton.qml",
+        "components/CedarAtmosphere.qml",
+        "components/ReadingText.qml",
+        "components/NetworkIndicator.qml",
+        "components/BarCoreControls.qml",
+        "modules/Hud.qml",
+        "modules/LockScreen.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "modules/BarLayoutPreview.qml",
+        "modules/TimeSettings.qml",
+        "modules/ControlCenter.qml",
+        "modules/Notifications.qml",
+        "modules/AboutSettings.qml",
+        "modules/SystemSettings.qml",
+        "modules/PowerSettings.qml",
+        "modules/AudioSettings.qml",
+        "modules/AppearanceSettings.qml",
+        "modules/SettingsOverview.qml",
+        "modules/KeybindSettings.qml",
+        "modules/InputSettings.qml",
+        "modules/DisplaySettings.qml",
+        "modules/BluetoothSettings.qml",
+        "modules/Settings.qml",
+        "modules/Background.qml",
+        "modules/NotificationServer.qml",
+        "modules/Osd.qml",
+        "modules/DefaultAppsSettings.qml",
+        "modules/Menu.qml",
+        "modules/AudioCanopy.qml",
+        "modules/CalendarCanopy.qml",
+        "modules/ClipboardCanopy.qml",
+        "modules/CoreSettings.qml",
+        "modules/NotificationCanopy.qml",
+        "modules/SettingsPanel.qml",
+        "modules/SystemCanopy.qml",
+        "modules/TrailCanopy.qml",
+        "modules/TrailwatchView.qml",
+        "modules/DesktopSettingsPage.qml",
+        "modules/WeatherCanopy.qml",
+        "modules/WeatherLocationSettings.qml",
+        "modules/CoreWindow.qml",
+        "modules/PowerMenu.qml",
+        "modules/ConnectionSettings.qml",
+        "modules/TopBarSettings.qml",
+        "modules/Bar.qml",
+        "modules/ControlPanel.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml",
+        "modules/CanopyPanel.qml",
+        "modules/CanopyWindow.qml",
+        "modules/FieldStation.qml",
+        "modules/QuickControls.qml",
+        "modules/SessionControls.qml",
+        "services/Brightness.qml",
+        "services/BluetoothService.qml",
+        "services/DesktopSettings.qml",
+        "services/SettingsInfo.qml",
+        "services/Audio.qml",
+        "services/CoreActivityModel.qml",
+        "services/CoreProbe.qml",
+        "services/CoreSources.qml",
+        "services/CoreTimer.qml",
+        "services/Media.qml",
+        "services/NoticeStore.qml",
+        "services/DefaultApps.qml",
+        "services/AudioInstruments.qml",
+        "services/Clipboard.qml",
+        "services/Controls.qml",
+        "services/CoreService.qml",
+        "services/Forest.qml",
+        "services/Go.qml",
+        "services/SystemStats.qml",
+        "services/Trailwatch.qml",
+        "services/Weather.qml",
+        "services/WeatherLocation.qml",
+        "services/Canopy.qml",
+        "services/Network.qml",
+        "components/core/CoreDetails.qml",
+        "components/core/CoreHub.qml",
+        "components/core/CoreVolume.qml",
+        "components/core/CoreMedia.qml",
+        "components/core/CoreSurface.qml",
+        "components/trailwatch/FieldText.qml",
+        "components/trailwatch/Instrument.qml",
+        "components/trailwatch/LockTerminal.qml",
+        "components/trailwatch/Metric.qml",
+        "components/trailwatch/Topo.qml",
+        "components/trailwatch/Complication.qml",
+        "components/trailwatch/WatchFace.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "QtQuick.Controls",
+      "archPackage": "qt6-declarative",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "components/HudButton.qml",
+        "components/HudField.qml",
+        "components/HudSlider.qml",
+        "components/StationButton.qml",
+        "components/StationField.qml",
+        "components/StationCombo.qml",
+        "components/StationToggle.qml",
+        "components/StationSlider.qml",
+        "components/BarButton.qml",
+        "modules/Hud.qml",
+        "modules/LockScreen.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "modules/Notifications.qml",
+        "modules/SystemSettings.qml",
+        "modules/KeybindSettings.qml",
+        "modules/BluetoothSettings.qml",
+        "modules/Osd.qml",
+        "modules/Menu.qml",
+        "modules/SettingsPanel.qml",
+        "modules/TrailwatchView.qml",
+        "modules/ConnectionSettings.qml",
+        "modules/ControlPanel.qml",
+        "modules/CanopyPanel.qml",
+        "modules/QuickControls.qml",
+        "components/core/CoreHub.qml",
+        "components/core/CoreSurface.qml",
+        "components/trailwatch/LockTerminal.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "QtQuick.Layouts",
+      "archPackage": "qt6-declarative",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "preview.qml",
+        "components/HudToggle.qml",
+        "components/SettingsHeading.qml",
+        "components/SettingsCard.qml",
+        "components/SettingsFields.qml",
+        "components/SettingControl.qml",
+        "components/SettingRow.qml",
+        "components/StationToggle.qml",
+        "components/ReadingText.qml",
+        "modules/LockScreen.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "modules/TimeSettings.qml",
+        "modules/Notifications.qml",
+        "modules/AboutSettings.qml",
+        "modules/SystemSettings.qml",
+        "modules/PowerSettings.qml",
+        "modules/AudioSettings.qml",
+        "modules/AppearanceSettings.qml",
+        "modules/SettingsOverview.qml",
+        "modules/KeybindSettings.qml",
+        "modules/InputSettings.qml",
+        "modules/DisplaySettings.qml",
+        "modules/BluetoothSettings.qml",
+        "modules/DefaultAppsSettings.qml",
+        "modules/AudioCanopy.qml",
+        "modules/CalendarCanopy.qml",
+        "modules/ClipboardCanopy.qml",
+        "modules/CoreSettings.qml",
+        "modules/NotificationCanopy.qml",
+        "modules/SettingsPanel.qml",
+        "modules/SystemCanopy.qml",
+        "modules/TrailCanopy.qml",
+        "modules/TrailwatchView.qml",
+        "modules/DesktopSettingsPage.qml",
+        "modules/WeatherCanopy.qml",
+        "modules/WeatherLocationSettings.qml",
+        "modules/ConnectionSettings.qml",
+        "modules/TopBarSettings.qml",
+        "modules/Bar.qml",
+        "modules/ControlPanel.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml",
+        "modules/CanopyPanel.qml",
+        "modules/FieldStation.qml",
+        "modules/QuickControls.qml",
+        "modules/SessionControls.qml",
+        "components/core/CoreDetails.qml",
+        "components/core/CoreHub.qml",
+        "components/core/CoreVolume.qml",
+        "components/core/CoreMedia.qml",
+        "components/core/CoreSurface.qml",
+        "components/trailwatch/Instrument.qml",
+        "components/trailwatch/LockTerminal.qml",
+        "components/trailwatch/Metric.qml",
+        "components/trailwatch/Complication.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "QtQuick.Shapes",
+      "archPackage": "qt6-declarative",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "components/ArcGauge.qml",
+        "components/core/CoreSurface.qml",
+        "components/trailwatch/Instrument.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "notification-test.qml",
+        "Theme.qml",
+        "Branding.qml",
+        "trailwatch-preview.qml",
+        "Config.qml",
+        "ShellState.qml",
+        "shell.qml",
+        "preview.qml",
+        "components/Overlay.qml",
+        "components/ServiceRequest.qml",
+        "components/AudioSpectrum.qml",
+        "components/BarCoreControls.qml",
+        "modules/LockScreen.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "modules/TimeSettings.qml",
+        "modules/Notifications.qml",
+        "modules/AboutSettings.qml",
+        "modules/SystemSettings.qml",
+        "modules/DisplaySettings.qml",
+        "modules/Background.qml",
+        "modules/NotificationServer.qml",
+        "modules/Osd.qml",
+        "modules/Menu.qml",
+        "modules/CalendarCanopy.qml",
+        "modules/CoreSettings.qml",
+        "modules/SettingsPanel.qml",
+        "modules/TrailwatchView.qml",
+        "modules/CoreWindow.qml",
+        "modules/ConnectionSettings.qml",
+        "modules/Bar.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml",
+        "modules/CanopyWindow.qml",
+        "modules/FieldStation.qml",
+        "modules/SessionControls.qml",
+        "services/Brightness.qml",
+        "services/BluetoothService.qml",
+        "services/DesktopSettings.qml",
+        "services/SettingsInfo.qml",
+        "services/Audio.qml",
+        "services/CoreActivityModel.qml",
+        "services/CoreProbe.qml",
+        "services/CoreSources.qml",
+        "services/CoreTimer.qml",
+        "services/Media.qml",
+        "services/NoticeStore.qml",
+        "services/DefaultApps.qml",
+        "services/AudioInstruments.qml",
+        "services/Clipboard.qml",
+        "services/Controls.qml",
+        "services/CoreService.qml",
+        "services/Forest.qml",
+        "services/Go.qml",
+        "services/SystemStats.qml",
+        "services/Trailwatch.qml",
+        "services/Weather.qml",
+        "services/WeatherLocation.qml",
+        "services/Canopy.qml",
+        "services/Network.qml",
+        "components/core/CoreHub.qml",
+        "components/core/CoreHost.qml",
+        "components/core/CoreSurface.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Bluetooth",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "services/BluetoothService.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Hyprland",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "ShellState.qml",
+        "modules/CoreWindow.qml",
+        "modules/Bar.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml",
+        "modules/CanopyWindow.qml",
+        "services/CoreSources.qml",
+        "services/Forest.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Io",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "notification-test.qml",
+        "Branding.qml",
+        "Config.qml",
+        "shell.qml",
+        "components/ServiceRequest.qml",
+        "components/AudioSpectrum.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "modules/Background.qml",
+        "services/Brightness.qml",
+        "services/BluetoothService.qml",
+        "services/CoreProbe.qml",
+        "services/CoreTimer.qml",
+        "services/Clipboard.qml",
+        "services/Forest.qml",
+        "services/Go.qml",
+        "services/SystemStats.qml",
+        "services/Weather.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Services.Mpris",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "shell.qml",
+        "modules/ControlPanel.qml",
+        "modules/FieldStation.qml",
+        "modules/QuickControls.qml",
+        "services/Media.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Services.Notifications",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "modules/NotificationServer.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Services.Pam",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "modules/LockScreen.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Services.Pipewire",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "modules/AudioCanopy.qml",
+        "services/Audio.qml",
+        "services/CoreSources.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Services.SystemTray",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "modules/Bar.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Services.UPower",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "modules/PowerSettings.qml",
+        "modules/Bar.qml",
+        "modules/ControlPanel.qml",
+        "modules/BarContents.qml",
+        "modules/BarIslands.qml",
+        "modules/QuickControls.qml",
+        "services/CoreSources.qml",
+        "services/Forest.qml",
+        "services/Trailwatch.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    },
+    {
+      "name": "Quickshell.Wayland",
+      "archPackage": "quickshell",
+      "status": "required",
+      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "consumers": [
+        "components/Overlay.qml",
+        "modules/LockScreen.qml",
+        "modules/Notifications.qml",
+        "modules/Background.qml",
+        "modules/Osd.qml",
+        "modules/CoreWindow.qml",
+        "modules/Bar.qml",
+        "modules/CanopyWindow.qml",
+        "services/Forest.qml"
+      ],
+      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+    }
+  ],
+  "pythonModules": [
+    {
+      "name": "dbus",
+      "archPackage": "python-dbus",
+      "status": "feature-required",
+      "feature": "NetworkManager and BlueZ helpers",
+      "consumers": [
+        "scripts/connections.py",
+        "scripts/bluetooth.py"
+      ],
+      "verification": "Import in selected Python interpreter"
+    },
+    {
+      "name": "gi",
+      "archPackage": "python-gobject",
+      "status": "feature-required",
+      "feature": "Gio default apps and GLib Bluetooth agent",
+      "consumers": [
+        "scripts/default_apps.py",
+        "scripts/bluetooth.py"
+      ],
+      "verification": "Import gi.repository Gio and GLib"
+    }
+  ],
+  "fonts": [
+    {
+      "family": "Rajdhani",
+      "status": "recommended",
+      "archPackage": null,
+      "fallback": "sans-serif"
+    },
+    {
+      "family": "JetBrainsMono Nerd Font",
+      "status": "recommended",
+      "archPackage": "ttf-jetbrains-mono-nerd",
+      "fallback": "monospace"
+    }
+  ],
+  "audioDSP": {
+    "supportedBackend": null,
+    "behavior": "EQ controls remain unavailable; installing EasyEffects alone does not enable a control API."
+  },
+  "remoteServices": [
+    {
+      "id": "weather",
+      "destination": "https://api.open-meteo.com",
+      "purpose": "Forecast",
+      "sent": "Coordinates rounded by location helper, units and connection metadata",
+      "frequency": "15 minutes while enabled",
+      "retention": "In-memory forecast",
+      "defaultEnabled": false
+    },
+    {
+      "id": "location",
+      "destination": "https://ipwho.is",
+      "purpose": "Opt-in approximate location",
+      "sent": "Connection IP metadata; no separate identity",
+      "frequency": "24 hour successful cache; 30 minute retry",
+      "retention": "Private approximate location cache; no saved public IP",
+      "defaultEnabled": false
+    },
+    {
+      "id": "city-search",
+      "destination": "https://geocoding-api.open-meteo.com",
+      "purpose": "Explicit city lookup",
+      "sent": "Entered search text and connection metadata",
+      "frequency": "Only explicit search",
+      "retention": "Chosen coordinates in settings",
+      "defaultEnabled": false
+    },
+    {
+      "id": "artwork",
+      "destination": "Media-player supplied HTTP(S) host",
+      "purpose": "Explicitly enabled remote artwork",
+      "sent": "Image URL and connection metadata",
+      "frequency": "When shown",
+      "retention": "Qt in-memory image cache",
+      "defaultEnabled": false
+    }
+  ],
+  "schemaVersion": 2,
+  "imageFormats": [
+    {
+      "format": "PNG",
+      "provider": "QtGui",
+      "package": "qt6-base"
+    },
+    {
+      "format": "SVG",
+      "provider": "Qt SVG image plugin",
+      "package": "qt6-svg"
+    }
+  ],
+  "serviceInterfaces": [
+    {
+      "name": "org.freedesktop.NetworkManager",
+      "feature": "connections",
+      "providerPolicy": "Probe existing service; do not install or replace a provider silently"
+    },
+    {
+      "name": "org.bluez",
+      "feature": "bluetooth",
+      "providerPolicy": "Probe existing service; do not install or replace a provider silently"
+    },
+    {
+      "name": "org.freedesktop.UPower",
+      "feature": "battery",
+      "providerPolicy": "Probe existing service; do not install or replace a provider silently"
+    },
+    {
+      "name": "org.freedesktop.Notifications",
+      "feature": "notification ownership",
+      "providerPolicy": "Probe existing service; do not install or replace a provider silently"
+    },
+    {
+      "name": "PipeWire + WirePlumber",
+      "feature": "audio",
+      "providerPolicy": "Probe existing service; do not install or replace a provider silently"
+    },
+    {
+      "name": "org.mpris.MediaPlayer2.*",
+      "feature": "media",
+      "providerPolicy": "Probe existing service; do not install or replace a provider silently"
+    },
+    {
+      "name": "PAM + ext-session-lock-v1",
+      "feature": "Trailwatch",
+      "providerPolicy": "Probe existing service; do not install or replace a provider silently"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "scripts/migrate.py": "Detect legacy namespaces and map the exact former bar style ID.",
+  "scripts/cedar_cli.py": "Guard, stop, preserve and recover the legacy shell and its startup entries.",
+  "tests/test_migration.py": "Migration fixtures and canonical-name regression audit.",
+  "docs/MIGRATION.md": "Historical identity, intentional compatibility references and recovery instructions.",
+  "README.md": "Explain the former project name to upgrading users.",
+  "Config.qml": "Legacy environment flags and old bar ID remain explicit read-time compatibility aliases.",
+  "scripts/distribution.py": "Read-only identification of legacy instances for fail-closed lock safety; no blanket replacement."
+}

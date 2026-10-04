@@ -1,0 +1,53 @@
+#!/bin/bash
+# CEDAR stand-in for omarchy-shell. Omarchy's helper scripts (menu select
+# prompts, plugin management, lock) talk to the Omarchy shell through this
+# command. While CEDAR is the selected theme that shell is stopped, so the
+# Go menu prepends this directory to PATH for the actions it launches and
+# answers the calls CEDAR can serve itself. Everything else goes to the real
+# omarchy-shell, which keeps its own quiet/failure behaviour.
+
+here=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+plugins="$here/../plugins.py"
+real="${OMARCHY_PATH:-/usr/share/omarchy}/bin/omarchy-shell"
+
+quiet=0
+if [[ ${1:-} == "-q" ]]; then quiet=1; shift; fi
+
+fox() { qs -c cedar ipc call "$@"; }
+forward() {
+  if (( quiet )); then exec "$real" -q "$@"; fi
+  exec "$real" "$@"
+}
+route_of() { jq -r '.menu // .initialMenu // "root"' <<<"${1:-{\}}" 2>/dev/null || echo root; }
+
+case "${1:-} ${2:-}" in
+  "shell summon")
+    case "${3:-}" in
+      omarchy.menu) fox menu summon "${4:-{\}}" >/dev/null; exit 0 ;;
+      omarchy.image-picker) fox wallpapers toggle >/dev/null; exit 0 ;;
+    esac
+    forward "$@" ;;
+  "shell toggle")
+    case "${3:-}" in
+      omarchy.menu) fox menu toggle "$(route_of "${4:-}")" >/dev/null; exit 0 ;;
+    esac
+    forward "$@" ;;
+  "shell hide")
+    [[ ${3:-} == omarchy.menu ]] && { fox shell close >/dev/null; exit 0; }
+    forward "$@" ;;
+  "shell call")
+    if [[ ${3:-} == omarchy.menu ]]; then
+      case "${4:-}" in
+        refresh) fox menu refresh >/dev/null; echo ok; exit 0 ;;
+        ping) echo ok; exit 0 ;;
+      esac
+    fi
+    forward "$@" ;;
+  "shell ping") fox shell isLocked >/dev/null && { echo pong; exit 0; }; forward "$@" ;;
+  "shell listPlugins") exec python3 "$plugins" list ;;
+  "shell setPluginEnabled") exec python3 "$plugins" set "${3:-}" "${4:-true}" ;;
+  "shell enablePlugin") exec python3 "$plugins" enable "${3:-}" "${4:-{\}}" ;;
+  "shell rescanPlugins"|"shell reloadConfig") echo ok; exit 0 ;;
+  "lock lock") fox lock lock >/dev/null; exit 0 ;;
+  *) forward "$@" ;;
+esac

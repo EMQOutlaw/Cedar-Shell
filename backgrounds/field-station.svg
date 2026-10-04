@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1440" viewBox="0 0 2560 1440">
+<defs>
+<pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse"><path d="M64 0H0V64" fill="none" stroke="#3FE0C5" stroke-opacity=".09" stroke-width="1"/></pattern>
+<radialGradient id="light"><stop stop-color="#9DFFB0" stop-opacity=".12"/><stop offset="1" stop-color="#080F0D" stop-opacity="0"/></radialGradient>
+</defs>
+<path fill="#080F0D" d="M0 0H2560V1440H0Z"/>
+<path fill="url(#grid)" d="M0 0H2560V1440H0Z"/>
+<ellipse cx="1680" cy="820" rx="1050" ry="760" fill="url(#light)"/>
+<g fill="none" stroke="#3FE0C5" stroke-opacity=".25" stroke-width="1">
+<path d="M100 230V140L140 100H440 M2120 100H2460V350 M100 1090V1340H440 M2120 1340H2420L2460 1300V1110"/>
+<circle cx="1700" cy="790" r="310"/><circle cx="1700" cy="790" r="325" stroke-dasharray="2 24"/>
+<path d="M1655 790H1745 M1700 745V835"/>
+</g>
+<path d="M1418 936A318 318 0 0 1 1530 521" fill="none" stroke="#9DFFB0" stroke-opacity=".6" stroke-width="2"/>
+<circle cx="1938" cy="1000" r="4" fill="#F2C879"/>
+<g font-family="DejaVu Sans Mono" fill="#9DFFB0">
+<text x="180" y="1190" font-size="62" letter-spacing="18">CEDAR</text>
+<text x="183" y="1235" font-size="16" letter-spacing="3" fill="#A0B9AD">A COLD, LIVING LIGHT IN THE DARK WOODS</text>
+<text x="180" y="175" font-size="14" letter-spacing="3" fill="#3FE0C5">APPALACHIAN MEMORY / FIELD STATION 01</text>
+</g></svg>

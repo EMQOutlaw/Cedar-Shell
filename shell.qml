@@ -1,0 +1,267 @@
+import QtQuick
+import Quickshell
+import Quickshell.Services.Mpris
+import Quickshell.Io
+import "modules"
+import "services"
+
+ShellRoot {
+    IpcHandler {
+        target: "media"
+        function toggle(): void {
+            Media.toggle();
+        }
+        function next(): void {
+            Media.next();
+        }
+        function previous(): void {
+            Media.previous();
+        }
+        function pause(): void {
+            for (const p of Media.players)
+                if (p.isPlaying && p.canPause)
+                    p.pause();
+        }
+    }
+    IpcHandler {
+        target: "core"
+        function toggle(): void {
+            CoreService.toggle();
+        }
+        function show(): void {
+            CoreService.expand();
+        }
+        function hide(): void {
+            CoreService.collapse();
+        }
+        function publish(payload: string): string {
+            return CoreService.external(payload);
+        }
+        function withdraw(source: string, id: string): string {
+            return CoreService.withdraw(source, id);
+        }
+        function timer(seconds: int, label: string): string {
+            return CoreService.timer.start(seconds, label) ? "ok" : "Use 1–86400 seconds.";
+        }
+    }
+    CedarCore {}
+    // One Canopy on its chosen output. Output changes replace the host safely.
+    Variants {
+        reloadableId: "cedar-canopy-host"
+        model: Canopy.screen ? [Canopy.screen] : []
+        CanopyWindow {}
+    }
+    IpcHandler {
+        target: "canopy"
+        function show(topic: string): void {
+            Canopy.open(topic);
+        }
+        function hide(): void {
+            Canopy.close();
+        }
+        function toggle(): void {
+            if (Canopy.shown)
+                Canopy.close();
+            else
+                Canopy.context();
+        }
+    }
+    property var forestService: Forest
+    property var clipboardService: Clipboard
+    // Disable hot reload while locked: never replace the authentication engine.
+    settings.watchFiles: !ShellState.locked
+    IpcHandler {
+        target: "wallpapers"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                ShellState.toggle("wallpapers");
+        }
+    }
+    IpcHandler {
+        target: "themes"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                ShellState.toggle("themes");
+        }
+    }
+    IpcHandler {
+        target: "control"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                Canopy.toggleQuick();
+        }
+    }
+    IpcHandler {
+        target: "hud"
+        function toggle(): void {
+            if (Config.stage >= 2)
+                ShellState.toggle("hud");
+        }
+    }
+    IpcHandler {
+        target: "settings"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                ShellState.toggle("settings");
+        }
+        // `settings set idleLockSeconds 300`: scriptable edits of the saved settings.
+        function set(key: string, value: string): string {
+            if (!(key in Config.saved))
+                return "unknown setting: " + key;
+            const current = Config.saved[key];
+            Config.set(key, typeof current === "boolean" ? value === "true" : typeof current === "number" ? Number(value) : value);
+            return "ok";
+        }
+        function get(key: string): string {
+            return key in Config.saved ? String(Config.saved[key]) : "unknown setting: " + key;
+        }
+    }
+    // Go menu: `menu toggle <route>` opens a menu id or alias (root, apps, system,
+    // capture…); `menu summon <json>` takes Omarchy's payloads, including the
+    // select/input prompts relayed by scripts/shim/omarchy-shell.
+    IpcHandler {
+        target: "menu"
+        function toggle(route: string): void {
+            if (Config.stage >= 3)
+                Go.toggle(route);
+        }
+        function summon(payload: string): void {
+            if (Config.stage >= 3)
+                Go.summon(payload);
+        }
+        function refresh(): void {
+            Go.refresh();
+        }
+    }
+    IpcHandler {
+        target: "launcher"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                Go.toggle("root");
+        }
+    }
+    IpcHandler {
+        target: "notifications"
+        function toggle(): void {
+            if (Config.stage >= 3) {
+                if (Config.saved.canopyEnabled) {
+                    if (Canopy.shown && Canopy.topic === "notifications")
+                        Canopy.close();
+                    else
+                        Canopy.open("notifications");
+                } else
+                    ShellState.toggle("history");
+            }
+        }
+    }
+    IpcHandler {
+        target: "power"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                ShellState.toggle("power");
+        }
+    }
+    IpcHandler {
+        target: "lock"
+        function lock(): void {
+            if (Config.stage >= 3 && !Config.testMode)
+                ShellState.lock(false);
+        }
+        // Open the existing real-PAM test window without requesting a session lock.
+        function testAuthentication(): void {
+            if (Config.stage >= 3 && !Config.testMode && !ShellState.locked) {
+                ShellState.close();
+                ShellState.authTest = true;
+            }
+        }
+    }
+    IpcHandler {
+        target: "osd"
+        function volume(delta: int): void {
+            Audio.change(delta);
+        }
+        function mute(): void {
+            Audio.toggleMute();
+        }
+        function brightness(delta: int): void {
+            Brightness.change(delta);
+        }
+        function showVolume(): void {
+            Audio.show();
+        }
+        function showBrightness(): void {
+            Brightness.show();
+        }
+    }
+    IpcHandler {
+        target: "shell"
+        function close(): void {
+            ShellState.close();
+        }
+        function isLocked(): bool {
+            return ShellState.locked;
+        }
+        function stop(): void {
+            if (!ShellState.locked)
+                Qt.quit();
+        }
+    }
+    LazyLoader {
+        active: Config.stage >= 3 && !Config.testMode
+        component: NotificationServer {}
+    }
+    LazyLoader {
+        active: Config.stage >= 3
+        component: LockScreen {}
+    }
+    Variants {
+        model: Quickshell.screens
+        Scope {
+            required property var modelData
+            Bar {
+                output: modelData
+            }
+            LazyLoader {
+                active: Config.stage >= 3 && !Config.testMode
+                component: Background {
+                    output: modelData
+                }
+            }
+            LazyLoader {
+                active: Config.stage >= 2
+                component: Hud {
+                    output: modelData
+                }
+            }
+            LazyLoader {
+                active: Config.stage >= 3
+                component: Scope {
+                    Menu {
+                        output: modelData
+                    }
+                    Settings {
+                        output: modelData
+                    }
+                    ControlCenter {
+                        output: modelData
+                    }
+                    Notifications {
+                        output: modelData
+                    }
+                    Osd {
+                        output: modelData
+                    }
+                    PowerMenu {
+                        output: modelData
+                    }
+                    Themes {
+                        output: modelData
+                    }
+                    WallpaperPicker {
+                        output: modelData
+                    }
+                }
+            }
+        }
+    }
+}
