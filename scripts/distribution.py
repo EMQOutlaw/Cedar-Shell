@@ -157,16 +157,15 @@ def restore_journal(journal):
     return value
 
 def release_in_use():
-    base=str(paths()['data']/'releases')
-    for proc in Path('/proc').glob('[0-9]*'):
-        try:
-            if proc.stat().st_uid!=os.getuid():continue
-            name=(proc/'comm').read_text().strip()
-            if name in ('qs','quickshell') and base in (proc/'cmdline').read_bytes().decode(errors='replace'):return True
-        except FileNotFoundError:continue
-        except PermissionError:raise Refused('Cannot verify a same-user process; release switch deferred.')
-        except ProcessLookupError:continue
-    return False
+    from portable_providers import processes, qs_instances
+    base=paths()['data']/'releases'
+    rows=processes({'qs', 'quickshell'})
+    if not rows:return False
+    if any(str(base) in arg for row in rows for arg in row['argv']):return True
+    # A current-release symlink or named profile need not expose the resolved
+    # release path in argv. Quickshell's own instance registry resolves it.
+    return any(Path(row.get('config_path', '/unavailable')).resolve().is_relative_to(base)
+               for row in qs_instances())
 
 def installed():
     current=paths()['data']/'current'
@@ -196,7 +195,7 @@ def session_inventory():
 
 def ensure_unlocked():
     from portable_providers import processes, compositor_locked
-    graphical = any(Path(p['exe']).name.lower() == 'hyprland' for p in processes())
+    graphical = bool(processes({'hyprland'}))
     if graphical and compositor_locked():
         raise Refused('Desktop lock is active; operation deferred until unlock.')
     if graphical and release_in_use():
@@ -319,6 +318,9 @@ def install(root,approved=False,plan_only=False):
             print('This candidate is already installed. No files or recovery checkpoints changed.')
             installation_next_steps()
             return
+        if current.is_symlink():
+            ensure_unlocked()
+            if release_in_use():raise Refused('This release is in use. Close CEDAR safely before switching versions; current files are preserved.')
         ancestor=destination.parent
         while not ancestor.exists():ancestor=ancestor.parent
         if shutil.disk_usage(ancestor).free < plan['bytes']*3+16*1024*1024:raise Refused('Insufficient space for staging and recovery.')
@@ -339,17 +341,17 @@ def install(root,approved=False,plan_only=False):
                 tx.record['release']=str(destination);tx.save();tx.stage('prepare');os.replace(temporary,destination)
             else:verify_tree(destination,read_json(destination/'release-files.json'))
             tx.stage('validate')
+            # Recheck immediately before replacing any installed helper. A
+            # refused upgrade must not temporarily overwrite live recovery code.
+            if current.is_symlink():
+                ensure_unlocked()
+                if release_in_use():raise Refused('This release is in use. Close CEDAR safely before switching versions; current files are preserved.')
             for p in portable_recovery: tx.apply_file(entries[str(p)], (root/'scripts'/p.name).read_bytes(), 0o700)
             tx.apply_file(entries[str(provider_recovery)],(root/'scripts/omarchy_providers.py').read_bytes(),0o700)
             tx.apply_file(entries[str(session_recovery)],(root/'scripts/omarchy_session.py').read_bytes(),0o700)
             tx.apply_file(entries[str(recovery)],(root/'scripts/distribution.py').read_bytes(),0o700)
             launcher='#!/bin/sh\n# CEDAR distribution launcher\nexec python3 '+__import__('shlex').quote(str(recovery))+' "$@"\n'
             tx.apply_file(entries[str(binary)],launcher.encode(),0o700)
-            # Install-only changes no active source registration or startup entry.
-            # Pointer change still refuses a known/unknown active lock on this host.
-            if current.is_symlink():
-                ensure_unlocked()
-                if release_in_use():raise Refused('This release is in use. Close CEDAR safely before switching versions; current files are preserved.')
             tx.apply_link(entries[str(current)],destination)
             tx.stage('confirm');tx.commit()
             print('Files installed and verified. '+validation+' Desktop activation: not performed.')

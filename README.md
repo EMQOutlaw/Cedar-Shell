@@ -28,6 +28,8 @@ If Git reports local changes or divergent history, stop and preserve your edits;
 
 `git pull` updates the checkout; successful installation updates the installed `cedar` command. If setup was canceled or failed, the previous installed version remains selected. An old installed command may still report “Omarchy activation requires omarchy.” Finish installing the current candidate above before running `cedar try` again. Do not install Omarchy to resolve that message.
 
+Versions before `0.1.0-dev.8` could also stop with “Cannot inspect a same-user process” when an unrelated application protected its executable metadata. Update the checkout and rerun installation; no system permission changes are needed. CEDAR still refuses to switch a running release or change desktop providers when their identity or lock state cannot be verified.
+
 For a provided private candidate archive:
 
 1. Download the CEDAR archive.

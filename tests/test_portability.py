@@ -5,6 +5,8 @@ import io
 import json
 import os
 import platform
+import select
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -43,6 +45,186 @@ class Portable(unittest.TestCase):
         if target: tx.backup(target)
         row['journal'] = str(tx.path)
         return tx
+
+    def proc_fixture(self):
+        directory = self.base/'proc'
+        directory.mkdir(exist_ok=True)
+        mount = patch.object(p, 'PROC', directory)
+        mount.start(); self.addCleanup(mount.stop)
+        return directory
+
+    def proc_entry(self, root, pid, comm, exe=None, argv=None, state='S', start='456'):
+        path = root/str(pid); path.mkdir()
+        (path/'stat').write_text(str(pid)+' ('+comm+') '+' '.join([state]+['0']*18+[start])+'\n')
+        if exe is not None: (path/'exe').symlink_to(exe)
+        if argv is not None:
+            (path/'cmdline').write_bytes(b'\0'.join(os.fsencode(arg) for arg in argv)+b'\0')
+        return path
+
+    def deny_exe(self, path):
+        original = os.readlink
+        def readlink(target, *args, **kwargs):
+            if Path(target) == path/'exe': raise PermissionError('fixture protected executable')
+            return original(target, *args, **kwargs)
+        guard = patch.object(p.os, 'readlink', side_effect=readlink)
+        guard.start(); self.addCleanup(guard.stop)
+
+    def test_unrelated_protected_application_does_not_block_desktop_discovery(self):
+        root = self.proc_fixture()
+        other = self.proc_entry(root, 101, 'keyring-agent', '/fixture/keyring-agent')
+        self.deny_exe(other)
+        self.proc_entry(root, 102, 'Hyprland', '/fixture/Hyprland', ['Hyprland'])
+        self.assertEqual([row['pid'] for row in p.processes()], [102])
+        with patch.object(p, 'compositor_locked', return_value=False) as locked:
+            d.ensure_unlocked()
+        locked.assert_called_once()
+
+    @unittest.skipUnless(sys.platform == 'linux', 'Linux proc permission behavior')
+    def test_real_protected_child_without_changing_desktop_permissions(self):
+        code = '''import ctypes,sys
+libc=ctypes.CDLL(None)
+assert libc.prctl(15,sys.argv[1].encode(),0,0,0)==0
+assert libc.prctl(4,0,0,0,0)==0
+print("READY",flush=True)
+sys.stdin.buffer.read(1)
+'''
+        for name in ('cedar-fixture', 'hyprlock'):
+            with self.subTest(name=name):
+                child = subprocess.Popen([sys.executable, '-c', code, name], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                try:
+                    self.assertTrue(select.select([child.stdout], [], [], 5)[0], 'Controlled child startup timed out')
+                    self.assertEqual(child.stdout.readline().strip(), 'READY')
+                    path = Path('/proc')/str(child.pid)
+                    if path.stat().st_uid != os.getuid(): self.skipTest('Kernel hides protected process ownership')
+                    try: os.readlink(path/'exe')
+                    except PermissionError: pass
+                    else: self.skipTest('Environment permits inspecting protected executables')
+                    if name == 'hyprlock':
+                        with self.assertRaisesRegex(d.Refused, 'Cannot verify desktop process metadata'):
+                            p.read_process(child.pid, p.DESKTOP_PROCESSES)
+                    else:
+                        self.assertIsNone(p.read_process(child.pid, p.DESKTOP_PROCESSES))
+                    self.assertIsNone(child.poll())  # it was neither terminated nor altered
+                finally:
+                    child.communicate('x', timeout=5)
+                self.assertEqual(child.returncode, 0)
+
+    def test_unrelated_unreadable_arguments_are_never_read(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 101, 'browser', '/fixture/browser')  # no cmdline file
+        self.assertEqual(p.processes(), [])
+
+    def test_unreadable_desktop_provider_still_refuses(self):
+        root = self.proc_fixture()
+        protected = self.proc_entry(root, 101, 'noctalia', '/fixture/noctalia')
+        self.deny_exe(protected)
+        with self.assertRaisesRegex(d.Refused, 'Cannot verify desktop process metadata'):
+            p.processes()
+
+    def test_install_lock_check_does_not_require_bar_executable_access(self):
+        root = self.proc_fixture()
+        protected = self.proc_entry(root, 101, 'waybar', '/fixture/waybar')
+        self.deny_exe(protected)
+        self.proc_entry(root, 102, 'Hyprland', '/fixture/Hyprland', ['Hyprland'])
+        with patch.object(p, 'compositor_locked', return_value=False): d.ensure_unlocked()
+        with self.assertRaises(d.Refused): p.processes()  # a real handoff still needs its exact identity
+
+    def test_unreadable_compositor_cannot_be_treated_as_offline(self):
+        root = self.proc_fixture()
+        protected = self.proc_entry(root, 101, 'Hyprland', '/fixture/Hyprland')
+        self.deny_exe(protected)
+        with self.assertRaises(d.Refused): d.ensure_unlocked()
+        with self.assertRaises(d.Refused): s.no_graphical_session()
+
+    def test_unreadable_quickshell_blocks_release_switch(self):
+        root = self.proc_fixture()
+        protected = self.proc_entry(root, 101, 'qs', '/fixture/qs')
+        self.deny_exe(protected)
+        with self.assertRaises(d.Refused): d.release_in_use()
+
+    def test_replaced_executable_remains_visible_for_lock_checks(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 101, 'Hyprland', '/fixture/Hyprland (deleted)', ['Hyprland'])
+        rows = p.processes()
+        self.assertEqual(rows[0]['exe'], '/fixture/Hyprland')
+        self.assertTrue(rows[0]['deleted'])
+        with patch.object(p, 'compositor_locked', return_value=True):
+            with self.assertRaisesRegex(d.Refused, 'lock is active'): d.ensure_unlocked()
+        with patch.object(p, 'compositor_locked', side_effect=d.Refused('Unknown lock state')):
+            with self.assertRaisesRegex(d.Refused, 'Unknown lock state'): d.ensure_unlocked()
+
+    def test_zombie_and_exited_processes_do_not_require_executable_access(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 101, 'Hyprland', state='Z')
+        self.assertEqual(p.processes(), [])
+        self.assertIsNone(p.read_process(102))
+
+    def test_live_missing_executable_fails_closed(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 101, 'Hyprland', argv=['Hyprland'])
+        with self.assertRaisesRegex(d.Refused, 'Live desktop process metadata'): p.processes()
+
+    def test_executable_identity_wins_over_changed_process_title(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 101, 'changed (title)', '/fixture/Hyprland', ['Hyprland'], start='789')
+        row = p.processes()[0]
+        self.assertEqual(row['start'], '789')
+        self.assertEqual(row['exe'], '/fixture/Hyprland')
+
+    def test_non_utf8_arguments_are_preserved_without_hiding_provider(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 101, 'waybar', '/fixture/waybar', ['waybar', b'/fixture/\xff.json'])
+        self.assertEqual(os.fsencode(p.processes()[0]['argv'][1]), b'/fixture/\xff.json')
+
+    def test_signal_identity_checks_only_recorded_pid_and_detects_reuse(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 101, 'waybar', '/fixture/waybar', ['waybar'], start='789')
+        row = p.read_process(101)
+        with patch.object(p, 'processes', side_effect=AssertionError('Unrelated processes must not be inspected')):
+            self.assertTrue(p.same_process(row))
+            self.assertFalse(p.same_process({**row, 'start':'old'}))
+            self.assertFalse(p.same_process({**row, 'exe':'/fixture/another'}))
+        self.deny_exe(root/'101')
+        with patch.object(p.signal, 'pidfd_send_signal') as signal:
+            with self.assertRaises(d.Refused): p.pause(row)
+        signal.assert_not_called()
+
+    def test_current_symlink_launch_is_recognized_as_running_release(self):
+        root = self.proc_fixture()
+        release = d.paths()['data']/'releases/fixture'; release.mkdir(parents=True)
+        current = d.paths()['data']/'current'; current.symlink_to(release)
+        self.proc_entry(root, 101, 'qs', '/fixture/qs', ['qs', '-p', str(current/'shell.qml')])
+        with patch.object(p, 'qs_instances', return_value=[{'pid':101,'config_path':str(current/'shell.qml')}]):
+            self.assertTrue(d.release_in_use())
+        with patch.object(p, 'qs_instances', side_effect=d.Refused('Unknown Quickshell state')):
+            with self.assertRaises(d.Refused): d.release_in_use()
+
+    def test_pending_cedar_lock_still_blocks_with_unrelated_protected_process(self):
+        root = self.proc_fixture()
+        other = self.proc_entry(root, 101, 'keyring-agent', '/fixture/keyring-agent')
+        self.deny_exe(other)
+        self.proc_entry(root, 102, 'Hyprland', '/fixture/Hyprland', ['Hyprland'])
+        source = str(d.paths()['data']/'releases/fixture/shell.qml')
+        self.proc_entry(root, 103, 'qs', '/fixture/qs', ['qs', '-p', source])
+        with patch.object(p, 'compositor_locked', return_value=False), patch.object(p, 'qs_instances', return_value=[{'config_path':source}]), patch.object(p, 'qs_ipc', return_value='true'):
+            with self.assertRaisesRegex(d.Refused, 'locking or locked'): d.ensure_unlocked()
+
+    def test_upgrade_and_rollback_with_unrelated_protected_process(self):
+        root = self.proc_fixture()
+        other = self.proc_entry(root, 101, 'keyring-agent', '/fixture/keyring-agent')
+        self.deny_exe(other)
+        self.proc_entry(root, 102, 'Hyprland', '/fixture/Hyprland', ['Hyprland'])
+        source = self.base/'next release'
+        shutil.copytree(d.ROOT, source, ignore=shutil.ignore_patterns('.git', '__pycache__'))
+        (source/'VERSION').write_text('0.1.0-dev.fixture\n')
+        with patch.object(d, 'validate', return_value='Fixture validation'), patch.object(p, 'compositor_locked', return_value=False):
+            d.install(d.ROOT, approved=True)
+            before = d.installed()
+            d.install(source, approved=True)
+            self.assertNotEqual(d.installed(), before)
+            self.assertEqual((d.installed()/'VERSION').read_text().strip(), '0.1.0-dev.fixture')
+            d.recover_latest('install')
+            self.assertEqual(d.installed(), before)
 
     def test_missing_packages_never_install_another_desktop(self):
         with patch.object(d.shutil, 'which', return_value=None):

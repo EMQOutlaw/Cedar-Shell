@@ -72,6 +72,32 @@ class Distribution(unittest.TestCase):
             d.install(d.ROOT,approved=True);self.assertEqual(d.installed(),first)
             d.recover_latest('install');self.assertFalse((d.paths()['data']/'current').exists())
             self.assertTrue((d.paths()['data']/'recovery/distribution.py').is_file())
+    def upgrade_fixture(self):
+        with patch.object(d,'validate',return_value='Fixture validation'):
+            d.install(d.ROOT,approved=True)
+        source=self.root/'upgrade source'
+        shutil.copytree(d.ROOT,source,ignore=shutil.ignore_patterns('.git','__pycache__'))
+        (source/'VERSION').write_text('0.1.0-dev.fixture\n')
+        protected=[d.paths()['data']/'current',d.paths()['bin'],*(d.paths()['data']/'recovery').glob('*.py')]
+        return source,{path:d.info(path) for path in protected}
+    def test_upgrade_lock_refusal_precedes_any_installed_helper_write(self):
+        source,before=self.upgrade_fixture()
+        with patch.object(d,'ensure_unlocked',side_effect=d.Refused('Fixture locked')),patch.object(d.Transaction,'apply_file') as write,patch.object(d,'validate') as validate:
+            with self.assertRaisesRegex(d.Refused,'Fixture locked'):d.install(source,approved=True)
+        write.assert_not_called();validate.assert_not_called()
+        self.assertEqual({path:d.info(path) for path in before},before)
+    def test_lock_beginning_during_validation_preserves_installed_helpers(self):
+        source,before=self.upgrade_fixture()
+        with patch.object(d,'ensure_unlocked',side_effect=[None,d.Refused('Fixture lock began')]),patch.object(d,'release_in_use',return_value=False),patch.object(d,'validate',return_value='Fixture validation'),patch.object(d.Transaction,'apply_file') as write:
+            with self.assertRaisesRegex(d.Refused,'Fixture lock began'):d.install(source,approved=True)
+        write.assert_not_called()
+        self.assertEqual({path:d.info(path) for path in before},before)
+    def test_running_release_blocks_upgrade_before_helpers_or_validation(self):
+        source,before=self.upgrade_fixture()
+        with patch.object(d,'ensure_unlocked'),patch.object(d,'release_in_use',return_value=True),patch.object(d.Transaction,'apply_file') as write,patch.object(d,'validate') as validate:
+            with self.assertRaisesRegex(d.Refused,'release is in use'):d.install(source,approved=True)
+        write.assert_not_called();validate.assert_not_called()
+        self.assertEqual({path:d.info(path) for path in before},before)
     def test_uninstall_restores_entire_chain(self):
         file=self.root/'entry';file.write_text('baseline')
         for content in [b'first release',b'second release']:

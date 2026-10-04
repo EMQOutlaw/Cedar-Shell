@@ -15,26 +15,80 @@ import tomllib
 import distribution as d
 
 
-def processes():
-    rows = []
-    for path in Path('/proc').glob('[0-9]*'):
+PROC = Path('/proc')
+DESKTOP_PROCESSES = frozenset(('hyprland', 'qs', 'quickshell', 'noctalia',
+    'waybar', 'mako', 'dunst', 'hyprlock', 'swaylock', 'hypridle', 'swayidle',
+    'swww-daemon', 'awww-daemon', 'hyprpaper', 'swaybg'))
+
+
+def process_stat(path):
+    # comm may contain spaces and parentheses. starttime is stat field 22.
+    text = os.fsdecode((path / 'stat').read_bytes())
+    head, tail = text.rsplit(')', 1)
+    fields = tail.split()
+    ticks = fields[19]
+    if not ticks.isdigit():
+        raise ValueError('Invalid process start time')
+    return head.split('(', 1)[1], fields[0], ticks
+
+
+def read_process(pid, names=None):
+    """Verify one provider; unrelated protected applications need no ptrace access.
+
+    names is a discovery filter, never authority to signal a process. A signal
+    target is checked again by exact PID/start/executable with no name filter.
+    """
+    path = PROC / str(int(pid))
+    comm = None
+    try:
+        if path.stat().st_uid != os.getuid():
+            return None
+        comm, state, ticks = process_stat(path)
+        if state in ('Z', 'X', 'x'):
+            return None
         try:
-            if path.stat().st_uid != os.getuid():
-                continue
-            exe = str((path / 'exe').resolve(strict=True))
-            argv = (path / 'cmdline').read_bytes().decode().rstrip('\0').split('\0')
-            if not argv or not argv[0]:
-                continue
-            # /proc stat's command can contain spaces and parentheses.
-            ticks = (path / 'stat').read_text().rsplit(')', 1)[1].split()[19]
-            rows.append({'pid': int(path.name), 'exe': exe, 'argv': argv, 'start': ticks})
-        except PermissionError as error:
-            raise d.Refused('Cannot inspect a same-user process; desktop handoff is deferred.') from error
-        except (FileNotFoundError, ProcessLookupError):
-            continue
-        except (OSError, ValueError, UnicodeError, IndexError) as error:
-            raise d.Refused('Process ownership could not be verified; no provider will be stopped.') from error
-    return rows
+            # readlink still identifies an executable replaced by a package
+            # upgrade; resolving its now-deleted path would lose a live locker.
+            raw_exe = os.readlink(path / 'exe')
+        except PermissionError:
+            if names is not None and comm.lower() not in names:
+                return None
+            raise
+        deleted = raw_exe.endswith(' (deleted)')
+        exe = raw_exe.removesuffix(' (deleted)')
+        if not Path(exe).is_absolute():
+            raise ValueError('Invalid executable path')
+        if names is not None and Path(exe).name.lower() not in names:
+            if comm.lower() in names:
+                raise d.Refused('Desktop process identity is ambiguous (PID '+path.name+'). No provider will be changed.')
+            return None
+        argv = [os.fsdecode(arg) for arg in (path / 'cmdline').read_bytes().rstrip(b'\0').split(b'\0')]
+        _, next_state, next_ticks = process_stat(path)
+        if next_state in ('Z', 'X', 'x'):
+            return None
+        if next_ticks != ticks or not argv or not argv[0]:
+            raise d.Refused('Desktop process changed during inspection (PID '+path.name+'). Retry when it has finished starting.')
+        return {'pid': int(pid), 'exe': exe, 'argv': argv, 'start': ticks, 'deleted': deleted}
+    except PermissionError as error:
+        raise d.Refused('Cannot verify desktop process metadata (PID '+path.name+'). Desktop changes are deferred; cedar preview remains available. Do not run CEDAR as root or relax system permissions.') from error
+    except FileNotFoundError as error:
+        if names is None or comm is not None and comm.lower() in names:
+            try:
+                _, state, _ = process_stat(path)
+                if state not in ('Z', 'X', 'x'):
+                    raise d.Refused('Live desktop process metadata is unavailable (PID '+path.name+'); no provider will be changed.') from error
+            except (FileNotFoundError, ProcessLookupError):
+                pass
+        return None
+    except ProcessLookupError:
+        return None
+    except (OSError, ValueError, UnicodeError, IndexError) as error:
+        raise d.Refused('Desktop process ownership could not be verified (PID '+path.name+'); no provider will be changed.') from error
+
+
+def processes(names=None):
+    selected = DESKTOP_PROCESSES if names is None else frozenset(n.lower() for n in names)
+    return [row for path in PROC.glob('[0-9]*') if (row := read_process(int(path.name), selected)) is not None]
 
 
 def process_environment(pid):
@@ -45,7 +99,9 @@ def process_environment(pid):
 
 
 def same_process(row):
-    return any(p['pid'] == row['pid'] and p['start'] == row['start'] and p['exe'] == row['exe'] for p in processes())
+    current = read_process(row['pid'])
+    return bool(current and all(current[key] == row[key] for key in ('pid', 'start', 'exe'))
+                and current['deleted'] == row.get('deleted', False))
 
 
 def qs_instances():
@@ -114,6 +170,8 @@ def main_config():
 
 
 def verify_noctalia(root, row):
+    if row.get('provider', {}).get('deleted'):
+        raise d.Refused('The running Noctalia executable was replaced by an update. Finish updating that desktop before trying CEDAR; its locker stays running.')
     rules = d.read_json(root / 'integrations/noctalia/adapter.json')
     if row['adapter'] == 'noctalia-v4':
         for name, checksum in rules['v4']['sourceHashes'].items():
@@ -268,6 +326,8 @@ def inspect(root):
     if any(Path(p['exe']).name in ('hypridle', 'swayidle') for p in all_processes) and row['locker'] != 'hyprlock':
         raise d.Refused('Existing idle handling has an unidentified locker. CEDAR preserves it; configure the existing Hyprlock provider or use preview.')
     for process in row['paused']:
+        if process.get('deleted'):
+            raise d.Refused('A desktop provider executable was replaced by an update. Finish updating that desktop before trying CEDAR; no provider was stopped.')
         # Prefer the owning user service so Restart= cannot race a direct stop.
         cgroups = (Path('/proc') / str(process['pid']) / 'cgroup').read_text()
         units = re.findall(r'/([^/\n]+\.service)(?:/|\n|$)', cgroups)

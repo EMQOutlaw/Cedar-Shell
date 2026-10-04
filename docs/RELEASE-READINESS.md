@@ -1,4 +1,4 @@
-# Release readiness — 0.1.0-dev.7
+# Release readiness — 0.1.0-dev.8
 
 **Private development candidate. Not a complete public release.** No first-party license or artwork redistribution grant has been selected. Required upstream notices and approved local KJV content remain intact.
 
@@ -13,6 +13,8 @@ The new distribution path provides versioned copied code, explicit-path IPC, an 
 `data/compatibility.json` records observed Arch/Omarchy runtime versions and offscreen evidence. Plain Hyprland and Noctalia 4.7.7/5.2.1 are experimental; Caelestia/Ryoku and generic shell takeover are unsupported without adapter evidence. No hardware vendor has been certified by this work. CI runs source/recovery/archive checks, not native lock or GPU acceptance.
 
 Candidate 7 fixes CachyOS dependency selection and stops treating recommended fonts as installation blockers. Its package backend is explicit in the dependency manifest and remains experimental. The 237-test local suite and exact-archive install/reinstall checks passed; CachyOS package transactions were tested with controlled fixtures only. See `LOCAL-VERIFICATION.md` for evidence and limits.
+
+Candidate 8 fixes unrelated protected processes blocking upgrades. It moves safety checks ahead of installed helper writes and keeps strict desktop identity, release-use and lock checks. Its 256-test suite includes real Linux protected-process behavior plus controlled upgrade/recovery fixtures. The native desktop gates below remain outstanding.
 
 Outstanding gates:
 
