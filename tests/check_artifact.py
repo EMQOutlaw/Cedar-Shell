@@ -28,6 +28,6 @@ with tempfile.TemporaryDirectory(prefix='cedar artifact 雨 ') as temporary:
                 print(result.stdout+result.stderr);raise SystemExit(1)
         print('PASS: exact archive fresh and repeated installation, actual offscreen QML validation, isolated XDG locations, no Omarchy files')
     else:
-        print('NOT TESTED: actual QML install validation (Quickshell unavailable on this runner)')
+        print('NOT TESTED: actual QML install validation (Quickshell unavailable in this environment)')
     print('PASS: exact archive hashes, all plugin artifacts, spaces/non-ASCII paths, Bash startup and stdlib recovery/privacy tests')
     print('NOT TESTED: fresh-system package bootstrap, live Wayland/PAM, Zsh/Fish, logout/login/reboot and GPU matrix')
