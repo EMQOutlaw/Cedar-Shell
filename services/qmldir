@@ -25,3 +25,4 @@ singleton Clipboard 1.0 Clipboard.qml
 singleton Trailwatch 1.0 Trailwatch.qml
 
 singleton WeatherLocation 1.0 WeatherLocation.qml
+SessionIntegration 1.0 SessionIntegration.qml

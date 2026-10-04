@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.0-dev.1",
+  "version": "0.1.0-dev.2",
   "channel": "development",
   "repository": "https://github.com/EMQOutlaw/Cedar-Shell",
   "visibility": "private",

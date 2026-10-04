@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "cedar.integration",
+  "name": "CEDAR desktop integration",
+  "version": "0.1.0",
+  "description": "An empty bar host while the separate CEDAR desktop runs; Omarchy authentication remains resident.",
+  "kinds": ["bar"],
+  "entryPoints": {"bar": "Bridge.qml"}
+}

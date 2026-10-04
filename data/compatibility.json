@@ -5,9 +5,9 @@
   "environments": [
     {
       "id": "arch-omarchy",
-      "adapterVersion": 1,
+      "adapterVersion": 2,
       "status": "Experimental",
-      "evidence": "Observed native versions plus isolated offscreen tests only",
+      "evidence": "Inspected upstream Omarchy v4.0.4 commit c668141e9c42b13c80c9ca4ea108e11708c5e8a5; guarded resident-authentication trial implemented; fixture/offscreen tests; live target acceptance pending",
       "versions": {
         "quickshell": "0.3.1",
         "qt": "6.11.2",
@@ -15,7 +15,10 @@
       },
       "installOnly": true,
       "preview": "Requires complete compatible Quickshell build",
-      "takeoverCertified": false
+      "takeoverCertified": false,
+      "trialImplemented": true,
+      "omarchySourceGate": "integrations/omarchy/adapter.json",
+      "authentication": "Existing Omarchy locker and idle services retained"
     },
     {
       "id": "plain-hyprland",

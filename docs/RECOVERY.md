@@ -12,4 +12,6 @@ Recovery checks every current file against the last recorded CEDAR write before 
 
 A desktop lock blocks switching/restoration. Unknown lock state also blocks it while a graphical session exists. Recovery does not kill a locker or compositor and does not log out. A TTY is not evidence that another session is unlocked. If an unusable secure lock requires ending a graphical session, unsaved work can be lost; this tool never takes that action automatically.
 
-Source rollback does not roll back independently upgraded Qt, Quickshell, GPU drivers or system packages. Package results are recorded separately and never claimed reversible by restoring dotfiles. Full live trial/Keep-at-login restoration is not implemented/certified; the installer does not take over startup.
+During an Omarchy trial/session, `cedar restore` restores that desktop integration first. Run it before switching releases or uninstalling. A second restore after the session has been restored applies to the latest program installation transaction. The independent session supervisor and post-boot recovery hook are described in [Omarchy integration](OMARCHY-SESSION.md). The existing Omarchy locker is never stopped by this adapter.
+
+Source rollback does not roll back independently upgraded Qt, Quickshell, GPU drivers or system packages. Package results are recorded separately and never claimed reversible by restoring dotfiles. Omarchy trial/Keep/login startup is implemented experimentally with fixture tests; native device acceptance remains unverified.

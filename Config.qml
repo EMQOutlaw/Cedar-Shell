@@ -12,6 +12,7 @@ Singleton {
     // 1: components + bar; 2: HUD; 3: complete shell.
     readonly property int stage: Math.max(1, Math.min(3, Number(Quickshell.env("CEDAR_STAGE") || Quickshell.env("FOXFIRE_STAGE") || 3)))
     readonly property bool testMode: (Quickshell.env("CEDAR_TEST") || Quickshell.env("FOXFIRE_TEST")) === "1"
+    readonly property bool externalSession: Quickshell.env("CEDAR_OMARCHY_SESSION") === "1"
     readonly property bool localOnly: saved.localOnly || Quickshell.env("CEDAR_LOCAL_ONLY") === "1"
     function imageSource(value) {
         const source=String(value || "");

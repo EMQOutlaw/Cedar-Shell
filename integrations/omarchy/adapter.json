@@ -1,0 +1,26 @@
+{
+  "adapterVersion": 1,
+  "status": "Experimental; fixture/offscreen tests, live target confirmation required",
+  "upstream": "https://github.com/omacom/omarchy/tree/c668141e9c42b13c80c9ca4ea108e11708c5e8a5",
+  "sourceHashes": {
+    "shell/shell.qml": [
+      "4a4b7694e5b9e0bd952ce0efa2d6dc2cea44cdfa98cc2f442e40fe41cbc1beab"
+    ],
+    "shell/services/PluginRegistry.qml": [
+      "8466127c53037b80b582544610b0bdf78a86764e4f037a3b9ce360d107359803"
+    ],
+    "shell/plugins/lock/Service.qml": [
+      "3f0a265a09f7957e8f5d74666595d3136ec64899c414426190460f9e2098e701"
+    ],
+    "bin/omarchy-hook": [
+      "c64ea844feb1849375e7cd43dde98933293b0e0f0f522e1ba2c6572d86386c7b"
+    ]
+  },
+  "externalAccess": false,
+  "preservedServices": [
+    "omarchy.lock",
+    "omarchy.idle",
+    "omarchy.polkit",
+    "omarchy.background"
+  ]
+}

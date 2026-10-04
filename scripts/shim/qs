@@ -1,0 +1,9 @@
+#!/bin/bash
+# Scope legacy named CEDAR IPC calls to this explicitly selected release only.
+set -eu
+real=${CEDAR_QS_BIN:-/usr/bin/qs}
+if [[ -n ${CEDAR_SHELL_PATH:-} && ${1:-} == -c && ${2:-} == cedar ]]; then
+    shift 2
+    exec "$real" -p "$CEDAR_SHELL_PATH" "$@"
+fi
+exec "$real" "$@"

@@ -15,7 +15,7 @@ with tempfile.TemporaryDirectory(prefix='cedar artifact 雨 ') as temporary:
         for rel in row['releaseArtifacts']:
             if rel not in manifest:raise SystemExit('Plugin artifact omitted: '+rel)
     env={**os.environ,'HOME':str(base/'home'),**{'XDG_'+k+'_HOME':str(base/k.lower()) for k in ['CONFIG','DATA','STATE','CACHE']}}
-    for argv in [['bash','./install.sh','--plan'],['bash','-n','install.sh'],[sys.executable,'-m','unittest','discover','-s','tests','-p','test_distribution.py']]:
+    for argv in [['bash','./install.sh','--plan'],['bash','-n','install.sh'],[sys.executable,'-m','unittest','discover','-s','tests','-p','test_distribution.py'],[sys.executable,'-m','unittest','discover','-s','tests','-p','test_omarchy_session.py']]:
         result=subprocess.run(argv,cwd=root,env=env,text=True,capture_output=True)
         if result.returncode:print(result.stdout+result.stderr);raise SystemExit(1)
     print('PASS: exact archive hashes, all plugin artifacts, spaces/non-ASCII paths, Bash startup and stdlib recovery/privacy tests')

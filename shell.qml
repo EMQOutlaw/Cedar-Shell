@@ -6,6 +6,10 @@ import "modules"
 import "services"
 
 ShellRoot {
+    LazyLoader {
+        active: Config.externalSession
+        component: SessionIntegration {}
+    }
     IpcHandler {
         target: "media"
         function toggle(): void {
@@ -69,7 +73,7 @@ ShellRoot {
     property var forestService: Forest
     property var clipboardService: Clipboard
     // Disable hot reload while locked: never replace the authentication engine.
-    settings.watchFiles: !ShellState.locked
+    settings.watchFiles: !Config.externalSession && !ShellState.locked
     IpcHandler {
         target: "wallpapers"
         function toggle(): void {
@@ -142,6 +146,20 @@ ShellRoot {
     }
     IpcHandler {
         target: "notifications"
+        function dismissOne(): void {
+            if (!ShellState.locked && NoticeStore.live.length)
+                NoticeStore.dismiss(NoticeStore.live[NoticeStore.live.length - 1].id);
+        }
+        function dismissAll(): void {
+            if (!ShellState.locked)
+                for (const n of NoticeStore.live.slice()) NoticeStore.dismiss(n.id);
+        }
+        function invokeLast(): void {
+            if (ShellState.locked) return;
+            const n = NoticeStore.live[NoticeStore.live.length - 1];
+            const action = n?.actions?.find(a => a.identifier === "default") || n?.actions?.[0];
+            if (action) action.invoke();
+        }
         function toggle(): void {
             if (Config.stage >= 3) {
                 if (Config.saved.canopyEnabled) {
@@ -169,7 +187,7 @@ ShellRoot {
         }
         // Open the existing real-PAM test window without requesting a session lock.
         function testAuthentication(): void {
-            if (Config.stage >= 3 && !Config.testMode && !ShellState.locked) {
+            if (Config.stage >= 3 && !Config.testMode && !ShellState.locked && !Config.externalSession) {
                 ShellState.close();
                 ShellState.authTest = true;
             }
@@ -177,6 +195,17 @@ ShellRoot {
     }
     IpcHandler {
         target: "osd"
+        function fromOmarchy(payload: string): void {
+            if (ShellState.locked || payload.length > 4096) return;
+            try {
+                const p = JSON.parse(payload);
+                if (String(p.icon || "").startsWith("volume-")) { Audio.show(); return; }
+                const value = Number(p.value), max = Number(p.max);
+                ShellState.osd(p.icon === "brightness" ? "BRIGHTNESS" : String(p.message || p.icon || "STATUS").slice(0, 100),
+                    isFinite(value) && isFinite(max) && max > 0 ? Math.max(0, Math.min(1, value / max)) : 0,
+                    String(p.progressText || p.message || "").slice(0, 100));
+            } catch (_) {}
+        }
         function volume(delta: int): void {
             Audio.change(delta);
         }
@@ -201,6 +230,9 @@ ShellRoot {
         function isLocked(): bool {
             return ShellState.locked;
         }
+        function sessionInfo(): string {
+            return JSON.stringify({externalLock: Config.externalSession, locked: ShellState.locked, screenCount: Quickshell.screens.length, stage: Config.stage});
+        }
         function stop(): void {
             if (!ShellState.locked)
                 Qt.quit();
@@ -211,7 +243,7 @@ ShellRoot {
         component: NotificationServer {}
     }
     LazyLoader {
-        active: Config.stage >= 3
+        active: Config.stage >= 3 && !Config.externalSession
         component: LockScreen {}
     }
     Variants {
@@ -222,7 +254,7 @@ ShellRoot {
                 output: modelData
             }
             LazyLoader {
-                active: Config.stage >= 3 && !Config.testMode
+                active: Config.stage >= 3 && !Config.testMode && !Config.externalSession
                 component: Background {
                     output: modelData
                 }

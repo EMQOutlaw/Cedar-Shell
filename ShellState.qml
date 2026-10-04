@@ -93,6 +93,11 @@ Singleton {
     function lock(suspend) {
         authTest = false;
         close();
+        if (Config.externalSession) {
+            locked = true;
+            Quickshell.execDetached(["python3", Quickshell.env("CEDAR_SESSION_HELPER"), "lock", ...(suspend ? ["--suspend"] : [])]);
+            return;
+        }
         suspendAfterLock = suspend;
         locked = true;
     }

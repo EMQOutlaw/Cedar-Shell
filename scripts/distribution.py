@@ -110,7 +110,7 @@ class Transaction:
         temporary.symlink_to(target);os.replace(temporary,path)
     def commit(self):self.stage('commit')
 
-def restore_journal(journal):
+def check_restore_journal(journal):
     value=read_json(journal)
     if value.get('format')!=FORMAT:raise Refused('Unsupported recovery journal.')
     # Check EVERY entry before changing any. Keep later user edits untouched.
@@ -120,6 +120,10 @@ def restore_journal(journal):
         if same(now,entry['before']):continue
         if not entry['after'] or not same(now,entry['after']):raise Refused('Later user edit preserved; review backup: '+entry['path'])
         if entry['before']['type']=='file' and digest(journal.parent/entry['backup'])!=entry['before']['sha256']:raise Refused('Recovery backup checksum mismatch.')
+    return value
+
+def restore_journal(journal):
+    value=check_restore_journal(journal)
     for entry in reversed(value['files']):
         if entry.get('retainOnRestore'):continue
         path=Path(entry['path']);before=entry['before']
@@ -250,7 +254,8 @@ def installation_next_steps():
     print('  '+launcher+' preview')
     print('Inspect local health:')
     print('  '+launcher+' doctor')
-    print('Full desktop activation is not implemented in this development candidate.')
+    print('On supported Omarchy 4 installations, try the full desktop:')
+    print('  '+launcher+' try')
     print('The preview is a separate window; your existing desktop remains running.')
 
 def install(root,approved=False,plan_only=False):
@@ -258,8 +263,11 @@ def install(root,approved=False,plan_only=False):
     if plan_only:print(json.dumps(plan,indent=2));return
     approve(plan,approved)
     with exclusive():
+        import omarchy_session
+        if omarchy_session.active():raise Refused('Restore the active CEDAR desktop session before installing another release.')
         destination=Path(plan['release']);current=paths()['data']/'current';binary=paths()['bin']
         recovery=paths()['data']/'recovery/distribution.py'
+        session_recovery=paths()['data']/'recovery/omarchy_session.py'
         if binary.exists() or binary.is_symlink():
             if not binary.is_file() or b'# CEDAR distribution launcher' not in binary.read_bytes():raise Refused('The cedar command is already owned elsewhere. Existing installation preserved.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
@@ -275,7 +283,9 @@ def install(root,approved=False,plan_only=False):
         validation=validate(root)
         tx=Transaction('install')
         try:
-            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery]};entries[str(recovery)]['retainOnRestore']=True;tx.save();tx.stage('back-up')
+            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery,session_recovery]}
+            for p in (recovery,session_recovery):entries[str(p)]['retainOnRestore']=True
+            tx.save();tx.stage('back-up')
             destination.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
             if not destination.exists():
                 temporary=Path(tempfile.mkdtemp(prefix='.prepare-',dir=destination.parent))
@@ -287,6 +297,7 @@ def install(root,approved=False,plan_only=False):
                 tx.record['release']=str(destination);tx.save();tx.stage('prepare');os.replace(temporary,destination)
             else:verify_tree(destination,read_json(destination/'release-files.json'))
             tx.stage('validate')
+            tx.apply_file(entries[str(session_recovery)],(root/'scripts/omarchy_session.py').read_bytes(),0o700)
             tx.apply_file(entries[str(recovery)],(root/'scripts/distribution.py').read_bytes(),0o700)
             launcher='#!/bin/sh\n# CEDAR distribution launcher\nexec python3 '+__import__('shlex').quote(str(recovery))+' "$@"\n'
             tx.apply_file(entries[str(binary)],launcher.encode(),0o700)
@@ -376,6 +387,8 @@ def update(archive,signature,key,approved=False):
         ensure_unlocked();install(candidate,approved)
 
 def uninstall(approved=False):
+    import omarchy_session
+    if omarchy_session.active():raise Refused('Run cedar restore to leave the active desktop session before uninstalling.')
     approve({'action':'Uninstall program entry points','preserve':['preferences','plugins','themes','backups','release source','recovery tool','shared packages'],'desktop':'Restore recorded integration first; never kill a session'},approved)
     with exclusive():
         ensure_unlocked()
@@ -402,20 +415,31 @@ def uninstall(approved=False):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','restore','rollback','doctor','update','uninstall','ipc','dependencies'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
     parser.add_argument('--approve-uninstall',action='store_true');parser.add_argument('--signature',type=Path);parser.add_argument('--trusted-key',type=Path)
+    parser.add_argument('--approve-omarchy-trial',action='store_true');parser.add_argument('--approve-login',action='store_true')
     args=parser.parse_args(argv)
     if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
     if args.action=='install':install(args.source.resolve(),args.approve_install_only,args.plan)
     elif args.action=='dependencies':package_plan(args.source.resolve(),args.approve_packages,args.approve_system_upgrade)
     elif args.action in ('restore','rollback'):
+        import omarchy_session
+        if omarchy_session.active():
+            if args.action=='rollback':raise Refused('Run cedar restore before switching releases.')
+            omarchy_session.request_restore();return
         with exclusive():recover_latest('install')
     elif args.action=='uninstall':uninstall(args.approve_uninstall)
     elif args.action=='update':update(Path(args.arguments[0]) if args.arguments else None,args.signature,args.trusted_key)
-    elif args.action in ('try','activate','keep'):raise Refused('Desktop takeover is not certified for this configuration. Use cedar preview. Existing shell/lock integration is preserved; see compatibility report.')
+    elif args.action in ('try','activate','keep','status'):
+        import omarchy_session
+        if args.action=='try':omarchy_session.trial(installed(),args.approve_omarchy_trial)
+        elif args.action=='status':
+            row=omarchy_session.read_record()
+            print(json.dumps({k:row.get(k) for k in ('stage','login','deadline','error')} if row else {'stage':'not active'},indent=2))
+        else:omarchy_session.keep(args.action=='activate',args.approve_login)
     elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()

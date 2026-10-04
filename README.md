@@ -16,7 +16,7 @@ With Git installed, copy and paste this command into your terminal:
 git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh
 ```
 
-The repository is currently private, so your GitHub account needs access and Git authentication must be configured. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop; activation is not included yet. Run it from a folder that does not already contain a `cedar-shell` directory.
+The repository is currently private, so your GitHub account needs access and Git authentication must be configured. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop; the separate Omarchy trial below activates CEDAR. Run it from a folder that does not already contain a `cedar-shell` directory.
 
 For a provided private candidate archive:
 
@@ -28,7 +28,7 @@ A checkout works too. Python 3 and ordinary shell utilities bootstrap setup. On 
 
 The installer shows an **Install Only** plan and copies complete source into versioned user data storage; the extracted folder can then be removed. It preserves current preferences and desktop startup. A command collision or managed/symlinked target stops safely. `--plan` inspects without installation; `--approve-install-only` encodes that limited unattended choice. There is no generic yes flag authorizing takeover.
 
-`cedar preview` opens an ordinary window with explicitly labeled fixtures, isolated preferences and local-only operation. It does not own notifications, replace wallpaper, reserve desktop space or lock the session. **Try/Keep/login takeover is a release blocker and currently refuses**; this candidate will not guess how to disable another shell.
+`cedar preview` opens an ordinary window with explicitly labeled fixtures, isolated preferences and local-only operation. It does not own notifications, replace wallpaper, reserve desktop space or lock the session.
 
 After installation, open that preview with this command (it also works when `~/.local/bin` is not on your PATH):
 
@@ -36,7 +36,39 @@ After installation, open that preview with this command (it also works when `~/.
 "$HOME/.local/bin/cedar" preview
 ```
 
-If the installer says **Desktop activation: not performed**, installation succeeded. The preview is currently the available way to try the interface; switching your full desktop to CEDAR is not implemented in this distribution candidate yet.
+If the installer says **Desktop activation: not performed**, installation succeeded. Choose either the isolated preview above or the full desktop trial below.
+
+### Use CEDAR on Omarchy 4.0.4
+
+This is an experimental integration with runtime checks, not a claim of completed hardware or secure-lock acceptance testing. It checks the installed Omarchy source interfaces before changing anything; other versions or modified providers can be refused safely.
+
+Start a 120-second trial of the **full CEDAR desktop**:
+
+```bash
+"$HOME/.local/bin/cedar" try
+```
+
+Read and approve its plan. CEDAR supplies the bar, Core, Canopy, Field Station, Settings and notifications. Omarchy keeps its existing lockscreen, idle handling, privileged authentication prompts, wallpaper and keyboard shortcuts. Trailwatch authentication is not activated by this trial. No compositor restart, logout, or package change is performed.
+
+If it works, run this before the trial expires:
+
+```bash
+"$HOME/.local/bin/cedar" keep
+```
+
+To also use it at login, approve the separate startup change:
+
+```bash
+"$HOME/.local/bin/cedar" activate
+```
+
+To go back at any time:
+
+```bash
+"$HOME/.local/bin/cedar" restore
+```
+
+An independent supervisor restores the previous settings after an unconfirmed timeout or a CEDAR crash. While locked, it defers changes until unlock. Later manual edits are preserved and reported as recovery conflicts. `cedar status` shows startup/recovery errors. See [Omarchy integration](docs/OMARCHY-SESSION.md) for exact boundaries and recovery details.
 
 ## Recovery and updates
 

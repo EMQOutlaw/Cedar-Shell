@@ -24,17 +24,18 @@
         "feature-runtime-test"
       ],
       "consumers": [
-        "scripts/export-themes.py",
-        "scripts/smoke.py",
-        "scripts/settings_info.py",
-        "scripts/theme-sync.py",
-        "scripts/cedar_cli.py",
-        "scripts/audit_public.py",
-        "scripts/distribution.py",
-        "scripts/shim/omarchy-shell",
-        "modules/KeybindSettings.qml",
+        "menus/cedar-menu.jsonc",
         "modules/CoreSettings.qml",
-        "menus/cedar-menu.jsonc"
+        "modules/KeybindSettings.qml",
+        "scripts/audit_public.py",
+        "scripts/cedar_cli.py",
+        "scripts/distribution.py",
+        "scripts/export-themes.py",
+        "scripts/omarchy_session.py",
+        "scripts/settings_info.py",
+        "scripts/shim/omarchy-shell",
+        "scripts/smoke.py",
+        "scripts/theme-sync.py"
       ]
     },
     {
@@ -54,12 +55,13 @@
         "feature-runtime-test"
       ],
       "consumers": [
-        "scripts/settings_info.py",
-        "scripts/desktop.py",
-        "scripts/theme-sync.py",
+        "modules/SessionControls.qml",
         "scripts/cedar_cli.py",
+        "scripts/desktop.py",
         "scripts/distribution.py",
-        "modules/SessionControls.qml"
+        "scripts/omarchy_session.py",
+        "scripts/settings_info.py",
+        "scripts/theme-sync.py"
       ]
     },
     {
@@ -138,14 +140,15 @@
         "feature-runtime-test"
       ],
       "consumers": [
-        "scripts/install.py",
-        "scripts/settings_info.py",
-        "scripts/activate-theme-guard",
-        "scripts/cedar_cli.py",
-        "scripts/trailwatch.py",
+        "menus/cedar-menu.jsonc",
         "modules/LockScreen.qml",
         "modules/SessionControls.qml",
-        "menus/cedar-menu.jsonc"
+        "scripts/activate-theme-guard",
+        "scripts/cedar_cli.py",
+        "scripts/install.py",
+        "scripts/omarchy_session.py",
+        "scripts/settings_info.py",
+        "scripts/trailwatch.py"
       ]
     },
     {
@@ -165,11 +168,12 @@
         "feature-runtime-test"
       ],
       "consumers": [
+        "menus/cedar-menu.jsonc",
+        "modules/FieldStation.qml",
+        "scripts/omarchy_session.py",
         "scripts/theme-hook",
         "scripts/theme-sync.py",
-        "services/Go.qml",
-        "modules/FieldStation.qml",
-        "menus/cedar-menu.jsonc"
+        "services/Go.qml"
       ]
     },
     {
@@ -189,28 +193,29 @@
         "feature-runtime-test"
       ],
       "consumers": [
-        "scripts/install.py",
-        "scripts/document.py",
-        "scripts/wallpapers.py",
-        "scripts/plugins.py",
-        "scripts/with-shim",
-        "scripts/control.py",
-        "scripts/settings_info.py",
-        "scripts/core_actions.py",
-        "scripts/default_apps.py",
-        "scripts/theme-sync.py",
-        "scripts/cedar_cli.py",
-        "scripts/trailwatch.py",
-        "scripts/distribution.py",
-        "scripts/shim/omarchy-shell",
-        "services/CoreSources.qml",
-        "services/Go.qml",
-        "modules/Themes.qml",
-        "modules/WallpaperPicker.qml",
-        "modules/Background.qml",
         "components/MenuModel.js",
         "components/SettingsSchema.js",
-        "menus/cedar-menu.jsonc"
+        "menus/cedar-menu.jsonc",
+        "modules/Background.qml",
+        "modules/Themes.qml",
+        "modules/WallpaperPicker.qml",
+        "scripts/cedar_cli.py",
+        "scripts/control.py",
+        "scripts/core_actions.py",
+        "scripts/default_apps.py",
+        "scripts/distribution.py",
+        "scripts/document.py",
+        "scripts/install.py",
+        "scripts/omarchy_session.py",
+        "scripts/plugins.py",
+        "scripts/settings_info.py",
+        "scripts/shim/omarchy-shell",
+        "scripts/theme-sync.py",
+        "scripts/trailwatch.py",
+        "scripts/wallpapers.py",
+        "scripts/with-shim",
+        "services/CoreSources.qml",
+        "services/Go.qml"
       ]
     },
     {
@@ -767,6 +772,27 @@
         "scripts/weather_location.py",
         "scripts/connections.py",
         "scripts/distribution.py"
+      ]
+    },
+    {
+      "command": "busctl",
+      "feature": "Omarchy session activation",
+      "status": "feature-required",
+      "scope": "feature",
+      "archPackage": "systemd",
+      "source": "Configured signed Arch repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Local systemd interface, guarded by live capability checks",
+      "verification": [
+        "command-presence",
+        "session-fixture-tests",
+        "native-acceptance-pending"
+      ],
+      "whenUnavailable": "Desktop trial refuses without changing configuration",
+      "consumers": [
+        "scripts/omarchy_session.py"
       ]
     }
   ],

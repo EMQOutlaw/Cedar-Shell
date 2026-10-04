@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+"""Opt-in Omarchy 4 desktop trial. Never stop the existing authentication host.
+
+The independent supervisor is installed beside distribution.py for offline recovery.
+The adapter only accepts audited upstream source and requires live provider checks.
+"""
+import contextlib, copy, hashlib, json, os, re, shlex, shutil, subprocess, sys, time, uuid
+from pathlib import Path
+import distribution as d
+
+ACTIVE={'prepared','starting','trial','kept','restore-requested','deferred','failed'}
+DISABLE=['omarchy.notifications','omarchy.osd']
+PROTECTED=['omarchy.lock','omarchy.idle','omarchy.polkit','omarchy.background']
+
+def record_path():return d.paths()['state']/'session.json'
+def status_path():return d.paths()['state']/'session-status.json'
+def read_record():return d.read_json(record_path()) if record_path().is_file() else None
+def active():
+    row=read_record();return bool(row and row.get('stage') in ACTIVE)
+def save(row):d.write_json(record_path(),row)
+
+@contextlib.contextmanager
+def guard():
+    # Interactive Keep/Restore can arrive during a short supervisor transaction.
+    deadline=time.monotonic()+10
+    while True:
+        lock=d.exclusive()
+        try:lock.__enter__();break
+        except d.Refused:
+            if time.monotonic()>deadline:raise
+            time.sleep(.1)
+    try:yield
+    finally:lock.__exit__(None,None,None)
+
+def instances():
+    value=json.loads(d.command(['qs','list','-j'],timeout=5))
+    if not isinstance(value,list):raise d.Refused('Could not inspect Quickshell instances.')
+    return value
+
+def matching(rows,source):
+    return [row for row in rows if Path(row.get('config_path','/unavailable')).resolve()==Path(source).resolve()]
+
+def ipc(source,*args):return d.command(['qs','ipc','-p',str(source),'call',*args],timeout=3).strip()
+
+def lock_state(row):
+    """Unknown is locked for all mutations; a network link or process is not proof."""
+    monitors=json.loads(d.command(['hyprctl','-j','monitors'],timeout=3))
+    if not isinstance(monitors,list) or not monitors:raise d.Refused('Monitor lock state is unavailable.')
+    if any(not isinstance(m.get('solitaryBlockedBy'),list) for m in monitors):raise d.Refused('Compositor does not expose the audited lock indicator.')
+    state=json.loads(ipc(row['omarchyShell'],'lock','status'))
+    if not isinstance(state,dict) or state.get('passwordPam') is not True:raise d.Refused('Existing Omarchy authentication is not ready.')
+    if any('LOCK' in m['solitaryBlockedBy'] for m in monitors):return True
+    if not any('WORKSPACE' not in m['solitaryBlockedBy'] for m in monitors):raise d.Refused('No readable compositor lock state.')
+    if state.get('locked') is not False or state.get('requested') is not False or state.get('secure') is not False:return True
+    return False
+
+def unlocked(row):
+    if lock_state(row):raise d.Refused('Session locked; integration changes deferred until unlock.')
+
+def transformed(config):
+    if not isinstance(config,dict) or config.get('version')!=1:raise d.Refused('Unsupported Omarchy shell configuration.')
+    value=copy.deepcopy(config)
+    if not isinstance(value.get('bar'),dict):raise d.Refused('Omarchy bar configuration is missing.')
+    disabled=value.get('disabledPlugins',[])
+    if not isinstance(disabled,list):raise d.Refused('Invalid disabledPlugins configuration.')
+    if any(name in disabled for name in PROTECTED):raise d.Refused('A required existing Omarchy service is disabled; no service will be silently enabled.')
+    value['bar']['id']='cedar.integration'
+    value['disabledPlugins']=list(dict.fromkeys([*disabled,*DISABLE]))
+    return value
+
+def inspect(root):
+    for name in ['qs','hyprctl','systemd-run','systemctl','busctl','omarchy']:
+        if not shutil.which(name):raise d.Refused('Omarchy activation requires '+name+'.')
+    version=d.command(['omarchy','version']).strip()
+    if not re.search(r'\b4\.0\.(?:4|0\.alpha)(?:\b|$)',version):raise d.Refused('This adapter covers inspected Omarchy 4.0.4 sources only; detected '+version)
+    upstream=Path(os.environ.get('OMARCHY_PATH','/usr/share/omarchy')).resolve()
+    rules=d.read_json(root/'integrations/omarchy/adapter.json')
+    for name,hashes in rules['sourceHashes'].items():
+        if not (upstream/name).is_file() or d.digest(upstream/name) not in hashes:raise d.Refused('Omarchy integration API differs from the audited version: '+name+'. Existing desktop preserved.')
+    source=upstream/'shell/shell.qml';rows=instances();running=matching(rows,source)
+    if len(running)!=1:raise d.Refused('Expected exactly one running Omarchy shell on this display.')
+    if any('cedar' in str(r.get('config_path','')).lower() or 'foxfire' in str(r.get('config_path','')).lower() for r in rows):raise d.Refused('Another CEDAR installation is running; preserve it and finish its migration separately.')
+    # These are the paths the audited Omarchy source actually reads, not guessed XDG paths.
+    config=Path.home()/'.config/omarchy/shell.json'
+    for p in [config,config.parent/'plugins/cedar.integration/manifest.json',config.parent/'plugins/cedar.integration/Bridge.qml',config.parent/'hooks/post-boot.d/95-cedar-session']:
+        if p.is_symlink() or any(parent.is_symlink() for parent in p.parents):raise d.Refused('Managed Omarchy integration target requires manual integration: '+str(p))
+        if p!=config and p.exists():raise d.Refused('An existing integration entry is not owned by this trial: '+str(p))
+    # Legacy theme hooks can stop the authentication host; never run both strategies.
+    for group in ['post-boot.d','theme-set.d']:
+        if any((config.parent/'hooks'/group).glob('*cedar*')) or any((config.parent/'hooks'/group).glob('*foxfire*')):raise d.Refused('Legacy CEDAR theme handoff found. Existing integration preserved.')
+    original=d.read_json(config if config.exists() else upstream/'config/omarchy/shell.json')
+    transformed(original)
+    row={'format':1,'adapter':'omarchy-4-resident-lock','omarchyVersion':version,'omarchyShell':str(source),'omarchyPid':running[0]['pid'],'root':str(root),'config':str(config),'original':original}
+    unlocked(row)
+    plugins=json.loads(ipc(source,'shell','listPlugins'))
+    if not isinstance(plugins,list):raise d.Refused('Omarchy plugin inventory unavailable.')
+    for item in plugins:
+        if item.get('enabled') and 'service' in item.get('kinds',[]) and not item.get('id','').startswith('omarchy.'):
+            raise d.Refused('An enabled third-party service needs a separate integration review.')
+    if notification_owner()!=row['omarchyPid']:raise d.Refused('Notifications are owned by another provider. No provider will be stopped.')
+    return row
+
+def notification_owner():
+    result=d.command(['busctl','--user','call','org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus','GetConnectionUnixProcessID','s','org.freedesktop.Notifications'],timeout=3)
+    match=re.fullmatch(r'u\s+(\d+)\s*',result)
+    if not match:raise d.Refused('Cannot identify the notification provider.')
+    return int(match.group(1))
+
+def trial(root,approved=False):
+    root=root.resolve()
+    with guard():
+        if active():raise d.Refused('A CEDAR desktop trial/session already exists. Use cedar keep, status, or restore.')
+        row=inspect(root)
+        plan={'action':'Try CEDAR for 120 seconds','adapter':row['adapter'],'changes':['Select the CEDAR empty-bar bridge in Omarchy user settings','Temporarily disable Omarchy notification and OSD plugins','Start the full CEDAR bar, Core, Canopy, Settings and notifications','Create a temporary post-boot recovery hook'],
+              'preserve':['Omarchy lockscreen, PAM, idle handling, polkit agent, wallpaper, secret service and portals','Display configuration, existing keyboard shortcuts and applications'],
+              'confirmation':'Run cedar keep before the timer expires; login startup needs cedar activate afterwards','recovery':'Independent supervisor restores the recorded configuration after timeout or a CEDAR crash; it defers while locked.'}
+        d.approve(plan,approved)
+        print(d.validate(root));unlocked(row)
+        tx=d.Transaction('omarchy-session')
+        row.update({'id':uuid.uuid4().hex,'stage':'prepared','journal':str(tx.path),'deadline':time.time()+120,'login':False})
+        row['generation']=uuid.uuid4().hex
+        row['sessionSignature']=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
+        row['unit']='cedar-session-'+row['id']+'-'+row['generation'][:8]
+        row['configAfter']=transformed(row.pop('original'))
+        row['configAfter']['bar']['cedarShellPath']=str(root/'shell.qml')
+        targets=[Path(row['config']),Path(row['config']).parent/'plugins/cedar.integration/manifest.json',Path(row['config']).parent/'plugins/cedar.integration/Bridge.qml',Path(row['config']).parent/'hooks/post-boot.d/95-cedar-session']
+        tx.record['files']=[];tx.save()
+        for p in targets:tx.backup(p)
+        tx.stage('back-up');save(row)
+        try:spawn_supervisor(row)
+        except BaseException:
+            d.restore_journal(tx.path);row['stage']='restored';save(row);raise
+    print('Starting the full CEDAR desktop...',flush=True)
+    wait_for_trial(row['id'])
+    print('CEDAR is running. The trial lasts 120 seconds. Run cedar keep to keep this session, or cedar restore to go back.')
+    print('If cedar is not on PATH, use '+shlex.quote(str(d.paths()['bin']))+' keep')
+
+def wait_for_trial(identity):
+    deadline=time.monotonic()+35
+    while time.monotonic()<deadline:
+        row=read_record()
+        if not row or row['id']!=identity:raise d.Refused('Trial record changed. Inspect cedar status.')
+        if row['stage']=='trial':return
+        if row['stage']=='restored':raise d.Refused('CEDAR could not start; previous integration restored. '+row.get('error',''))
+        time.sleep(.25)
+    raise d.Refused('Startup/recovery is still pending, possibly awaiting unlock. Run cedar status for the local error; no permanent login choice was made.')
+
+def spawn_supervisor(row):
+    helper=d.paths()['data']/'recovery/omarchy_session.py'
+    if not helper.is_file():raise d.Refused('Stable session recovery helper is missing. Reinstall the updated candidate first.')
+    args=['systemd-run','--user','--quiet','--collect','--unit='+row['unit'],'--property=Restart=on-failure','--property=RestartSec=2','--property=KillMode=process','--property=StandardOutput=null','--property=StandardError=null']
+    for key in ['WAYLAND_DISPLAY','DISPLAY','HYPRLAND_INSTANCE_SIGNATURE','OMARCHY_PATH','XDG_CONFIG_HOME','XDG_DATA_HOME','XDG_STATE_HOME','XDG_CACHE_HOME','XDG_RUNTIME_DIR','DBUS_SESSION_BUS_ADDRESS']:
+        if key in os.environ:args.append('--setenv='+key+'='+os.environ[key])
+    d.command([*args,'--',sys.executable,str(helper),'supervise',row['id'],row['generation']])
+
+def prepare(row):
+    unlocked(row);journal=Path(row['journal']);tx=d.Transaction.__new__(d.Transaction)
+    tx.path=journal;tx.directory=journal.parent;tx.record=d.read_json(journal)
+    source=Path(row['root']);entries=tx.record['files']
+    # Bridge first; configuration becomes effective only after the files exist.
+    for entry in entries[1:3]:
+        if entry.get('after') and d.same(d.info(Path(entry['path'])),entry['after']):continue
+        tx.apply_file(entry,(source/'integrations/omarchy'/Path(entry['path']).name).read_bytes())
+    helper=d.paths()['data']/'recovery/omarchy_session.py'
+    hook=('#!/bin/bash\n# CEDAR-owned trial recovery and confirmed login startup\nexec '+shlex.quote(sys.executable)+' '+shlex.quote(str(helper))+' login\n').encode()
+    if not entries[3].get('after') or not d.same(d.info(Path(entries[3]['path'])),entries[3]['after']):tx.apply_file(entries[3],hook,0o700)
+    if not entries[0].get('after') or not d.same(d.info(Path(entries[0]['path'])),entries[0]['after']):tx.apply_file(entries[0],(json.dumps(row['configAfter'],indent=2)+'\n').encode())
+    tx.stage('activate');row['stage']='starting';row['readyDeadline']=time.time()+25;save(row)
+
+def publish(locked):d.write_json(status_path(),{'locked':locked,'updated':time.time()*1000})
+
+def cedar_rows(row):return matching(instances(),Path(row['root'])/'shell.qml')
+
+def check_omarchy(row):
+    matches=matching(instances(),row['omarchyShell'])
+    if len(matches)!=1:raise d.Refused('Omarchy authentication host is unavailable.')
+    # A session restart is allowed at login; never terminate or restart this host.
+    state=json.loads(ipc(row['omarchyShell'],'lock','status'))
+    if state.get('passwordPam') is not True:raise d.Refused('Omarchy authentication is not ready.')
+    return matches[0]
+
+def start_cedar(row):
+    check_omarchy(row);unlocked(row)
+    plugins=json.loads(ipc(row['omarchyShell'],'shell','listPlugins'))
+    if not any(p.get('id')=='cedar.integration' and p.get('active') for p in plugins):raise d.Refused('Omarchy has not loaded the CEDAR bridge yet.')
+    if any(p.get('id') in DISABLE and p.get('enabled') for p in plugins):raise d.Refused('Overlapping Omarchy plugins have not stopped yet.')
+    if ipc(row['omarchyShell'],'cedarBridge','enable')!='true':raise d.Refused('Keyboard IPC bridge did not become ready.')
+    source=Path(row['root']);d.verify_tree(source,d.read_json(source/'release-files.json'))
+    env={**os.environ,'CEDAR_OMARCHY_SESSION':'1','CEDAR_SESSION_STATUS':str(status_path()),'CEDAR_SESSION_HELPER':str(d.paths()['data']/'recovery/omarchy_session.py'),'CEDAR_SHELL_PATH':str(source/'shell.qml'),'CEDAR_QS_BIN':shutil.which('qs'),'QS_DISABLE_FILE_WATCHER':'1','QS_NO_RELOAD_POPUP':'1'}
+    env['PATH']=str(source/'scripts/shim')+os.pathsep+os.environ.get('PATH','')
+    publish(False)
+    subprocess.Popen([env['CEDAR_QS_BIN'],'-n','-p',str(source/'shell.qml')],env=env,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+
+def healthy(row):
+    check_omarchy(row);rows=cedar_rows(row)
+    if len(rows)!=1:raise d.Refused('CEDAR is not running.')
+    data=json.loads(ipc(Path(row['root'])/'shell.qml','shell','sessionInfo'))
+    if data.get('externalLock') is not True:raise d.Refused('CEDAR lock delegation was not enabled.')
+    if data.get('stage')!=3 or not data.get('screenCount'):raise d.Refused('The full desktop has not loaded on an output.')
+    if notification_owner()!=rows[0]['pid']:raise d.Refused('CEDAR notification ownership was not acquired.')
+    return rows[0]
+
+def restore(row):
+    if no_graphical_session():
+        d.restore_journal(Path(row['journal']));row['stage']='restored';row['login']=False;save(row);publish(True);return
+    unlocked(row)
+    d.check_restore_journal(Path(row['journal'])) # Refuse later user edits before stopping a working UI.
+    try:ipc(row['omarchyShell'],'cedarBridge','disable')
+    except d.Refused:pass # A failed bridge may never have registered; never stop its host.
+    publish(False)
+    if cedar_rows(row):
+        until=time.monotonic()+5
+        while cedar_rows(row) and time.monotonic()<until:
+            unlocked(row);ipc(Path(row['root'])/'shell.qml','shell','stop');time.sleep(.1)
+        if cedar_rows(row):raise d.Refused('CEDAR did not stop cleanly; existing authentication and recovery are preserved.')
+    unlocked(row);d.restore_journal(Path(row['journal']))
+    row['stage']='restored';row['login']=False;save(row);publish(True)
+    deadline=time.monotonic()+8
+    while time.monotonic()<deadline:
+        try:
+            host=check_omarchy(row)
+            if notification_owner()==host['pid']:return
+        except (d.Refused,OSError,ValueError,subprocess.SubprocessError):pass
+        time.sleep(.2)
+    raise d.Refused('Files restored, but Omarchy notification readiness is unverified. Existing authentication was not stopped.')
+
+def no_graphical_session():
+    for p in Path('/proc').glob('[0-9]*'):
+        try:
+            if p.stat().st_uid==os.getuid() and (p/'comm').read_text().strip().lower() in ('hyprland','qs','quickshell'):return False
+        except (FileNotFoundError,ProcessLookupError):continue
+        except PermissionError:raise d.Refused('Cannot prove a graphical session is absent; recovery deferred.')
+    return True
+
+def supervise(identity,generation=None):
+    while True:
+        with guard():
+            row=read_record()
+            if not row or row['id']!=identity or row['stage']=='restored':return
+            if generation is not None and row.get('generation')!=generation:return
+            known_unlocked=False
+            try:
+                locked=lock_state(row);publish(locked)
+                if locked:
+                    time.sleep(1);continue
+                known_unlocked=True
+                if row['stage']=='prepared':prepare(row)
+                if row['stage']=='starting':
+                    try:
+                        if not cedar_rows(row):start_cedar(row)
+                        healthy(row)
+                        row['stage']='kept' if row.get('login') else 'trial';row['deadline']=time.time()+120;save(row)
+                    except (d.Refused,OSError,ValueError,subprocess.SubprocessError):
+                        if time.time()>row['readyDeadline']:row['stage']='restore-requested';save(row)
+                elif row['stage'] in ('trial','kept'):
+                    try:healthy(row)
+                    except (d.Refused,OSError,ValueError,subprocess.SubprocessError):row['stage']='restore-requested';save(row)
+                    if row['stage']=='trial' and time.time()>row['deadline']:row['stage']='restore-requested';save(row)
+                if row['stage'] in ('restore-requested','deferred','failed'):restore(row);return
+            except (d.Refused,OSError,ValueError,subprocess.SubprocessError) as error:
+                publish(True)
+                # Retain a useful local error without process environment or credentials.
+                row['error']=str(error)[:500];save(row)
+                if known_unlocked and row['stage']=='prepared':row['stage']='restore-requested';save(row)
+        time.sleep(1)
+
+def keep(login=False,approved=False):
+    with guard():
+        row=read_record()
+        if not row or row['stage'] not in ('trial','kept'):raise d.Refused('No healthy trial is ready. Run cedar status; wait for startup or resolve its reported error.')
+        unlocked(row);healthy(row)
+        if row['stage']=='trial' and time.time()>row['deadline']:raise d.Refused('Trial expired. Let recovery finish and start a new trial.')
+        if login:
+            if row['stage']!='kept':raise d.Refused('First confirm the running desktop with cedar keep.')
+            d.approve({'action':'Use CEDAR at login','startup':'Keep the existing CEDAR post-boot hook; preserve Omarchy authentication, idle and wallpaper','undo':'cedar restore'},approved)
+            row['login']=True
+        row['stage']='kept';save(row)
+        journal=Path(row['journal']);record=d.read_json(journal);record['stage']='commit';d.write_json(journal,record)
+    print('CEDAR will start at login. Use cedar restore to undo.' if login else 'CEDAR kept for this session. Run cedar activate to opt into login startup, or cedar restore to go back.')
+
+def request_restore():
+    with guard():
+        row=read_record()
+        if not row or row['stage']=='restored':return False
+        try:restore(row)
+        except d.Refused:
+            row['stage']='restore-requested';save(row);raise
+        print('Previous Omarchy desktop restored. Authentication host and applications were preserved.')
+        return True
+
+def login():
+    with guard():
+        row=read_record()
+        if not row or row['stage']=='restored':return
+        signature=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
+        if signature and row.get('sessionSignature')==signature and row['stage'] in ('starting','trial','kept'):return
+        row['generation']=uuid.uuid4().hex
+        row['sessionSignature']=signature
+        row['unit']='cedar-session-'+row['id']+'-'+row['generation'][:8]
+        # No retained confirmation means recovery, not an implicit login opt-in.
+        row['stage']='starting' if row.get('login') else 'restore-requested'
+        row['readyDeadline']=time.time()+30;save(row)
+        spawn_supervisor(row)
+
+def request_lock(suspend=False):
+    row=read_record()
+    if not row or row['stage'] not in ACTIVE:raise d.Refused('No managed Omarchy session.')
+    result=ipc(row['omarchyShell'],'lock','lock')
+    if result!='ok':raise d.Refused('Omarchy could not begin locking: '+result)
+    if suspend:
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            state=json.loads(ipc(row['omarchyShell'],'lock','status'))
+            if state.get('secure') is True and lock_state(row):d.command(['systemctl','suspend']);return
+            time.sleep(.1)
+        raise d.Refused('Lock coverage was not confirmed. Suspend canceled.')
+
+def main(args):
+    if os.getuid()==0:raise d.Refused('Run CEDAR as your ordinary user.')
+    action=args[0] if args else 'status'
+    if action=='supervise':supervise(args[1],args[2])
+    elif action=='login':login()
+    elif action=='lock':request_lock('--suspend' in args)
+    else:raise d.Refused('Use cedar try, keep, activate, status or restore.')
+
+if __name__=='__main__':
+    try:main(sys.argv[1:])
+    except (d.Refused,OSError,ValueError,subprocess.SubprocessError) as error:print('CEDAR: '+str(error),file=sys.stderr);sys.exit(1)

@@ -2,15 +2,17 @@
 
 These checks ran against the private distribution candidate. They do not certify a public release or native desktop activation.
 
-- Existing and new Python unit suite: 142 tests passed.
+- Existing and new Python unit suite: 162 tests passed after the Omarchy adapter changes.
 - Distribution and recovery suite: 17 tests passed, including failure injection, backup verification, restoration conflicts, repeated-install idempotence, full uninstall-chain preflight, concurrency, archive rejection, private defaults, and custom XDG paths.
-- QML syntax parsing: 133 files passed.
+- QML syntax parsing: 135 files passed.
 - Real offscreen Quickshell import, navigation, identity, and Trailwatch component checks passed. Component loading does not prove authentication or session-lock security.
 - Desktop UI fixture checks passed for 16 Settings pages at narrow and wide dimensions and three legacy control tabs.
 - Public-file privacy scanner reported no matches. This is a heuristic scan, not proof of absence; staged files and commit metadata still require review before upload.
-- Archive contents, hashes, all 15 built-in bundle inventories, Bash entry-point syntax, and extracted distribution tests passed. The archive's generated inventory records its exact file count and checksums.
+- Archive contents, hashes, all built-in bundle/integration inventories, Bash entry-point syntax, and extracted distribution/session tests passed. The archive's generated inventory records its exact file count and checksums.
 - That exact archive installed successfully into disposable custom XDG locations containing spaces and non-ASCII characters, with actual offscreen QML validation. The active desktop and user preferences were untouched.
 
 The final repository/archive must be rebuilt and rechecked after subsequent changes. No GitHub upload or remote CI result is recorded by these local checks.
+
+The Omarchy adapter adds 20 controlled fixture tests, including timeout/crash recovery, lock-state deferral, protected services, trial → Keep → login → restore transactions, interruption, and stale supervisor generations. Actual offscreen Quickshell validates the bridge and fails closed for missing/stale/invalid external lock status. Production lock-wiring and consolidated navigation regressions also pass. No native handoff was performed against the active desktop to obtain these results.
 
 Not tested here: clean-machine package bootstrapping, Zsh/Fish entry behavior, live desktop takeover, login/reboot, native lock/PAM behavior, real suspend/hotplug, GPU compatibility, external integration acceptance, or measured local-only outbound traffic. See RELEASE-READINESS.md for implementation gaps and release gates.
