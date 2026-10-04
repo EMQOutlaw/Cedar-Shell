@@ -15,20 +15,23 @@ def main(args=None):
     if args or not sys.stdin.isatty():
         # Explicit automation retains narrow, existing install-only semantics.
         return d.main(['install', *args])
-    print('CEDAR — A living desktop environment for Hyprland.\n')
+    print('CEDAR '+(root/'VERSION').read_text().strip()+' — A living desktop environment for Hyprland.\n')
+    print('This updates the installed cedar command only after installation succeeds. If canceled, your previous installation stays selected.')
     print('[1/6] Checking your system')
     if not d.shutil.which('hyprctl'):
         raise d.Refused('Install and start Hyprland before using CEDAR. This installer does not replace your compositor or login manager.')
     print('[2/6] Checking required software')
-    packages = d.missing_packages(root)
-    if packages:
-        print('Missing software from the CEDAR dependency manifest: ' + ', '.join(packages))
-        print('On Arch, installing these uses sudo pacman -Syu --needed and includes a full system upgrade.')
-        print('No repository, compositor, driver, network or audio provider will be added or replaced.')
+    for font in d.capabilities(root):
+        if font['scope'] == 'font' and font['status'] != 'Ready':
+            print('Recommended font unavailable: '+font['id']+'. Using its readable fallback; installation can continue.')
+    packages = d.package_plan(root)
+    if packages['packages']:
+        print('On '+packages['distribution']+', this installs the listed packages and performs a full system upgrade.')
+        print('Review pacman\'s transaction before confirming. No additional repositories or replacement desktop providers are added.')
         reply = input('Install these packages and perform that upgrade? [y/N] ').strip().lower()
         if reply not in ('y', 'yes'):
             raise d.Refused('Canceled. Your desktop was not changed. Use --approve-install-only to deliberately copy files without preparing dependencies.')
-        d.package_plan(root, True, True)
+        d.install_packages(packages, approve_upgrade=True)
     print('[3/6] Preparing verified backups')
     plan = d.plan_install(root)
     d.approve(plan)

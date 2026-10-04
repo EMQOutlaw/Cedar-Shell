@@ -26,13 +26,17 @@ cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
 
 If Git reports local changes or divergent history, stop and preserve your edits; do not reset or delete the checkout. The installer copies only the reviewed source inventory, so an accidentally nested clone or local settings file is not included and is left untouched.
 
+`git pull` updates the checkout; successful installation updates the installed `cedar` command. If setup was canceled or failed, the previous installed version remains selected. An old installed command may still report “Omarchy activation requires omarchy.” Finish installing the current candidate above before running `cedar try` again. Do not install Omarchy to resolve that message.
+
 For a provided private candidate archive:
 
 1. Download the CEDAR archive.
 2. Extract it and open a terminal in the extracted `cedar-shell` folder.
 3. Run `bash ./install.sh`.
 
-A checkout works too. Python 3.11+ and ordinary shell utilities bootstrap setup. Omarchy is not required or installed. A working Hyprland session is the prerequisite. On Arch, a missing Python can be installed only after approving the displayed full-upgrade plan. Quickshell is required for preview and desktop use. `python3 scripts/distribution.py dependencies` shows missing software; `--approve-packages --approve-system-upgrade` explicitly authorizes configured Arch repository packages and a full supported upgrade. No AUR helper or repository is silently added. Compositors, drivers and service replacements are excluded.
+A checkout works too. Python 3.11+ and ordinary shell utilities bootstrap setup. Omarchy is not required or installed. A working Hyprland session is the prerequisite. With pacman, a missing Python can be installed only after approving the displayed full-upgrade plan. Quickshell is required for preview and desktop use. Automatic dependency preparation explicitly recognizes **Arch Linux and CachyOS on x86_64**, using existing configured repositories. It checks package availability before asking permission. No AUR helper or repository is silently added; no replacement compositor, driver or service provider is requested. A full system upgrade can update packages you already have.
+
+Recommended fonts use readable fallbacks and **do not block installation**. From the checkout, `python3 scripts/distribution.py dependencies` shows the required and feature dependency plan. Add `--include-recommended` to also request available recommended font packages. Package changes require both `--approve-packages --approve-system-upgrade`; these flags authorize a full supported upgrade, not just the listed additions. On other distributions, provide dependencies through your own package manager. A machine with complete dependencies does not need automatic package support to install CEDAR.
 
 The installer shows a dependency plan, asks before any package installation, then shows an **Install Only** plan and copies complete source into versioned user data storage; the extracted folder can then be removed. It preserves current preferences and desktop startup. A command collision or managed/symlinked target stops safely. `--plan` inspects without installation; `--approve-install-only` encodes that limited unattended choice. There is no generic yes flag authorizing takeover.
 
@@ -96,7 +100,7 @@ Updates are manual: `cedar update ARCHIVE --signature SIGNATURE --trusted-key PU
 
 Local-only mode is on by default. Weather, approximate IP location and remote artwork require separate opt-in. Clipboard history and window-title Trails remain opt-in. See [privacy](docs/PRIVACY.md), the [dependency manifest](data/dependencies.json), [component inventory](data/plugins.json), and [compatibility evidence](data/compatibility.json).
 
-Automatic package preparation targets configured Arch repositories. The observed development environment is Arch with Hyprland 0.56.2, Quickshell 0.3.1 and Qt 6.11.2 on x86_64. Offscreen tests do not certify those versions for every host. Stock Hyprland and Noctalia adapters do not imply support for other compositors or untested hardware. [Release readiness](docs/RELEASE-READINESS.md) lists the incomplete and untested gates.
+Arch/CachyOS package preparation is experimental: distribution detection and package failure/consent behavior have fixture tests; no clean CachyOS installation or live package upgrade has been tested here. The observed development environment is Arch with Hyprland 0.56.2, Quickshell 0.3.1 and Qt 6.11.2 on x86_64. Offscreen tests do not certify those versions for every host. Stock Hyprland and Noctalia adapters do not imply support for other compositors or untested hardware. [Release readiness](docs/RELEASE-READINESS.md) lists the incomplete and untested gates.
 
 ## Why CEDAR?
 

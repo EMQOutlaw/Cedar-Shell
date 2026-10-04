@@ -118,5 +118,16 @@
     "physical fractional scaling",
     "live provider handoff",
     "Clean stock Hyprland and live Noctalia 4.7.7 / 5.2.1 handoff; additional Noctalia releases"
+  ],
+  "packageEnvironments": [
+    {
+      "id": "cachyos",
+      "architecture": "x86_64",
+      "status": "Experimental",
+      "manifest": "data/dependencies.json#/packageManagement",
+      "evidence": "Official package policy reviewed; OS/architecture selection, missing-font wizard, package consent/failure and unsupported-platform fixtures. User reported old installer rejected CachyOS. No completed CachyOS install or native trial verified.",
+      "livePackageTransaction": "Not Tested",
+      "nativeDesktop": "Not Tested"
+    }
   ]
 }

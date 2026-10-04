@@ -1,5 +1,5 @@
 {
-  "supported": "Arch Linux with an existing Hyprland session; Omarchy and Noctalia are optional adapters, never CEDAR prerequisites. See compatibility.json for actual evidence.",
+  "supported": "Arch Linux and CachyOS with an existing Hyprland session (experimental package setup); Omarchy and Noctalia are optional desktop adapters, never CEDAR prerequisites. See compatibility.json for actual evidence.",
   "verifiedRuntime": {
     "quickshell": "0.3.1",
     "qt": "6.11.2",
@@ -1492,5 +1492,32 @@
       "feature": "Trailwatch",
       "providerPolicy": "Probe existing service; do not install or replace a provider silently"
     }
-  ]
+  ],
+  "packageManagement": {
+    "schemaVersion": 1,
+    "defaultSelection": "Required and feature-required dependencies eligible for automatic installation. Recommended fonts are explicitly opt-in and use readable fallbacks.",
+    "backends": [
+      {
+        "id": "pacman",
+        "distributions": {
+          "arch": "Arch Linux",
+          "omarchy": "Omarchy",
+          "cachyos": "CachyOS"
+        },
+        "architectures": [
+          "x86_64"
+        ],
+        "packageKey": "archPackage",
+        "status": "Experimental",
+        "source": "Existing configured pacman repositories; signature settings unchanged; no new repositories or community builds",
+        "upgradeRequired": true,
+        "verification": "Verify each requested package with pacman -Si before approval; validate installed Quickshell imports rather than replacing compatible local builds.",
+        "references": [
+          "https://wiki.archlinux.org/title/System_maintenance#Upgrading_the_system",
+          "https://wiki.cachyos.org/configuration/post_install_setup/"
+        ],
+        "evidence": "Source policy review and simulated package transactions; no clean-machine or live package transaction tested."
+      }
+    ]
+  }
 }

@@ -1,7 +1,10 @@
 """Portable runtime and provider transactions; no live desktop is changed."""
 import copy
+import contextlib
+import io
 import json
 import os
+import platform
 from pathlib import Path
 import subprocess
 import sys
@@ -64,9 +67,106 @@ class Portable(unittest.TestCase):
         with patch.object(d.os, 'getuid', return_value=0), patch.object(d, 'install') as install:
             with self.assertRaisesRegex(d.Refused, 'never root'): setup.main([])
         install.assert_not_called()
-        with patch.object(d.os, 'getuid', return_value=1000), patch.object(sys.stdin, 'isatty', return_value=True), patch.object(d.shutil, 'which', return_value='/fixture/hyprctl'), patch.object(d, 'missing_packages', return_value=['quickshell']), patch('builtins.input', return_value='n'), patch.object(d, 'install') as install, patch.object(d, 'package_plan') as packages:
+        with patch.object(d.os, 'getuid', return_value=1000), patch.object(sys.stdin, 'isatty', return_value=True), patch.object(d.shutil, 'which', return_value='/fixture/hyprctl'), patch.object(d, 'capabilities', return_value=[]), patch.object(d, 'package_plan', return_value={'packages':['quickshell'], 'distribution':'CachyOS'}), patch('builtins.input', return_value='n'), patch.object(d, 'install') as install, patch.object(d, 'install_packages') as packages:
             with self.assertRaisesRegex(d.Refused, 'Canceled'): setup.main([])
         install.assert_not_called(); packages.assert_not_called()
+
+    def missing_font(self):
+        return {'id':'JetBrainsMono Nerd Font', 'status':'Needs Setup', 'scope':'font', 'package':'ttf-jetbrains-mono-nerd'}
+
+    def test_recommended_font_is_explicit_opt_in_not_a_dependency_blocker(self):
+        with patch.object(d, 'capabilities', return_value=[self.missing_font()]), patch.object(d.shutil, 'which', return_value='/fixture/qs'), patch.object(d, 'validate_imports'):
+            self.assertEqual(d.missing_packages(d.ROOT), [])
+            self.assertEqual(d.missing_packages(d.ROOT, include_recommended=True), ['ttf-jetbrains-mono-nerd'])
+
+    def test_feature_dependencies_remain_included_with_fonts_omitted(self):
+        missing = [self.missing_font(), {'id':'gi.NM', 'status':'Needs Setup', 'package':'libnm'}, {'id':'wl-copy', 'status':'Needs Setup', 'package':'wl-clipboard'}]
+        with patch.object(d, 'capabilities', return_value=missing), patch.object(d.shutil, 'which', return_value='/fixture/qs'), patch.object(d, 'validate_imports'):
+            self.assertEqual(d.missing_packages(d.ROOT), ['libnm', 'wl-clipboard'])
+
+    def package_fixture(self, packages=None, distro='cachyos', result=0):
+        stack = contextlib.ExitStack()
+        self.addCleanup(stack.close)
+        stack.enter_context(patch.object(platform, 'freedesktop_os_release', return_value={'ID':distro, 'ID_LIKE':'arch'}))
+        stack.enter_context(patch.object(platform, 'machine', return_value='x86_64'))
+        stack.enter_context(patch.object(d, 'missing_packages', return_value=['quickshell'] if packages is None else packages))
+        stack.enter_context(patch.object(d.shutil, 'which', return_value='/fixture/tool'))
+        command = stack.enter_context(patch.object(d, 'command', return_value='Package is present in configured repository'))
+        spawn = stack.enter_context(patch.object(d.subprocess, 'run', return_value=subprocess.CompletedProcess([], result)))
+        return command, spawn
+
+    def test_cachyos_package_install_uses_disclosed_packages_and_full_upgrade(self):
+        command, spawn = self.package_fixture()
+        plan = d.package_plan(d.ROOT)
+        self.assertEqual(plan['distribution'], 'CachyOS')
+        command.assert_called_once_with(['pacman', '-Si', 'quickshell'])
+        spawn.assert_not_called()
+        # Changes to capability detection cannot broaden an approved plan.
+        with patch.object(d, 'missing_packages', side_effect=AssertionError('Unexpected second scan')):
+            d.install_packages(plan, approve_upgrade=True)
+        spawn.assert_called_once_with(['sudo', 'pacman', '-Syu', '--needed', 'quickshell'])
+        records = list((d.paths()['state']/'transactions').glob('*/journal.json'))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(d.read_json(records[0])['packages'][0]['result'], 'succeeded')
+
+    def test_unknown_arch_derivative_is_not_guessed_from_id_like(self):
+        command, spawn = self.package_fixture(distro='unreviewed-distro')
+        with self.assertRaisesRegex(d.Refused, 'not reviewed'):
+            d.package_plan(d.ROOT, True, True)
+        command.assert_not_called(); spawn.assert_not_called()
+
+    def test_package_setup_checks_architecture(self):
+        command, spawn = self.package_fixture()
+        with patch.object(platform, 'machine', return_value='aarch64'):
+            with self.assertRaisesRegex(d.Refused, 'not reviewed'): d.package_plan(d.ROOT)
+        command.assert_not_called(); spawn.assert_not_called()
+
+    def test_no_missing_packages_needs_no_package_backend_or_approval(self):
+        command, spawn = self.package_fixture(packages=[], distro='unreviewed-distro')
+        plan = d.package_plan(d.ROOT, True, False)
+        self.assertEqual(plan['operation'], 'None needed')
+        command.assert_not_called(); spawn.assert_not_called()
+
+    def test_package_install_requires_separate_upgrade_consent(self):
+        _, spawn = self.package_fixture()
+        with self.assertRaisesRegex(d.Refused, 'separate consent'): d.package_plan(d.ROOT, True, False)
+        spawn.assert_not_called()
+        self.assertFalse(d.paths()['state'].exists())
+
+    def test_failed_package_operation_records_failure_and_stops(self):
+        _, spawn = self.package_fixture(result=1)
+        with self.assertRaisesRegex(d.Refused, 'failed/canceled'): d.package_plan(d.ROOT, True, True)
+        spawn.assert_called_once()
+        records = list((d.paths()['state']/'transactions').glob('*/journal.json'))
+        self.assertEqual(len(records), 1)
+        record = d.read_json(records[0])
+        self.assertEqual(record['packages'][0]['result'], 'failed')
+        self.assertNotEqual(record['stage'], 'commit')
+
+    def test_busy_package_manager_is_never_bypassed(self):
+        _, spawn = self.package_fixture()
+        with patch.object(Path, 'exists', return_value=True), patch.object(d, 'command') as command:
+            with self.assertRaisesRegex(d.Refused, 'busy'): d.check_package_plan({'backend':'pacman', 'packages':['quickshell']})
+        command.assert_not_called(); spawn.assert_not_called()
+
+    def test_wizard_reports_unavailable_repository_before_requesting_approval(self):
+        import setup
+        _, spawn = self.package_fixture()
+        with patch.object(d.os, 'getuid', return_value=1000), patch.object(sys.stdin, 'isatty', return_value=True), patch.object(d, 'capabilities', return_value=[]), patch.object(d, 'command', side_effect=d.Refused('repository unavailable')), patch('builtins.input') as prompt, patch.object(d, 'install') as install:
+            with self.assertRaisesRegex(d.Refused, 'could not be verified'): setup.main([])
+        prompt.assert_not_called(); install.assert_not_called(); spawn.assert_not_called()
+
+    def test_wizard_missing_font_continues_without_package_approval(self):
+        import setup
+        output = io.StringIO()
+        with patch.object(d.os, 'getuid', return_value=1000), patch.object(sys.stdin, 'isatty', return_value=True), patch.object(d.shutil, 'which', return_value='/fixture/tool'), patch.object(d, 'capabilities', return_value=[self.missing_font()]), patch.object(d, 'validate_imports'), patch.object(d, 'package_host', side_effect=AssertionError('Unneeded package backend')), patch.object(d, 'plan_install', return_value={}), patch.object(d, 'approve') as approve, patch.object(d, 'install') as install, patch.object(d, 'install_packages') as packages, patch('builtins.input', return_value='1') as prompt, contextlib.redirect_stdout(output):
+            setup.main([])
+        install.assert_called_once_with(d.ROOT, approved=True)
+        approve.assert_called_once_with({})
+        packages.assert_not_called()
+        prompt.assert_called_once_with('Choice [1]: ')
+        self.assertIn('Using its readable fallback', output.getvalue())
+        self.assertIn('only after installation succeeds', output.getvalue())
 
     def test_desktop_wallpaper_preserves_unknown_preferences_offline(self):
         image = self.base / 'a wallpaper 雨.png'
@@ -219,6 +319,18 @@ class Portable(unittest.TestCase):
             row = p.inspect(d.ROOT)
         self.assertEqual(row['adapter'], 'hyprland')
         self.assertEqual(row['locker'], 'trailwatch')
+
+    def test_installed_cli_selects_portable_backend_without_running_omarchy(self):
+        import omarchy_session
+        with patch.object(s, 'active', return_value=False), patch.object(omarchy_session, 'active', return_value=False), patch.object(d.shutil, 'which', return_value='/fixture/qs'), patch.object(p, 'qs_instances', return_value=[]):
+            self.assertIs(d.session_backend(), s)
+
+    def test_wizard_unsupported_distro_stops_before_package_approval(self):
+        import setup
+        _, spawn = self.package_fixture(distro='unreviewed-distro')
+        with patch.object(d.os, 'getuid', return_value=1000), patch.object(sys.stdin, 'isatty', return_value=True), patch.object(d, 'capabilities', return_value=[]), patch('builtins.input') as prompt, patch.object(d, 'install') as install:
+            with self.assertRaisesRegex(d.Refused, 'not reviewed'): setup.main([])
+        prompt.assert_not_called(); install.assert_not_called(); spawn.assert_not_called()
 
     def test_running_unknown_quickshell_is_not_stopped(self):
         with patch.object(p, 'compositor_locked', return_value=False), patch.object(p, 'processes', return_value=[]), patch.object(p, 'qs_instances', return_value=[{'config_path': str(self.base/'shell.qml')}]), patch.object(p, 'pause') as pause:

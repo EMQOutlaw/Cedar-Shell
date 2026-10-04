@@ -1,6 +1,8 @@
 # Portable Hyprland integration
 
-CEDAR runs its own Quickshell profile and local services. Neither Omarchy nor Noctalia is a dependency. This candidate supports automatic package preparation on Arch Linux from already configured repositories; other distributions may use install-only/preview with dependencies provided by the user. A working Hyprland session must already exist. No compositor or display manager is installed.
+CEDAR runs its own Quickshell profile and local services. Neither Omarchy nor Noctalia is a dependency. This candidate provides experimental automatic package preparation on Arch Linux and CachyOS (x86_64) from already configured repositories; other distributions may install/preview with dependencies provided by the user. A working Hyprland session must already exist. No compositor or display manager is installed.
+
+Package host IDs, architectures and policy live in `data/dependencies.json`, independently of desktop integration. CachyOS's [documented pacman upgrade path](https://wiki.cachyos.org/configuration/post_install_setup/) is used with explicit full-upgrade consent. `ID_LIKE=arch` alone does not authorize an unreviewed distribution. Configured package availability is checked before approval; missing fonts use fallbacks unless explicitly requested with `cedar dependencies --include-recommended`. No package operation is needed if all required dependencies are already present. Unknown backends are never guessed from the presence of an Omarchy directory.
 
 ## What changed
 

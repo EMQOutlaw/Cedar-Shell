@@ -376,10 +376,18 @@ def preview(root):
         # A FloatingWindow only. No session lock, wallpaper, notifications or layer surfaces.
         subprocess.run(['qs','-p',str(root/'preview.qml')],env=env,check=True)
 
-def missing_packages(root):
+def missing_packages(root,include_recommended=False):
     manifest = read_json(root/'data/dependencies.json')
     rows = {r['command']: r for r in manifest['commands']}
-    packages = {r['package'] for r in capabilities(root) if r['status'] != 'Ready' and r.get('package') and rows.get(r['id'], {}).get('autoInstall', r['id'] not in rows)}
+    rows.update({r['name']: r for r in manifest['pythonModules']})
+    rows.update({r['family']: r for r in manifest.get('fonts', [])})
+    packages = set()
+    for capability in capabilities(root):
+        row = rows.get(capability['id'], {})
+        needed = row.get('status') in ('required', 'feature-required')
+        recommended = include_recommended and row.get('status') == 'recommended'
+        if (needed or recommended) and row.get('autoInstall', True) and capability['status'] != 'Ready' and capability.get('package'):
+            packages.add(capability['package'])
     if shutil.which('qs'):
         # A compatible local/isolated build need not be registered with pacman.
         # Never replace somebody else's working Qt/Quickshell to satisfy -Q.
@@ -389,23 +397,58 @@ def missing_packages(root):
     return sorted(packages)
 
 
-def package_plan(root,approve_packages=False,approve_upgrade=False):
-    packages=missing_packages(root)
-    plan={'packages':packages,'providerChanges':'Not authorized; compositor, audio/network services, drivers and power daemons are never installed here.', 'source':'Configured signed Arch repositories only','operation':'pacman -Syu --needed (full upgrade requires separate consent)'}
-    print(json.dumps(plan,indent=2))
-    if not approve_packages:return
-    release=__import__('platform').freedesktop_os_release()
-    if release.get('ID') not in ('arch','omarchy'):raise Refused('Package installation is experimental for Arch only. No package changes made.')
-    if not approve_upgrade:raise Refused('Arch requires a full supported upgrade. Review and explicitly add --approve-system-upgrade, or manage dependencies yourself.')
+def package_host(root):
+    """Explicitly reviewed package systems, independent of desktop adapters."""
+    try: release=__import__('platform').freedesktop_os_release()
+    except OSError: release={}
+    distro=release.get('ID', 'unknown')
+    machine=__import__('platform').machine()
+    for backend in read_json(root/'data/dependencies.json')['packageManagement']['backends']:
+        if distro in backend['distributions'] and machine in backend['architectures']:
+            return {**backend, 'distribution':distro, 'displayName':backend['distributions'][distro]}
+    raise Refused('Automatic package setup is not reviewed for this distribution/architecture ('+distro+'/'+machine+'). '
+                  'Install the missing dependencies with your own package manager, then rerun bash ./install.sh. No package changes made.')
+
+
+def check_package_plan(plan):
+    if plan['backend'] != 'pacman':raise Refused('Unrecognized package backend; no package changes made.')
+    if not shutil.which('pacman') or not shutil.which('sudo'):
+        raise Refused('Automatic package setup needs pacman and sudo. Install the listed dependencies through your distribution tools instead.')
     if Path('/var/lib/pacman/db.lck').exists():raise Refused('The package manager is busy; its lock will not be removed.')
-    for package in packages:command(['pacman','-Si',package])
+    for package in plan['packages']:
+        try: command(['pacman','-Si',package])
+        except (Refused, subprocess.SubprocessError) as error:
+            raise Refused('Package '+package+' could not be verified in your configured repositories. '
+                          'No repositories were added or packages changed. Details: '+str(error)) from error
+
+
+def install_packages(plan,approve_upgrade=False):
+    # Use the exact disclosed plan, not a fresh dependency scan after approval.
+    if not plan['packages']:return
+    if not approve_upgrade:raise Refused('A full supported upgrade requires separate consent. Review and explicitly add --approve-system-upgrade, or manage dependencies yourself.')
+    check_package_plan(plan)
+    with exclusive():
+        tx=Transaction('packages');tx.record['packages']=[{'command':['pacman','-Syu','--needed',*plan['packages']],'result':'pending','reversible':False}];tx.save()
+        r=subprocess.run(['sudo','pacman','-Syu','--needed',*plan['packages']])
+        tx.record['packages'][0]['result']='succeeded' if r.returncode==0 else 'failed';tx.save()
+        if r.returncode:raise Refused('Package operation failed/canceled. No desktop configuration changed.')
+        tx.commit()
+
+
+def package_plan(root,approve_packages=False,approve_upgrade=False,include_recommended=False):
+    packages=missing_packages(root,include_recommended)
+    plan={'packages':packages,'includeRecommended':include_recommended,
+          'providerChanges':'No replacement desktop/audio/network providers or repositories are added. A full upgrade may update existing system packages.',
+          'operation':'None needed'}
     if packages:
-        with exclusive():
-            tx=Transaction('packages');tx.record['packages']=[{'command':['pacman','-Syu','--needed',*packages],'result':'pending','reversible':False}];tx.save()
-            r=subprocess.run(['sudo','pacman','-Syu','--needed',*packages])
-            tx.record['packages'][0]['result']='succeeded' if r.returncode==0 else 'failed';tx.save()
-            if r.returncode:raise Refused('Package operation failed/canceled. No desktop configuration changed.')
-            tx.commit()
+        print('Missing software from the CEDAR dependency manifest: '+', '.join(packages))
+        host=package_host(root)
+        plan.update(backend=host['id'],distribution=host['displayName'],source=host['source'],operation='sudo pacman -Syu --needed (includes a full system upgrade)')
+        # Read-only checks happen before offering an unsupported privileged plan.
+        check_package_plan(plan)
+    print(json.dumps(plan,indent=2))
+    if approve_packages:install_packages(plan,approve_upgrade)
+    return plan
 
 def doctor(root):
     result={'format':1,'dependencies':capabilities(root),'session':session_inventory(),'qml':'Not Tested','plugins':[],'release':'Development candidate; not certified'}
@@ -477,6 +520,7 @@ def main(argv=None):
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
+    parser.add_argument('--include-recommended',action='store_true',help='Include recommended fonts in the explicit dependencies plan; not required to install CEDAR.')
     parser.add_argument('--approve-uninstall',action='store_true');parser.add_argument('--signature',type=Path);parser.add_argument('--trusted-key',type=Path)
     parser.add_argument('--adapter', choices=['auto','hyprland','noctalia','omarchy'], default='auto')
     parser.add_argument('--approve-trial', action='store_true')
@@ -484,7 +528,7 @@ def main(argv=None):
     args=parser.parse_args(argv)
     if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
     if args.action=='install':install(args.source.resolve(),args.approve_install_only,args.plan)
-    elif args.action=='dependencies':package_plan(args.source.resolve() if (args.source/'data/dependencies.json').is_file() else installed(),args.approve_packages,args.approve_system_upgrade)
+    elif args.action=='dependencies':package_plan(args.source.resolve() if (args.source/'data/dependencies.json').is_file() else installed(),args.approve_packages,args.approve_system_upgrade,args.include_recommended)
     elif args.action in ('restore','rollback'):
         if session_active():
             if args.action=='rollback':raise Refused('Run cedar restore before switching releases.')

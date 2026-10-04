@@ -2,6 +2,10 @@
 
 These checks ran against the private distribution candidate. They do not certify a public release or native desktop activation.
 
+Candidate **0.1.0-dev.7**: 237 Python unit tests passed, including 47 portable installer/provider tests. New controlled fixtures cover CachyOS package selection, architecture and unknown-distribution rejection before approval, optional-font fallback without a package prompt, explicit recommended-font requests, full-upgrade consent, package-manager locks, unavailable repositories, failed package transactions and the portable backend without a running Omarchy shell. Package operations were simulated; none changed the host's software.
+
+The candidate archive passed inventory/hash and all shipped plugin-artifact checks, extracted recovery/provider/portability tests, fresh and repeated installation in disposable XDG paths with spaces/non-ASCII characters, and actual offscreen Quickshell import/UI validation with no Omarchy installation in that environment. Font fallback, identity text and authentication UI components were checked offscreen; actual authentication and Wayland lock coverage remain untested. Python compilation, Bash syntax, source-inventory reconciliation and the current-tree privacy scan passed. No clean CachyOS package bootstrap, native CEDAR trial, Noctalia handoff or logout/login test was performed. Earlier candidate evidence follows.
+
 - Existing and new Python unit suite: 189 tests passed after the Omarchy adapter changes.
 - Distribution and recovery suite: 21 tests passed, including failure injection, backup verification, restoration conflicts, repeated-install idempotence, full uninstall-chain preflight, concurrency, archive rejection, private defaults, and custom XDG paths.
 - QML syntax parsing: 136 files passed.
