@@ -21,7 +21,7 @@ plugins = module('plugins', 'scripts/plugins.py')
 
 class Palette(unittest.TestCase):
     def test_text_on_worst_case_glass(self):
-        colors = dict(re.findall(r'property color (\w+): "(#[0-9A-Fa-f]{6})"', (ROOT/'Theme.qml').read_text()))
+        colors = dict(re.findall(r'property color (\w+): (?:token\("\w+", )?"(#[0-9A-Fa-f]{6})"', (ROOT/'Theme.qml').read_text()))
         def rgb(c): return [int(c[i:i+2],16)/255 for i in (1,3,5)]
         def lum(c): return sum(v*k for v,k in zip([x/12.92 if x <= .04045 else ((x+.055)/1.055)**2.4 for x in c], [.2126,.7152,.0722]))
         # 88% dark glass composited over pure white: worst-case light wallpaper.
@@ -139,7 +139,7 @@ class GoMenu(unittest.TestCase):
             surface[re.search(r'target: "(\w+)"', body).group(1)] = set(re.findall(r'function (\w+)\(', body))
         return surface
     def test_cedar_overlay_parses_and_targets_real_ipc(self):
-        items = json.loads(strip_jsonc((ROOT/'menus/cedar-menu.jsonc').read_text()))
+        items = json.loads(strip_jsonc((ROOT/'integrations/omarchy/menu-overlay.jsonc').read_text()))
         self.assertIn('cedar.settings', items)
         surface = self.ipc_surface()
         calls = [(i, m.group(1), m.group(2)) for i, row in items.items() for m in re.finditer(r'qs -c cedar ipc call (\w+) (\w+)', row.get('action', ''))]
@@ -152,7 +152,7 @@ class GoMenu(unittest.TestCase):
         items = json.loads(strip_jsonc(path.read_text()))
         for item_id in ['apps', 'setup.plugin.enable', 'style.font']: self.assertIn(item_id, items)
     def test_theme_bindings_are_unique_and_unbound_first(self):
-        lua = (ROOT/'themes/hyprland.lua').read_text()
+        lua = (ROOT/'integrations/omarchy/hyprland.lua').read_text()
         self.assertIn('hl.unbind(key)', lua)
         keys = re.findall(r'^bind\("([^"]+)"', lua, re.M)
         self.assertEqual(len(keys), len(set(keys)), keys)

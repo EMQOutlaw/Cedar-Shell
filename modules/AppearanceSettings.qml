@@ -14,7 +14,7 @@ ColumnLayout {
         GlowText { text:SettingsInfo.data.theme; font.family:Theme.labelFont; font.pixelSize:30; color:Theme.green }
         GlowText { text:"Quiet light. Familiar tools."; color:Theme.muted }
         Row { spacing:8; Repeater { model:[Theme.background,Theme.surface,Theme.elevated,Theme.green,Theme.teal,Theme.amber,Theme.ember]; Rectangle { required property color modelData; width:24; height:24; radius:12; color:modelData; border.color:Theme.border } } }
-        GlowText { text:"CEDAR’s palette comes from Theme.qml. Installed Omarchy themes change the whole desktop and may switch its shell."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
+        GlowText { text:"CEDAR themes apply to this shell. Add local JSON palettes in the CEDAR themes folder; your applications and desktop session stay running."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
     }
     StationButton { text:root.browseThemes ? "Close theme library":"Browse installed themes"; checked:root.browseThemes; onClicked:root.browseThemes=!root.browseThemes }
     GridLayout {

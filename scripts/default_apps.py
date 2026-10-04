@@ -3,6 +3,7 @@
 import json,os,shlex,shutil,sys,time
 from pathlib import Path
 from gi.repository import Gio
+from desktop_runtime import omarchy
 
 ROLES=json.loads((Path(__file__).resolve().parents[1]/'data/default-apps.json').read_text())
 def apps():
@@ -47,9 +48,10 @@ def apply(role_id,app_id):
             temp=wrapper.with_name('.default-editor.tmp')
             temp.write_text('#!/bin/sh\nexec gtk-launch '+shlex.quote(app_id)+' "$@"\n')
             temp.chmod(0o700);os.replace(temp,wrapper)
-            dest=Path(os.environ.get('XDG_STATE_HOME', Path.home()/'.local/state'))/'omarchy/defaults/editor'
-            dest.parent.mkdir(parents=True,exist_ok=True)
-            temp=dest.with_name('.editor.cedar');temp.write_text(str(wrapper)+'\n');os.replace(temp,dest)
+            if omarchy():
+                dest=Path(os.environ.get('XDG_STATE_HOME', Path.home()/'.local/state'))/'omarchy/defaults/editor'
+                dest.parent.mkdir(parents=True,exist_ok=True)
+                temp=dest.with_name('.editor.cedar');temp.write_text(str(wrapper)+'\n');os.replace(temp,dest)
     except Exception as e:
         raise RuntimeError(str(e)+(' Already updated: '+', '.join(changed)+'. Refresh to see the current defaults.' if changed else '')) from e
     return {**snapshot(),'launchKey':role.get('launchKey',''),'launchCommand':'gtk-launch '+app_id,'message':role['label']+' set to '+app.get_display_name()+'.'}

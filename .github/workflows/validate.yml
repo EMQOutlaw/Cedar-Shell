@@ -17,6 +17,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_distribution.py
           python3 -m unittest discover -s tests -p test_omarchy_session.py
           python3 -m unittest discover -s tests -p test_omacale_providers.py
+          python3 -m unittest discover -s tests -p test_portability.py
       - name: Python syntax and shell bootstrap
         run: |
           python3 -m compileall -q scripts

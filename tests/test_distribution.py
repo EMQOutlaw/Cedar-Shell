@@ -111,7 +111,7 @@ class Distribution(unittest.TestCase):
             extract.assert_not_called()
     def test_standalone_recovery_cli_reports_session_refusals(self):
         recovery=self.root/'standalone recovery';recovery.mkdir()
-        for name in ('distribution.py','omarchy_session.py','omarchy_providers.py'):
+        for name in ('distribution.py','omarchy_session.py','omarchy_providers.py','portable_session.py','portable_providers.py'):
             shutil.copy2(d.ROOT/'scripts'/name,recovery/name)
         for action in ('keep','activate'):
             result=subprocess.run([sys.executable,str(recovery/'distribution.py'),action],cwd=self.root,text=True,capture_output=True)

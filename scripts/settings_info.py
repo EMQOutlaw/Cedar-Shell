@@ -7,6 +7,7 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+import desktop_runtime as runtime
 
 ROOT=Path(__file__).resolve().parents[1]
 HOME=Path.home()
@@ -35,21 +36,11 @@ def service(row):
     return {'name':label,'unit':unit,'user':user,'status':status,'detail':detail}
 
 def inventory():
-    current=Path(os.environ.get('XDG_STATE_HOME', HOME/'.local/state'))/'omarchy/current'
-    try: selected=(current/'theme.name').read_text().strip()
-    except OSError: selected='Unknown'
-    try: wallpaper=str((current/'background').resolve(strict=True))
-    except OSError: wallpaper=''
-    themes={}
-    for base in [Path('/usr/share/omarchy/themes'),CONFIG/'omarchy/themes']:
-        if not base.is_dir(): continue
-        for p in sorted(base.iterdir()):
-            if p.is_dir():
-                preview=p/'preview.png'
-                themes[p.name]={'name':p.name,'label':'CEDAR' if p.name=='cedar' else p.name.replace('-',' ').title(),'preview':preview.as_uri() if preview.exists() else ''}
-    try: walls=json.loads(run([sys.executable,str(ROOT/'scripts/wallpapers.py')]))['items']
-    except Exception: walls=[]
-    return {'theme':'CEDAR' if selected=='cedar' else selected,'wallpaper':wallpaper,'themes':list(themes.values()),'wallpapers':walls}
+    walls = runtime.wallpapers()
+    try: selected = json.loads((runtime.config()/'theme.json').read_text()).get('name', 'cedar')
+    except (OSError, ValueError): selected = 'cedar'
+    return {'theme': 'CEDAR' if selected == 'cedar' else selected,
+            'wallpaper': walls['selected'], 'themes': runtime.themes(), 'wallpapers': walls['items']}
 
 def snapshot():
     commands={'quickshell':['qs','--version'],'hyprland':['hyprctl','version'], 'qt':['/usr/lib/qt6/bin/qtpaths','--qt-version']}
@@ -75,12 +66,10 @@ def action(req):
     if name=='wallpaper':
         chosen=Path(req['path']).resolve()
         if str(chosen) not in [w['path'] for w in inventory()['wallpapers']]: raise ValueError('Wallpaper is no longer available.')
-        run(['omarchy-theme-bg-set',str(chosen)]); return inventory()
+        runtime.set_wallpaper(str(chosen)); return inventory()
     if name=='theme':
         if req['name'] not in [t['name'] for t in inventory()['themes']]: raise ValueError('Theme is no longer installed.')
-        # The existing theme hook handles shell handoff. The helper outlives its UI.
-        subprocess.Popen(['omarchy','theme','set',req['name']],start_new_session=True,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        return {'message':'Switching theme…'}
+        runtime.set_theme(req['name']); return inventory()
     raise ValueError('Unknown settings action')
 
 if __name__=='__main__':

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import time
+from desktop_runtime import omarchy
 
 
 def command(args):
@@ -41,6 +42,7 @@ def agenda(path, now):
 
 
 def reminders():
+    if not omarchy(): return []
     raw = command(['systemctl', '--user', 'list-timers', '--all', '--output=json', 'omarchy-reminder-*.timer'])
     if raw is None:
         return None

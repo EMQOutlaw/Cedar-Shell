@@ -12,7 +12,11 @@ Singleton {
     // 1: components + bar; 2: HUD; 3: complete shell.
     readonly property int stage: Math.max(1, Math.min(3, Number(Quickshell.env("CEDAR_STAGE") || Quickshell.env("FOXFIRE_STAGE") || 3)))
     readonly property bool testMode: (Quickshell.env("CEDAR_TEST") || Quickshell.env("FOXFIRE_TEST")) === "1"
-    readonly property bool externalSession: Quickshell.env("CEDAR_OMARCHY_SESSION") === "1"
+    readonly property bool omarchyIntegration: Quickshell.env("CEDAR_ADAPTER") === "omarchy" || Quickshell.env("CEDAR_OMARCHY_SESSION") === "1"
+    readonly property bool externalSession: Quickshell.env("CEDAR_EXTERNAL_LOCK") === "1" || omarchyIntegration
+    readonly property bool managedSession: Quickshell.env("CEDAR_MANAGED_SESSION") === "1" || externalSession
+    readonly property bool externalBackground: Quickshell.env("CEDAR_BACKGROUND") === "external" || omarchyIntegration
+    readonly property bool authOnly: Quickshell.env("CEDAR_AUTH_ONLY") === "1"
     readonly property bool localOnly: saved.localOnly || Quickshell.env("CEDAR_LOCAL_ONLY") === "1"
     function imageSource(value) {
         const source=String(value || "");
@@ -28,9 +32,9 @@ Singleton {
     property string persistenceMessage:""
 
     // Launch commands are stored as one line and split on whitespace.
-    readonly property var terminal: argv(saved.terminal, ["kitty"])
+    readonly property var terminal: argv(saved.terminal, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "terminal"])
     readonly property var browser: argv(saved.browser, ["xdg-open", "https://duckduckgo.com"])
-    readonly property var editor: argv(saved.editor, ["omarchy", "launch", "editor"])
+    readonly property var editor: argv(saved.editor, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "editor"])
     readonly property var files: argv(saved.files, ["xdg-open", home])
     // Saved coordinates override the optional automatic weather location service.
     readonly property string latitude: saved.latitude.trim()
@@ -51,7 +55,7 @@ Singleton {
     readonly property string timeFormat: clock24 ? "HH:mm" : "h:mm AP"
     function formatTime(date) { return Qt.formatDateTime(date, timeFormat); }
     function timeDigits(date) { return formatTime(date).split(" ")[0]; }
-    readonly property string pamService: "omarchy-lock-password"
+    readonly property string pamService: Quickshell.env("CEDAR_PAM_SERVICE") || (omarchyIntegration ? "omarchy-lock-password" : "login")
     readonly property string pamDirectory: "/etc/pam.d"
 
     readonly property string canonicalBarStyle: saved.barStyle === "foxfire" ? "cedar" : saved.barStyle

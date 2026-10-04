@@ -41,7 +41,7 @@ Scope {
         }
     }
     IdleMonitor {
-        enabled: !Config.testMode && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest
+        enabled: !Config.testMode && !Config.authOnly && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest
         timeout: Config.idleLockSeconds
         respectInhibitors: true
         onIsIdleChanged: if (isIdle) ShellState.lock(false)

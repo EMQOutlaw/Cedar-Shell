@@ -73,7 +73,7 @@ ShellRoot {
     property var forestService: Forest
     property var clipboardService: Clipboard
     // Disable hot reload while locked: never replace the authentication engine.
-    settings.watchFiles: !Config.externalSession && !ShellState.locked
+    settings.watchFiles: !Config.managedSession && !ShellState.locked
     IpcHandler {
         target: "wallpapers"
         function toggle(): void {
@@ -254,7 +254,7 @@ ShellRoot {
                 output: modelData
             }
             LazyLoader {
-                active: Config.stage >= 3 && !Config.testMode && !Config.externalSession
+                active: Config.stage >= 3 && !Config.testMode && !Config.externalBackground
                 component: Background {
                     output: modelData
                 }

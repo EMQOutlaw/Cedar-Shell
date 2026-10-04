@@ -1,4 +1,4 @@
 #!/bin/sh
 # CEDAR-owned command entry point.
 set -eu
-exec python3 "$(dirname -- "$(readlink -f -- "$0")")/cedar_cli.py" "$@"
+exec python3 "$(dirname -- "$(readlink -f -- "$0")")/distribution.py" "$@"

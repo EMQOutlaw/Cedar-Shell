@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "v4": {
+    "version": "4.7.7",
+    "commit": "3abfa1fc09b62dc4cdeeb7b787886f075696f0b7",
+    "source": "https://github.com/noctalia-dev/noctalia-shell",
+    "sourceHashes": {
+      "Commons/Settings.qml": "7c866ba5e8f7345202e2d469e72dff7227a64e7e47691340af75ed383d992daa",
+      "Commons/ShellState.qml": "1c3fc2e9dd62762c49776c65a12bc2ad9e7d70f37082e8139071132af51a92df",
+      "Services/Control/IPCService.qml": "ff12561bfe4c3bd4417efa1c28867a435a559735f7821b8b2da42f4784be3958",
+      "Services/System/NotificationService.qml": "a4f72a87f64f0cd100e76f06b0b17c0106c3671d0ab764beb3cf6482ed02ee3f",
+      "Services/UI/BarService.qml": "59f87a5ec54e7b1fb674d9aef33433ff90fff1b19f34c0eb1fe960467e73a24a"
+    },
+    "validation": "Source inspection and fixtures; native desktop handoff not tested"
+  },
+  "v5": {
+    "version": "5.2.1",
+    "commit": "e639a87e811ad3268c73f6d5e77669c94184ba15",
+    "source": "https://github.com/noctalia-dev/noctalia",
+    "validation": "Source inspection and fixtures; installed binary provenance depends on the user package source; native desktop handoff not tested"
+  },
+  "policy": "Keep Noctalia process, lockscreen, idle, polkit, secret service and wallpaper. Only coordinate bar/dock/notifications/OSD with explicit consent."
+}

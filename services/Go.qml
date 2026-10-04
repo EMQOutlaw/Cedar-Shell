@@ -5,17 +5,13 @@ import Quickshell.Io
 import ".."
 import "../components/MenuModel.js" as MenuModel
 
-// The Go menu: Omarchy's menu tree (defaults + the user's extensions + CEDAR's
-// overlay) with installed applications merged in, rendered by modules/Menu.qml.
-// Also serves Omarchy's select/input prompts (omarchy-menu-select, -input)
-// through scripts/shim/omarchy-shell, so helper scripts keep working while the
-// Omarchy shell is stopped.
+// CEDAR owns its menu. Omarchy menus are loaded only by its explicit adapter.
 Singleton {
     id: root
     readonly property string omarchyPath: Quickshell.env("OMARCHY_PATH") || "/usr/share/omarchy"
-    readonly property string defaultMenuPath: omarchyPath + "/default/omarchy/omarchy-menu.jsonc"
-    readonly property string userMenuPath: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy/extensions/omarchy-menu.jsonc"
-    readonly property string cedarMenuPath: Quickshell.shellPath("menus/cedar-menu.jsonc")
+    readonly property string defaultMenuPath: Config.omarchyIntegration ? omarchyPath + "/default/omarchy/omarchy-menu.jsonc" : Quickshell.shellPath("menus/default.jsonc")
+    readonly property string userMenuPath: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + (Config.omarchyIntegration ? "/omarchy/extensions/omarchy-menu.jsonc" : "/cedar/menu.jsonc")
+    readonly property string cedarMenuPath: Quickshell.shellPath(Config.omarchyIntegration ? "integrations/omarchy/menu-overlay.jsonc" : "menus/cedar-menu.jsonc")
     readonly property string shimDir: Quickshell.shellPath("scripts/shim")
     readonly property string pluginsScript: Quickshell.shellPath("scripts/plugins.py")
     readonly property bool visible: ShellState.panel === "menu"
@@ -58,7 +54,7 @@ Singleton {
     property var checkedResults: ({})
     property bool guardsPending: false
 
-    readonly property var providers: ({
+    readonly property var providers: Config.omarchyIntegration ? ({
         "fonts": {
             script: "current=$(omarchy-font-current 2>/dev/null); omarchy-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
             icon: "", volatile: true,
@@ -74,7 +70,7 @@ Singleton {
             icon: "󰐱", volatile: true,
             actionFor: value => "omarchy-notification-send 'Omarchy plugins' \"$(python3 " + shellQuote(pluginsScript) + " toggle " + shellQuote(value) + " 2>&1)\""
         }
-    })
+    }) : ({})
 
     function shellQuote(value) { return "'" + String(value ?? "").replace(/'/g, "'\\''") + "'"; }
     function item(id) { return root.items[id] || null; }
@@ -82,9 +78,14 @@ Singleton {
     // Actions run in their own systemd scope so they outlive the shell, with the
     // omarchy-shell stand-in first on PATH for helpers that prompt through it.
     function runAction(action) {
-        const command = String(action || "");
+        let command = String(action || "");
+        if (command.startsWith("cedar:")) {
+            Quickshell.execDetached(["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), ...command.slice(6).split(" ")]);
+            return;
+        }
+        command = command.replace(/qs -c cedar ipc call/g, "qs ipc -p " + shellQuote(Quickshell.shellPath("shell.qml")) + " call");
         if (!command) return;
-        const script = "export PATH=" + shellQuote(root.shimDir) + ':"$PATH"\n' + command;
+        const script = (Config.omarchyIntegration ? "export PATH=" + shellQuote(root.shimDir) + ':"$PATH"\n' : "") + command;
         Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--", "bash", "-lc", script]);
     }
     function launchApp(appId) {

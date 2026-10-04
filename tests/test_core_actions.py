@@ -32,16 +32,19 @@ class FileActions(unittest.TestCase):
         marker=Path(self.tmp.name)/'recording';marker.write_text('/tmp/video.mp4')
         row={'pid':123,'startTicks':200,'file':'/tmp/video.mp4'}
         with patch.object(actions,'RECORDING_FILE',marker),patch.object(actions,'recording',return_value=[row]),patch.object(actions,'run') as run:
-            actions.action({'action':'stop-recording','pid':123,'startTicks':200})
+            with patch.object(actions,'omarchy',return_value=True):
+                actions.action({'action':'stop-recording','pid':123,'startTicks':200})
             self.assertEqual(run.call_args.args[0],['omarchy','capture','screenrecording','--stop-recording'])
     def test_multiple_recorders_stop_only_the_selected_process(self):
         rows=[{'pid':123,'startTicks':200},{'pid':456,'startTicks':300}]
         with patch.object(actions,'recording',return_value=rows),patch.object(actions,'run') as run,patch.object(actions.os,'pidfd_open',return_value=99) as opened,patch.object(actions.os,'close') as close,patch.object(actions.signal,'pidfd_send_signal') as send:
-            actions.action({'action':'stop-recording','pid':123,'startTicks':200})
+            with patch.object(actions,'omarchy',return_value=True):
+                actions.action({'action':'stop-recording','pid':123,'startTicks':200})
             opened.assert_called_once_with(123);send.assert_called_once_with(99,actions.signal.SIGINT);close.assert_called_once_with(99);run.assert_not_called()
     def test_pid_reuse_during_stop_is_rejected(self):
         with patch.object(actions,'recording',side_effect=[[{'pid':123,'startTicks':200}],[{'pid':123,'startTicks':400}]]),patch.object(actions.os,'pidfd_open',return_value=99),patch.object(actions.os,'close') as close,patch.object(actions.signal,'pidfd_send_signal') as send:
-            with self.assertRaises(ValueError):actions.action({'action':'stop-recording','pid':123,'startTicks':200})
+            with self.assertRaises(ValueError):
+                actions.action({'action':'stop-recording','pid':123,'startTicks':200})
             send.assert_not_called();close.assert_called_once_with(99)
     def test_package_count_comes_only_from_successful_check(self):
         with patch.object(actions.subprocess,'run') as run:

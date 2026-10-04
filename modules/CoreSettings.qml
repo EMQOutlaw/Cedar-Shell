@@ -106,7 +106,7 @@ ColumnLayout {
         text: "Connected sources"
     }
     GlowText {
-        text: "Recording comes from active gpu-screen-recorder processes. Saved screenshots come from Omarchy’s notifications. Timers belong to CEDAR. Updates are checked only on request. Download and plugin progress require an explicit publisher; no global progress is guessed."
+        text: "Recording comes from active gpu-screen-recorder processes. Saved screenshots use explicit capture notifications or the Core event API. Timers belong to CEDAR. Updates are checked only on request. Download and plugin progress require an explicit publisher; no global progress is guessed."
         color: Theme.muted
         Layout.fillWidth: true
         wrapMode: Text.WordWrap

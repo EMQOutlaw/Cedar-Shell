@@ -69,7 +69,7 @@ Overlay {
                         GlowText {
                             width: parent.width
                             visible: text !== ""
-                            text: Go.dmenuActive ? "CEDAR / PROMPT" : (Go.breadcrumb ? "GO › " + Go.breadcrumb.toUpperCase() : "GO / OMARCHY MENU")
+                            text: Go.dmenuActive ? "CEDAR / PROMPT" : (Go.breadcrumb ? "GO › " + Go.breadcrumb.toUpperCase() : "CEDAR GO")
                             color: Theme.teal; font.pixelSize: 11; elide: Text.ElideRight
                         }
                     }

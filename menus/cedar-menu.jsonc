@@ -1,54 +1,90 @@
 {
-  "cedar.canopy": {"icon":"⌁","label":"Canopy","description":"Audio, network, telemetry, calendar and other instruments"},
-  "cedar.canopy.audio": {"label": "Audio Canopy", "action": "qs -c cedar ipc call canopy show audio"},
-  "cedar.canopy.network": {"label": "Network Canopy", "action": "qs -c cedar ipc call canopy show network"},
-  "cedar.canopy.bluetooth": {"label": "Bluetooth Canopy", "action": "qs -c cedar ipc call canopy show bluetooth"},
-  "cedar.canopy.system": {"label": "System Instrument", "action": "qs -c cedar ipc call canopy show system"},
-  "cedar.canopy.weather": {"label": "Sky Watch", "action": "qs -c cedar ipc call canopy show weather"},
-  "cedar.canopy.calendar": {"label": "Time and Calendar", "action": "qs -c cedar ipc call canopy show calendar"},
-  "cedar.canopy.clipboard": {"label": "Clipboard Canopy", "action": "qs -c cedar ipc call canopy show clipboard"},
-  "cedar.canopy.notifications": {"label": "Notification Canopy", "action": "qs -c cedar ipc call canopy show notifications"},
-  "cedar.canopy.quick": {"label": "Quick Controls", "action": "qs -c cedar ipc call canopy show quick"},
-  "cedar.canopy.trails": {"label": "Recent Trails", "action": "qs -c cedar ipc call canopy show trails"},
-  "cedar.core": {"icon":"◈","label":"CEDAR Core","action":"qs -c cedar ipc call core toggle"},
-  // CEDAR's layer over the Omarchy menu. Loaded after Omarchy's defaults
-  // and the user's ~/.config/omarchy/extensions/omarchy-menu.jsonc. Reusing an
-  // id overrides only the fields given here; new dotted ids add rows.
-  //
-  // Rows that only work inside the Omarchy shell process (its own overlays and
-  // panels) are hidden with `"when": "false"` or rerouted to CEDAR's panels.
-
-  // CEDAR's own panels, reachable from the root menu.
-  "cedar": {"icon":"󰗣","label":"CEDAR","aliases":["fox","field-station"]},
-  "cedar.hud": {"icon":"󰍹","label":"Field Station HUD","description":"Gauges, media, weather and quick launch","action":"qs -c cedar ipc call hud toggle"},
-  "cedar.control": {"icon":"󰘮","label":"Control Center","aliases":["wifi","bluetooth","audio","vpn"],"description":"Connections, sound, light, media and energy","action":"qs -c cedar ipc call control toggle"},
-  "cedar.settings": {"icon":"","label":"Settings","aliases":["cedar-settings","preferences"],"description":"Weather, launch commands, lock, light and sound","action":"qs -c cedar ipc call settings toggle"},
-  "cedar.wallpapers": {"icon":"","label":"Wallpapers","description":"CEDAR wallpaper picker","action":"qs -c cedar ipc call wallpapers toggle"},
-  "cedar.themes": {"icon":"󰸌","label":"Themes","description":"Leave CEDAR for another Omarchy theme","action":"qs -c cedar ipc call themes toggle"},
-  "cedar.history": {"icon":"󰂚","label":"Notification History","action":"qs -c cedar ipc call notifications toggle"},
-  "cedar.lock": {"icon":"","label":"Lock","action":"qs -c cedar ipc call lock lock"},
-  "cedar.power": {"icon":"","label":"Power Menu","action":"qs -c cedar ipc call power toggle"},
-  "cedar.restart": {"icon":"󰑓","label":"Restart CEDAR","description":"Restart the CEDAR shell service","action":"systemd-run --user --collect --quiet -- systemctl --user restart cedar-shell.service"},
-
-  // Omarchy rows rerouted to CEDAR's equivalents.
-  "system.lock": {"action":"qs -c cedar ipc call lock lock"},
-  "system.screensaver": {"when":"false"},
-  "style.theme": {"action":"qs -c cedar ipc call themes toggle"},
-  "style.background": {"action":"qs -c cedar ipc call wallpapers toggle"},
-  "setup.cedar": {"icon":"󰗣","label":"CEDAR","description":"CEDAR settings panel","action":"qs -c cedar ipc call settings toggle"},
-  "update.process.shell": {"label":"Shell (CEDAR)","action":"systemd-run --user --collect --quiet -- systemctl --user restart cedar-shell.service"},
-
-  // Omarchy shell plugins: the stock Enable/Disable/Clone/Remove rows keep
-  // working through CEDAR's omarchy-shell stand-in. This list shows them all.
-  "setup.plugin.list": {"icon":"󰐱","label":"Installed Plugins","description":"Toggle an Omarchy shell plugin; ✓ marks enabled ones","provider":"plugins"},
-
-  // Rows that need Omarchy's own overlays, panels or bar.
-  "trigger.emoji": {"when":"false"},
-  "trigger.toggle.top-bar": {"when":"false"},
-  "trigger.toggle.battery-percentage": {"when":"false"},
-  "trigger.toggle.notifications": {"when":"false"},
-  "trigger.tests": {"when":"false"},
-  "trigger.reminder.set": {"action":"omarchy-reminder -i"},
-  "setup.network.qr": {"when":"false"},
-  "style.bar": {"when":"false"},
+  "apps": {
+    "label": "Applications",
+    "provider": "apps",
+    "icon": "󰀻"
+  },
+  "system": {
+    "label": "System",
+    "icon": "󰍹"
+  },
+  "system.lock": {
+    "label": "Lock",
+    "action": "cedar:lock"
+  },
+  "system.power": {
+    "label": "Power",
+    "action": "cedar:power"
+  },
+  "cedar": {
+    "label": "CEDAR"
+  },
+  "cedar.hud": {
+    "label": "Field Station",
+    "action": "cedar:field-station"
+  },
+  "cedar.control": {
+    "label": "Quick Controls",
+    "action": "cedar:quick",
+    "aliases": [
+      "wifi",
+      "audio",
+      "volume"
+    ]
+  },
+  "cedar.settings": {
+    "label": "Settings",
+    "action": "cedar:settings"
+  },
+  "cedar.wallpapers": {
+    "label": "Wallpapers",
+    "action": "cedar:wallpapers"
+  },
+  "cedar.themes": {
+    "label": "Themes",
+    "action": "cedar:themes"
+  },
+  "cedar.core": {
+    "label": "Signal Stack",
+    "action": "cedar:signals"
+  },
+  "cedar.canopy": {
+    "label": "Canopy"
+  },
+  "cedar.canopy.audio": {
+    "label": "Audio",
+    "action": "cedar:canopy audio"
+  },
+  "cedar.canopy.network": {
+    "label": "Connections",
+    "action": "cedar:canopy network"
+  },
+  "cedar.canopy.bluetooth": {
+    "label": "Bluetooth",
+    "action": "cedar:canopy bluetooth"
+  },
+  "cedar.canopy.system": {
+    "label": "System Instrument",
+    "action": "cedar:canopy system"
+  },
+  "cedar.canopy.weather": {
+    "label": "Sky Watch",
+    "action": "cedar:canopy weather"
+  },
+  "cedar.canopy.calendar": {
+    "label": "Time and Calendar",
+    "action": "cedar:canopy calendar"
+  },
+  "cedar.canopy.clipboard": {
+    "label": "Clipboard",
+    "action": "cedar:canopy clipboard"
+  },
+  "cedar.canopy.notifications": {
+    "label": "Notification History",
+    "action": "cedar:canopy notifications"
+  },
+  "cedar.canopy.trails": {
+    "label": "Recent Trails",
+    "action": "cedar:canopy trails"
+  }
 }

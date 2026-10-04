@@ -37,6 +37,6 @@ ColumnLayout {
         StationButton { text:"Lock now"; onClicked:ShellState.lock(false) }
         StationButton { text:"Session actions"; onClicked:ShellState.toggle("power") }
     }
-    GlowText { text:Config.externalSession ? "Omarchy manages authentication and idle locking during this desktop session. CEDAR lock timing and Trailwatch settings do not override it." : "Authentication testing opens a local password window without locking your session."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
+    GlowText { text:Config.externalSession ? "Your existing locker manages authentication during this desktop session. CEDAR lock timing and Trailwatch settings do not override it." : "Authentication testing opens a local password window without locking your session."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
     GlowText { visible:Controls.error!==""; text:Controls.error; color:Theme.amber; Layout.fillWidth:true; wrapMode:Text.WordWrap }
 }

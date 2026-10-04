@@ -180,8 +180,8 @@ def session_inventory():
     result={'quickshell':[], 'lock':'Not Tested', 'providers':{}, 'hyprland':'Unavailable Here'}
     if shutil.which('hyprctl'):
         try:
-            value=json.loads(command(['hyprctl','-j','session-state']))
-            result['lock']='locked' if value.get('locked') is True else 'unlocked' if value.get('locked') is False else 'Not Tested'
+            from portable_providers import compositor_locked
+            result['lock']='locked' if compositor_locked() else 'unlocked'
             result['hyprland']='Ready'
         except (Refused,ValueError,subprocess.TimeoutExpired):pass
     if shutil.which('qs'):
@@ -195,37 +195,68 @@ def session_inventory():
     return result
 
 def ensure_unlocked():
-    # Omarchy's helper is versioned with the installed compositor adapter.
-    # Unknown compositor APIs are not guessed. TTY recovery may restore disk
-    # configuration only after no graphical Hyprland process exists for this uid.
-    if shutil.which('omarchy-hyprland-session-locked'):
-        r=subprocess.run(['omarchy-hyprland-session-locked'],capture_output=True)
-        if r.returncode!=1:raise Refused('Desktop lock state cannot be verified; operation deferred.')
-    else:
-        if session_inventory()['lock']!='unlocked':
-            graphical=False
-            for p in Path('/proc').glob('[0-9]*/comm'):
-                try:
-                    if p.stat().st_uid==os.getuid() and p.read_text().strip().lower()=='hyprland':graphical=True
-                except OSError:pass
-            if graphical:raise Refused('A graphical session exists but lock state is unknown. Recovery is deferred.')
-    if shutil.which('qs'):
-        # All registered CEDAR instances must confirm unlocked before a pointer switch.
-        for name in ('cedar','foxfire'):
-            try:
-                listing=command(['qs','list','-c',name,'-j'])
-                rows=json.loads(listing) if listing.lstrip().startswith('[') else []
-            except (Refused,ValueError):continue
-            if rows and command(['qs','-c',name,'ipc','call','shell','isLocked']).strip()!='false':raise Refused('CEDAR lock is active; deferred.')
+    from portable_providers import processes, compositor_locked
+    graphical = any(Path(p['exe']).name.lower() == 'hyprland' for p in processes())
+    if graphical and compositor_locked():
+        raise Refused('Desktop lock is active; operation deferred until unlock.')
+    if graphical and release_in_use():
+        # Use explicit running source paths, not Quickshell name discovery.
+        from portable_providers import qs_instances, qs_ipc
+        for row in qs_instances():
+            source = Path(row.get('config_path', '/unavailable'))
+            if source.is_relative_to(paths()['data']/'releases') and qs_ipc(source, 'shell', 'isLocked') != 'false':
+                raise Refused('CEDAR is locking or locked; operation deferred.')
+
+
+def session_backend(adapter='auto'):
+    import omarchy_session, portable_session
+    if portable_session.active(): return portable_session
+    if omarchy_session.active(): return omarchy_session
+    if adapter == 'omarchy': return omarchy_session
+    if adapter == 'auto' and shutil.which('qs'):
+        from portable_providers import qs_instances
+        upstream = Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy'))/'shell/shell.qml'
+        try:
+            if any(Path(r.get('config_path', '/unavailable')).resolve() == upstream.resolve() for r in qs_instances()): return omarchy_session
+        except (Refused, OSError, ValueError, subprocess.SubprocessError): pass
+    return portable_session
+
+
+def session_active():
+    import omarchy_session, portable_session
+    return omarchy_session.active() or portable_session.active()
 
 def capabilities(root):
     manifest=read_json(root/'data/dependencies.json');out=[]
     for row in manifest['commands']:
-        out.append({'id':row['command'],'status':'Ready' if shutil.which(row['command']) else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','package':row.get('archPackage')})
+        if row.get('scope') in ('development', 'omarchy-adapter'): continue
+        out.append({'id':row['command'],'status':'Ready' if shutil.which(row['command']) else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
     for row in manifest['pythonModules']:
-        r=subprocess.run([sys.executable,'-c','import '+row['name']],capture_output=True)
-        out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','package':row.get('archPackage')})
+        r=subprocess.run([sys.executable,'-c',row.get('probe', 'import '+row['name'])],capture_output=True)
+        out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
+    for row in manifest.get('fonts', []):
+        family = ''
+        if shutil.which('fc-match'):
+            family = command(['fc-match', '--format=%{family}', row['family']], timeout=5)
+        out.append({'id':row['family'], 'status':'Ready' if row['family'].lower() in family.lower() else 'Needs Setup',
+                    'purpose':'Display font; readable fallback: '+row['fallback'], 'required':False, 'scope':'font', 'package':row.get('archPackage')})
     return out
+
+def validate_imports(root):
+    """Load the installed runtime rather than guessing compatibility from packages."""
+    with tempfile.TemporaryDirectory(prefix='cedar-imports-') as temp:
+        base=Path(temp);probe=base/'imports.qml'
+        runtime=base/'runtime';runtime.mkdir(mode=0o700)
+        svg=base/'image.svg'
+        svg.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#101E19"/></svg>')
+        imports='\n'.join('import '+r['name'] for r in read_json(root/'data/dependencies.json')['modules'])
+        probe.write_text(imports+'\nShellRoot { property var svg: Image { source: '+json.dumps(svg.as_uri())+' } Timer { interval: 200; running: true; onTriggered: { if (svg.status === Image.Ready) console.log("CEDAR_IMPORTS_OK"); else console.error("SVG image support unavailable"); Qt.quit(); } } }\n')
+        env={**os.environ,'CEDAR_TEST':'1','CEDAR_LOCAL_ONLY':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
+        result=subprocess.run(['qs','-p',str(probe)],capture_output=True,text=True,timeout=15,env=env)
+        output=result.stdout+result.stderr
+        if result.returncode or 'CEDAR_IMPORTS_OK' not in output:
+            raise Refused('Existing Quickshell/Qt lacks a required import or image plugin. Its runtime was not replaced. Review cedar doctor and the dependency manifest. Details: '+output[-1500:])
+
 
 def validate(root):
     required=['shell.qml','Config.qml','Theme.qml','data/branding.json','data/plugins.json','data/dependencies.json','scripts/distribution.py']
@@ -236,15 +267,8 @@ def validate(root):
         for file in plugin['files']:
             if not (root/file).is_file():raise Refused('Plugin artifact missing: '+file)
     if shutil.which('qs'):
-        with tempfile.TemporaryDirectory(prefix='cedar-imports-') as temp:
-            probe=Path(temp)/'imports.qml'
-            runtime=Path(temp)/'runtime';runtime.mkdir(mode=0o700)
-            imports='\n'.join('import '+r['name'] for r in read_json(root/'data/dependencies.json')['modules'])
-            probe.write_text(imports+'\nShellRoot { Timer { interval: 50; running: true; onTriggered: Qt.quit() } }\n')
-            env={**os.environ,'CEDAR_TEST':'1','CEDAR_LOCAL_ONLY':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(Path(temp)/'config'),'XDG_STATE_HOME':str(Path(temp)/'state')}
-            result=subprocess.run(['qs','-p',str(probe)],capture_output=True,text=True,timeout=15,env=env)
-            if result.returncode or 'Failed to load configuration' in result.stdout+result.stderr:raise Refused('Required QML/native module import failed: '+(result.stdout+result.stderr)[-2000:])
-        for test in ['check_navigation.py','check_identity.py','check_trailwatch.py']:
+        validate_imports(root)
+        for test in ['check_navigation.py','check_identity.py','check_trailwatch.py','check_portable_ui.py']:
             command([sys.executable,str(root/'tests'/test)],timeout=60)
         return 'Offscreen components validated; native Wayland/PAM are Not Tested.'
     return 'Not Tested: Quickshell missing; installation only, preview/activation unavailable.'
@@ -271,7 +295,7 @@ def installation_next_steps():
     print('  '+launcher+' preview')
     print('Inspect local health:')
     print('  '+launcher+' doctor')
-    print('On supported Omarchy 4 installations, try the full desktop:')
+    print('Try the desktop with automatic Hyprland / Noctalia provider detection:')
     print('  '+launcher+' try')
     print('The preview is a separate window; your existing desktop remains running.')
 
@@ -280,12 +304,12 @@ def install(root,approved=False,plan_only=False):
     if plan_only:print(json.dumps(plan,indent=2));return
     approve(plan,approved)
     with exclusive():
-        import omarchy_session
-        if omarchy_session.active():raise Refused('Restore the active CEDAR desktop session before installing another release.')
+        if session_active():raise Refused('Restore the active CEDAR desktop session before installing another release.')
         destination=Path(plan['release']);current=paths()['data']/'current';binary=paths()['bin']
         recovery=paths()['data']/'recovery/distribution.py'
         session_recovery=paths()['data']/'recovery/omarchy_session.py'
         provider_recovery=paths()['data']/'recovery/omarchy_providers.py'
+        portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py')]
         if binary.exists() or binary.is_symlink():
             if not binary.is_file() or b'# CEDAR distribution launcher' not in binary.read_bytes():raise Refused('The cedar command is already owned elsewhere. Existing installation preserved.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
@@ -301,8 +325,8 @@ def install(root,approved=False,plan_only=False):
         validation=validate(root)
         tx=Transaction('install')
         try:
-            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery,session_recovery,provider_recovery]}
-            for p in (recovery,session_recovery,provider_recovery):entries[str(p)]['retainOnRestore']=True
+            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery,session_recovery,provider_recovery,*portable_recovery]}
+            for p in (recovery,session_recovery,provider_recovery,*portable_recovery):entries[str(p)]['retainOnRestore']=True
             tx.save();tx.stage('back-up')
             destination.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
             if not destination.exists():
@@ -315,6 +339,7 @@ def install(root,approved=False,plan_only=False):
                 tx.record['release']=str(destination);tx.save();tx.stage('prepare');os.replace(temporary,destination)
             else:verify_tree(destination,read_json(destination/'release-files.json'))
             tx.stage('validate')
+            for p in portable_recovery: tx.apply_file(entries[str(p)], (root/'scripts'/p.name).read_bytes(), 0o700)
             tx.apply_file(entries[str(provider_recovery)],(root/'scripts/omarchy_providers.py').read_bytes(),0o700)
             tx.apply_file(entries[str(session_recovery)],(root/'scripts/omarchy_session.py').read_bytes(),0o700)
             tx.apply_file(entries[str(recovery)],(root/'scripts/distribution.py').read_bytes(),0o700)
@@ -328,7 +353,7 @@ def install(root,approved=False,plan_only=False):
             tx.apply_link(entries[str(current)],destination)
             tx.stage('confirm');tx.commit()
             print('Files installed and verified. '+validation+' Desktop activation: not performed.')
-            print('Recovery: python3 '+str(recovery)+' restore')
+            print('Recovery: '+__import__('shlex').join(['python3',str(recovery),'restore']))
             installation_next_steps()
         except BaseException:
             restore_journal(tx.path);raise
@@ -344,21 +369,33 @@ def recover_latest(action=None):
     raise Refused('No unrestored transaction found.')
 
 def preview(root):
-    if not shutil.which('qs'):raise Refused('Quickshell is missing. Run installer --dependencies for the package plan.')
+    if not shutil.which('qs'):raise Refused('Quickshell is missing. Run cedar dependencies for the package plan.')
     with tempfile.TemporaryDirectory(prefix='cedar-preview-') as temp:
         base=Path(temp);runtime=base/'runtime';runtime.mkdir(mode=0o700)
         env={**os.environ,'CEDAR_TEST':'1','CEDAR_LOCAL_ONLY':'1','XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state'),'XDG_CACHE_HOME':str(base/'cache')}
         # A FloatingWindow only. No session lock, wallpaper, notifications or layer surfaces.
         subprocess.run(['qs','-p',str(root/'preview.qml')],env=env,check=True)
 
+def missing_packages(root):
+    manifest = read_json(root/'data/dependencies.json')
+    rows = {r['command']: r for r in manifest['commands']}
+    packages = {r['package'] for r in capabilities(root) if r['status'] != 'Ready' and r.get('package') and rows.get(r['id'], {}).get('autoInstall', r['id'] not in rows)}
+    if shutil.which('qs'):
+        # A compatible local/isolated build need not be registered with pacman.
+        # Never replace somebody else's working Qt/Quickshell to satisfy -Q.
+        validate_imports(root)
+    else:
+        packages.update(row.get('archPackage') or row.get('package') for row in manifest['modules'] + manifest.get('imageFormats', []) if row.get('archPackage') or row.get('package'))
+    return sorted(packages)
+
+
 def package_plan(root,approve_packages=False,approve_upgrade=False):
-    rows=[r for r in capabilities(root) if r['status']!='Ready' and r['package']]
-    packages=sorted({r['package'] for r in rows if r['package'] not in ('hyprland','omarchy','networkmanager','pipewire','wireplumber','power-profiles-daemon','nvidia-utils')})
+    packages=missing_packages(root)
     plan={'packages':packages,'providerChanges':'Not authorized; compositor, audio/network services, drivers and power daemons are never installed here.', 'source':'Configured signed Arch repositories only','operation':'pacman -Syu --needed (full upgrade requires separate consent)'}
     print(json.dumps(plan,indent=2))
     if not approve_packages:return
-    release=Path('/etc/os-release').read_text()
-    if 'ID=arch' not in release and 'ID=omarchy' not in release:raise Refused('Package installation is experimental for Arch only. No package changes made.')
+    release=__import__('platform').freedesktop_os_release()
+    if release.get('ID') not in ('arch','omarchy'):raise Refused('Package installation is experimental for Arch only. No package changes made.')
     if not approve_upgrade:raise Refused('Arch requires a full supported upgrade. Review and explicitly add --approve-system-upgrade, or manage dependencies yourself.')
     if Path('/var/lib/pacman/db.lck').exists():raise Refused('The package manager is busy; its lock will not be removed.')
     for package in packages:command(['pacman','-Si',package])
@@ -379,6 +416,9 @@ def doctor(root):
     try:result['qml']=validate(root)
     except (Refused,subprocess.TimeoutExpired) as e:result['qml']='Failed: '+str(e)
     for p in read_json(root/'data/plugins.json')['plugins']:
+        if p.get('scope') == 'omarchy-adapter':
+            result['plugins'].append({'id':p['id'],'state':'Not Tested','reason':'Optional Omarchy compatibility adapter; not needed on Hyprland or Noctalia'})
+            continue
         missing=[d for d in result['dependencies'] if d['id'] in p['dependencies'] and d['status']!='Ready']
         result['plugins'].append({'id':p['id'],'state':'Needs Setup' if missing or p.get('external') else 'Not Tested','reason':'Live services/hardware and lifecycle not validated' if not missing else 'Missing: '+', '.join(d['id'] for d in missing)})
     print(json.dumps(result,indent=2));return result
@@ -406,8 +446,7 @@ def update(archive,signature,key,approved=False):
         ensure_unlocked();install(candidate,approved)
 
 def uninstall(approved=False):
-    import omarchy_session
-    if omarchy_session.active():raise Refused('Run cedar restore to leave the active desktop session before uninstalling.')
+    if session_active():raise Refused('Run cedar restore to leave the active desktop session before uninstalling.')
     approve({'action':'Uninstall program entry points','preserve':['preferences','plugins','themes','backups','release source','recovery tool','shared packages'],'desktop':'Restore recorded integration first; never kill a session'},approved)
     with exclusive():
         ensure_unlocked()
@@ -434,31 +473,35 @@ def uninstall(approved=False):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
     parser.add_argument('--approve-uninstall',action='store_true');parser.add_argument('--signature',type=Path);parser.add_argument('--trusted-key',type=Path)
+    parser.add_argument('--adapter', choices=['auto','hyprland','noctalia','omarchy'], default='auto')
+    parser.add_argument('--approve-trial', action='store_true')
     parser.add_argument('--approve-omarchy-trial',action='store_true');parser.add_argument('--approve-login',action='store_true')
     args=parser.parse_args(argv)
     if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
     if args.action=='install':install(args.source.resolve(),args.approve_install_only,args.plan)
-    elif args.action=='dependencies':package_plan(args.source.resolve(),args.approve_packages,args.approve_system_upgrade)
+    elif args.action=='dependencies':package_plan(args.source.resolve() if (args.source/'data/dependencies.json').is_file() else installed(),args.approve_packages,args.approve_system_upgrade)
     elif args.action in ('restore','rollback'):
-        import omarchy_session
-        if omarchy_session.active():
+        if session_active():
             if args.action=='rollback':raise Refused('Run cedar restore before switching releases.')
-            omarchy_session.request_restore();return
+            session_backend().request_restore();return
         with exclusive():recover_latest('install')
     elif args.action=='uninstall':uninstall(args.approve_uninstall)
     elif args.action=='update':update(Path(args.arguments[0]) if args.arguments else None,args.signature,args.trusted_key)
     elif args.action in ('try','activate','keep','status'):
-        import omarchy_session
-        if args.action=='try':omarchy_session.trial(installed(),args.approve_omarchy_trial)
+        backend=session_backend(args.adapter)
+        if args.action=='try':
+            if backend.__name__ == 'portable_session': backend.trial(installed(),args.approve_trial, expected_adapter=args.adapter)
+            else: backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial)
         elif args.action=='status':
-            row=omarchy_session.read_record()
+            row=backend.read_record()
             print(json.dumps({k:row.get(k) for k in ('stage','login','deadline','error')} if row else {'stage':'not active'},indent=2))
-        else:omarchy_session.keep(args.action=='activate',args.approve_login)
+        else:backend.keep(args.action=='activate',args.approve_login)
+    elif args.action=='session-login':session_backend(args.adapter).login()
     elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()

@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import migrate
 import cedar_cli
-import install
+import legacy_omarchy_install as install
 
 class Migration(unittest.TestCase):
     def setUp(self):
@@ -111,7 +111,7 @@ class Activation(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(prefix='cedar activation ');self.addCleanup(self.tmp.cleanup)
         self.home=Path(self.tmp.name)
-        self.env=patch.dict(os.environ,{'HOME':str(self.home),'XDG_CONFIG_HOME':str(self.home/'.config'),'XDG_STATE_HOME':str(self.home/'.local/state'),'XDG_DATA_HOME':str(self.home/'.local/share'),'XDG_CACHE_HOME':str(self.home/'.cache'),'XDG_RUNTIME_DIR':str(self.home/'runtime')})
+        self.env=patch.dict(os.environ,{'HOME':str(self.home),'PATH':str(self.home/'.local/bin')+os.pathsep+os.environ.get('PATH',''),'XDG_CONFIG_HOME':str(self.home/'.config'),'XDG_STATE_HOME':str(self.home/'.local/state'),'XDG_DATA_HOME':str(self.home/'.local/share'),'XDG_CACHE_HOME':str(self.home/'.cache'),'XDG_RUNTIME_DIR':str(self.home/'runtime')})
         self.env.start();self.addCleanup(self.env.stop);(self.home/'runtime').mkdir()
         install.register()
         config=self.home/'.config';self.old=self.home/'old source';(self.old/'scripts').mkdir(parents=True);(self.old/'scripts/theme-hook').write_text('legacy hook')

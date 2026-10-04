@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import ".."
 import "../components"
+import "../services"
 
 Overlay {
     id: root
@@ -22,6 +23,7 @@ Overlay {
             }
         }
     }
+    Connections { target: SettingsInfo; function onDataChanged() { root.selectedPath = SettingsInfo.data.wallpaper; } }
     Timer {
         id: refresh
         interval: 35
@@ -46,7 +48,7 @@ Overlay {
             }
             GlowText {
                 Layout.fillWidth: true
-                text: root.wallpapers.length ? root.wallpapers.length + " images · choose one to set the desktop" : "No wallpapers found in this theme."
+                text: SettingsInfo.error ? SettingsInfo.error : root.wallpapers.length ? root.wallpapers.length + " images · choose one to set the desktop" : "No wallpapers found in this theme."
                 color: Theme.muted
             }
             GridView {
@@ -62,8 +64,7 @@ Overlay {
                     width: grid.cellWidth - 12; height: grid.cellHeight - 12
                     padding: 5; hoverEnabled: true
                     onClicked: {
-                        Quickshell.execDetached(["omarchy-theme-bg-set", modelData.path]);
-                        root.selectedPath = modelData.path;
+                        SettingsInfo.run({action:"wallpaper", path:modelData.path});
                         refresh.restart();
                     }
                     background: HudPanel {

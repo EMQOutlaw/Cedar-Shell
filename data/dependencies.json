@@ -1,5 +1,5 @@
 {
-  "supported": "Private development candidate. Arch/Omarchy offscreen fixtures exercised; no certified desktop takeover adapter.",
+  "supported": "Arch Linux with an existing Hyprland session; Omarchy and Noctalia are optional adapters, never CEDAR prerequisites. See compatibility.json for actual evidence.",
   "verifiedRuntime": {
     "quickshell": "0.3.1",
     "qt": "6.11.2",
@@ -36,7 +36,8 @@
         "scripts/shim/omarchy-shell",
         "scripts/smoke.py",
         "scripts/theme-sync.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "hyprctl",
@@ -62,7 +63,8 @@
         "scripts/omarchy_session.py",
         "scripts/settings_info.py",
         "scripts/theme-sync.py"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "python3",
@@ -75,7 +77,7 @@
       "architectures": [
         "x86_64"
       ],
-      "testedRange": "Observed versions only; see compatibility.json",
+      "testedRange": "Python >= 3.11 (stdlib tomllib for Noctalia and standalone offline recovery)",
       "verification": [
         "command-presence",
         "feature-runtime-test"
@@ -121,14 +123,15 @@
         "modules/WallpaperPicker.qml",
         "components/ServiceRequest.qml",
         "components/AudioSpectrum.qml"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "systemctl",
       "feature": "Session integration",
       "status": "feature-required",
       "archPackage": "systemd",
-      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "whenUnavailable": "Preview/install only; a supervised desktop trial requires a working systemd user manager.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
       "architectures": [
@@ -149,14 +152,15 @@
         "scripts/omarchy_session.py",
         "scripts/settings_info.py",
         "scripts/trailwatch.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "systemd-run",
       "feature": "Application launch and shell supervision",
       "status": "feature-required",
       "archPackage": "systemd",
-      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "whenUnavailable": "Preview/install only; a supervised desktop trial requires a working systemd user manager.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
       "architectures": [
@@ -174,15 +178,16 @@
         "scripts/theme-hook",
         "scripts/theme-sync.py",
         "services/Go.qml"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "omarchy",
       "feature": "Current supported theme, session, and PAM integration",
-      "status": "feature-required",
+      "status": "adapter-only",
       "archPackage": "omarchy",
-      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
-      "scope": "feature",
+      "whenUnavailable": "Not needed for standalone Hyprland or Noctalia. Only the explicit legacy Omarchy adapter uses this command.",
+      "scope": "omarchy-adapter",
       "source": "Configured signed Arch repositories; never auto-add repositories",
       "architectures": [
         "x86_64"
@@ -205,7 +210,7 @@
         "scripts/default_apps.py",
         "scripts/distribution.py",
         "scripts/document.py",
-        "scripts/install.py",
+        "scripts/legacy_omarchy_install.py",
         "scripts/omarchy_session.py",
         "scripts/plugins.py",
         "scripts/settings_info.py",
@@ -216,15 +221,16 @@
         "scripts/with-shim",
         "services/CoreSources.qml",
         "services/Go.qml"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "omarchy-hyprland-session-locked",
       "feature": "Fail-closed activation guard",
-      "status": "feature-required",
+      "status": "adapter-only",
       "archPackage": "omarchy",
-      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
-      "scope": "feature",
+      "whenUnavailable": "Not needed for standalone Hyprland or Noctalia. Only the explicit legacy Omarchy adapter uses this command.",
+      "scope": "omarchy-adapter",
       "source": "Configured signed Arch repositories; never auto-add repositories",
       "architectures": [
         "x86_64"
@@ -238,7 +244,8 @@
         "scripts/theme-sync.py",
         "scripts/cedar_cli.py",
         "scripts/distribution.py"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "nmcli",
@@ -259,7 +266,8 @@
       "consumers": [
         "scripts/telemetry.py",
         "scripts/connections.py"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "pactl",
@@ -279,7 +287,8 @@
       ],
       "consumers": [
         "scripts/audio_instruments.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "wl-copy",
@@ -300,7 +309,8 @@
       "consumers": [
         "scripts/core_actions.py",
         "scripts/clipboard_item.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "wl-paste",
@@ -321,7 +331,8 @@
       "consumers": [
         "scripts/clipboard_item.py",
         "services/Clipboard.qml"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "powerprofilesctl",
@@ -342,7 +353,8 @@
       "consumers": [
         "scripts/control.py",
         "services/Go.qml"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "brightnessctl",
@@ -363,7 +375,8 @@
       "consumers": [
         "scripts/telemetry.py",
         "components/SettingsSchema.js"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "xdg-open",
@@ -385,7 +398,8 @@
         "scripts/core_actions.py",
         "modules/AboutSettings.qml",
         "components/SettingsSchema.js"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "gtk-launch",
@@ -407,7 +421,8 @@
         "scripts/default_apps.py",
         "services/DefaultApps.qml",
         "services/Go.qml"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "jq",
@@ -427,7 +442,8 @@
       ],
       "consumers": [
         "scripts/shim/omarchy-shell"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "gio",
@@ -455,7 +471,8 @@
         "modules/Bar.qml",
         "modules/BarIslands.qml",
         "modules/CanopyWindow.qml"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "journalctl",
@@ -475,7 +492,8 @@
       ],
       "consumers": [
         "scripts/settings_info.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "pkexec",
@@ -495,7 +513,8 @@
       ],
       "consumers": [
         "scripts/settings_info.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "cava",
@@ -516,7 +535,8 @@
       "consumers": [
         "scripts/audio_instruments.py",
         "scripts/spectrum.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "checkupdates",
@@ -536,7 +556,8 @@
       ],
       "consumers": [
         "scripts/core_actions.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "sensors",
@@ -557,7 +578,8 @@
       "consumers": [
         "scripts/telemetry.py",
         "services/CoreSources.qml"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "nvidia-smi",
@@ -578,7 +600,8 @@
       "consumers": [
         "scripts/performance.py",
         "scripts/trailwatch.py"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "xrandr",
@@ -598,7 +621,8 @@
       ],
       "consumers": [
         "scripts/desktop.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "mmcli",
@@ -618,7 +642,8 @@
       ],
       "consumers": [
         "scripts/telemetry.py"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "grim",
@@ -638,7 +663,8 @@
       ],
       "consumers": [
         "scripts/smoke.py"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "magick",
@@ -658,7 +684,8 @@
       ],
       "consumers": [
         "scripts/wallpaper.py"
-      ]
+      ],
+      "autoInstall": false
     },
     {
       "command": "bash",
@@ -677,7 +704,8 @@
       "whenUnavailable": "Needs Setup",
       "consumers": [
         "scripts/document.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "openssl",
@@ -696,7 +724,8 @@
       "whenUnavailable": "Needs Setup",
       "consumers": [
         "scripts/distribution.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "nmtui",
@@ -713,7 +742,8 @@
         "command-presence"
       ],
       "whenUnavailable": "Needs Setup",
-      "consumers": []
+      "consumers": [],
+      "autoInstall": false
     },
     {
       "command": "pgrep",
@@ -730,7 +760,8 @@
         "command-presence"
       ],
       "whenUnavailable": "Needs Setup",
-      "consumers": []
+      "consumers": [],
+      "autoInstall": true
     },
     {
       "command": "ps",
@@ -772,7 +803,8 @@
         "scripts/weather_location.py",
         "scripts/connections.py",
         "scripts/distribution.py"
-      ]
+      ],
+      "autoInstall": true
     },
     {
       "command": "busctl",
@@ -790,10 +822,53 @@
         "session-fixture-tests",
         "native-acceptance-pending"
       ],
-      "whenUnavailable": "Desktop trial refuses without changing configuration",
+      "whenUnavailable": "Preview/install only; a supervised desktop trial requires a working systemd user manager.",
       "consumers": [
         "scripts/omarchy_session.py"
-      ]
+      ],
+      "autoInstall": true
+    },
+    {
+      "command": "xdg-mime",
+      "feature": "Read the current editor association without changing it",
+      "status": "feature-required",
+      "archPackage": "xdg-utils",
+      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/desktop_runtime.py"
+      ],
+      "autoInstall": true
+    },
+    {
+      "command": "hyprsunset",
+      "feature": "Optional night-light provider; reused only when running",
+      "status": "feature-required",
+      "archPackage": "hyprsunset",
+      "whenUnavailable": "Night Light unavailable; do not start a competing color-temperature provider.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/control.py"
+      ],
+      "autoInstall": false
     }
   ],
   "modules": [
@@ -1285,6 +1360,31 @@
         "scripts/bluetooth.py"
       ],
       "verification": "Import gi.repository Gio and GLib"
+    },
+    {
+      "name": "tomllib",
+      "archPackage": "python",
+      "status": "required",
+      "feature": "Safe native Noctalia configuration parsing",
+      "verification": "Python >=3.11 import",
+      "consumers": [
+        "scripts/portable_providers.py"
+      ]
+    },
+    {
+      "name": "gi.NM",
+      "status": "feature-required",
+      "scope": "feature",
+      "feature": "NetworkManager local client introspection for Connections",
+      "archPackage": "libnm",
+      "probe": "import gi; gi.require_version(\"NM\", \"1.0\"); from gi.repository import NM",
+      "source": "Configured distribution repository",
+      "version": "NM 1.0 introspection API",
+      "missingBehavior": "Connections unavailable; no network provider installed or enabled",
+      "consumers": [
+        "scripts/connections.py"
+      ],
+      "verification": "Import gi.repository.NM through Python GObject introspection"
     }
   ],
   "fonts": [

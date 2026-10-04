@@ -4,6 +4,7 @@ import json,mimetypes,os,signal,stat,subprocess,sys
 from pathlib import Path
 from urllib.parse import unquote,urlparse
 from core_probe import recording
+from desktop_runtime import omarchy
 
 RECORDING_FILE=Path('/tmp/omarchy-screenrecord-filename')
 
@@ -40,7 +41,7 @@ def action(req):
             info=RECORDING_FILE.lstat()
             owned=stat.S_ISREG(info.st_mode) and info.st_uid==os.getuid() and RECORDING_FILE.read_text().strip()==selected.get('file','')
         except OSError:owned=False
-        if len(current)==1 and owned:
+        if omarchy() and len(current)==1 and owned:
             # Preserve Omarchy's webcam cleanup and postprocessing for its sole
             # recorder. This helper stops every recorder, so never use it when
             # another independently started recording is present.
@@ -64,7 +65,9 @@ def action(req):
         image=path.read_bytes()
         if not image.startswith(b'\x89PNG\r\n\x1a\n'):raise ValueError('Only PNG screenshots can be copied as images.')
         run(['wl-copy','--type','image/png'],stdin=image)
-    elif name=='share-file':subprocess.Popen(['omarchy','share','file',str(path)],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+    elif name=='share-file':
+        if not omarchy(): raise RuntimeError('No file-sharing provider configured. Use Open or Copy Path to share with your chosen application.')
+        subprocess.Popen(['omarchy','share','file',str(path)],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
     elif name=='trash-file':run(['gio','trash','--',str(path)])
     else:raise ValueError('Unknown Core action.')
     return {'action':name,'message':{'copy-path':'Path copied.','copy-image':'Image copied.','trash-file':'Moved to Trash.'}.get(name,'Opened.'),'path':str(path)}

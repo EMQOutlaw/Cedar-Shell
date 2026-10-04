@@ -51,7 +51,7 @@ def activate():
     # apply a theme to the wrong configuration tree.
     if config!=home/'.config' or state!=home/'.local/state':
         raise RuntimeError('This Omarchy theme command uses default home paths. CEDAR data supports XDG overrides, but automatic Omarchy activation with these overrides is not supported yet.')
-    from install import preflight,validate
+    from legacy_omarchy_install import preflight,validate
     preflight();validate()
     if not (config/'quickshell/cedar').exists():raise RuntimeError('Run ./install.sh before activation.')
     runtime=Path(os.environ.get('XDG_RUNTIME_DIR','/run/user/'+str(os.getuid())))
@@ -202,7 +202,7 @@ def main():
         if instances('cedar'):raise RuntimeError('Select another theme before recovering migrated preferences.')
         remaining=recover(args.arguments[0]);print('Recovery complete; modified files preserved: '+str(len(remaining)))
     elif args.action=='uninstall':
-        from install import uninstall
+        from legacy_omarchy_install import uninstall
         uninstall()
     else:
         print('CEDAR running: '+str(bool(instances('cedar'))))

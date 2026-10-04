@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Acceptance checks on exact archive bytes, in a disposable extraction."""
 from pathlib import Path
-import hashlib,json,os,subprocess,sys,tempfile
+import hashlib,json,os,shutil,subprocess,sys,tempfile
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 from distribution import safe_extract
 archive=Path(sys.argv[1]).resolve()
@@ -18,5 +18,16 @@ with tempfile.TemporaryDirectory(prefix='cedar artifact 雨 ') as temporary:
     for argv in [['bash','./install.sh','--plan'],['bash','-n','install.sh'],[sys.executable,'-m','unittest','discover','-s','tests','-p','test_distribution.py'],[sys.executable,'-m','unittest','discover','-s','tests','-p','test_omarchy_session.py'],[sys.executable,'-m','unittest','discover','-s','tests','-p','test_omacale_providers.py']]:
         result=subprocess.run(argv,cwd=root,env=env,text=True,capture_output=True)
         if result.returncode:print(result.stdout+result.stderr);raise SystemExit(1)
+    result=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_portability.py'],cwd=root,env=env,text=True,capture_output=True)
+    if result.returncode:print(result.stdout+result.stderr);raise SystemExit(1)
+    if shutil.which('qs'):
+        env.update(CEDAR_ADAPTER='hyprland', CEDAR_OMARCHY_SESSION='', OMARCHY_PATH=str(base/'absent-omarchy'))
+        for expected in ('Files installed and verified.', 'This candidate is already installed.'):
+            result=subprocess.run(['bash','./install.sh','--approve-install-only'],cwd=root,env=env,text=True,capture_output=True,timeout=120)
+            if result.returncode or expected not in result.stdout:
+                print(result.stdout+result.stderr);raise SystemExit(1)
+        print('PASS: exact archive fresh and repeated installation, actual offscreen QML validation, isolated XDG locations, no Omarchy files')
+    else:
+        print('NOT TESTED: actual QML install validation (Quickshell unavailable on this runner)')
     print('PASS: exact archive hashes, all plugin artifacts, spaces/non-ASCII paths, Bash startup and stdlib recovery/privacy tests')
     print('NOT TESTED: fresh-system package bootstrap, live Wayland/PAM, Zsh/Fish, logout/login/reboot and GPU matrix')

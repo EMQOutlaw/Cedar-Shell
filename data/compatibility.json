@@ -33,13 +33,20 @@
     },
     {
       "id": "plain-hyprland",
-      "adapterVersion": 1,
+      "adapterVersion": 2,
       "status": "Experimental",
-      "evidence": "No live integration evidence",
+      "evidence": "Portable menu/QML tests, local configuration fixtures, supervised timeout/restore fixtures. No clean stock desktop or live trial tested.",
       "versions": {},
       "installOnly": true,
       "preview": "Requires complete compatible Quickshell build",
-      "takeoverCertified": false
+      "takeoverCertified": false,
+      "trialImplemented": true,
+      "authentication": "Preserve configured Hyprlock and idle service. With no existing locker, require a local login PAM test before enabling Trailwatch.",
+      "syntax": [
+        "hyprland.conf",
+        "hyprland.lua"
+      ],
+      "providerScope": "Reviewed standalone waybar/mako/dunst only; unknown ownership refused"
     },
     {
       "id": "caelestia",
@@ -70,6 +77,36 @@
       "installOnly": true,
       "preview": "Requires complete compatible Quickshell build",
       "takeoverCertified": false
+    },
+    {
+      "id": "noctalia-v4",
+      "adapterVersion": 1,
+      "status": "Experimental",
+      "versions": {
+        "noctalia": "4.7.7"
+      },
+      "evidence": "Upstream source review and controlled configuration/transaction fixtures; native handoff not tested",
+      "sourceGate": "integrations/noctalia/adapter.json",
+      "installOnly": true,
+      "preview": "Requires complete compatible Quickshell build",
+      "trialImplemented": true,
+      "takeoverCertified": false,
+      "authentication": "Existing resident Noctalia locker, idle handling and authentication agent preserved"
+    },
+    {
+      "id": "noctalia-v5",
+      "adapterVersion": 1,
+      "status": "Experimental",
+      "versions": {
+        "noctalia": "5.2.1"
+      },
+      "evidence": "Upstream source review and controlled configuration/transaction fixtures; native handoff not tested",
+      "sourceGate": "integrations/noctalia/adapter.json",
+      "installOnly": true,
+      "preview": "Requires complete compatible Quickshell build",
+      "trialImplemented": true,
+      "takeoverCertified": false,
+      "authentication": "Existing resident Noctalia locker, idle handling and authentication agent preserved"
     }
   ],
   "notTested": [
@@ -79,6 +116,7 @@
     "real PAM and lock coverage",
     "suspend/resume",
     "physical fractional scaling",
-    "live provider handoff"
+    "live provider handoff",
+    "Clean stock Hyprland and live Noctalia 4.7.7 / 5.2.1 handoff; additional Noctalia releases"
   ]
 }

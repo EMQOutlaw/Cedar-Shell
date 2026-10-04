@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-P = dict(re.findall(r'property color (\w+): "(#[0-9A-Fa-f]{6})"', (ROOT/'Theme.qml').read_text()))
+P = dict(re.findall(r'property color (\w+): (?:token\("[^"]+", )?"(#[0-9A-Fa-f]{6})"', (ROOT/'Theme.qml').read_text()))
 OUT = ROOT/'themes'
 OUT.mkdir(exist_ok=True)
 ansi = ['background', 'ember', 'green', 'amber', 'blue', 'violet', 'teal', 'text', 'muted', 'brightEmber', 'brightGreen', 'brightAmber', 'brightBlue', 'brightViolet', 'brightTeal', 'white']
@@ -78,8 +78,9 @@ return {
 }
 ''')
 
-# Current Hyprland 0.55+ Lua. This file is loaded only as the selected theme.
-hypr = f'''-- Generated palette; theme-scoped bindings. Hyprland 0.55+ / Omarchy.
+# Optional, ordinary Hyprland palette snippets. No startup, bindings or distro API.
+hypr = f'''-- CEDAR palette for Hyprland with Lua configuration support.
+-- Optional: include from your own configuration. Does not change startup or keys.
 hl.config({{
   general = {{ border_size = 1, col = {{
     active_border = {{ colors = {{ "{P['green']}", "{P['teal']}" }}, angle = 45 }},
@@ -88,31 +89,10 @@ hl.config({{
   decoration = {{ rounding = 3, blur = {{ enabled = true, size = 6, passes = 2 }} }},
 }})
 hl.layer_rule({{ match = {{ namespace = "^cedar-.*$" }}, blur = true, ignore_alpha = 0.1 }})
-local function bind(key, description, command, flags)
-  hl.unbind(key)
-  o.bind(key, description, command, flags)
-end
-'''
-bindings = [
-    ('SUPER + ALT + F','CEDAR HUD','hud toggle'), ('SUPER + SPACE','CEDAR launcher','launcher toggle'),
-    ('SUPER + ESCAPE','CEDAR power','power toggle'), ('SUPER + ALT + L','CEDAR lock','lock lock'),
-    ('SUPER + SHIFT + CTRL + SPACE','CEDAR themes','themes toggle'), ('SUPER + CTRL + SPACE','CEDAR wallpaper picker','wallpapers toggle'), ('SUPER + CTRL + L','CEDAR lock','lock lock'), ('SUPER + SHIFT + ALT + comma','CEDAR history','notifications toggle'),
-    ('XF86AudioRaiseVolume','Volume up','osd volume 5'), ('XF86AudioLowerVolume','Volume down','osd volume -5'),
-    ('XF86AudioMute','Mute','osd mute'), ('XF86MonBrightnessUp','Brightness up','osd brightness 5'),
-    ('XF86MonBrightnessDown','Brightness down','osd brightness -5'),
-]
-for key,label,action in bindings:
-    flags = ', { repeating = true }' if ('Volume' in key or 'Brightness' in key) else ''
-    hypr += f'bind("{key}", "{label}", "qs -c cedar ipc call {action}"{flags})\n'
-for key, action in [('XF86AudioPlay','toggle'), ('XF86AudioPause','pause'), ('XF86AudioNext','next'), ('XF86AudioPrev','previous')]:
-    hypr += f'bind("{key}", "Media {action}", "qs -c cedar ipc call media {action}")\n'
-hypr += '''-- The theme-set and post-boot hooks manage the shell's lifetime.
--- Never add an unconditional CEDAR exec-once to the global configuration.
 '''
 write('hyprland.lua', hypr)
-# Requested legacy snippet, intentionally not installed on current Lua Hyprland.
-conf = f'''# Hyprland 0.54 hyprlang reference ONLY. Current systems use hyprland.lua.
-# Source this only from a selected-theme file, never unconditionally.
+conf = f'''# CEDAR palette for Hyprland using hyprlang configuration.
+# Optional: source from your own configuration. No startup or key changes.
 general {{
     border_size = 1
     col.active_border = rgb({P['green'][1:]}) rgb({P['teal'][1:]}) 45deg
@@ -126,22 +106,11 @@ decoration {{
         passes = 2
     }}
 }}
-layerrule {{
-    name = cedar-blur
-    match:namespace = ^cedar-.*$
-    blur = on
-    ignore_alpha = 0.1
-}}
-# This guarded exec-once delegates to the theme selector and launches qs -c cedar.
-exec-once = python3 "${{XDG_CONFIG_HOME:-$HOME/.config}}/quickshell/cedar/scripts/theme-sync.py"
 '''
-for key, label, action in bindings:
-    parts = key.split(' + '); mods = ' '.join(parts[:-1]); name = parts[-1]
-    conf += f'unbind = {mods}, {name}\nbind = {mods}, {name}, exec, qs -c cedar ipc call {action}\n'
 write('hyprland.conf', conf)
 
 roles = ['Forest-tinted base', 'Panel and editor surface', 'Pressed/selected surface', 'Inactive borders and selection', 'Primary cedar glow', 'Bright living green / ANSI bright green', 'Secondary teal / data links', 'Lantern amber / cursor and warnings', 'Muted ember / errors', 'Primary readable text', 'Secondary readable text / ANSI bright black', 'Cool blue / types', 'Muted violet / preprocessor', 'ANSI bright red', 'ANSI bright yellow', 'ANSI bright blue', 'ANSI bright magenta', 'ANSI bright cyan', 'Bright foreground']
 rows = ['| Token | Hex | Role |','|---|---|---|']
 for (name,value),role in zip(P.items(), roles): rows.append(f'| `{name}` | `{value}` | {role} |')
 (ROOT/'docs/PALETTE.md').write_text('# CEDAR palette\n\n'+'\n'.join(rows)+'\n\nDerived alpha colors: transparent (0%), glass (94%), veil (88%), grid (teal at 4.5%).\n')
-print('Exported kitty, btop, Neovim, Omarchy colors, Hyprland and palette table.')
+print('Exported kitty, btop, Neovim, colors, Hyprland and palette table.')

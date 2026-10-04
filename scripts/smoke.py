@@ -6,10 +6,12 @@ import subprocess
 import sys
 import time
 
-from cedar_cli import unlocked, instances
-unlocked()
-if instances('cedar'):raise SystemExit('Use an isolated preview checkout; the installed CEDAR shell is already running.')
+from distribution import ensure_unlocked
+from portable_providers import qs_instances
+ensure_unlocked()
 root = Path(__file__).resolve().parents[1]
+if any(Path(row.get('config_path', '/unavailable')).resolve() == root/'shell.qml' for row in qs_instances()):
+    raise SystemExit('This source is already running. Use a disposable checkout for smoke testing.')
 log_path = root/'tests/runtime.log'
 CALLS = [['hud', 'toggle'], ['menu', 'toggle', 'root'], ['launcher', 'toggle'], ['menu', 'toggle', 'apps'], ['menu', 'toggle', 'setup.plugin'],
          ['menu', 'summon', '{"mode":"select","prompt":"Smoke","options":["✓\tOne\tfirst","Two"]}'],

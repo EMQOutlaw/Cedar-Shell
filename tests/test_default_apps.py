@@ -24,7 +24,12 @@ class DefaultApps(unittest.TestCase):
         self.assertEqual(result['data']['launchKey'],'editor')
         wrapper=self.home/'state/cedar/default-editor'
         self.assertIn('gtk-launch cedar-test-editor.desktop "$@"',wrapper.read_text())
-        self.assertEqual((self.home/'state/omarchy/defaults/editor').read_text().strip(),str(wrapper))
+        self.assertFalse((self.home/'state/omarchy').exists(), 'Standalone default-app edits must not create Omarchy state')
+    def test_explicit_omarchy_adapter_preserves_editor_integration(self):
+        self.env['CEDAR_ADAPTER']='omarchy'
+        result=self.request({'action':'apply','role':'editor','app':'cedar-test-editor.desktop'})
+        self.assertTrue(result['ok'],result)
+        self.assertEqual((self.home/'state/omarchy/defaults/editor').read_text().strip(),str(self.home/'state/cedar/default-editor'))
     def test_unknown_application_or_role_does_not_write(self):
         for request in [{'action':'apply','role':'editor','app':'not-installed.desktop'},{'action':'apply','role':'unknown','app':'cedar-test-editor.desktop'}]:self.assertFalse(self.request(request)['ok'])
         self.assertFalse((self.home/'config/mimeapps.list').exists())

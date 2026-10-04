@@ -5,8 +5,8 @@
     {
       "id": "cedar.bar",
       "name": "Bar, six styles and center navigation",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "components/BarButton.qml",
@@ -48,8 +48,8 @@
     {
       "id": "cedar.core",
       "name": "Core, Signals and OSD",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "components/core/CoreDetails.qml",
@@ -116,8 +116,8 @@
     {
       "id": "cedar.canopy",
       "name": "Canopy and Instruments",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "modules/AudioCanopy.qml",
@@ -172,8 +172,8 @@
     {
       "id": "cedar.field-station",
       "name": "Field Station and ROOTED",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "components/CedarAtmosphere.qml",
@@ -209,8 +209,8 @@
     {
       "id": "cedar.settings",
       "name": "Settings, About, displays/input/keybinds/default apps",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "Branding.qml",
@@ -302,9 +302,9 @@
     },
     {
       "id": "cedar.go",
-      "name": "Go launcher and Omarchy bridge",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "name": "CEDAR Go application launcher and local menu",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Incomplete",
       "entryPoint": "modules/Menu.qml",
@@ -315,7 +315,9 @@
         "scripts/plugins.py",
         "scripts/shim/omarchy-shell",
         "scripts/with-shim",
-        "services/Go.qml"
+        "services/Go.qml",
+        "menus/default.jsonc",
+        "scripts/desktop_runtime.py"
       ],
       "dependencies": [
         "qs",
@@ -329,10 +331,12 @@
       ],
       "external": false,
       "settings": "Config.qml and components/SettingsSchema.js",
-      "dataSources": "Installed apps supported; extensive Omarchy command providers require that adapter. Omarchy plugin manager is NOT a CEDAR plugin runtime",
-      "lifecycle": "Installed apps supported; extensive Omarchy command providers require that adapter. Omarchy plugin manager is NOT a CEDAR plugin runtime",
+      "dataSources": "CEDAR local menu and installed desktop applications; optional Omarchy menu only in the explicit Omarchy adapter",
+      "lifecycle": "Standalone menu loaded with the shell; advanced unified file/calculator search remains incomplete",
       "tests": [
-        "tests/check_desktop_ui.py"
+        "tests/check_desktop_ui.py",
+        "tests/check_portable_ui.py",
+        "tests/test_portability.py"
       ],
       "releaseArtifacts": [
         "components/MenuModel.js",
@@ -341,14 +345,16 @@
         "scripts/plugins.py",
         "scripts/shim/omarchy-shell",
         "scripts/with-shim",
-        "services/Go.qml"
+        "services/Go.qml",
+        "menus/default.jsonc",
+        "scripts/desktop_runtime.py"
       ]
     },
     {
       "id": "cedar.notifications",
       "name": "Notification server, history and popups",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "modules/NotificationCanopy.qml",
@@ -383,8 +389,8 @@
     {
       "id": "cedar.trailwatch",
       "name": "Trailwatch Wayland lock and PAM",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Incomplete",
       "entryPoint": "components/LockAuth.qml",
@@ -442,8 +448,8 @@
     {
       "id": "cedar.audio",
       "name": "Audio, media, routing, scenes and optional spectrum",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "components/AudioSpectrum.qml",
@@ -487,8 +493,8 @@
     {
       "id": "cedar.connections",
       "name": "NetworkManager and Bluetooth",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "modules/BluetoothSettings.qml",
@@ -504,7 +510,8 @@
         "qs",
         "dbus",
         "gi",
-        "nmcli"
+        "nmcli",
+        "gi.NM"
       ],
       "startup": "Loaded through the existing shell service/component graph; preview uses test-mode windows only",
       "capabilities": [
@@ -530,8 +537,8 @@
     {
       "id": "cedar.telemetry",
       "name": "Real local system readings",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "services/Brightness.qml",
@@ -567,8 +574,8 @@
     {
       "id": "cedar.forest",
       "name": "Pulse, Forest States, Echoes, Whispers and Trails",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "modules/TrailCanopy.qml",
@@ -600,8 +607,8 @@
     {
       "id": "cedar.clipboard",
       "name": "Opt-in clipboard history",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "modules/ClipboardCanopy.qml",
@@ -634,8 +641,8 @@
     {
       "id": "cedar.weather",
       "name": "Sky Watch and optional location",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
       "status": "Implemented",
       "entryPoint": "modules/WeatherCanopy.qml",
@@ -674,10 +681,10 @@
     {
       "id": "cedar.themes",
       "name": "Theme and wallpaper helpers",
-      "version": "0.1.0-dev.1",
-      "cedarCompatibility": "0.1.0-dev.2",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "built-in component bundle; not an isolated third-party plugin",
-      "status": "Incomplete",
+      "status": "Implemented local palettes and wallpapers; system-wide theme propagation remains partial",
       "entryPoint": "modules/Background.qml",
       "files": [
         "backgrounds/README.md",
@@ -701,7 +708,8 @@
         "themes/hyprland.lua",
         "themes/kitty.conf",
         "themes/neovim.lua",
-        "themes/preview.png"
+        "themes/preview.png",
+        "scripts/desktop_runtime.py"
       ],
       "dependencies": [
         "qs",
@@ -713,8 +721,8 @@
       ],
       "external": false,
       "settings": "Config.qml and components/SettingsSchema.js",
-      "dataSources": "Assets shipped; desktop application currently uses Omarchy helpers; never changed at install",
-      "lifecycle": "Assets shipped; desktop application currently uses Omarchy helpers; never changed at install",
+      "dataSources": "Local CEDAR JSON palettes and image files. Existing external wallpaper providers retained during desktop handoff",
+      "lifecycle": "No Omarchy service needed; Quickshell FileView hot-reloads local theme and desktop preferences",
       "tests": [
         "tests/check_identity.py"
       ],
@@ -740,14 +748,15 @@
         "themes/hyprland.lua",
         "themes/kitty.conf",
         "themes/neovim.lua",
-        "themes/preview.png"
+        "themes/preview.png",
+        "scripts/desktop_runtime.py"
       ]
     },
     {
       "id": "cedar.omarchy-integration",
       "name": "Omarchy resident-authentication session adapter",
-      "version": "0.1.0-dev.5",
-      "cedarCompatibility": "0.1.0-dev.5",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
       "kind": "first-party integration; trusted code, not sandboxed",
       "status": "Experimental: implemented, live acceptance pending",
       "entryPoint": "scripts/omarchy_session.py",
@@ -762,7 +771,16 @@
         "integrations/omarchy/omacale.json",
         "integrations/omarchy/omacale-guard/manifest.json",
         "integrations/omarchy/omacale-guard/Service.qml",
-        "integrations/omarchy/companions.json"
+        "integrations/omarchy/companions.json",
+        "integrations/omarchy/hyprland.lua",
+        "integrations/omarchy/hyprland.conf",
+        "integrations/omarchy/menu-overlay.jsonc",
+        "scripts/legacy_omarchy_install.py",
+        "scripts/cedar_cli.py",
+        "scripts/plugins.py",
+        "scripts/theme-sync.py",
+        "scripts/theme-hook",
+        "scripts/with-shim"
       ],
       "releaseArtifacts": [
         "integrations/omarchy/manifest.json",
@@ -775,7 +793,16 @@
         "integrations/omarchy/omacale.json",
         "integrations/omarchy/omacale-guard/manifest.json",
         "integrations/omarchy/omacale-guard/Service.qml",
-        "integrations/omarchy/companions.json"
+        "integrations/omarchy/companions.json",
+        "integrations/omarchy/hyprland.lua",
+        "integrations/omarchy/hyprland.conf",
+        "integrations/omarchy/menu-overlay.jsonc",
+        "scripts/legacy_omarchy_install.py",
+        "scripts/cedar_cli.py",
+        "scripts/plugins.py",
+        "scripts/theme-sync.py",
+        "scripts/theme-hook",
+        "scripts/with-shim"
       ],
       "dependencies": [
         "qs",
@@ -801,6 +828,59 @@
         "tests/check_session_ui.py",
         "tests/test_omacale_providers.py",
         "tests/check_omacale_guard.py"
+      ],
+      "scope": "omarchy-adapter"
+    },
+    {
+      "id": "cedar.hyprland-integration",
+      "name": "Stock Hyprland and resident Noctalia session adapters",
+      "version": "0.1.0-dev.6",
+      "cedarCompatibility": "0.1.0-dev.6",
+      "kind": "Built-in integration bundle; not a security sandbox",
+      "status": "Experimental: implemented, native acceptance pending",
+      "entryPoint": "scripts/portable_session.py",
+      "files": [
+        "scripts/portable_providers.py",
+        "scripts/portable_session.py",
+        "scripts/setup.py",
+        "scripts/desktop_runtime.py",
+        "auth-test.qml",
+        "integrations/noctalia/adapter.json",
+        "services/SessionIntegration.qml"
+      ],
+      "releaseArtifacts": [
+        "scripts/portable_providers.py",
+        "scripts/portable_session.py",
+        "scripts/setup.py",
+        "scripts/desktop_runtime.py",
+        "auth-test.qml",
+        "integrations/noctalia/adapter.json",
+        "services/SessionIntegration.qml"
+      ],
+      "dependencies": [
+        "qs",
+        "hyprctl",
+        "python3",
+        "tomllib",
+        "systemctl",
+        "systemd-run",
+        "busctl"
+      ],
+      "startup": "Explicit installer trial choice or cedar try; Keep then separate login approval",
+      "capabilities": [
+        "Private provider configuration backups",
+        "Exact PID or dedicated user-service coordination",
+        "Independent recovery supervision",
+        "Local IPC and compositor lock inspection"
+      ],
+      "external": false,
+      "settings": "Private portable-session.json and ownership journals; user preferences preserved",
+      "dataSources": "Actual running providers, reviewed Noctalia IPC/configuration, Hyprland monitor lock coverage and D-Bus ownership",
+      "lifecycle": "Preserve existing Noctalia/Hyprlock authentication; standalone Trailwatch only after local PAM test; defer changes while locked or unknown",
+      "tests": [
+        "tests/test_portability.py",
+        "tests/check_portable_ui.py",
+        "tests/check_session_ui.py"
       ]
     }
   ],

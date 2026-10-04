@@ -37,11 +37,11 @@ class TrailwatchSources(unittest.TestCase):
             self.assertEqual(t.agenda(path,time.time())['status'],'unavailable')
 
     def test_reminder_failure_is_not_an_empty_schedule(self):
-        with patch.object(t,'command',return_value=None):self.assertIsNone(t.reminders())
-        with patch.object(t,'command',return_value='[]'):self.assertEqual(t.reminders(),[])
+        with patch.object(t,'omarchy',return_value=True),patch.object(t,'command',return_value=None):self.assertIsNone(t.reminders())
+        with patch.object(t,'omarchy',return_value=True),patch.object(t,'command',return_value='[]'):self.assertEqual(t.reminders(),[])
 
     def test_reminders_validate_units_and_filter_expired(self):
-        with patch.object(t,'command',return_value=json.dumps([
+        with patch.object(t,'omarchy',return_value=True),patch.object(t,'command',return_value=json.dumps([
             {'unit':'omarchy-reminder-1m-test.timer','next':(time.time()+300)*1e6},
             {'unit':'omarchy-reminder-1m-old.timer','next':1},
             {'unit':'omarchy-reminder-/bad.timer','next':(time.time()+300)*1e6}])):

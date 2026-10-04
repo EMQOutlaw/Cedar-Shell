@@ -16,7 +16,7 @@ With Git installed, copy and paste this command into your terminal:
 git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh
 ```
 
-The repository is currently private, so your GitHub account needs access and Git authentication must be configured. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop; the separate Omarchy trial below activates CEDAR. Run it from a folder that does not already contain a `cedar-shell` directory.
+The repository is currently private, so your GitHub account needs access and Git authentication must be configured. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop. The installer then offers Install Only, an isolated preview, or a reversible full desktop trial on Hyprland. Run it from a folder that does not already contain a `cedar-shell` directory.
 
 **Already cloned into your home folder?** Update that checkout instead of cloning again:
 
@@ -32,9 +32,9 @@ For a provided private candidate archive:
 2. Extract it and open a terminal in the extracted `cedar-shell` folder.
 3. Run `bash ./install.sh`.
 
-A checkout works too. Python 3 and ordinary shell utilities bootstrap setup. On Arch, a missing Python can be installed only after approving the displayed full-upgrade plan. Quickshell is required for preview and desktop use. `python3 scripts/distribution.py dependencies` shows missing software; `--approve-packages --approve-system-upgrade` explicitly authorizes configured Arch repository packages and a full supported upgrade. No AUR helper or repository is silently added. Compositors, drivers and service replacements are excluded.
+A checkout works too. Python 3.11+ and ordinary shell utilities bootstrap setup. Omarchy is not required or installed. A working Hyprland session is the prerequisite. On Arch, a missing Python can be installed only after approving the displayed full-upgrade plan. Quickshell is required for preview and desktop use. `python3 scripts/distribution.py dependencies` shows missing software; `--approve-packages --approve-system-upgrade` explicitly authorizes configured Arch repository packages and a full supported upgrade. No AUR helper or repository is silently added. Compositors, drivers and service replacements are excluded.
 
-The installer shows an **Install Only** plan and copies complete source into versioned user data storage; the extracted folder can then be removed. It preserves current preferences and desktop startup. A command collision or managed/symlinked target stops safely. `--plan` inspects without installation; `--approve-install-only` encodes that limited unattended choice. There is no generic yes flag authorizing takeover.
+The installer shows a dependency plan, asks before any package installation, then shows an **Install Only** plan and copies complete source into versioned user data storage; the extracted folder can then be removed. It preserves current preferences and desktop startup. A command collision or managed/symlinked target stops safely. `--plan` inspects without installation; `--approve-install-only` encodes that limited unattended choice. There is no generic yes flag authorizing takeover.
 
 `cedar preview` opens an ordinary window with explicitly labeled fixtures, isolated preferences and local-only operation. It does not own notifications, replace wallpaper, reserve desktop space or lock the session.
 
@@ -46,39 +46,45 @@ After installation, open that preview with this command (it also works when `~/.
 
 If the installer says **Desktop activation: not performed**, installation succeeded. Choose either the isolated preview above or the full desktop trial below.
 
-### Use CEDAR on Omarchy 4.0.4
+### Use CEDAR on stock Hyprland or alongside Noctalia
 
-This is an experimental integration with runtime checks, not a claim of completed hardware or secure-lock acceptance testing. It checks the installed Omarchy source interfaces before changing anything; other versions or modified providers can be refused safely.
-
-Start a 120-second trial of the **full CEDAR desktop**:
+The installer can walk through the following steps for you. They are also available as separate commands:
 
 ```bash
 "$HOME/.local/bin/cedar" try
 ```
 
-Read and approve its plan. CEDAR supplies the bar, Core, Canopy, Field Station, Settings and notifications. Omarchy keeps its existing lockscreen, idle handling, privileged authentication prompts, wallpaper and keyboard shortcuts. Trailwatch authentication is not activated by this trial. No compositor restart, logout, or package change is performed.
-
-This adapter requires Omarchy's existing lock service and live authentication interface. It also supports the reviewed Omacale 0.45.0 lock clone on Omarchy 4.0.4, retaining its locker and view. An unrecognized or modified clone stops safely; do not enable a second locker to bypass that check. For Omacale, the plan explicitly pauses its notification/OSD repair watchers before switching those providers; restoration resumes their original bindings. Omacale files and settings remain untouched. Other disabled services, including idle handling, stay disabled. `keep` and `activate` only work after a successful `try`; reinstalling alone does not start a trial.
-
-If it works, run this before the trial expires:
+Approve the displayed plan. A 120-second trial opens the full CEDAR desktop. If you want to keep it, run:
 
 ```bash
 "$HOME/.local/bin/cedar" keep
 ```
 
-To also use it at login, approve the separate startup change:
+Then, optionally, enable it at login:
 
 ```bash
 "$HOME/.local/bin/cedar" activate
 ```
 
-To go back at any time:
+To go back:
 
 ```bash
 "$HOME/.local/bin/cedar" restore
 ```
 
-An independent supervisor restores the previous settings after an unconfirmed timeout or a CEDAR crash. While locked, it defers changes until unlock. Later manual edits are preserved and reported as recovery conflicts. `cedar status` shows startup/recovery errors. See [Omarchy integration](docs/OMARCHY-SESSION.md) for exact boundaries and recovery details.
+`keep` and `activate` require a healthy trial first. Reinstalling alone does not activate the desktop. `cedar status` explains a failed or pending trial. Use the center Core for Quick Controls and the Go button for applications; existing shortcuts are preserved.
+
+On **stock Hyprland**, the adapter coordinates known Waybar/Mako/Dunst instances without replacing your compositor, portals, authentication agent, audio/network services, display layout or default apps. Existing Hyprlock and wallpaper providers are retained when detected. If no existing locker is configured, a local password-test window must succeed before Trailwatch is enabled. Enter passwords only in that local window. No PAM files are edited.
+
+With **Noctalia**, CEDAR supplies the bar, Canopy, notifications and OSD while the existing Noctalia process keeps its locker, idle handling, authentication agent and wallpaper. Reviewed interfaces currently cover Quickshell-based **4.7.7** and native **5.2.1**; modified or unknown versions are refused safely. A separate Quickshell installation is still required for CEDAR even when Noctalia itself is native.
+
+These adapters are **experimental**. Source inspection, offscreen UI checks and recovery fixtures have run; clean-machine/native Wayland handoff, login and secure-lock acceptance have not. Unknown providers or unavailable lock status leave the existing desktop in place and offer preview. See [portable integration](docs/PORTABILITY.md) for the exact boundaries.
+
+An independent supervisor restores an unconfirmed trial after timeout or CEDAR failure. It defers changes while locked or when lock state cannot be verified. Later manual edits are preserved as recovery conflicts. No automatic logout, compositor restart or reboot occurs.
+
+### Existing Omarchy installations
+
+Omarchy remains an **optional compatibility adapter** for existing installations. Its commands, menu overlay and theme hooks are not prerequisites for the portable shell. Automatic detection uses a running Omarchy shell, not merely an installed directory. Its reviewed 4.0.4/Omacale path remains available; see [Omarchy integration](docs/OMARCHY-SESSION.md). Installing this release does not alter an independently running local source checkout.
 
 ## Recovery and updates
 
@@ -90,7 +96,7 @@ Updates are manual: `cedar update ARCHIVE --signature SIGNATURE --trusted-key PU
 
 Local-only mode is on by default. Weather, approximate IP location and remote artwork require separate opt-in. Clipboard history and window-title Trails remain opt-in. See [privacy](docs/PRIVACY.md), the [dependency manifest](data/dependencies.json), [component inventory](data/plugins.json), and [compatibility evidence](data/compatibility.json).
 
-The observed development environment is Arch/Omarchy, Hyprland 0.56.2, Quickshell 0.3.1 and Qt 6.11.2 on x86_64. Offscreen tests do not certify those versions for every host. No other compositor or broad hardware support is promised. [Release readiness](docs/RELEASE-READINESS.md) lists the incomplete and untested gates.
+Automatic package preparation targets configured Arch repositories. The observed development environment is Arch with Hyprland 0.56.2, Quickshell 0.3.1 and Qt 6.11.2 on x86_64. Offscreen tests do not certify those versions for every host. Stock Hyprland and Noctalia adapters do not imply support for other compositors or untested hardware. [Release readiness](docs/RELEASE-READINESS.md) lists the incomplete and untested gates.
 
 ## Why CEDAR?
 
