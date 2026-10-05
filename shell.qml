@@ -231,7 +231,7 @@ ShellRoot {
             return ShellState.locked;
         }
         function sessionInfo(): string {
-            return JSON.stringify({externalLock: Config.externalSession, locked: ShellState.locked, screenCount: Quickshell.screens.length, stage: Config.stage});
+            return JSON.stringify({externalLock: Config.externalSession, locked: ShellState.locked, lockReady: ShellState.nativeLockReady, lockSecure: ShellState.lockSecure, securedUnlocks: ShellState.securedUnlocks, screenCount: Quickshell.screens.length, stage: Config.stage});
         }
         function stop(): void {
             if (!ShellState.locked)

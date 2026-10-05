@@ -16,6 +16,7 @@ import time
 import uuid
 import distribution as d
 import portable_providers as providers
+import portable_controls as controls
 
 ACTIVE = {'prepared', 'starting', 'trial', 'kept', 'restore-requested', 'failed'}
 
@@ -71,7 +72,7 @@ def authenticate(root):
         raise d.Refused('Authentication test did not succeed. Existing desktop preserved; no session lock was requested.')
 
 
-def trial(root, approved=False, expected_adapter='auto'):
+def trial(root, approved=False, expected_adapter='auto', cedar_launcher=False, trailwatch=False):
     root = root.resolve()
     for name in ('qs', 'hyprctl', 'systemd-run', 'systemctl', 'busctl'):
         if not shutil.which(name):
@@ -85,6 +86,7 @@ def trial(root, approved=False, expected_adapter='auto'):
         row = {**providers.inspect(root), 'root': str(root)}
         if expected_adapter == 'noctalia' and row['locker'] != 'noctalia' or expected_adapter == 'hyprland' and row['adapter'] != 'hyprland':
             raise d.Refused('The requested adapter does not match the running desktop. Use cedar try for automatic detection.')
+        controls.plan(row, cedar_launcher, trailwatch)
         plan = {'action': 'Try CEDAR for 120 seconds', 'adapter': row['adapter'],
                 'pause': [Path(p['exe']).name for p in row['paused']],
                 'changes': ['Start CEDAR bar, Core, Canopy, Go, Settings and notifications'],
@@ -92,7 +94,12 @@ def trial(root, approved=False, expected_adapter='auto'):
                 'preserve': ['Applications, displays, shortcuts, audio/network services, portals and authentication agents'],
                 'recovery': 'Independent supervisor; cedar keep confirms this session. Timeout/crash restores the previous desktop when unlocked.'}
         if row.get('providerSettings'):
-            plan['changes'].append('Privately back up Noctalia settings; suspend its bar, dock, notifications and OSD. Keep its locker, idle handling, wallpaper and authentication agent running.')
+            plan['changes'].append('Privately back up Noctalia settings; suspend its bar, dock, notifications and OSD. Preserve wallpaper and its authentication agent.')
+        if row.get('controls'):
+            plan['shortcuts'] = row['controls']['bindings']
+            plan['preserve'][0] = 'Applications, displays, all other shortcuts, audio/network services, portals and authentication agents'
+        if row.get('trailwatch'):
+            plan['changes'].append('Test PAM locally, then open Trailwatch for one real lock/unlock test. Only after a successful secure unlock, select Trailwatch. Preserve Noctalia idle timings and route lock actions to CEDAR. Start one private hypridle sleep/lock bridge; no global idle service is enabled.')
         if row['locker'] == 'trailwatch':
             plan['authentication'] = 'Test the existing system login PAM service in a local window, then enable Trailwatch. No PAM files are changed.'
         d.approve(plan, approved)
@@ -109,6 +116,7 @@ def trial(root, approved=False, expected_adapter='auto'):
         row['unit'] = 'cedar-session-' + row['id'] + '-' + row['generation'][:8]
         if row.get('providerSettings'):
             tx.backup(Path(row['providerSettings']))
+        controls.backup(row, tx)
         tx.stage('back-up')
         save(row)
         try:
@@ -119,7 +127,8 @@ def trial(root, approved=False, expected_adapter='auto'):
             save(row)
             raise
     print('Starting CEDAR. Your applications stay open.', flush=True)
-    deadline = time.monotonic() + 40
+    if row.get('trailwatch'): print('Trailwatch will lock once for verification. Unlock with your normal password; the previous lock integration stays available until this succeeds.', flush=True)
+    deadline = time.monotonic() + (180 if row.get('trailwatch') else 40)
     while time.monotonic() < deadline:
         current = read_record()
         if current and current['id'] == row['id']:
@@ -199,7 +208,7 @@ def start_cedar(row):
     unlocked(row)
     normalize_provider_record(row)
     providers.hide_bar(row)
-    if row['locker'] == 'noctalia' and providers.noctalia_state(row)['barVisible']:
+    if row['adapter'].startswith('noctalia-') and providers.noctalia_state(row)['barVisible']:
         raise d.Refused('Waiting for Noctalia to release its bar.')
     if providers.notification_owner() is not None:
         raise d.Refused('Waiting for the previous notification provider to release its name.')
@@ -209,6 +218,7 @@ def start_cedar(row):
         return
     env = {**os.environ, 'CEDAR_ADAPTER': row['adapter'], 'CEDAR_MANAGED_SESSION': '1',
            'CEDAR_EXTERNAL_LOCK': '0' if row['locker'] == 'trailwatch' else '1',
+           'CEDAR_EXTERNAL_IDLE': '1' if row.get('trailwatch') else '0',
            'CEDAR_BACKGROUND': row['background'], 'CEDAR_PAM_SERVICE': 'login',
            'CEDAR_SESSION_STATUS': row['statusFile'],
            'CEDAR_SESSION_HELPER': str(d.paths()['data'] / 'recovery/portable_session.py'),
@@ -231,10 +241,13 @@ def healthy(row):
         raise d.Refused('CEDAR has not loaded its full desktop.')
     if state.get('externalLock') != (row['locker'] != 'trailwatch'):
         raise d.Refused('CEDAR lock delegation does not match the reviewed plan.')
+    if row.get('trailwatch') and state.get('lockReady') is not True:
+        raise d.Refused('Trailwatch authentication surfaces have not loaded; the existing locker remains available.')
     if providers.notification_owner() != matches[0]['pid']:
         raise d.Refused('CEDAR did not acquire notification ownership.')
-    if row['locker'] == 'noctalia' and providers.noctalia_state(row)['barVisible']:
+    if row['adapter'].startswith('noctalia-') and providers.noctalia_state(row)['barVisible']:
         raise d.Refused('Noctalia bar was re-enabled; restoring the prior desktop.')
+    if row.get('trailwatch', {}).get('ready'): controls.bridge_ready(row)
     paused_exes = {p['exe'] for p in row['paused']}
     if any(p['exe'] in paused_exes for p in providers.processes()):
         raise d.Refused('A paused desktop provider restarted. Returning to the previous desktop without terminating its new instance.')
@@ -259,6 +272,9 @@ def restore(row):
     if row.get('loginJournal'):
         d.check_restore_journal(Path(row['loginJournal']))
     if not offline:
+        controls.restore_lock_handoff(row, transaction(row), save, unlocked)
+        d.check_restore_journal(journal)
+        unlocked(row)
         matches = cedar_rows(row)
         if matches:
             if ipc(row, 'shell', 'isLocked') != 'false':
@@ -269,10 +285,16 @@ def restore(row):
                 time.sleep(.1)
             if cedar_rows(row):
                 raise d.Refused('CEDAR did not close safely. No process was killed.')
+    if offline and row.get('trailwatch', {}).get('bridgeStarted'):
+        controls.stop_bridge(row)
     if row.get('loginJournal'):
         d.restore_journal(Path(row['loginJournal']))
     d.restore_journal(journal)
     if not offline:
+        if row.get('controls'):
+            d.command(['hyprctl', 'reload'])
+            if d.command(['hyprctl', 'configerrors']).strip() not in ('', 'ok', '[]'):
+                raise d.Refused('Files restored, but Hyprland reported a configuration error. Review cedar status.')
         providers.restore_bar(row)
         for process in row['paused']:
             if process['pid'] in row.get('pausedIntents', []):
@@ -304,10 +326,15 @@ def supervise(identity, generation):
                         if not cedar_rows(row):
                             start_cedar(row)
                         healthy(row)
-                        row['stage'] = 'kept' if row.get('login') else 'trial'
-                        row['deadline'] = time.time() + 120
-                        row.pop('error', None)
-                        save(row)
+                        if not row.get('controlsApplied'):
+                            controls.apply(row, transaction(row))
+                            row['controlsApplied'] = True
+                            save(row)
+                        if controls.finish_lock_handoff(row, transaction(row), save, ipc, unlocked):
+                            row['stage'] = 'kept' if row.get('login') else 'trial'
+                            row['deadline'] = time.time() + 120
+                            row.pop('error', None)
+                            save(row)
                     elif row['stage'] in ('trial', 'kept'):
                         healthy(row)
                         if row['stage'] == 'trial' and time.time() > row['deadline']:
@@ -326,7 +353,7 @@ def supervise(identity, generation):
 
 
 def startup_entry(row):
-    path = providers.main_config()
+    path = Path(row['controls']['loginFile']) if row.get('controls') else providers.main_config()
     providers.safe_target(path)
     if path.suffix not in ('.conf', '.lua'):
         raise d.Refused('Unsupported Hyprland startup syntax.')
@@ -362,15 +389,19 @@ def keep(login=False, approved=False):
                 return
             path, content = startup_entry(row)
             d.approve({'action': 'Use CEDAR at login', 'edit': str(path),
-                       'changes': 'Append one owned startup block. Existing startup commands, shortcuts and locker stay intact.',
+                       'changes': 'Enable the reviewed CEDAR session at login. All unselected startup commands and shortcuts stay intact.',
                        'undo': 'cedar restore'}, approved)
             unlocked(row)
-            tx = d.Transaction('portable-login')
-            row['loginJournal'] = str(tx.path)
-            save(row)
+            integrated = bool(row.get('controls'))
+            tx = transaction(row) if integrated else d.Transaction('portable-login')
+            if not integrated:
+                row['loginJournal'] = str(tx.path)
+                save(row)
+            previous = path.read_bytes()
             try:
-                entry = tx.backup(path)
-                tx.apply_file(entry, content, entry['before']['mode'])
+                entry = next(e for e in tx.record['files'] if e['path'] == str(path)) if integrated else tx.backup(path)
+                if integrated: tx.replace_owned_file(entry, content, 0o600)
+                else: tx.apply_file(entry, content, entry['before']['mode'])
                 d.command(['hyprctl', 'reload'])
                 errors = d.command(['hyprctl', 'configerrors']).strip()
                 if errors not in ('', 'ok', '[]'):
@@ -378,7 +409,8 @@ def keep(login=False, approved=False):
                 tx.commit()
                 row['login'] = True
             except BaseException:
-                d.restore_journal(tx.path)
+                if integrated: tx.replace_owned_file(entry, previous, 0o600)
+                else: d.restore_journal(tx.path)
                 with contextlib.suppress(Exception): d.command(['hyprctl', 'reload'])
                 raise
         row['stage'] = 'kept'
@@ -417,8 +449,12 @@ def login():
         row['unit'] = 'cedar-session-' + row['id'] + '-' + row['generation'][:8]
         row['sessionSignature'] = signature
         row['readyDeadline'] = time.time() + 40
+        row['controlsApplied'] = False
+        if row.get('trailwatch'):
+            row['trailwatch']['bridgeStarted'] = False
+            row['trailwatch']['ready'] = False
         # Refresh provider PIDs on the same reviewed source, never use old PIDs.
-        if row['locker'] == 'noctalia':
+        if row['adapter'].startswith('noctalia-'):
             providers.verify_noctalia(Path(row['root']), row)
             matches = [p for p in providers.processes() if p['exe'] == row['providerExe']]
             if row['adapter'] == 'noctalia-v4':
@@ -454,10 +490,13 @@ def main(args):
             except (d.Refused, OSError, ValueError, subprocess.SubprocessError):
                 if time.monotonic() > deadline: raise
                 time.sleep(1)
-    elif action == 'lock':
+    elif action in ('lock', 'launcher'):
         row = read_record()
         if not row or not active(): raise d.Refused('No active portable session.')
-        providers.request_lock(row, '--suspend' in args)
+        if action == 'lock': providers.request_lock(row, '--suspend' in args)
+        else:
+            unlocked(row)
+            ipc(row, 'launcher', 'toggle')
     else: raise d.Refused('Use cedar try, keep, activate, status or restore.')
 
 

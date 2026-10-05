@@ -11,6 +11,9 @@ import "../components"
 Scope {
     id: root
     readonly property string status: authController.status
+    property bool hadSecureLock: false
+    Component.onCompleted: ShellState.nativeLockReady = true
+    Component.onDestruction: ShellState.nativeLockReady = false
     // Keep this ID distinct from TrailwatchView.auth: an implicit lock-surface
     // component otherwise resolves `auth: auth` to its own unset property.
     LockAuth {
@@ -23,6 +26,7 @@ Scope {
                 authController.status = "Authentication succeeded. Your password works.";
                 return;
             }
+            if (root.hadSecureLock) ShellState.securedUnlocks++;
             lock.locked = false;
             ShellState.locked = false;
             ShellState.suspendAfterLock = false;
@@ -41,7 +45,7 @@ Scope {
         }
     }
     IdleMonitor {
-        enabled: !Config.testMode && !Config.authOnly && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest
+        enabled: !Config.testMode && !Config.authOnly && !Config.externalIdle && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest
         timeout: Config.idleLockSeconds
         respectInhibitors: true
         onIsIdleChanged: if (isIdle) ShellState.lock(false)
@@ -52,6 +56,7 @@ Scope {
         target: ShellState
         function onLockedChanged() {
             if (ShellState.locked && !Config.testMode) {
+                root.hadSecureLock = false;
                 lock.locked = true;
                 root.clearInputs();
             }
@@ -93,9 +98,13 @@ Scope {
     }
     WlSessionLock {
         id: lock
-        onSecureChanged: if (secure && ShellState.suspendAfterLock) {
-            ShellState.suspendAfterLock = false;
-            Quickshell.execDetached(["systemctl", "suspend"]);
+        onSecureChanged: {
+            ShellState.lockSecure = secure;
+            if (secure) root.hadSecureLock = true;
+            if (secure && ShellState.suspendAfterLock) {
+                ShellState.suspendAfterLock = false;
+                Quickshell.execDetached(["systemctl", "suspend"]);
+            }
         }
         WlSessionLockSurface {
             id: surface

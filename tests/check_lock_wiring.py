@@ -91,6 +91,7 @@ ShellRoot {
             test.check(pam.responses===1 && pam.correctResponse && auth.pendingResponse==="","Prompt receives password exactly once");
             pam.finish(PamResult.Failed);
             test.check(ShellState.locked && screen.testLock.locked,"Failure keeps session locked");
+            test.check(ShellState.securedUnlocks===0,"Failed authentication never validates locker adoption");
             test.check(first.terminal.field.enabled && second.terminal.field.enabled,"Failure allows retry on either monitor");
             test.check(auth.status.includes("not accepted"),"Useful failure message reaches shared controller");
             second.terminal.field.text="test-response";
@@ -98,6 +99,7 @@ ShellRoot {
             test.check(pam.starts===2 && pam.responses===2 && pam.correctResponse,"Other monitor can retry successfully");
             pam.finish(PamResult.Success);
             test.check(!ShellState.locked && !screen.testLock.locked,"Only successful authentication releases lock");
+            test.check(ShellState.securedUnlocks===1,"A secure lock plus successful PAM records one validation");
             test.check(auth.pendingResponse==="" && !auth.enabled,"Unlock clears and disables controller");
             console.log("PASS: production lock wiring, two dynamic surfaces, Enter, failure and retry");Qt.quit();
         }

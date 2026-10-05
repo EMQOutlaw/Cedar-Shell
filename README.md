@@ -26,6 +26,16 @@ cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
 
 If Git reports local changes or divergent history, stop and preserve your edits; do not reset or delete the checkout. The installer copies only the reviewed source inventory, so an accidentally nested clone or local settings file is not included and is left untouched.
 
+**Already running a kept CEDAR session?** Restore its desktop integration before updating the installed release:
+
+```bash
+"$HOME/.local/bin/cedar" restore && cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
+```
+
+Candidate **0.1.0-dev.11** adds the missing launcher and lockscreen selection. Choose **3**, then **yes** for **CEDAR Go** and, on native Noctalia 5.2.1, **Trailwatch**. The plan lists the exact shortcuts being redirected. Trailwatch first checks your password in a local window, then opens one real lockscreen test: unlock normally to continue. Your previous locker remains configured until that secure unlock succeeds and the sleep bridge is ready. Never enter your password in chat. Keep the desktop after checking it, then approve login activation separately.
+
+The Trailwatch replacement uses **hypridle 0.1.7** for logind lock and sleep requests; the dependency plan includes it when missing without enabling its global service. CEDAR starts a private instance with no extra idle timers. Noctalia's ordinary idle timings are retained. An existing independent idle daemon, special locked-state timeout or unreviewed runtime is left for review instead of being silently replaced. Go can be selected independently of Trailwatch.
+
 `git pull` updates the checkout; successful installation updates the installed `cedar` command. If setup was canceled or failed, the previous installed version remains selected. An old installed command may still report “Omarchy activation requires omarchy.” Finish installing the current candidate above before running `cedar try` again. Do not install Omarchy to resolve that message.
 
 Versions before `0.1.0-dev.8` could also stop with “Cannot inspect a same-user process” when an unrelated application protected its executable metadata. Update the checkout and rerun installation; no system permission changes are needed. CEDAR still refuses to switch a running release or change desktop providers when their identity or lock state cannot be verified.
@@ -82,7 +92,7 @@ To go back:
 "$HOME/.local/bin/cedar" restore
 ```
 
-`keep` and `activate` require a healthy trial first. Reinstalling alone does not activate the desktop. `cedar status` explains a failed or pending trial. Use the center Core for Quick Controls and the Go button for applications; existing shortcuts are preserved.
+`keep` and `activate` require a healthy trial first. Reinstalling alone does not activate the desktop. `cedar status` explains a failed or pending trial. Use the center Core for Quick Controls and the Go button for applications. CLI users can explicitly select the same controls with `cedar try --cedar-launcher --trailwatch` on native Noctalia 5.2.1. Plain `cedar try` preserves existing shortcuts and authentication. `cedar launcher` opens Go; `cedar lock` uses the selected locker; `cedar lock --suspend` waits for compositor lock coverage before requesting suspend.
 
 On **stock Hyprland**, the adapter coordinates known Waybar/Mako/Dunst instances without replacing your compositor, portals, authentication agent, audio/network services, display layout or default apps. Existing Hyprlock and wallpaper providers are retained when detected. If no existing locker is configured, a local password-test window must succeed before Trailwatch is enabled. Enter passwords only in that local window. No PAM files are edited.
 

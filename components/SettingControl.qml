@@ -8,6 +8,7 @@ SettingRow {
     objectName: spec.key
     title: spec.label; description: spec.description
     highlighted: highlightKey===spec.key
+    enabled: spec.key !== "idleLockSeconds" || (!Config.externalSession && !Config.externalIdle)
     function commit(value) { Config.set(spec.key,value); }
     StationToggle { visible: root.spec.type==="toggle"; Layout.fillWidth: true; checked: Config.saved[root.spec.key]===true; label:""; accessibleLabel:root.title; onToggled: value=>root.commit(value) }
     RowLayout {

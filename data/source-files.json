@@ -188,6 +188,7 @@
   "scripts/package_release.py",
   "scripts/performance.py",
   "scripts/plugins.py",
+  "scripts/portable_controls.py",
   "scripts/portable_providers.py",
   "scripts/portable_session.py",
   "scripts/redaction.py",

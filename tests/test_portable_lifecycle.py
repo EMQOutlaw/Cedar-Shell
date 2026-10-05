@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import distribution as d
 import portable_providers as p
 import portable_session as s
+import portable_controls as controls
 import setup
 
 
@@ -47,6 +48,16 @@ class DesktopFixture:
         self.pause_stages = {'trial', 'kept'}
         self.reload_error = ''
         self.launch_error = False
+        self.external_lock = True
+        self.secured_unlocks = 0
+        self.test_unlock_in = 0
+        self.bridge_running = False
+        self.bridge_failed = False
+        self.auth_failed = False
+        self.suspended = False
+        self.bindings = [{'modmask':64,'key':'space','dispatcher':'exec','arg':'noctalia msg launcher toggle'},
+                         {'modmask':64,'key':'L','dispatcher':'exec','arg':'noctalia msg session lock'}]
+        self.original_bindings = copy.deepcopy(self.bindings)
         self.session_signature = 'fixture-first-session'
         self.env = {'HOME': str(self.base/'home'), 'HYPRLAND_INSTANCE_SIGNATURE': self.session_signature,
                     'CEDAR_ADAPTER': 'hyprland', 'CEDAR_OMARCHY_SESSION': '',
@@ -71,8 +82,19 @@ enabled = true
 enable_daemon = true
 [lock]
 custom = "preserve"
+[lockscreen]
+enabled = true
+lock_before_suspend = true
 [idle]
 lock_timeout = 600
+[idle.behavior.lock]
+enabled = true
+timeout = 600
+action = "lock"
+[idle.behavior.sleep]
+enabled = true
+timeout = 1200
+action = "lock_and_suspend"
 [unknown]
 keep = true
 '''
@@ -107,6 +129,8 @@ keep = true
         if self.adapter == 'noctalia-v5' and self.host_available: rows.append(self.provider)
         if self.running:
             rows.append({'pid': 703, 'start': '125', 'exe': '/fixture/qs', 'argv': ['qs'], 'deleted': False})
+        if self.bridge_running:
+            rows.append({'pid':704,'start':'126','exe':'/fixture/hypridle','argv':['hypridle','-c',s.read_record()['trailwatch']['bridgeConfig']], 'deleted':False})
         return copy.deepcopy([row for row in rows if names is None or Path(row['exe']).name.lower() in names])
 
     def read_process(self, pid, names=None):
@@ -125,13 +149,36 @@ keep = true
             if not self.running: raise AssertionError('IPC called before the candidate started')
             if argv[5:] == ['shell', 'isLocked']: result = 'true' if self.locked or self.qs_pending_lock else 'false'
             elif argv[5:] == ['shell', 'sessionInfo']:
-                result = json.dumps({'stage': 3, 'screenCount': 1, 'externalLock': True, 'locked': self.locked})
+                result = json.dumps({'stage': 3, 'screenCount': 1, 'externalLock': self.external_lock, 'locked': self.locked,
+                                     'lockReady':True, 'lockSecure':self.locked, 'securedUnlocks':self.secured_unlocks})
+            elif argv[5:] == ['lock', 'lock']:
+                expected = not s.read_record().get('trailwatch', {}).get('ready', False)
+                self.case.assertEqual(p.tomllib.loads(self.settings.read_text())['lockscreen']['enabled'], expected, 'Previous locker removed before secure-unlock test')
+                self.locked = True; self.test_unlock_in = 2
+            elif argv[5:] == ['launcher', 'toggle']:
+                self.case.assertFalse(self.locked)
             elif argv[5:] == ['shell', 'stop']:
                 assert not self.locked and not self.qs_pending_lock
                 self.running = False
             else: raise AssertionError(argv)
         elif argv == ['hyprctl', '-j', 'monitors']:
             result = json.dumps([{'solitaryBlockedBy': ['LOCK'] if self.locked else []}])
+        elif argv == ['hyprctl', '-j', 'binds']:
+            result = json.dumps(self.bindings)
+        elif argv == ['/fixture/hypridle', '--version']: result = 'hypridle v0.1.7'
+        elif len(argv) == 3 and argv[:2] == ['qs','-p'] and argv[2].endswith('/auth-test.qml'):
+            result = '' if self.auth_failed else 'CEDAR_AUTH_OK'
+        elif argv[:3] == ['systemctl','--user','show'] and argv[3] == controls.bridge_unit(s.read_record()):
+            result = ('loaded' if self.bridge_running else 'not-found') if '--property=LoadState' in argv else ('704' if self.bridge_running else '0')
+        elif argv[:3] == ['systemctl','--user','stop']:
+            self.case.assertFalse(self.locked)
+            self.case.assertTrue(p.tomllib.loads(self.settings.read_text())['lockscreen']['enabled'])
+            self.bridge_running = False
+        elif argv == ['systemctl','suspend']:
+            self.case.assertTrue(self.locked, 'Suspend before compositor lock coverage')
+            self.suspended = True
+        elif argv[:3] == ['busctl','--system','--json=short']:
+            result = json.dumps({'type':'a(ssssuu)','data':[[['sleep','hypridle','lock before sleep','delay',os.getuid(),704]]] if self.bridge_running else [[]]})
         elif argv == ['/fixture/noctalia', '--version']: result = 'noctalia v5.2.1 (5.2.1-1-dirty)'
         elif argv == ['/fixture/noctalia', 'msg', 'status']: result = json.dumps(self.native_state())
         elif argv[:3] == ['/fixture/noctalia', 'config', 'export']:
@@ -141,11 +188,20 @@ keep = true
             if owner is None: code, error = 1, 'org.freedesktop.DBus.Error.NameHasNoOwner'
             else: result = 'u '+str(owner)
         elif argv[0] == 'systemd-run':
+            if '/fixture/hypridle' in argv:
+                self.bridge_running = not self.bridge_failed
+                return subprocess.CompletedProcess(argv, 0, '', '')
             self.case.assertTrue(Path(argv[-4]).is_file(), 'Stable recovery helper missing')
             self.case.assertEqual(argv[-3], 'supervise')
             self.unit_calls.append(argv)
             self.supervisor_pending = True
-        elif argv == ['hyprctl', 'reload']: result = 'ok'
+        elif argv == ['hyprctl', 'reload']:
+            row = s.read_record()
+            if row and row.get('controls') and 'CEDAR CONTROLS START' in self.main_config.read_text():
+                replacement = [{'modmask':sum({'SUPER':64,'SHIFT':1,'CTRL':4,'ALT':8}[m] for m in b['mods']), 'key':b['key'], 'dispatcher':'exec','arg':controls.command(b['action'])} for b in row['controls']['bindings']]
+                self.bindings = [b for b in self.bindings if not any(b['modmask']==n['modmask'] and b['key'].lower()==n['key'].lower() for n in replacement)]+replacement
+            else: self.bindings = copy.deepcopy(self.original_bindings)
+            result = 'ok'
         elif argv == ['hyprctl', 'configerrors']: result = self.reload_error
         else: raise AssertionError('Unexpected external command: '+repr(argv))
         return subprocess.CompletedProcess(argv, code, result, error)
@@ -155,7 +211,7 @@ keep = true
         self.case.assertFalse(self.running, 'Duplicate CEDAR launch')
         self.case.assertFalse(self.locked, 'Launch while locked')
         if self.adapter == 'noctalia-v5': self.case.assertFalse(self.native_state()['barVisible'])
-        self.case.assertEqual(kwargs['env']['CEDAR_EXTERNAL_LOCK'], '1')
+        self.external_lock = kwargs['env']['CEDAR_EXTERNAL_LOCK'] == '1'
         self.case.assertNotIn('CEDAR_OMARCHY_SESSION', kwargs['env'])
         self.start_calls.append((argv, kwargs['env']))
         self.running = not self.launch_error
@@ -175,6 +231,10 @@ keep = true
 
     def sleep(self, seconds):
         self.clock += seconds
+        if self.test_unlock_in:
+            self.test_unlock_in -= 1
+            if not self.test_unlock_in:
+                self.locked = False; self.secured_unlocks += 1
         if self.in_supervisor:
             self.iterations += 1
             if self.iterations > 200: raise AssertionError('Supervisor did not reach the expected state')
@@ -182,8 +242,8 @@ keep = true
         elif self.supervisor_pending:
             self.cycle()
 
-    def start(self):
-        with contextlib.redirect_stdout(io.StringIO()): d.main(['try', '--approve-trial'])
+    def start(self, *options):
+        with contextlib.redirect_stdout(io.StringIO()): d.main(['try', '--approve-trial', *options])
         self.case.assertEqual(s.read_record()['stage'], 'trial')
         self.case.assertTrue(self.running)
 
@@ -200,6 +260,139 @@ keep = true
 
 
 class PortableLifecycle(unittest.TestCase):
+    def test_cedar_controls_secure_unlock_then_handoff_login_and_restore(self):
+        world = DesktopFixture(self)
+        world.start('--cedar-launcher', '--trailwatch')
+        row = s.read_record()
+        self.assertEqual(row['locker'], 'trailwatch')
+        self.assertFalse(world.external_lock)
+        self.assertTrue(row['trailwatch']['lockTested'])
+        self.assertGreater(world.secured_unlocks, 0)
+        self.assertTrue(world.bridge_running)
+        values = p.tomllib.loads(world.settings.read_text())
+        self.assertFalse(values['lockscreen']['enabled'])
+        self.assertEqual(values['idle']['behavior']['lock']['timeout'], 600)
+        self.assertEqual(values['idle']['behavior']['lock']['action'], 'command')
+        self.assertTrue(values['idle']['behavior']['sleep']['command'].endswith('lock --suspend'))
+        d.main(['launcher'])
+        world.keep(); world.keep(login=True)
+        self.assertIn('CEDAR LOGIN START', Path(row['controls']['loginFile']).read_text())
+        world.restore()
+        self.assertFalse(world.bridge_running)
+        self.assertEqual(world.bindings, world.original_bindings)
+        self.assertFalse(Path(row['controls']['file']).exists())
+        self.assertFalse(Path(row['controls']['loginFile']).exists())
+
+    def test_new_wizard_controls_choices_use_actual_production_handoff(self):
+        world = DesktopFixture(self)
+        answers = iter(['y', '3', 'y', 'y', 'y', 'y', 'y', 'y'])
+        with patch.object(sys.stdin, 'isatty', return_value=True), patch.object(d, 'capabilities', return_value=[]), patch.object(d, 'package_plan', return_value={'packages': []}), patch('builtins.input', side_effect=lambda _: next(answers)), contextlib.redirect_stdout(io.StringIO()):
+            setup.main([])
+        self.assertTrue(s.read_record()['login'])
+        self.assertEqual(s.read_record()['locker'], 'trailwatch')
+        self.assertTrue(s.read_record()['trailwatch']['lockTested'])
+        world.restore()
+
+    def test_launcher_choice_alone_preserves_existing_authentication(self):
+        world = DesktopFixture(self)
+        world.start('--cedar-launcher')
+        self.assertEqual(s.read_record()['locker'], 'noctalia')
+        self.assertTrue(world.external_lock)
+        self.assertFalse(world.bridge_running)
+        self.assertTrue(p.tomllib.loads(world.settings.read_text())['lockscreen']['enabled'])
+        self.assertIn(world.original_bindings[1], world.bindings)
+        world.keep(); world.keep(login=True); world.restore()
+
+    def test_pam_failure_keeps_all_existing_controls(self):
+        world = DesktopFixture(self)
+        world.auth_failed = True
+        with self.assertRaisesRegex(d.Refused, 'Authentication test did not succeed'):
+            world.start('--cedar-launcher', '--trailwatch')
+        self.assertFalse(s.record_path().exists())
+        self.assertFalse(world.running)
+        self.assertFalse(world.bridge_running)
+        self.assertEqual(d.info(world.settings), world.before_settings)
+        self.assertEqual(d.info(world.main_config), world.before_startup)
+
+    def test_failed_sleep_bridge_restores_without_disabling_original_locker(self):
+        world = DesktopFixture(self)
+        world.bridge_failed = True
+        with self.assertRaisesRegex(d.Refused, 'sleep bridge is not running'):
+            world.start('--cedar-launcher', '--trailwatch')
+        self.assertEqual(s.read_record()['stage'], 'restored')
+        self.assertFalse(world.running)
+        self.assertEqual(d.info(world.settings), world.before_settings)
+        self.assertEqual(d.info(world.main_config), world.before_startup)
+
+    def test_conflicting_shortcut_does_not_silently_remove_another_action(self):
+        world = DesktopFixture(self)
+        world.bindings.append({'modmask':64,'key':'space','dispatcher':'exec','arg':'an-unrelated-action'})
+        with self.assertRaisesRegex(d.Refused, 'multiple actions'):
+            world.start('--cedar-launcher')
+        self.assertFalse(s.record_path().exists())
+        self.assertEqual(d.info(world.main_config), world.before_startup)
+
+    def test_controls_plan_detects_later_main_file_edit_before_backup(self):
+        world = DesktopFixture(self)
+        original = d.approve
+        def changed(*args, **kwargs):
+            original(*args, **kwargs)
+            world.main_config.write_text('-- later manual edit\n')
+        with patch.object(d, 'approve', side_effect=changed):
+            with self.assertRaisesRegex(d.Refused, 'changed after the plan'):
+                world.start('--cedar-launcher')
+        self.assertEqual(world.main_config.read_text(), '-- later manual edit\n')
+        self.assertFalse(world.running)
+
+    def test_controls_login_rejection_preserves_trial_binding_and_previous_auth(self):
+        world = DesktopFixture(self)
+        world.start('--cedar-launcher', '--trailwatch'); world.keep()
+        world.reload_error = 'fixture rejects login hook'
+        with self.assertRaisesRegex(d.Refused, 'rejected the startup entry'):
+            world.keep(login=True)
+        row = s.read_record()
+        self.assertEqual(Path(row['controls']['loginFile']).read_text(), '')
+        self.assertTrue(world.running)
+        self.assertFalse(row['login'])
+        world.reload_error = ''; world.restore()
+
+    def test_public_lock_and_suspend_use_trailwatch_with_coverage(self):
+        world = DesktopFixture(self)
+        world.start('--cedar-launcher', '--trailwatch'); world.keep()
+        d.main(['lock', '--suspend'])
+        self.assertTrue(world.locked)
+        self.assertTrue(world.suspended)
+        with self.assertRaisesRegex(d.Refused, 'Session locked'): d.main(['launcher'])
+        world.sleep(.1); world.sleep(.1)
+        world.restore()
+
+    def test_missing_sleep_coverage_never_requests_suspend(self):
+        world = DesktopFixture(self)
+        world.start('--trailwatch'); world.keep()
+        with patch.object(p, 'compositor_covered', return_value=False):
+            with self.assertRaisesRegex(d.Refused, 'coverage was not confirmed'):
+                d.main(['lock', '--suspend'])
+        self.assertFalse(world.suspended)
+        world.restore()
+
+    def test_next_login_restores_selected_launcher_and_trailwatch(self):
+        world = DesktopFixture(self)
+        world.start('--cedar-launcher', '--trailwatch'); world.keep(); world.keep(login=True)
+        previous = s.read_record()
+        world.running = world.bridge_running = False
+        world.secured_unlocks = 0
+        world.provider.update(pid=801, start='456')
+        with patch.dict(os.environ, {'HYPRLAND_INSTANCE_SIGNATURE':'fixture-next-session'}):
+            d.main(['session-login'])
+        world.cycle()
+        row = s.read_record()
+        self.assertNotEqual(row['generation'], previous['generation'])
+        self.assertTrue(world.bridge_running)
+        self.assertEqual(row['stage'], 'kept')
+        self.assertFalse(world.external_lock)
+        self.assertFalse(p.tomllib.loads(world.settings.read_text())['lockscreen']['enabled'])
+        world.restore()
+
     def test_approved_native_trial_keep_login_and_restore(self):
         world = DesktopFixture(self)
         world.start()
@@ -330,7 +523,7 @@ class PortableLifecycle(unittest.TestCase):
         world = DesktopFixture(self)
         # Only platform dependency probing is stubbed; installation and all
         # option-3 session actions run their real public implementations.
-        answers = iter(['y', '3', 'y', 'y', 'y', 'y'])
+        answers = iter(['y', '3', 'n', 'n', 'y', 'y', 'y', 'y'])
         with patch.object(sys.stdin, 'isatty', return_value=True), patch.object(d, 'capabilities', return_value=[]), patch.object(d, 'package_plan', return_value={'packages': []}), patch('builtins.input', side_effect=lambda _: next(answers)), contextlib.redirect_stdout(io.StringIO()):
             setup.main([])
         self.assertTrue(s.read_record()['login'])

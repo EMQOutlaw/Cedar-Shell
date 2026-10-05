@@ -95,18 +95,18 @@
     },
     {
       "id": "noctalia-v5",
-      "adapterVersion": 2,
+      "adapterVersion": 3,
       "status": "Experimental",
       "versions": {
         "noctalia": "5.2.1"
       },
-      "evidence": "Upstream source review and native CLI response/configuration/transaction fixtures, including exact 5.2.1 version format, bar order and monitor aliases. User reports install/reinstall and preview loaded on CachyOS; native CEDAR handoff not yet verified.",
+      "evidence": "User reports candidate 10 desktop activation worked on CachyOS with native Noctalia 5.2.1. Candidate 11 launcher/authentication handoff has source and lifecycle-fixture coverage; native Trailwatch/sleep acceptance remains unverified.",
       "sourceGate": "integrations/noctalia/adapter.json",
       "installOnly": true,
       "preview": "Requires complete compatible Quickshell build",
       "trialImplemented": true,
       "takeoverCertified": false,
-      "authentication": "Existing resident Noctalia locker, idle handling and authentication agent preserved"
+      "authentication": "Preserve Noctalia by default, or explicitly select Trailwatch with PAM and secure-unlock verification plus hypridle 0.1.7. Special locked-state idle timeouts require review."
     }
   ],
   "notTested": [
@@ -127,7 +127,7 @@
       "manifest": "data/dependencies.json#/packageManagement",
       "evidence": "Official package policy reviewed; OS/architecture selection, missing-font wizard, package consent/failure and unsupported-platform fixtures. User reports candidate 8 files installed/verified, repeated install, offscreen validation and isolated preview loaded with existing dependencies. No live package bootstrap or completed desktop trial verified.",
       "livePackageTransaction": "Not Tested",
-      "nativeDesktop": "Not Tested"
+      "nativeDesktop": "User-reported candidate 10 activation; Trailwatch and sleep integration not yet tested on target"
     }
   ]
 }

@@ -1,3 +1,11 @@
+# 0.1.0-dev.11 — select CEDAR Go and Trailwatch during setup
+
+- Offer explicit launcher and lockscreen choices during the portable installer trial. Detect and disclose recognized existing shortcuts, verify applied bindings, and restore their original configuration with the desktop.
+- Add native Noctalia 5.2.1 Trailwatch replacement after both a local PAM test and a real secure-lock/successful-unlock cycle. Failed/canceled authentication leaves the previous locker configured. No PAM files change.
+- Reuse Noctalia's ordinary idle timings, redirect built-in lock actions, and use a private reviewed hypridle 0.1.7 instance for logind locks and sleep requests. Verify its identity and sleep inhibitor before disabling the old locker. Restore the old locker before stopping CEDAR.
+- Provide `cedar launcher`, `cedar lock` and coverage-gated `cedar lock --suspend`. Keep the existing Omarchy integration unchanged. Special shortcut behavior, other idle daemons and locked-state idle timeouts require review.
+- Add public-workflow tests for complete control adoption, login, restoration, conflicts, authentication/bridge failure, manual edits, canceled login changes and suspend coverage. Native target lock/hotplug/suspend acceptance remains outstanding.
+
 # 0.1.0-dev.10 — initialize the approved trial before checking it
 
 - Supply the explicit installed candidate path before the first lock/IPC check. Candidate 9 could finish installation and approval but fail with `'root'` before creating a trial or changing Noctalia's settings.

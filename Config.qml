@@ -14,6 +14,7 @@ Singleton {
     readonly property bool testMode: (Quickshell.env("CEDAR_TEST") || Quickshell.env("FOXFIRE_TEST")) === "1"
     readonly property bool omarchyIntegration: Quickshell.env("CEDAR_ADAPTER") === "omarchy" || Quickshell.env("CEDAR_OMARCHY_SESSION") === "1"
     readonly property bool externalSession: Quickshell.env("CEDAR_EXTERNAL_LOCK") === "1" || omarchyIntegration
+    readonly property bool externalIdle: Quickshell.env("CEDAR_EXTERNAL_IDLE") === "1"
     readonly property bool managedSession: Quickshell.env("CEDAR_MANAGED_SESSION") === "1" || externalSession
     readonly property bool externalBackground: Quickshell.env("CEDAR_BACKGROUND") === "external" || omarchyIntegration
     readonly property bool authOnly: Quickshell.env("CEDAR_AUTH_ONLY") === "1"

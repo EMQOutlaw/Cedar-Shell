@@ -1,4 +1,4 @@
-# Release readiness — 0.1.0-dev.10
+# Release readiness — 0.1.0-dev.11
 
 **Private development candidate. Not a complete public release.** No first-party license or artwork redistribution grant has been selected. Required upstream notices and approved local KJV content remain intact.
 
@@ -19,6 +19,8 @@ Candidate 8 fixes unrelated protected processes blocking upgrades. It moves safe
 Candidate 9 fixes the reported native Noctalia discovery parse error and the following version/configuration parsing failures. Its 270-test local suite includes a real isolated Quickshell empty-registry command, native Noctalia response fixtures, bar/monitor configuration preservation, canceled activation and exact settings restoration. The target user reports successful candidate 8 installation, reinstall and preview loading on CachyOS; a completed native Noctalia trial has not been verified. Quickshell and offscreen checks cannot certify native Noctalia authentication or desktop switching.
 
 Candidate 10 fixes the next confirmed failure after trial approval: a missing candidate path during the first lock/IPC check. The prior suite did not exercise that complete approved path. Thirteen new workflow tests execute installer option 3 and public CLI actions through discovery, supervision, confirmation, login setup and restoration. They reproduce the old defect and pass with the fix. These tests simulate external desktop interfaces, so they do not change the native acceptance gates below.
+
+The user reports candidate 10 successfully activated the desktop on CachyOS with native Noctalia 5.2.1. Its preserved stock launcher and lockscreen motivated candidate 11's explicit controls choices. Candidate 11 has 294 passing local Python tests and QML authentication/wiring checks; real new Trailwatch adoption and sleep integration on that target are not yet verified. The installer requires installation-local PAM and secure-unlock evidence before removing the original locker. Fixture results do not replace native acceptance.
 
 Outstanding gates:
 

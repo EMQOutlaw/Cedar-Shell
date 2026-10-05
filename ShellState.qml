@@ -11,6 +11,9 @@ Singleton {
     property string settingsPage: ""
     property string output: ""
     property bool locked: false
+    property bool lockSecure: false
+    property bool nativeLockReady: false
+    property int securedUnlocks: 0
     property bool authTest: false
     property bool suspendAfterLock: false
     property string osdKind: ""

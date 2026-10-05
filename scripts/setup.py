@@ -45,7 +45,13 @@ def main(args=None):
         d.preview(d.installed())
     elif choice == '3':
         backend = d.session_backend()
-        backend.trial(d.installed())
+        if backend.__name__ == 'portable_session':
+            launcher = input('Use CEDAR Go for the application-launcher shortcut? [Y/n] ').strip().lower() not in ('n', 'no')
+            print('Trailwatch can replace native Noctalia\'s lockscreen after a local password test and one real lock/unlock test. Its existing idle timings are preserved; sleep/lid locking uses a private hypridle bridge.')
+            trailwatch = input('Use CEDAR Trailwatch for locking? [y/N] ').strip().lower() in ('y', 'yes')
+            backend.trial(d.installed(), cedar_launcher=launcher, trailwatch=trailwatch)
+        else:
+            backend.trial(d.installed())
         print('Review CEDAR on your screen. If the trial times out, your prior desktop returns.')
         if input('Keep this CEDAR session? [y/N] ').strip().lower() in ('y', 'yes'):
             backend.keep()

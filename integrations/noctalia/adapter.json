@@ -17,7 +17,13 @@
     "version": "5.2.1",
     "commit": "e639a87e811ad3268c73f6d5e77669c94184ba15",
     "source": "https://github.com/noctalia-dev/noctalia",
-    "validation": "Source inspection and fixtures; installed binary provenance depends on the user package source; native desktop handoff not tested"
+    "validation": "Source inspection and fixtures; installed binary provenance depends on the user package source; native desktop handoff not tested",
+    "trailwatch": {
+      "hypridleVersion": "0.1.7",
+      "source": "https://github.com/hyprwm/hypridle",
+      "commit": "5430b73ddf148651bcf35fa39ed4d757c7534028",
+      "validation": "Source review, actual logind response-shape check and lifecycle fixtures; native suspend/resume acceptance unverified"
+    }
   },
-  "policy": "Keep Noctalia process, lockscreen, idle, polkit, secret service and wallpaper. Only coordinate bar/dock/notifications/OSD with explicit consent."
+  "policy": "Preserve Noctalia authentication by default. Optional native 5.2.1 Trailwatch handoff requires explicit consent, PAM and secure-unlock tests, and a verified hypridle sleep bridge. Keep the Noctalia process, idle timings, polkit, secrets and wallpaper. Restore the original locker before stopping CEDAR."
 }

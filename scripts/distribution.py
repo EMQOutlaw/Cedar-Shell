@@ -312,7 +312,7 @@ def install(root,approved=False,plan_only=False):
         recovery=paths()['data']/'recovery/distribution.py'
         session_recovery=paths()['data']/'recovery/omarchy_session.py'
         provider_recovery=paths()['data']/'recovery/omarchy_providers.py'
-        portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py')]
+        portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py','portable_controls.py')]
         if binary.exists() or binary.is_symlink():
             if not binary.is_file() or b'# CEDAR distribution launcher' not in binary.read_bytes():raise Refused('The cedar command is already owned elsewhere. Existing installation preserved.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
@@ -522,7 +522,7 @@ def uninstall(approved=False):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
@@ -530,6 +530,9 @@ def main(argv=None):
     parser.add_argument('--approve-uninstall',action='store_true');parser.add_argument('--signature',type=Path);parser.add_argument('--trusted-key',type=Path)
     parser.add_argument('--adapter', choices=['auto','hyprland','noctalia','omarchy'], default='auto')
     parser.add_argument('--approve-trial', action='store_true')
+    parser.add_argument('--cedar-launcher', action='store_true', help='Review and redirect application-launcher shortcuts to CEDAR Go.')
+    parser.add_argument('--trailwatch', action='store_true', help='Explicitly select Trailwatch, with local PAM and real secure-unlock tests before replacing the existing locker.')
+    parser.add_argument('--suspend', action='store_true', help='With lock, suspend only after compositor lock coverage is confirmed.')
     parser.add_argument('--approve-omarchy-trial',action='store_true');parser.add_argument('--approve-login',action='store_true')
     args=parser.parse_args(argv)
     if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
@@ -545,13 +548,19 @@ def main(argv=None):
     elif args.action in ('try','activate','keep','status'):
         backend=session_backend(args.adapter)
         if args.action=='try':
-            if backend.__name__ == 'portable_session': backend.trial(installed(),args.approve_trial, expected_adapter=args.adapter)
-            else: backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial)
+            if backend.__name__ == 'portable_session': backend.trial(installed(),args.approve_trial, expected_adapter=args.adapter, cedar_launcher=args.cedar_launcher, trailwatch=args.trailwatch)
+            else:
+                if args.trailwatch or args.cedar_launcher: raise Refused('These control choices apply to the portable adapter; the existing Omarchy integration is preserved.')
+                backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial)
         elif args.action=='status':
             row=backend.read_record()
-            print(json.dumps({k:row.get(k) for k in ('stage','login','deadline','error')} if row else {'stage':'not active'},indent=2))
+            print(json.dumps({k:row.get(k) for k in ('stage','login','deadline','error','locker')} if row else {'stage':'not active'},indent=2))
         else:backend.keep(args.action=='activate',args.approve_login)
     elif args.action=='session-login':session_backend(args.adapter).login()
+    elif args.action in ('lock','launcher'):
+        backend=session_backend(args.adapter)
+        if backend.__name__ != 'portable_session': raise Refused('Use the existing Omarchy controls for this session.')
+        backend.main([args.action, *(['--suspend'] if args.suspend else [])])
     elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()

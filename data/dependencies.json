@@ -869,6 +869,29 @@
         "scripts/control.py"
       ],
       "autoInstall": false
+    },
+    {
+      "command": "hypridle",
+      "feature": "Opt-in Trailwatch replacement: logind lock and sleep protection on native Noctalia",
+      "status": "feature-required",
+      "scope": "feature",
+      "archPackage": "hypridle",
+      "autoInstall": true,
+      "source": "Configured signed repositories; never enable the global idle service",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "0.1.7 source reviewed; native sleep acceptance not yet tested",
+      "verification": [
+        "command-presence",
+        "version",
+        "owned-process-identity",
+        "logind-delay-inhibitor"
+      ],
+      "consumers": [
+        "scripts/portable_controls.py"
+      ],
+      "whenUnavailable": "Trailwatch replacement unavailable; existing locker and Go remain available."
     }
   ],
   "modules": [

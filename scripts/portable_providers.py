@@ -220,8 +220,16 @@ def toml_response(text, source):
         raise d.Refused(source + ' contains invalid TOML. Existing settings are preserved.') from error
 
 
+def noctalia_config(row, mode='full'):
+    env = process_environment(row['provider']['pid'])
+    result = subprocess.run([row['providerExe'], 'config', 'export', mode], env={**os.environ, **env},
+                            text=True, capture_output=True, timeout=8)
+    if result.returncode: raise d.Refused('Noctalia configuration export failed; existing settings preserved.')
+    return toml_response(result.stdout, 'Noctalia '+mode+' configuration')
+
+
 def toml_overrides(text, values):
-    """Edit simple boolean keys only, preserving comments and unrelated TOML.
+    """Edit selected boolean/string keys, preserving comments and unrelated TOML.
 
     Reject dotted/inline spellings for these targets instead of guessing. Parse
     the complete before/after documents and prove that only approved keys differ.
@@ -233,7 +241,7 @@ def toml_overrides(text, values):
         parts = tuple(section.split('.')) if isinstance(section, str) else section
         if not isinstance(parts, tuple) or not parts or any(not isinstance(part, str) or not part for part in parts):
             raise d.Refused('Unsupported Noctalia table name.')
-        if not re.fullmatch(r'[A-Za-z0-9_-]+', key) or type(value) is not bool:
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', key) or type(value) not in (bool, str):
             raise d.Refused('Unsupported Noctalia override.')
         section_name = '.'.join(part if re.fullmatch(r'[A-Za-z0-9_-]+', part) else json.dumps(part, ensure_ascii=False) for part in parts)
         header = {}
@@ -255,7 +263,8 @@ def toml_overrides(text, values):
             raise d.Refused('Unsupported Noctalia settings table.')
         dest[key] = value
         start = next((i for i, line in enumerate(lines) if is_section(line)), None)
-        setting = key + ' = ' + ('true' if value else 'false') + '\n'
+        encoded = json.dumps(value, ensure_ascii=False)
+        setting = key + ' = ' + encoded + '\n'
         if start is None:
             lines.extend(['\n[' + section_name + ']\n', setting])
             continue
@@ -267,11 +276,12 @@ def toml_overrides(text, values):
                 lines[end - 1] += '\n'
             lines.insert(end, setting)
         else:
-            # Preserve inline comments too. Non-boolean spellings are refused.
-            match = re.fullmatch(r'(\s*' + key_pattern + r'\s*=\s*)(?:true|false)([^\S\n]*(?:#[^\n]*)?)(\n?)', lines[found])
+            # Simple quoted strings only; multiline/inline tables need review.
+            scalar = r'(?:true|false|"(?:[^"\\\n]|\\.)*"|\x27[^\x27\n]*\x27)'
+            match = re.fullmatch(r'(\s*' + key_pattern + r'\s*=\s*)'+scalar+r'([^\S\n]*(?:#[^\n]*)?)(\n?)', lines[found])
             if not match:
-                raise d.Refused('Unsupported Noctalia boolean setting; existing settings preserved.')
-            lines[found] = match[1] + ('true' if value else 'false') + match[2] + match[3]
+                raise d.Refused('Unsupported Noctalia scalar setting; existing settings preserved.')
+            lines[found] = match[1] + encoded + match[2] + match[3]
     result = ''.join(lines)
     try:
         parsed = tomllib.loads(result)
@@ -450,7 +460,7 @@ def inspect(root):
 def locked(row):
     if compositor_locked():
         return True
-    if row['locker'] == 'noctalia':
+    if row['adapter'].startswith('noctalia-'):
         if not same_process(row['provider']):
             raise d.Refused('The existing Noctalia authentication host is unavailable.')
         state = noctalia_state(row)
@@ -505,7 +515,9 @@ def restore_bar(row):
 
 
 def request_lock(row, suspend=False):
-    if row['adapter'] == 'noctalia-v4':
+    if row['locker'] == 'trailwatch':
+        qs_ipc(Path(row['root'])/'shell.qml', 'lock', 'lock')
+    elif row['adapter'] == 'noctalia-v4':
         qs_ipc(row['providerSource'], 'lockScreen', 'lock')
     elif row['adapter'] == 'noctalia-v5':
         d.command([row['providerExe'], 'msg', 'session', 'lock'])
@@ -513,11 +525,11 @@ def request_lock(row, suspend=False):
         subprocess.Popen(['hyprlock'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         raise d.Refused('Trailwatch owns this session; use its lock IPC.')
-    if suspend:
+    if suspend or row['locker'] == 'trailwatch':
         deadline = time.monotonic() + 12
         while time.monotonic() < deadline:
             if compositor_covered():
-                d.command(['systemctl', 'suspend'])
+                if suspend: d.command(['systemctl', 'suspend'])
                 return
             time.sleep(.1)
-        raise d.Refused('Lock coverage was not confirmed. Suspend canceled.')
+        raise d.Refused('Lock coverage was not confirmed. Suspend was not requested by CEDAR.')
