@@ -1,3 +1,13 @@
+# 0.1.0-dev.13 — rest when unwatched, refuse what IPC does not need
+
+- Add `Motion`, one gate for decorative loops: ambience pauses after 120 s without input, under Reduced Motion and in tests. Add `Breath`, a 12-step-per-second sine for always-mapped surfaces. Core's filament, gauge pulses and the lock-surface status pulse no longer commit a frame every refresh for the life of the session; spores and the Field Station core rest with the user.
+- Read the backlight only while a brightness control or OSD is visible; sample the ambient CPU hint every 20 s instead of 10 s; wake the recorder probe once per second and scan `/proc` every third second; ignore NetworkManager access-point strength churn while no network list is shown.
+- Build Control Center, Power, Themes, Wallpapers and notification history on first show and release them on close, per output, like Go and Settings already did.
+- Refuse `settings set`/`get` for application commands, network, location, lock-privacy, clipboard and trail settings (`Config.ipcProtected`); type-check values; refuse writes while locked. Bound `core publish` (16 KiB), `menu summon` (256 KiB, capped prompt/options) and strip control characters from provider text.
+- Answer Go prompts through `scripts/menu_reply.py`: temporary-directory paths only, selection file must be an owned regular file opened without following symlinks, done marker created exclusively, replies queued in order. No shell string is built from caller paths. Never run a bare `python3` when the session helper path is missing.
+- Remove two binding loops the live smoke test reported on every open: the Settings loader bound `active` through its own item's `dirty`, and the Field Station loader bound `height` through the scroll view's content height. Both now copy the value from the page's signal.
+- Document the trust model and IPC surface in `docs/SECURITY.md` and the resource rules in `docs/PERFORMANCE.md`. Measurements remain per-device; no frame-rate or battery figure is claimed here.
+
 # 0.1.0-dev.12 — shared services, quiet controls and reviewed handoffs
 
 - Follow-up from Ubuntu CI: support older PyGObject/GioUnix method bindings; exit failed catalog callbacks so the shared service can retry instead of stalling.
