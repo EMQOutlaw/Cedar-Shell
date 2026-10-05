@@ -62,7 +62,12 @@ class Distribution(unittest.TestCase):
             with self.assertRaises(PermissionError):policy.require(feature)
         config=d.paths()['config']/'settings.json';d.write_json(config,{'localOnly':False,'weatherEnabled':True})
         policy.require('weather');policy.require('city-search')
+        policy.require('location') # IP location follows the weather permission by default.
+        d.write_json(config,{'localOnly':False,'weatherEnabled':True,'weatherAutomatic':False})
         with self.assertRaises(PermissionError):policy.require('location')
+        d.write_json(config,{'localOnly':False,'weatherEnabled':False,'weatherAutomatic':True})
+        with self.assertRaises(PermissionError):policy.require('location')
+        d.write_json(config,{'localOnly':False,'weatherEnabled':True})
         with patch.dict(os.environ,{'CEDAR_LOCAL_ONLY':'1'}):
             with self.assertRaises(PermissionError):policy.require('weather')
     def test_install_repeat_update_and_restore(self):

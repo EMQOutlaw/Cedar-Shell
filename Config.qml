@@ -160,7 +160,7 @@ Singleton {
             property bool localOnly: true
             property bool weatherEnabled: false
             property bool remoteArtwork: false
-            property bool weatherAutomatic: false
+            property bool weatherAutomatic: true
             property string latitude: ""
             property string longitude: ""
             property string locationName: ""

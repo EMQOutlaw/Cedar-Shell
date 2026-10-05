@@ -2,6 +2,7 @@
 
 - `cedar try --adapter omarchy --trailwatch` loads CEDAR's own lock surface (PAM service `omarchy-lock-password`) beside the existing locker. `cedar keep` then opens the local password test window, locks once with Trailwatch and waits for a secure unlock; only after that does it disable the existing lock plugin or clone and mark CEDAR the locker. A failed or skipped step leaves the previous locker selected.
 - The bridge bar now answers Omarchy's `lock` IPC (`lock`, `isLocked`, `status`) from a lock-state file CEDAR writes on every change and as a 5 s heartbeat. Keyboard, idle, lid and sleep lock requests keep using `omarchy-system-lock` and reach Trailwatch unchanged; a stale file reads as "no lock screen", never as unlocked.
+- Weather finds its location from the public IP by default once weather is enabled: `weatherAutomatic` now defaults to true, the policy helper treats a missing key as true, and the settings page says so. A saved city still overrides it and automatic location can still be turned off.
 - While CEDAR is the locker the supervisor reads lock state from the compositor's lock indicator and CEDAR's session info, so a CEDAR crash restores the previous locker instead of deferring forever. `cedar lock [--suspend]` works on Omarchy in this mode. Malformed Omarchy lock status is reported as such instead of a JSON parse message.
 
 # 0.1.0-dev.13 — rest when unwatched, refuse what IPC does not need
