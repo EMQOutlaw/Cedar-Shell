@@ -1,3 +1,11 @@
+# 0.1.0-dev.9 — native Noctalia discovery and settings handoff
+
+- Accept Quickshell's exact successful `No running instances.` response in JSON-list mode. Native Noctalia does not require an existing Quickshell profile. Malformed or missing responses still defer desktop changes and now identify the failing interface.
+- Parse Noctalia's `v5.2.1` release field separately from package/build metadata; retain the reviewed-version gate. Version output is not a binary provenance check.
+- Handle native bar-order metadata, quoted bar names, monitor aliases and per-monitor bar/dock enable flags. Change only approved surface booleans, preserve comments and unrelated preferences, and keep the existing Noctalia host and authentication services.
+- Share instance discovery with doctor and the optional Omarchy adapter. Doctor distinguishes a verified empty registry from failed discovery.
+- Add actual Quickshell empty-registry and controlled native-response, cancellation, lock-state, settings and exact-restoration tests. Native CachyOS desktop handoff remains unverified.
+
 # 0.1.0-dev.8 — protected process discovery and upgrade safety
 
 - Do not require executable or argument access to unrelated protected applications. Scope installation checks to Hyprland and Quickshell; keep strict PID/start/executable verification for coordinated desktop providers.

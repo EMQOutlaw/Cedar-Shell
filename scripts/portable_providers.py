@@ -104,10 +104,29 @@ def same_process(row):
                 and current['deleted'] == row.get('deleted', False))
 
 
+def json_response(text, expected_type, source):
+    # Responses may contain private data. Name the failing interface, never
+    # echo its contents or treat a parse failure as an empty/unlocked desktop.
+    try:
+        value = json.loads(text)
+    except (ValueError, TypeError) as error:
+        raise d.Refused(source + ' returned empty or invalid JSON. Desktop changes are deferred; check that provider before retrying cedar try.') from error
+    if not isinstance(value, expected_type):
+        raise d.Refused(source + ' returned an unexpected JSON structure. Desktop changes are deferred.')
+    return value
+
+
 def qs_instances():
-    rows = json.loads(d.command(['qs', 'list', '--all', '-j'], timeout=5))
-    if not isinstance(rows, list):
-        raise d.Refused('Cannot read the Quickshell instance list.')
+    output = d.command(['qs', 'list', '--all', '-j'], timeout=5)
+    # Quickshell 0.3.1 prints this sentence with exit 0 even in JSON mode.
+    # Native Noctalia normally has no Quickshell instances at all.
+    if output.strip() == 'No running instances.':
+        return []
+    rows = json_response(output, list, 'Quickshell instance discovery (qs list --all -j)')
+    if any(not isinstance(row, dict) or type(row.get('pid')) is not int or row['pid'] <= 0
+           or not isinstance(row.get('config_path'), str) or not Path(row['config_path']).is_absolute()
+           for row in rows):
+        raise d.Refused('Quickshell instance discovery returned invalid process or configuration details. Desktop changes are deferred.')
     return rows
 
 
@@ -115,18 +134,25 @@ def qs_ipc(source, *args):
     return d.command(['qs', 'ipc', '-p', str(source), 'call', *args], timeout=5).strip()
 
 
-def compositor_locked():
-    monitors = json.loads(d.command(['hyprctl', '-j', 'monitors'], timeout=3))
-    if not isinstance(monitors, list) or not monitors:
-        raise d.Refused('No readable Hyprland outputs. Start this command inside the Hyprland session.')
-    if any(not isinstance(m.get('solitaryBlockedBy'), list) for m in monitors):
+def compositor_monitors():
+    monitors = json_response(d.command(['hyprctl', '-j', 'monitors'], timeout=3), list,
+                             'Hyprland monitor discovery (hyprctl -j monitors)')
+    if any(not isinstance(m, dict) or not isinstance(m.get('solitaryBlockedBy'), list)
+           or any(not isinstance(flag, str) for flag in m['solitaryBlockedBy']) for m in monitors):
         raise d.Refused('This Hyprland version does not expose the reviewed lock indicator. Preview is available; activation is deferred.')
+    return monitors
+
+
+def compositor_locked():
+    monitors = compositor_monitors()
+    if not monitors:
+        raise d.Refused('No readable Hyprland outputs. Start this command inside the Hyprland session.')
     return any('LOCK' in m['solitaryBlockedBy'] for m in monitors)
 
 
 def compositor_covered():
-    monitors = json.loads(d.command(['hyprctl', '-j', 'monitors'], timeout=3))
-    return bool(monitors) and isinstance(monitors, list) and all('LOCK' in m.get('solitaryBlockedBy', []) for m in monitors)
+    monitors = compositor_monitors()
+    return bool(monitors) and all('LOCK' in m['solitaryBlockedBy'] for m in monitors)
 
 
 def notification_owner():
@@ -180,8 +206,18 @@ def verify_noctalia(root, row):
                 raise d.Refused('Noctalia v4 differs from the reviewed 4.7.7 API. Existing authentication is preserved; use preview.')
     elif row['adapter'] == 'noctalia-v5':
         version = d.command([row['providerExe'], '--version']).strip()
-        if not re.search(r'\b' + re.escape(rules['v5']['version']) + r'(?![\w.-])', version):
+        # Parse the release field, not git-describe metadata in parentheses.
+        # Packaged builds report e.g. noctalia v5.2.1 (5.2.1-1-dirty).
+        match = re.fullmatch(r'noctalia v?(\d+\.\d+\.\d+)(?: \([^()\r\n]+\))?', version)
+        if not match or match[1] != rules['v5']['version']:
             raise d.Refused('Native Noctalia is outside the reviewed version. Preview remains available; its services are preserved.')
+
+
+def toml_response(text, source):
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError as error:
+        raise d.Refused(source + ' contains invalid TOML. Existing settings are preserved.') from error
 
 
 def toml_overrides(text, values):
@@ -190,29 +226,52 @@ def toml_overrides(text, values):
     Reject dotted/inline spellings for these targets instead of guessing. Parse
     the complete before/after documents and prove that only approved keys differ.
     """
-    before = tomllib.loads(text)
+    before = toml_response(text, 'Noctalia settings')
     expected = copy.deepcopy(before)
     lines = text.splitlines(keepends=True)
     for section, key, value in values:
-        if not re.fullmatch(r'[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*', section):
+        parts = tuple(section.split('.')) if isinstance(section, str) else section
+        if not isinstance(parts, tuple) or not parts or any(not isinstance(part, str) or not part for part in parts):
             raise d.Refused('Unsupported Noctalia table name.')
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', key) or type(value) is not bool:
+            raise d.Refused('Unsupported Noctalia override.')
+        section_name = '.'.join(part if re.fullmatch(r'[A-Za-z0-9_-]+', part) else json.dumps(part, ensure_ascii=False) for part in parts)
+        header = {}
+        for part in reversed(parts):
+            header = {part: header}
+        def is_section(line):
+            if not line.lstrip().startswith('['):
+                return False
+            try:
+                return tomllib.loads(line) == header
+            except tomllib.TOMLDecodeError:
+                return False
         dest = expected
-        for part in section.split('.'):
+        for part in parts:
+            if not isinstance(dest, dict):
+                raise d.Refused('Unsupported Noctalia settings table.')
             dest = dest.setdefault(part, {})
         if not isinstance(dest, dict):
             raise d.Refused('Unsupported Noctalia settings table.')
         dest[key] = value
-        start = next((i for i, line in enumerate(lines) if re.fullmatch(r'\s*\[' + re.escape(section) + r'\]\s*(?:#.*)?\n?', line)), None)
+        start = next((i for i, line in enumerate(lines) if is_section(line)), None)
         setting = key + ' = ' + ('true' if value else 'false') + '\n'
         if start is None:
-            lines.extend(['\n[' + section + ']\n', setting])
+            lines.extend(['\n[' + section_name + ']\n', setting])
             continue
         end = next((i for i in range(start + 1, len(lines)) if lines[i].lstrip().startswith('[')), len(lines))
-        found = next((i for i in range(start + 1, end) if re.match(r'\s*' + re.escape(key) + r'\s*=', lines[i])), None)
+        key_pattern = r'(?:' + re.escape(key) + '|"' + re.escape(key) + '"|\x27' + re.escape(key) + '\x27)'
+        found = next((i for i in range(start + 1, end) if re.match(r'\s*' + key_pattern + r'\s*=', lines[i])), None)
         if found is None:
+            if end and not lines[end - 1].endswith('\n'):
+                lines[end - 1] += '\n'
             lines.insert(end, setting)
         else:
-            lines[found] = setting
+            # Preserve inline comments too. Non-boolean spellings are refused.
+            match = re.fullmatch(r'(\s*' + key_pattern + r'\s*=\s*)(?:true|false)([^\S\n]*(?:#[^\n]*)?)(\n?)', lines[found])
+            if not match:
+                raise d.Refused('Unsupported Noctalia boolean setting; existing settings preserved.')
+            lines[found] = match[1] + ('true' if value else 'false') + match[2] + match[3]
     result = ''.join(lines)
     try:
         parsed = tomllib.loads(result)
@@ -225,9 +284,55 @@ def toml_overrides(text, values):
 
 def noctalia_state(row):
     if row['adapter'] == 'noctalia-v4':
-        data = json.loads(qs_ipc(row['providerSource'], 'state', 'all')).get('state', {})
+        data = json_response(qs_ipc(row['providerSource'], 'state', 'all'), dict, 'Noctalia v4 state IPC').get('state', {})
+        if not isinstance(data, dict):
+            raise d.Refused('Noctalia v4 returned an invalid state object. Desktop changes are deferred.')
         return {'locked': data.get('lockScreenActive'), 'barVisible': data.get('barVisible')}
-    return json.loads(d.command([row['providerExe'], 'msg', 'status'], timeout=5))
+    return json_response(d.command([row['providerExe'], 'msg', 'status'], timeout=5), dict,
+                         'Noctalia status (noctalia msg status)')
+
+
+def v5_overrides(effective, merged):
+    bars = effective.get('bar')
+    if not isinstance(bars, dict) or not isinstance(bars.get('order'), list):
+        raise d.Refused('Noctalia bar configuration has an unreviewed structure.')
+    order = bars['order']
+    if any(not isinstance(name, str) or not name or name == 'order' for name in order) or len(set(order)) != len(order) or set(order) != set(bars) - {'order'}:
+        raise d.Refused('Noctalia bar order does not match its exported bars. Existing settings preserved.')
+    values = [('notification', 'enable_daemon', False), ('osd', 'enabled', False), ('dock', 'enabled', False)]
+    user_bars = merged.get('bar', {})
+    if not isinstance(user_bars, dict):
+        raise d.Refused('Noctalia merged bar configuration has an unreviewed structure.')
+    for name in order:
+        bar = bars[name]
+        if not isinstance(bar, dict) or type(bar.get('enabled')) is not bool or not isinstance(bar.get('monitor', {}), dict):
+            raise d.Refused('Noctalia bar configuration has an unreviewed structure.')
+        values.append((('bar', name), 'enabled', False))
+        for monitor, override in bar.get('monitor', {}).items():
+            if not isinstance(override, dict) or type(override.get('enabled')) is not bool or override.get('match') != monitor:
+                raise d.Refused('Noctalia monitor override has an unreviewed structure.')
+        user_bar = user_bars.get(name, {})
+        if not isinstance(user_bar, dict) or not isinstance(user_bar.get('monitor', {}), dict):
+            raise d.Refused('Noctalia merged monitor configuration has an unreviewed structure.')
+        matches = set()
+        for monitor, override in user_bar.get('monitor', {}).items():
+            if not isinstance(override, dict) or not isinstance(override.get('match', monitor), str):
+                raise d.Refused('Noctalia merged monitor override has an unreviewed structure.')
+            matches.add(override.get('match', monitor))
+            # Full export renames monitor tables by match. The merged export
+            # retains their real keys, which may be aliases. Override those keys
+            # so an existing enabled=true cannot win ahead of a duplicate table.
+            values.append((('bar', name, 'monitor', monitor), 'enabled', False))
+        if matches != set(bar.get('monitor', {})):
+            raise d.Refused('Noctalia monitor configuration changed during inspection. Retry before changing desktop surfaces.')
+    dock = effective.get('dock', {})
+    if not isinstance(dock, dict) or not isinstance(dock.get('monitor', {}), dict):
+        raise d.Refused('Noctalia dock configuration has an unreviewed structure.')
+    for monitor, override in dock.get('monitor', {}).items():
+        if not isinstance(override, dict):
+            raise d.Refused('Noctalia dock monitor override has an unreviewed structure.')
+        values.append((('dock', 'monitor', monitor), 'enabled', False))
+    return values
 
 
 def v4_settings(original):
@@ -264,16 +369,14 @@ def inspect_noctalia(root, process, source=None):
         path = Path(env.get('NOCTALIA_STATE_HOME') or state) / 'noctalia/settings.toml'
         safe_target(path)
         # Read using the running provider's own configured XDG locations.
-        completed = subprocess.run([process['exe'], 'config', 'export', 'full'], env={**os.environ, **env},
-                                   text=True, capture_output=True, timeout=8)
-        if completed.returncode:
-            raise d.Refused('Noctalia could not export its effective configuration.')
-        effective = tomllib.loads(completed.stdout)
-        bars = effective.get('bar', {})
-        if not bars or any(not isinstance(value, dict) for value in bars.values()):
-            raise d.Refused('Noctalia bar configuration has an unreviewed structure.')
-        values = [('notification', 'enable_daemon', False), ('osd', 'enabled', False), ('dock', 'enabled', False)]
-        values += [('bar.' + name, 'enabled', False) for name in bars]
+        exports = {}
+        for mode in ('full', 'merged'):
+            completed = subprocess.run([process['exe'], 'config', 'export', mode], env={**os.environ, **env},
+                                       text=True, capture_output=True, timeout=8)
+            if completed.returncode:
+                raise d.Refused('Noctalia could not export its ' + mode + ' configuration. Existing settings preserved.')
+            exports[mode] = toml_response(completed.stdout, 'Noctalia ' + mode + ' configuration export')
+        values = v5_overrides(exports['full'], exports['merged'])
         row['settingsAfter'] = toml_overrides(path.read_text() if path.exists() else '', values)
     row['providerSettings'] = str(path)
     status = noctalia_state(row)
@@ -390,7 +493,7 @@ def hide_bar(row):
     if row['adapter'] == 'noctalia-v4':
         # Wait for its configuration watcher before hiding an auto-hide bar.
         # Otherwise a late reload could immediately bring the competing bar back.
-        data = json.loads(qs_ipc(row['providerSource'], 'state', 'all')).get('settings', {})
+        data = json_response(qs_ipc(row['providerSource'], 'state', 'all'), dict, 'Noctalia v4 state IPC').get('settings', {})
         if any(data.get(key, {}).get('enabled') is not False for key in ('notifications', 'osd', 'dock')) or data.get('bar', {}).get('displayMode') != 'always_visible':
             raise d.Refused('Waiting for Noctalia to apply the approved surface settings.')
         qs_ipc(row['providerSource'], 'bar', 'hideBar')

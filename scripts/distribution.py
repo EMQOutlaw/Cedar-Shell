@@ -176,7 +176,7 @@ def installed():
     return root
 
 def session_inventory():
-    result={'quickshell':[], 'lock':'Not Tested', 'providers':{}, 'hyprland':'Unavailable Here'}
+    result={'quickshell':[], 'quickshellDiscovery':'Unavailable Here', 'lock':'Not Tested', 'providers':{}, 'hyprland':'Unavailable Here'}
     if shutil.which('hyprctl'):
         try:
             from portable_providers import compositor_locked
@@ -184,8 +184,12 @@ def session_inventory():
             result['hyprland']='Ready'
         except (Refused,ValueError,subprocess.TimeoutExpired):pass
     if shutil.which('qs'):
-        try:result['quickshell']=json.loads(command(['qs','list','--all','-j']))
-        except (Refused,ValueError):pass
+        try:
+            from portable_providers import qs_instances
+            result['quickshell']=qs_instances()
+            result['quickshellDiscovery']='Ready'
+        except (Refused,ValueError,OSError,subprocess.TimeoutExpired):
+            result['quickshellDiscovery']='Failed: cannot verify instances with qs list --all -j; desktop handoff is deferred'
     # Ownership discovery is read-only and retains raw process details locally.
     for service in ['org.freedesktop.Notifications','org.freedesktop.secrets']:
         try:

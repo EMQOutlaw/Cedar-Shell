@@ -30,6 +30,8 @@ If Git reports local changes or divergent history, stop and preserve your edits;
 
 Versions before `0.1.0-dev.8` could also stop with “Cannot inspect a same-user process” when an unrelated application protected its executable metadata. Update the checkout and rerun installation; no system permission changes are needed. CEDAR still refuses to switch a running release or change desktop providers when their identity or lock state cannot be verified.
 
+If candidate 8 installs but **Try** reports “Expecting value: line 1 column 1”, update and reinstall **0.1.0-dev.9 or newer** using the existing-checkout command above, then choose **3**. With native Noctalia running, Quickshell normally has no instances and can return a plain-text message even in JSON mode; candidate 9 handles that response and Noctalia 5.2.1's actual version/configuration format. This does not require installing Omarchy, stopping Noctalia, or deleting your checkout. If another check fails, its message now identifies the affected interface; leave your existing desktop running.
+
 For a provided private candidate archive:
 
 1. Download the CEDAR archive.

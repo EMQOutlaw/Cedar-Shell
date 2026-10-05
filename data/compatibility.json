@@ -95,12 +95,12 @@
     },
     {
       "id": "noctalia-v5",
-      "adapterVersion": 1,
+      "adapterVersion": 2,
       "status": "Experimental",
       "versions": {
         "noctalia": "5.2.1"
       },
-      "evidence": "Upstream source review and controlled configuration/transaction fixtures; native handoff not tested",
+      "evidence": "Upstream source review and native CLI response/configuration/transaction fixtures, including exact 5.2.1 version format, bar order and monitor aliases. User reports install/reinstall and preview loaded on CachyOS; native CEDAR handoff not yet verified.",
       "sourceGate": "integrations/noctalia/adapter.json",
       "installOnly": true,
       "preview": "Requires complete compatible Quickshell build",
@@ -125,7 +125,7 @@
       "architecture": "x86_64",
       "status": "Experimental",
       "manifest": "data/dependencies.json#/packageManagement",
-      "evidence": "Official package policy reviewed; OS/architecture selection, missing-font wizard, package consent/failure and unsupported-platform fixtures. User reported old installer rejected CachyOS. No completed CachyOS install or native trial verified.",
+      "evidence": "Official package policy reviewed; OS/architecture selection, missing-font wizard, package consent/failure and unsupported-platform fixtures. User reports candidate 8 files installed/verified, repeated install, offscreen validation and isolated preview loaded with existing dependencies. No live package bootstrap or completed desktop trial verified.",
       "livePackageTransaction": "Not Tested",
       "nativeDesktop": "Not Tested"
     }

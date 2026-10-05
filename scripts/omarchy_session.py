@@ -34,9 +34,8 @@ def guard():
     finally:lock.__exit__(None,None,None)
 
 def instances():
-    value=json.loads(d.command(['qs','list','--all','-j'],timeout=5))
-    if not isinstance(value,list):raise d.Refused('Could not inspect Quickshell instances.')
-    return value
+    from portable_providers import qs_instances
+    return qs_instances()
 
 def matching(rows,source):
     return [row for row in rows if Path(row.get('config_path','/unavailable')).resolve()==Path(source).resolve()]

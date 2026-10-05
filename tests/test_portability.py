@@ -407,6 +407,192 @@ sys.stdin.buffer.read(1)
         self.assertEqual(changed['bar']['screenOverrides'][0]['displayMode'], 'always_visible')
         with self.assertRaises(d.Refused): p.v4_settings({'settingsVersion': 100})
 
+    def test_quickshell_empty_registry_text_and_json(self):
+        import omarchy_session
+        for output in ('No running instances.\n', '[]\n'):
+            with self.subTest(output=output), patch.object(d, 'command', return_value=output) as command:
+                self.assertEqual(p.qs_instances(), [])
+                self.assertEqual(omarchy_session.instances(), [])
+                command.assert_called_with(['qs', 'list', '--all', '-j'], timeout=5)
+
+    @unittest.skipUnless(shutil.which('qs'), 'Quickshell unavailable; real empty-registry check not run')
+    def test_real_quickshell_empty_registry(self):
+        # Actual CLI, separate runtime registry; never reads or stops a host shell.
+        runtime_dir = self.base / 'empty runtime'; runtime_dir.mkdir(mode=0o700)
+        with patch.dict(os.environ, {'XDG_RUNTIME_DIR': str(runtime_dir)}):
+            self.assertEqual(p.qs_instances(), [])
+
+    def test_quickshell_malformed_inventory_never_means_empty(self):
+        for output in ('', 'private-fixture-value', 'No running instances.\nerror', '{}', 'null',
+                       '[null]', '[{}]', '[{"pid":true,"config_path":"/fixture/shell.qml"}]',
+                       '[{"pid":12,"config_path":"relative.qml"}]'):
+            with self.subTest(output=output), patch.object(d, 'command', return_value=output):
+                with self.assertRaisesRegex(d.Refused, 'Quickshell instance discovery') as error:
+                    p.qs_instances()
+                self.assertNotIn('private-fixture-value', str(error.exception))
+        with patch.object(d, 'command', side_effect=d.Refused('Command failed')):
+            with self.assertRaisesRegex(d.Refused, 'Command failed'): p.qs_instances()
+
+    def test_quickshell_valid_inventory_keeps_other_instances(self):
+        rows = [{'pid': 432, 'config_path': '/fixture/a profile/shell.qml', 'instance_id': 'example'}]
+        with patch.object(d, 'command', return_value=json.dumps(rows)):
+            self.assertEqual(p.qs_instances(), rows)
+
+    def test_doctor_distinguishes_empty_registry_from_failure(self):
+        for output, expected in [('No running instances.\n', 'Ready'), ('private-fixture-value', 'Failed:')]:
+            def command(argv, **kwargs):
+                if argv == ['qs', 'list', '--all', '-j']: return output
+                raise d.Refused('Fixture service unavailable')
+            with patch.object(d.shutil, 'which', side_effect=lambda name: '/fixture/qs' if name == 'qs' else None), patch.object(d, 'command', side_effect=command):
+                result = d.session_inventory()
+            self.assertEqual(result['quickshell'], [])
+            self.assertTrue(result['quickshellDiscovery'].startswith(expected))
+            self.assertNotIn('private-fixture-value', json.dumps(result))
+
+    def native_fixture(self):
+        # Shapes from reviewed Noctalia 5.2.1 config_export/config_schema sources.
+        # IPC is simulated; TOML parsing and on-disk transactions use real code.
+        merged = '''# keep my notes
+[bar]
+order = ["default", "side.bar 雨"]
+[bar.default]
+enabled = true # main surface
+thickness = 32
+[bar.default.monitor."desk alias"]
+match = "desc:Generic Display"
+enabled = true
+thickness = 36
+[bar.'side.bar 雨']
+'enabled' = true
+position = "left"
+[dock]
+enabled = true
+[dock.monitor."TEST-1"]
+enabled = true
+position = "bottom"
+[notification]
+enable_daemon = true
+duration = 4000
+[osd]
+enabled = true
+[lock]
+custom = "preserve"
+[idle]
+lock_timeout = 600
+[future]
+unknown = "preserve"
+'''
+        full = merged.replace('monitor."desk alias"', 'monitor."desc:Generic Display"')
+        target = self.base / 'state/noctalia/settings.toml'
+        target.parent.mkdir(parents=True); target.write_text(merged); target.chmod(0o640)
+        process = {'pid': 765, 'start': '123', 'exe': '/fixture/noctalia', 'argv': ['noctalia'], 'deleted': False}
+        replies = {'full': full, 'merged': merged, 'version': 'noctalia v5.2.1 (5.2.1-1-dirty)',
+                   'status': '{"locked":false,"barVisible":true}', 'qs': 'No running instances.\n'}
+        def command(argv, **kwargs):
+            if argv == ['qs', 'list', '--all', '-j']: return replies['qs']
+            if argv == ['hyprctl', '-j', 'monitors']: return '[{"solitaryBlockedBy":[]}]'
+            if argv == ['/fixture/noctalia', '--version']: return replies['version']
+            if argv == ['/fixture/noctalia', 'msg', 'status']: return replies['status']
+            raise AssertionError(argv)
+        def export(argv, **kwargs):
+            self.assertEqual(argv[:3], ['/fixture/noctalia', 'config', 'export'])
+            self.assertEqual(kwargs['env']['XDG_STATE_HOME'], str(self.base / 'state'))
+            return subprocess.CompletedProcess(argv, 0, replies[argv[3]], '')
+        patches = [patch.object(p, 'processes', return_value=[process]),
+                   patch.object(p, 'process_environment', return_value={'XDG_STATE_HOME': str(self.base / 'state')}),
+                   patch.object(p, 'notification_owner', return_value=process['pid']),
+                   patch.object(d, 'command', side_effect=command),
+                   patch.object(p.subprocess, 'run', side_effect=export)]
+        for item in patches:
+            item.start(); self.addCleanup(item.stop)
+        return target, replies
+
+    def test_native_discovery_with_no_quickshell_preserves_real_export_structure(self):
+        target, _ = self.native_fixture(); before = d.info(target)
+        row = p.inspect(d.ROOT)
+        self.assertEqual(row['adapter'], 'noctalia-v5')
+        self.assertEqual(row['locker'], 'noctalia')
+        self.assertEqual(row['paused'], [])
+        expected = p.tomllib.loads(target.read_text())
+        expected['bar']['default']['enabled'] = False
+        expected['bar']['default']['monitor']['desk alias']['enabled'] = False
+        expected['bar']['side.bar 雨']['enabled'] = False
+        expected['dock']['enabled'] = False
+        expected['dock']['monitor']['TEST-1']['enabled'] = False
+        expected['notification']['enable_daemon'] = False
+        expected['osd']['enabled'] = False
+        self.assertEqual(p.tomllib.loads(row['settingsAfter']), expected)
+        self.assertIn('# keep my notes', row['settingsAfter'])
+        self.assertIn('enabled = false # main surface', row['settingsAfter'])
+        self.assertNotIn('monitor."desc:Generic Display"', row['settingsAfter'])
+        self.assertEqual(d.info(target), before)  # discovery is read-only
+
+    def test_native_trial_declined_before_settings_or_process_changes(self):
+        import omarchy_session
+        target, _ = self.native_fixture(); before = d.info(target)
+        with patch.object(d.shutil, 'which', return_value='/fixture/tool'), patch.object(omarchy_session, 'active', return_value=False), patch.object(s, 'active', return_value=False), patch.object(d, 'approve', side_effect=d.Refused('Canceled')), patch.object(s, 'spawn') as spawn, patch.object(s, 'authenticate') as authenticate:
+            with self.assertRaisesRegex(d.Refused, 'Canceled'): s.trial(d.ROOT)
+        spawn.assert_not_called(); authenticate.assert_not_called()
+        self.assertEqual(d.info(target), before)
+        self.assertFalse(s.record_path().exists())
+
+    def test_native_overrides_restore_original_bytes_and_metadata(self):
+        target, _ = self.native_fixture(); before = d.info(target)
+        row = p.inspect(d.ROOT)
+        row.update(self.row('noctalia-v5'))
+        tx = self.journal(row, target)
+        with patch.object(s, 'unlocked'):
+            s.prepare(row)
+        self.assertFalse(p.tomllib.loads(target.read_text())['bar']['default']['enabled'])
+        d.restore_journal(tx.path)
+        self.assertEqual(d.info(target), before)
+
+    def test_native_unknown_responses_fail_before_settings_change(self):
+        target, replies = self.native_fixture(); before = d.info(target)
+        initial = copy.deepcopy(replies)
+        for key, value, message in [('qs', '', 'Quickshell'), ('status', '', 'Noctalia status'),
+                ('status', 'private-fixture-value', 'Noctalia status'), ('status', '[]', 'Noctalia status'),
+                ('status', '{"locked":"false","barVisible":true}', 'lock and bar state'),
+                ('status', '{"locked":true,"barVisible":true}', 'Noctalia is locked'),
+                ('version', 'noctalia v5.2.2', 'outside the reviewed version'),
+                ('full', 'private-fixture-value', 'configuration export'), ('full', '', 'bar configuration')]:
+            with self.subTest(key=key, value=value):
+                replies.update(initial); replies[key] = value
+                with self.assertRaisesRegex(d.Refused, message) as error: p.inspect(d.ROOT)
+                self.assertNotIn('private-fixture-value', str(error.exception))
+                self.assertEqual(d.info(target), before)
+
+    def test_native_bar_order_and_monitor_snapshot_must_be_consistent(self):
+        target, replies = self.native_fixture(); before = d.info(target)
+        full = replies['full']
+        for bad in (full.replace('order = ["default", "side.bar 雨"]', 'order = ["missing"]'),
+                    full.replace('order = ["default", "side.bar 雨"]', 'order = ["default", "default"]'),
+                    full.replace('monitor."desc:Generic Display"', 'monitor."new display"').replace('match = "desc:Generic Display"', 'match = "new display"')):
+            replies['full'] = bad
+            with self.assertRaises(d.Refused): p.inspect(d.ROOT)
+            self.assertEqual(d.info(target), before)
+
+    def test_native_version_parser_checks_release_not_build_metadata(self):
+        row = {'adapter': 'noctalia-v5', 'providerExe': '/fixture/noctalia'}
+        for version in ('noctalia v5.2.1', 'noctalia 5.2.1', 'noctalia v5.2.1 (5.2.1-1-dirty)'):
+            with patch.object(d, 'command', return_value=version): p.verify_noctalia(d.ROOT, row)
+        for version in ('noctalia v5.2.10', 'noctalia v5.2.1-dev', 'noctalia v5.3.0 (5.2.1)',
+                        'unrelated 5.2.1', 'noctalia v5.2.1\nerror'):
+            with patch.object(d, 'command', return_value=version):
+                with self.assertRaises(d.Refused): p.verify_noctalia(d.ROOT, row)
+
+    def test_native_defaults_missing_state_and_quoted_monitor_keys(self):
+        target, replies = self.native_fixture()
+        target.unlink(); replies['merged'] = ''
+        replies['full'] = '[bar]\norder = ["default"]\n[bar.default]\nenabled = true\n'
+        row = p.inspect(d.ROOT)
+        self.assertFalse(target.exists())
+        self.assertFalse(p.tomllib.loads(row['settingsAfter'])['bar']['default']['enabled'])
+        values = [(('bar', 'side.bar 雨', 'monitor', 'desc:Generic "Display"'), 'enabled', False)]
+        text = p.toml_overrides('', values)
+        self.assertFalse(p.tomllib.loads(text)['bar']['side.bar 雨']['monitor']['desc:Generic "Display"']['enabled'])
+        self.assertEqual(p.toml_overrides(text, values), text)
+
     def test_native_toml_preserves_comments_and_unknown_keys(self):
         original = '# user notes\n[notification]\nenable_daemon = true\ncustom = "keep"\n[lock]\nmethod = "system"\n'
         text = p.toml_overrides(original, [('notification', 'enable_daemon', False), ('bar.default', 'enabled', False)])
@@ -420,6 +606,20 @@ sys.stdin.buffer.read(1)
     def test_native_inline_table_refuses_without_damage(self):
         with self.assertRaises(d.Refused):
             p.toml_overrides('notification = { enable_daemon = true }\n', [('notification', 'enable_daemon', False)])
+
+    def test_native_state_without_final_newline_preserved(self):
+        text = p.toml_overrides('[osd]\n# keep note', [('osd', 'enabled', False)])
+        self.assertFalse(p.tomllib.loads(text)['osd']['enabled'])
+        self.assertIn('# keep note', text)
+
+    def test_invalid_compositor_response_never_means_unlocked_or_covered(self):
+        for output in ('', '{}', '[null]', '[{"solitaryBlockedBy":"LOCK"}]', '[{"solitaryBlockedBy":[true]}]'):
+            with self.subTest(output=output), patch.object(d, 'command', return_value=output):
+                with self.assertRaises(d.Refused): p.compositor_locked()
+                with self.assertRaises(d.Refused): p.compositor_covered()
+        with patch.object(d, 'command', return_value='[]'):
+            with self.assertRaises(d.Refused): p.compositor_locked()
+            self.assertFalse(p.compositor_covered())
 
     def test_lock_unknown_and_partial_coverage_fail_closed(self):
         with patch.object(d, 'command', return_value='[{"name":"TEST"}]'):
