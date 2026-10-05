@@ -37,7 +37,7 @@ python3 scripts/package_release.py /tmp/cedar-development.tar.gz
 python3 tests/check_artifact.py /tmp/cedar-development.tar.gz
 ```
 
-GIO execution tests explicitly skip when Python GIO bindings are missing. Quickshell checks require a compatible installed runtime and run offscreen in disposable XDG locations. CI runs source/recovery/archive checks; it must not be described as a native desktop runner. See `LOCAL-VERIFICATION.md` for the results actually obtained.
+GIO execution tests explicitly skip when Python GIO bindings are missing. Quickshell checks require a compatible installed runtime and run offscreen in disposable XDG locations. CI runs source/recovery/archive checks; it must not be described as native desktop testing. See `LOCAL-VERIFICATION.md` for the results actually obtained.
 
 ## Resource evidence
 
