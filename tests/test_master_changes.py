@@ -124,7 +124,11 @@ class ApplicationExecution(unittest.TestCase):
     def test_live_catalog_coalesces_hidden_changes_and_rearms(self):
         self.entry('first.desktop','/usr/bin/true')
         child=subprocess.Popen([sys.executable,str(self.helper),'--watch'],env=self.env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        self.addCleanup(lambda: child.poll() is None and child.kill())
+        def cleanup():
+            if child.poll() is None:child.kill()
+            child.wait(timeout=5)
+            for stream in (child.stdin,child.stdout,child.stderr):stream.close()
+        self.addCleanup(cleanup)
         selector=selectors.DefaultSelector();selector.register(child.stdout,selectors.EVENT_READ);self.addCleanup(selector.close)
         def send(value):child.stdin.write((json.dumps(value)+'\n').encode());child.stdin.flush()
         def receive():
@@ -141,6 +145,22 @@ class ApplicationExecution(unittest.TestCase):
         (self.apps/'first.desktop').unlink();third=receive()
         self.assertNotIn('first.desktop',[a['id'] for a in third['data']['apps']])
         child.stdin.close();child.wait(timeout=5);child.stdout.close();child.stderr.close()
+
+    def test_catalog_callback_failure_exits_instead_of_stalling(self):
+        code=('import sys\nsys.path.insert(0,'+repr(str(self.helper.parent))+')\n'
+              'import default_apps as app\n'
+              'def fail(): raise RuntimeError("synthetic catalog failure")\n'
+              'app.snapshot=fail\napp.watch()\n')
+        child=subprocess.Popen([sys.executable,'-c',code],env=self.env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        try:
+            child.stdin.write(b'{"action":"visible","value":true}\n');child.stdin.flush()
+            child.wait(timeout=5)
+            self.assertNotEqual(child.returncode,0)
+            self.assertIn(b'synthetic catalog failure',child.stderr.read())
+        finally:
+            if child.poll() is None:child.kill()
+            child.wait(timeout=5)
+            for stream in (child.stdin,child.stdout,child.stderr):stream.close()
 
 
 class StartupDiscovery(unittest.TestCase):

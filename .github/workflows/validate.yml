@@ -1,4 +1,4 @@
-name: Private candidate validation
+name: Development candidate validation
 on:
   push:
   pull_request:

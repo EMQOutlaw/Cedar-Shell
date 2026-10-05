@@ -8,7 +8,7 @@ The complete working CEDAR source is included: six bars, consolidated Core/Canop
 
 The new distribution path provides versioned copied code, explicit-path IPC, an isolated ordinary-window preview, private ownership journals, verified file restoration, retained stable recovery, dependency plans, signature-verified local archive updates and deterministic complete archive packaging. Installation leaves the current shell and its startup untouched. The guided installer and normal shell are independent of Omarchy. The old Omarchy-specific helpers remain for explicit compatibility. Stock Hyprland and resident Noctalia trials, Keep and login integration are implemented with separate source/version gates; neither is yet native-certified.
 
-See [candidate 12 implementation evidence](IMPLEMENTATION-REPORT.md). The GitHub repository was observed public during this work; that does not authorize publication of this new candidate. No visibility change or public release was performed.
+See [candidate 12 implementation evidence](IMPLEMENTATION-REPORT.md). Publication to the existing public development branch was explicitly approved after review. No visibility change or tagged public release was performed.
 
 ## Evidence and gates
 

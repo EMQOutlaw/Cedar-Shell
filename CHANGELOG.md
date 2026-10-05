@@ -1,5 +1,7 @@
 # 0.1.0-dev.12 — shared services, quiet controls and reviewed handoffs
 
+- Follow-up from Ubuntu CI: support older PyGObject/GioUnix method bindings; exit failed catalog callbacks so the shared service can retry instead of stalling.
+
 - Load Go, Settings, Field Station and Canopy content on demand; retain input drafts outside unloaded views. Preserve native hosts, monitor routing and authentication lifetime.
 - Share a GIO application catalog, defer hidden rescans, launch desktop entries through GIO and preserve unchanged default associations. Reconcile Go/network rows by stable IDs.
 - Subscribe to NetworkManager changes, bound scans and requests, gate hotspot disconnect approval, and isolate the optional Bluetooth import. Schedule telemetry by actual consumers with timeout/backoff.

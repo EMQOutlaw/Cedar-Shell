@@ -24,13 +24,15 @@ def snapshot(installed=None):
             if selected:installed[current]=selected
         recommendations=[]
         for key,app in installed.items():
-            cats=set((app.get_categories() or '').split(';')) if isinstance(app,DesktopAppInfo) else set()
+            # Older PyGObject aliases Gio's instance to GioUnix without binding
+            # its namespace-specific methods. Explicit receivers work on both.
+            cats=set((DesktopAppInfo.get_categories(app) or '').split(';')) if isinstance(app,DesktopAppInfo) else set()
             if set(app.get_supported_types() or []) & set(role['types']) or cats & set(role['categories']):recommendations.append(key)
         rows.append({**role,'current':current,'mixed':len(set(ids))>1,'recommended':recommendations})
     catalog=[]
     for key, app in installed.items():
         description=app.get_description() or ''
-        keywords=list(app.get_keywords() or []) if isinstance(app,DesktopAppInfo) else []
+        keywords=list(DesktopAppInfo.get_keywords(app) or []) if isinstance(app,DesktopAppInfo) else []
         label=app.get_display_name() or key
         catalog.append({'id':key,'label':label,'description':description,'keywords':keywords,
                         'visible':app.should_show(), 'icon':app.get_icon().to_string() if app.get_icon() else '',
@@ -59,19 +61,25 @@ def watch():
     Input/output are bounded JSON lines, no commands or environment dumps.
     """
     generation=uuid.uuid4().hex
-    state={'visible':False,'dirty':True,'pending':0,'seq':0,'catalog':None}
+    state={'visible':False,'dirty':True,'pending':0,'seq':0,'catalog':None,'failure':None}
     loop=GLib.MainLoop()
     def publish():
         state['pending']=0
         if not state['visible']: return False
-        if state['dirty']:
-            state['dirty']=False
-            state['catalog']=snapshot()
-        state['seq']+=1
-        payload=json.dumps({'schema':1,'generation':generation,'sequence':state['seq'],
-                            'kind':'snapshot','data':state['catalog']},ensure_ascii=False)
-        if len(payload.encode())>4*1024*1024: raise ValueError('Application catalog exceeds the safe response limit.')
-        print(payload,flush=True)
+        try:
+            if state['dirty']:
+                state['catalog']=snapshot()
+                state['dirty']=False
+            state['seq']+=1
+            payload=json.dumps({'schema':1,'generation':generation,'sequence':state['seq'],
+                                'kind':'snapshot','data':state['catalog']},ensure_ascii=False)
+            if len(payload.encode())>4*1024*1024: raise ValueError('Application catalog exceeds the safe response limit.')
+            print(payload,flush=True)
+        except Exception as error:
+            # GLib callback exceptions otherwise leave a silent, stalled helper.
+            # Exit so the existing service can report failure and retry/back off.
+            state['failure']=error
+            loop.quit()
         return False
     def schedule():
         if state['visible'] and not state['pending']: state['pending']=GLib.timeout_add(80,publish)
@@ -104,6 +112,7 @@ def watch():
     finally:
         monitor.disconnect(handler)
         if state['pending']: GLib.source_remove(state['pending'])
+    if state['failure']:raise state['failure']
 
 def apply(role_id,app_id):
     role=next((r for r in ROLES if r['id']==role_id),None)
