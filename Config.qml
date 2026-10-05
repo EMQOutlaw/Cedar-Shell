@@ -88,6 +88,26 @@ Singleton {
         const line = String(text || "").trim();
         return line ? line.split(/\s+/) : fallback;
     }
+    // Settings that other local processes may change over `settings set`.
+    // Anything that launches commands, reaches the network, stores location,
+    // or weakens the lock screen stays with the Settings panel and the file.
+    readonly property var ipcProtected: ["applicationTargets", "terminal", "browser", "editor", "files", "localOnly", "weatherEnabled", "weatherAutomatic", "remoteArtwork", "latitude", "longitude", "locationName", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "clipboardHistory", "forestTrails", "whisperLedger"]
+    function ipcSet(key, value) {
+        if (!(key in saved)) return "unknown setting: " + key;
+        if (ipcProtected.includes(key)) return "protected setting: " + key + " (use Settings)";
+        if (ShellState.locked) return "locked";
+        const current = saved[key];
+        if (typeof current === "boolean") { if (value !== "true" && value !== "false") return "expected true or false"; set(key, value === "true"); }
+        else if (typeof current === "number") { const n = Number(value); if (!isFinite(n)) return "expected a number"; set(key, n); }
+        else if (typeof current === "string") set(key, String(value).slice(0, 1000));
+        else return "unsupported setting type: " + key;
+        return "ok";
+    }
+    function ipcGet(key) {
+        if (!(key in saved)) return "unknown setting: " + key;
+        if (ipcProtected.includes(key)) return "protected setting: " + key;
+        return String(saved[key]);
+    }
     function set(key, value) {
         if (!(key in saved) || saved[key] === value) return;
         if (key === "applicationTargets" && JSON.stringify(saved.applicationTargets) === JSON.stringify(value)) return;

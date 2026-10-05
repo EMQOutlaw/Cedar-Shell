@@ -39,6 +39,8 @@ ShellRoot {
             CoreService.collapse();
         }
         function publish(payload: string): string {
+            if (payload.length > 16384)
+                return "Payload exceeds 16 KiB.";
             return CoreService.external(payload);
         }
         function withdraw(source: string, id: string): string {
@@ -108,16 +110,14 @@ ShellRoot {
             if (Config.stage >= 3)
                 ShellState.toggle("settings");
         }
-        // `settings set idleLockSeconds 300`: scriptable edits of the saved settings.
+        // `settings set barStyle islands`: scriptable edits of presentation
+        // settings. Command, network, location and lock settings are refused
+        // here (Config.ipcProtected); the file and the Settings panel own them.
         function set(key: string, value: string): string {
-            if (!(key in Config.saved))
-                return "unknown setting: " + key;
-            const current = Config.saved[key];
-            Config.set(key, typeof current === "boolean" ? value === "true" : typeof current === "number" ? Number(value) : value);
-            return "ok";
+            return Config.ipcSet(key, value);
         }
         function get(key: string): string {
-            return key in Config.saved ? String(Config.saved[key]) : "unknown setting: " + key;
+            return Config.ipcGet(key);
         }
     }
     // Go menu: `menu toggle <route>` opens a menu id or alias (root, apps, system,
@@ -130,7 +130,7 @@ ShellRoot {
                 Go.toggle(route);
         }
         function summon(payload: string): void {
-            if (Config.stage >= 3)
+            if (Config.stage >= 3 && !ShellState.locked)
                 Go.summon(payload);
         }
         function refresh(): void {

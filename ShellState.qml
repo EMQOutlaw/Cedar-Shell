@@ -99,7 +99,9 @@ Singleton {
         close();
         if (Config.externalSession) {
             locked = true;
-            Quickshell.execDetached(["python3", Quickshell.env("CEDAR_SESSION_HELPER"), "lock", ...(suspend ? ["--suspend"] : [])]);
+            const helper = Quickshell.env("CEDAR_SESSION_HELPER");
+            if (helper && helper.startsWith("/"))
+                Quickshell.execDetached(["python3", helper, "lock", ...(suspend ? ["--suspend"] : [])]);
             return;
         }
         suspendAfterLock = suspend;

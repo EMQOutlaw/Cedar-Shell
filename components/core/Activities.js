@@ -58,7 +58,8 @@ function external(event,now) {
     if(!event || !/^[a-z0-9][a-z0-9._-]{0,39}$/.test(event.source || "") || !/^[a-z0-9][a-z0-9._-]{0,59}$/.test(event.id || ""))throw new Error("Use a short source and id made of lowercase letters, digits, dots or hyphens.");
     if(!["progress","update","integration"].includes(event.type))throw new Error("External publishers support progress, update, or integration activities.");
     // Providers supply data, never executable actions or trusted privacy/recording claims.
-    return {id:"external/"+event.source+"/"+event.id,type:event.type,source:event.source,title:event.title,subtitle:event.subtitle,
+    const text=(value,limit)=>String(value ?? "").replace(/[\u0000-\u001f]/g," ").slice(0,limit);
+    return {id:"external/"+event.source+"/"+event.id,type:event.type,source:event.source,title:text(event.title,160),subtitle:text(event.subtitle,240),
         priority:event.priority==="high" ? "high":"normal",progress:event.progress,persistent:!!event.persistent,
         leaseMs:event.persistent ? Math.min(60000,Math.max(1000,Number(event.leaseMs)||30000)):0,
         timeout:Number(event.timeout)||5000,announce:event.announce,remember:!!event.remember,actions:[]};

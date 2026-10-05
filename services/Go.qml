@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import ".."
+import "../components"
 import "../components/MenuModel.js" as MenuModel
 import "../components/StableRows.js" as StableRows
 
@@ -434,8 +435,20 @@ Singleton {
         if (!root.requestActive || !root.doneFile) return;
         const selectionFile = root.selectionFile, doneFile = root.doneFile;
         root.requestActive = false; root.selectionFile = ""; root.doneFile = "";
-        const write = selection === null || selection === undefined ? "" : "printf '%s\\n' " + shellQuote(selection) + " > " + shellQuote(selectionFile) + "; ";
-        Quickshell.execDetached(["bash", "-c", write + ": > " + shellQuote(doneFile)]);
+        root.replyQueue = root.replyQueue.concat([{selectionFile: selectionFile, doneFile: doneFile, selection: selection === undefined ? null : selection}]);
+        root.flushReplies();
+    }
+    // Replies are written one at a time, in order, by the validating helper.
+    property var replyQueue: []
+    function flushReplies() {
+        if (replyProc.running || !root.replyQueue.length) return;
+        const next = root.replyQueue[0];
+        root.replyQueue = root.replyQueue.slice(1);
+        replyProc.send(next);
+    }
+    ServiceRequest {
+        id: replyProc; script: "scripts/menu_reply.py"; timeoutMs: 5000
+        onRunningChanged: if (!running) Qt.callLater(root.flushReplies)
     }
     // Answer first: hiding the panel runs onHidden, which cancels any open request.
     function applyDmenuSelection(value) { root.finishRequest(value); root.hide(); }
@@ -472,17 +485,25 @@ Singleton {
     }
     function summon(payloadJson) {
         let payload = ({});
+        if (String(payloadJson || "").length > 262144) return; // 256 KiB is far beyond any prompt.
         try { payload = JSON.parse(payloadJson || "{}") || ({}); } catch (_) { payload = ({}); }
+        if (!payload || typeof payload !== "object") return;
         if (payload.mode === "select" || payload.mode === "input") root.openDmenu(payload);
         else root.openRoute(payload.initialMenu || payload.menu || "root");
+    }
+    // Reply paths must look like the mktemp names Omarchy's helpers create;
+    // scripts/menu_reply.py enforces ownership and exclusivity when writing.
+    function replyPath(value) {
+        const path = String(value || "");
+        return path.startsWith("/") && !/[\n\0]/.test(path) && path.length <= 4096 ? path : "";
     }
     function openDmenu(payload) {
         if (root.requestActive) root.finishRequest(null);
         root.mode = payload.mode === "input" ? "input" : "select";
-        root.dmenuPrompt = String(payload.prompt || (root.mode === "input" ? "Input" : "Select"));
-        root.dmenuOptions = Array.isArray(payload.options) ? payload.options : [];
-        root.selectionFile = String(payload.selectionFile || "");
-        root.doneFile = String(payload.doneFile || "");
+        root.dmenuPrompt = String(payload.prompt || (root.mode === "input" ? "Input" : "Select")).slice(0, 200);
+        root.dmenuOptions = (Array.isArray(payload.options) ? payload.options : []).slice(0, 2000).map(o => String(o).slice(0, 1000));
+        root.selectionFile = root.replyPath(payload.selectionFile);
+        root.doneFile = root.replyPath(payload.doneFile);
         root.requestActive = !!root.doneFile;
         root.dmenuWidth = Math.max(0, Number(payload.width || 0));
         root.dmenuMaxHeight = Math.max(0, Number(payload.maxHeight || 0));
