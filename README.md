@@ -32,6 +32,8 @@ Versions before `0.1.0-dev.8` could also stop with “Cannot inspect a same-user
 
 If candidate 8 installs but **Try** reports “Expecting value: line 1 column 1”, update and reinstall **0.1.0-dev.9 or newer** using the existing-checkout command above, then choose **3**. With native Noctalia running, Quickshell normally has no instances and can return a plain-text message even in JSON mode; candidate 9 handles that response and Noctalia 5.2.1's actual version/configuration format. This does not require installing Omarchy, stopping Noctalia, or deleting your checkout. If another check fails, its message now identifies the affected interface; leave your existing desktop running.
 
+If candidate 9 fails with **`CEDAR: 'root'`** after trial approval, update and reinstall **0.1.0-dev.10 or newer** with the existing-checkout command, then choose **3** again. This was a missing internal installation-path field, not a request to run as root. It occurred before the trial changed provider settings. Candidate 10 initializes that field before checking lock/IPC state and tests the complete approved workflow. Keep CEDAR only after its desktop appears and works; the installer then offers login activation separately.
+
 For a provided private candidate archive:
 
 1. Download the CEDAR archive.

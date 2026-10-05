@@ -275,6 +275,7 @@
   "tests/test_omacale_providers.py",
   "tests/test_omarchy_session.py",
   "tests/test_portability.py",
+  "tests/test_portable_lifecycle.py",
   "tests/test_settings_remaster.py",
   "tests/test_trailwatch.py",
   "tests/test_weather_location.py",

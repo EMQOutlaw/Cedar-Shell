@@ -1,4 +1,4 @@
-# Release readiness — 0.1.0-dev.9
+# Release readiness — 0.1.0-dev.10
 
 **Private development candidate. Not a complete public release.** No first-party license or artwork redistribution grant has been selected. Required upstream notices and approved local KJV content remain intact.
 
@@ -17,6 +17,8 @@ Candidate 7 fixes CachyOS dependency selection and stops treating recommended fo
 Candidate 8 fixes unrelated protected processes blocking upgrades. It moves safety checks ahead of installed helper writes and keeps strict desktop identity, release-use and lock checks. Its 256-test suite includes real Linux protected-process behavior plus controlled upgrade/recovery fixtures. The native desktop gates below remain outstanding.
 
 Candidate 9 fixes the reported native Noctalia discovery parse error and the following version/configuration parsing failures. Its 270-test local suite includes a real isolated Quickshell empty-registry command, native Noctalia response fixtures, bar/monitor configuration preservation, canceled activation and exact settings restoration. The target user reports successful candidate 8 installation, reinstall and preview loading on CachyOS; a completed native Noctalia trial has not been verified. Quickshell and offscreen checks cannot certify native Noctalia authentication or desktop switching.
+
+Candidate 10 fixes the next confirmed failure after trial approval: a missing candidate path during the first lock/IPC check. The prior suite did not exercise that complete approved path. Thirteen new workflow tests execute installer option 3 and public CLI actions through discovery, supervision, confirmation, login setup and restoration. They reproduce the old defect and pass with the fix. These tests simulate external desktop interfaces, so they do not change the native acceptance gates below.
 
 Outstanding gates:
 

@@ -1,3 +1,10 @@
+# 0.1.0-dev.10 — initialize the approved trial before checking it
+
+- Supply the explicit installed candidate path before the first lock/IPC check. Candidate 9 could finish installation and approval but fail with `'root'` before creating a trial or changing Noctalia's settings.
+- Add complete public-workflow regressions for installer option 3 and the installed CLI: approved native Noctalia and plain Hyprland trials, Keep, login activation, renewed provider identity at login, timeout/startup-failure recovery, exact restoration, later user edits and lock deferral.
+- Exercise production discovery, candidate lookup, IPC routing, lock checks, transactions, supervisor and approval logic together. Only external desktop/process interfaces and time are simulated. The new test reproduces the candidate 9 failure with the old trial function.
+- Run these workflow tests in CI and against the extracted release archive. Native CachyOS/Noctalia desktop and authentication acceptance remain unverified; offscreen component checks cannot substitute for them.
+
 # 0.1.0-dev.9 — native Noctalia discovery and settings handoff
 
 - Accept Quickshell's exact successful `No running instances.` response in JSON-list mode. Native Noctalia does not require an existing Quickshell profile. Malformed or missing responses still defer desktop changes and now identify the failing interface.

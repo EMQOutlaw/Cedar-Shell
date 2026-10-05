@@ -80,7 +80,9 @@ def trial(root, approved=False, expected_adapter='auto'):
         import omarchy_session
         if active() or omarchy_session.active():
             raise d.Refused('A managed CEDAR session already exists. Use cedar status, keep or restore.')
-        row = providers.inspect(root)
+        # Discovery describes the existing providers, not the candidate. Every
+        # following lock/IPC check must already know the explicit candidate path.
+        row = {**providers.inspect(root), 'root': str(root)}
         if expected_adapter == 'noctalia' and row['locker'] != 'noctalia' or expected_adapter == 'hyprland' and row['adapter'] != 'hyprland':
             raise d.Refused('The requested adapter does not match the running desktop. Use cedar try for automatic detection.')
         plan = {'action': 'Try CEDAR for 120 seconds', 'adapter': row['adapter'],
