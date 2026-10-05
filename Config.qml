@@ -13,9 +13,13 @@ Singleton {
     readonly property int stage: Math.max(1, Math.min(3, Number(Quickshell.env("CEDAR_STAGE") || Quickshell.env("FOXFIRE_STAGE") || 3)))
     readonly property bool testMode: (Quickshell.env("CEDAR_TEST") || Quickshell.env("FOXFIRE_TEST")) === "1"
     readonly property bool omarchyIntegration: Quickshell.env("CEDAR_ADAPTER") === "omarchy" || Quickshell.env("CEDAR_OMARCHY_SESSION") === "1"
-    readonly property bool externalSession: Quickshell.env("CEDAR_EXTERNAL_LOCK") === "1" || omarchyIntegration
+    // Opt-in Trailwatch on Omarchy: the session helper sets this only after the
+    // user chose it; the handoff itself happens after a verified lock cycle.
+    readonly property bool trailwatchLock: omarchyIntegration && Quickshell.env("CEDAR_OMARCHY_LOCK") === "trailwatch"
+    readonly property bool externalSession: (Quickshell.env("CEDAR_EXTERNAL_LOCK") === "1" || omarchyIntegration) && !trailwatchLock
     readonly property bool externalIdle: Quickshell.env("CEDAR_EXTERNAL_IDLE") === "1"
-    readonly property bool managedSession: Quickshell.env("CEDAR_MANAGED_SESSION") === "1" || externalSession
+    readonly property bool managedSession: Quickshell.env("CEDAR_MANAGED_SESSION") === "1" || externalSession || omarchyIntegration
+    readonly property string lockStatePath: Quickshell.env("CEDAR_LOCK_STATE") || stateDir + "/lock-state.json"
     readonly property bool externalBackground: Quickshell.env("CEDAR_BACKGROUND") === "external" || omarchyIntegration
     readonly property bool authOnly: Quickshell.env("CEDAR_AUTH_ONLY") === "1"
     readonly property bool localOnly: saved.localOnly || Quickshell.env("CEDAR_LOCAL_ONLY") === "1"

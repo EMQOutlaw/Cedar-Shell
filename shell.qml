@@ -231,7 +231,7 @@ ShellRoot {
             return ShellState.locked;
         }
         function sessionInfo(): string {
-            return JSON.stringify({generation: Quickshell.env("CEDAR_SESSION_GENERATION"), externalLock: Config.externalSession, locked: ShellState.locked, lockReady: ShellState.nativeLockReady, lockSecure: ShellState.lockSecure, securedUnlocks: ShellState.securedUnlocks, screenCount: Quickshell.screens.length, stage: Config.stage});
+            return JSON.stringify({generation: Quickshell.env("CEDAR_SESSION_GENERATION"), externalLock: Config.externalSession, trailwatch: Config.trailwatchLock, locked: ShellState.locked, lockReady: ShellState.nativeLockReady, lockSecure: ShellState.lockSecure, securedUnlocks: ShellState.securedUnlocks, authTests: ShellState.authTests, screenCount: Quickshell.screens.length, stage: Config.stage});
         }
         function stop(): void {
             if (!ShellState.locked)
@@ -245,6 +245,12 @@ ShellRoot {
     LazyLoader {
         active: Config.stage >= 3 && !Config.externalSession
         component: LockScreen {}
+    }
+    // Omarchy's bridge answers `omarchy-shell lock status` from this file while
+    // Trailwatch is the locker, so idle, lid, sleep and keyboard requests reach it.
+    LazyLoader {
+        active: Config.stage >= 3 && Config.trailwatchLock && !Config.testMode
+        component: LockStatePublisher {}
     }
     Variants {
         model: Quickshell.screens

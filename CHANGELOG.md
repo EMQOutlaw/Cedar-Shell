@@ -1,3 +1,9 @@
+# 0.1.0-dev.14 — Trailwatch on Omarchy, after a verified lock cycle
+
+- `cedar try --adapter omarchy --trailwatch` loads CEDAR's own lock surface (PAM service `omarchy-lock-password`) beside the existing locker. `cedar keep` then opens the local password test window, locks once with Trailwatch and waits for a secure unlock; only after that does it disable the existing lock plugin or clone and mark CEDAR the locker. A failed or skipped step leaves the previous locker selected.
+- The bridge bar now answers Omarchy's `lock` IPC (`lock`, `isLocked`, `status`) from a lock-state file CEDAR writes on every change and as a 5 s heartbeat. Keyboard, idle, lid and sleep lock requests keep using `omarchy-system-lock` and reach Trailwatch unchanged; a stale file reads as "no lock screen", never as unlocked.
+- While CEDAR is the locker the supervisor reads lock state from the compositor's lock indicator and CEDAR's session info, so a CEDAR crash restores the previous locker instead of deferring forever. `cedar lock [--suspend]` works on Omarchy in this mode. Malformed Omarchy lock status is reported as such instead of a JSON parse message.
+
 # 0.1.0-dev.13 — rest when unwatched, refuse what IPC does not need
 
 - Add `Motion`, one gate for decorative loops: ambience pauses after 120 s without input, under Reduced Motion and in tests. Add `Breath`, a 12-step-per-second sine for always-mapped surfaces. Core's filament, gauge pulses and the lock-surface status pulse no longer commit a frame every refresh for the life of the session; spores and the Field Station core rest with the user.

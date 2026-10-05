@@ -587,8 +587,8 @@ def main(argv=None):
         if args.action=='try':
             if backend.__name__ == 'portable_session': backend.trial(installed(),args.approve_trial, expected_adapter=args.adapter, cedar_launcher=args.cedar_launcher, trailwatch=args.trailwatch)
             else:
-                if args.trailwatch or args.cedar_launcher: raise Refused('These control choices apply to the portable adapter; the existing Omarchy integration is preserved.')
-                backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial)
+                if args.cedar_launcher: raise Refused('The launcher choice applies to the portable adapter; existing Omarchy shortcuts are preserved.')
+                backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial,trailwatch=args.trailwatch)
         elif args.action=='status':
             row=backend.read_record()
             print(json.dumps(backend.status_report() if backend.__name__=='portable_session' else {k:row.get(k) for k in ('stage','login','deadline','error','locker')} if row else {'stage':'not active'},indent=2))
@@ -596,8 +596,9 @@ def main(argv=None):
     elif args.action=='session-login':session_backend(args.adapter).login()
     elif args.action in ('lock','launcher'):
         backend=session_backend(args.adapter)
-        if backend.__name__ != 'portable_session': raise Refused('Use the existing Omarchy controls for this session.')
-        backend.main([args.action, *(['--suspend'] if args.suspend else [])])
+        if backend.__name__ == 'portable_session': backend.main([args.action, *(['--suspend'] if args.suspend else [])])
+        elif args.action=='lock': backend.request_lock(args.suspend)
+        else: raise Refused('Use the existing Omarchy controls for this session.')
     elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()

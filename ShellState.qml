@@ -15,6 +15,8 @@ Singleton {
     property bool lockSecure: false
     property bool nativeLockReady: false
     property int securedUnlocks: 0
+    // Successful local PAM checks that did not involve a session lock.
+    property int authTests: 0
     property bool authTest: false
     property bool suspendAfterLock: false
     property string osdKind: ""
