@@ -30,5 +30,12 @@ Singleton {
         }
         onExited: { if (root.pending !== 0) Qt.callLater(root.drain); else root.showAfter = false; }
     }
-    Timer { interval: 10000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.drain() }
+    // Poll only while a brightness control is on screen. Key presses and the
+    // OSD read on demand through change()/show(); nothing samples a hidden value.
+    readonly property bool observed: !ShellState.locked && !Config.testMode && (
+        ShellState.panel === "control" ||
+        (ShellState.panel === "settings" && ShellState.settingsSection === "power") ||
+        (Canopy.shown && Canopy.topic === "quick") ||
+        (ShellState.osdOpen && ShellState.osdKind === "BRIGHTNESS"))
+    Timer { interval: 10000; running: root.observed; repeat: true; triggeredOnStart: true; onTriggered: root.drain() }
 }

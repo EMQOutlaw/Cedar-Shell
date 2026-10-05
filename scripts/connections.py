@@ -216,6 +216,15 @@ class Network:
             raise ValueError('Unknown network action.')
 
 
+AP_PREFIX = BASE + '/AccessPoint/'
+
+def relevant(path, expanded):
+    """Access-point property churn (signal strength) only matters while a
+    network list is on screen. Everything else (devices, active connections,
+    settings, the service itself) always produces a fresh snapshot."""
+    return expanded or not str(path or '').startswith(AP_PREFIX)
+
+
 def watch():
     from dbus.mainloop.glib import DBusGMainLoop
     from gi.repository import GLib
@@ -235,10 +244,11 @@ def watch():
         print(line,flush=True)
         return False
     def changed(*args,**kwargs):
-        if not state['pending']:state['pending']=GLib.timeout_add(200,publish)
+        if not relevant(kwargs.get('path'),state['expanded']):return
+        if not state['pending']:state['pending']=GLib.timeout_add(200 if state['expanded'] else 600,publish)
     # Subscribe before the first snapshot. Events queued while sampling schedule
     # another complete revision; reconnects establish fresh service objects.
-    matches=[bus.add_signal_receiver(changed,bus_name=NM),
+    matches=[bus.add_signal_receiver(changed,bus_name=NM,path_keyword='path'),
              bus.add_signal_receiver(changed,signal_name='NameOwnerChanged',dbus_interface='org.freedesktop.DBus',arg0=NM)]
     os.set_blocking(sys.stdin.fileno(),False)
     buffer=bytearray()

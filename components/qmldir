@@ -27,3 +27,4 @@ AudioSpectrum 1.0 AudioSpectrum.qml
 ReadingText 1.0 ReadingText.qml
 NetworkIndicator 1.0 NetworkIndicator.qml
 BarCoreControls 1.0 BarCoreControls.qml
+Breath 1.0 Breath.qml

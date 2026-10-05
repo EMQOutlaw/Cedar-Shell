@@ -42,9 +42,12 @@ def keyboard(paths):
 
 def watch():
     previous=None;tick=0;recordings=[];paths={}
+    # One wakeup per second. LED files are two small sysfs reads; the /proc scan
+    # touches every process and runs every third tick, so a recorder shows
+    # within about three seconds while an idle shell stays off the CPU.
     while True:
-        if tick%20==0:paths={k:list(LEDS.glob('*::'+k+'/brightness')) for k in ('capslock','numlock')}
-        if tick%4==0:
+        if tick%30==0:paths={k:list(LEDS.glob('*::'+k+'/brightness')) for k in ('capslock','numlock')}
+        if tick%3==0:
             # /proc uptime has limited precision; retain the first observed
             # wall-clock start so clock rounding cannot generate fake changes.
             starts={(r['pid'],r['startTicks']):r['started'] for r in recordings}
@@ -53,7 +56,7 @@ def watch():
         data={'recordings':recordings,'keyboard':keyboard(paths)}
         if data!=previous:
             print(json.dumps(data),flush=True);previous=data
-        tick+=1;time.sleep(.5)
+        tick+=1;time.sleep(1)
 if __name__=='__main__':
     try:watch()
     except (BrokenPipeError,KeyboardInterrupt):pass

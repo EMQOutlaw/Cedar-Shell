@@ -28,3 +28,4 @@ singleton WeatherLocation 1.0 WeatherLocation.qml
 SessionIntegration 1.0 SessionIntegration.qml
 
 singleton SetupFlow 1.0 SetupFlow.qml
+singleton Motion 1.0 Motion.qml

@@ -15,6 +15,8 @@ ShellRoot {
         StationCore { x: 20; y: 200; time: "10:42"; active: true }
         ArcGauge { id: gauge; x: 320; y: 230; value: 0.72; pulse: true; active: true }
         CoreSurface { id: core; x: 200; maximumWidth: 480; maximumHeight: 690 }
+        Breath { id: breath; running: Motion.active; from: 0; to: 1; rise: 300 }
+        property real breathSeen: 0
         property int stage: 0
         property int sizes: 0
         property int frames: 0
@@ -36,6 +38,9 @@ ShellRoot {
                     ShellState.osd("VOLUME", 0.72, "72%");
                     break;
                 case 1:
+                    window.check(Motion.active, "Ambience is active while motion is allowed");
+                    window.check(breath.value > 0.05 && breath.value <= 1, "Breath steps its value without an animator: " + breath.value);
+                    window.breathSeen = breath.value;
                     window.check(window.frames > 2, "Core actually interpolates its expansion");
                     window.check(window.sizes <= 3, "Core does not resize its window each animation frame: " + window.sizes);
                     window.check(core.windowHeight === Math.ceil(core.height) + 2, "Window fits settled Core");
@@ -57,6 +62,7 @@ ShellRoot {
                     break;
                 case 4:
                     window.check(!atmosphere.moving, "Reduced Motion stops ambience");
+                    window.check(!Motion.active && !breath.running, "Reduced Motion rests the breath driver");
                     CoreService.expand();
                     break;
                 case 5:

@@ -12,7 +12,7 @@ Overlay {
     panelName: "wallpapers"
     property var wallpapers: []
     property string selectedPath: ""
-    onVisibleChanged: if (visible) { refresh.running = true; }
+    onVisibleChanged: if (visible) { refresh.running = true; } else { root.wallpapers = []; }
     Process {
         id: listWallpapers
         command: ["python3", Quickshell.shellPath("scripts/wallpapers.py")]
@@ -29,10 +29,16 @@ Overlay {
         interval: 35
         onTriggered: if (!listWallpapers.running) listWallpapers.running = true
     }
-    HudPanel {
+    Loader {
         anchors.centerIn: parent
         width: Math.min(root.width - 36, 1120)
         height: Math.min(root.height - 36, 800)
+        active: root.visible
+        sourceComponent: wallpaperGrid
+    }
+    Component {
+    id: wallpaperGrid
+    HudPanel {
         highlighted: true
         ColumnLayout {
             anchors.fill: parent
@@ -96,5 +102,6 @@ Overlay {
                 HudButton { text: "CLOSE"; onClicked: ShellState.close() }
             }
         }
+    }
     }
 }

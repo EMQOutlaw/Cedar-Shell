@@ -118,17 +118,14 @@ Rectangle {
             implicitHeight: 7
             radius: 4
             color: Trailwatch.ready.warning ? Theme.amber : Theme.green
-            SequentialAnimation on opacity {
-                running: root.active && !Theme.reducedMotion
-                loops: Animation.Infinite
-                NumberAnimation {
-                    to: .4
-                    duration: 2400
-                }
-                NumberAnimation {
-                    to: 1
-                    duration: 2400
-                }
+            // The lock surface stays mapped for hours; step the pulse and rest it.
+            opacity: statusPulse.running ? statusPulse.value : 1
+            Breath {
+                id: statusPulse
+                running: root.active && Motion.active
+                from: 1
+                to: .4
+                rise: 2400
             }
         }
         FieldText {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import ".."
+import "../services"
 
 Item {
     id: root
@@ -45,13 +46,9 @@ Item {
             required property int modelData
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
-            opacity: modelData === 2 ? 0.8 : 0.08
-            SequentialAnimation on opacity {
-                running: stroke.modelData === 2 && root.pulse && root.active && root.visible && !Theme.reducedMotion
-                loops: Animation.Infinite
-                OpacityAnimator { to: 1; duration: Theme.pulse }
-                OpacityAnimator { to: 0.65; duration: Theme.pulse }
-            }
+            readonly property bool pulsing: modelData === 2 && root.pulse && root.active && root.visible && Motion.active
+            opacity: pulsing ? pulse.value : modelData === 2 ? 0.8 : 0.08
+            Breath { id: pulse; running: stroke.pulsing; from: 0.8; to: 1; rise: Theme.pulse; fall: Theme.pulse }
             ShapePath {
                 strokeWidth: stroke.modelData
                 strokeColor: root.accent

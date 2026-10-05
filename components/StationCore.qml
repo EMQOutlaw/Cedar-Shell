@@ -1,5 +1,6 @@
 import QtQuick
 import ".."
+import "../services"
 
 Item {
     id: root
@@ -15,13 +16,13 @@ Item {
         opacity: 0.675 + Math.max(0, root.activity) * 0.2
         scale: 0.98
         SequentialAnimation on opacity {
-            running: root.active && root.visible && !Theme.reducedMotion
+            running: root.active && root.visible && Motion.active
             loops: Animation.Infinite
             OpacityAnimator { to: 0.8 + Math.max(0, root.activity) * 0.2; duration: 3600; easing.type: Easing.InOutSine }
             OpacityAnimator { to: 0.625 + Math.max(0, root.activity) * 0.2; duration: 4400; easing.type: Easing.InOutSine }
         }
         SequentialAnimation on scale {
-            running: root.active && root.visible && !Theme.reducedMotion
+            running: root.active && root.visible && Motion.active
             loops: Animation.Infinite
             ScaleAnimator { to: 1; duration: 3600; easing.type: Easing.InOutSine }
             ScaleAnimator { to: 0.972; duration: 4400; easing.type: Easing.InOutSine }
@@ -74,7 +75,7 @@ Item {
         }
         RotationAnimator on rotation {
             from: 0; to: 360; duration: 60000; loops: Animation.Infinite
-            running: root.active && root.visible && !Theme.reducedMotion
+            running: root.active && root.visible && Motion.active
         }
     }
     Column {

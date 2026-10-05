@@ -13,11 +13,13 @@ import distribution as d
 POLICIES = {
     'services/Network.qml': ('NetworkManager status and Connections/Core', 'One subscribed stream; detail snapshots on visible demand', 'Helper exits with shell; retry capped at 60 s', '4 MiB snapshot protocol; no packet/history accumulation'),
     'services/DefaultApps.qml': ('Go and Default Apps Settings', 'One AppInfoMonitor; read only when shown or applying an action', 'Helper exits with shell; retry capped at 60 s', '4 MiB catalog; hidden events only mark dirty'),
-    'services/SystemStats.qml': ('Field Station, System, Forest, warnings', 'Fast 2 s visible/10 s ambient; temperature 5 s visible/30 s warnings; disk/uptime 30 s', 'No demand stops scheduling; one in flight; 8 s timeout; retry capped at 60 s', '16 KiB response; latest sample and previous counters only'),
+    'services/SystemStats.qml': ('Field Station, System, Forest, warnings', 'Fast 2 s visible/20 s ambient; temperature 5 s visible/30 s warnings; disk/uptime 30 s', 'No demand stops scheduling; one in flight; 8 s timeout; retry capped at 60 s', '16 KiB response; latest sample and previous counters only'),
     'components/ServiceRequest.qml': ('Explicit service callers', 'One request, never concurrent within this owner', '45 s default timeout; caller may set a bounded operation timeout', '4 MiB character acceptance; collector checked after every incoming chunk; one chunk of overshoot possible'),
     'services/BluetoothService.qml': ('Bluetooth Settings and Canopy', 'Native events; discovery only while its controls are visible', 'Close/lock stops scan and pairing prompt; native backend is optional', 'Native device model; one action process'),
     'services/SessionIntegration.qml': ('Authentication boundary', '1 s freshness check plus watched supervisor status', 'Kept alive for managed session; never visibility-gated', 'Latest local status only'),
     'services/CoreTimer.qml': ('Persistent user timer', 'User-started countdown', 'Persists across hidden views until canceled/completed', 'One activity'),
+    'services/Brightness.qml': ('Quick Controls, Power settings, Core brightness, OSD', '10 s only while a brightness control is visible; key presses read on demand', 'Hidden controls stop the timer; one process in flight', 'One JSON value'),
+    'services/Motion.qml': ('Every ambient loop', 'Idle monitor only; no polling', 'Pauses ambience after 120 s without input or under Reduced Motion', 'One boolean'),
 }
 
 
