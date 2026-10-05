@@ -22,6 +22,22 @@ Rectangle {
     property date date: systemClock.date
     readonly property alias terminal: terminal
     signal submitted(string value)
+    // Entrance: the surface is opaque from its first frame; the lantern blooms,
+    // contours and instruments settle in over about a second. One linear clock
+    // drives every element through ease(), so there is a single animation.
+    property real reveal: 0
+    function ease(start, span) {
+        const t = Math.max(0, Math.min(1, (reveal - start) / span));
+        return 1 - Math.pow(1 - t, 3);
+    }
+    function enter() {
+        entrance.stop();
+        if (Theme.reducedMotion) { reveal = 1; return; }
+        reveal = 0;
+        entrance.start();
+    }
+    NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: 950 }
+    Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
     color: Theme.background
     focus: true
     function syncHold() {
@@ -34,13 +50,16 @@ Rectangle {
     }
     onActiveChanged: {
         syncHold();
-        if (active)
+        if (active) {
+            enter();
             Qt.callLater(terminal.refocus);
-        else {
+        } else {
+            entrance.stop();
+            reveal = 0;
             terminal.field.clear();
         }
     }
-    Component.onCompleted: syncHold()
+    Component.onCompleted: { syncHold(); if (active) enter(); }
     Component.onDestruction: if (held)
         Trailwatch.viewers--
     SystemClock {
@@ -57,6 +76,14 @@ Rectangle {
     }
     Topo {
         anchors.fill: parent
+        opacity: root.ease(0, .9)
+        transform: Translate { y: 24 * (1 - root.ease(0, .9)) }
+    }
+    // Spores drift while someone is at the lock screen and rest with Motion.
+    CedarAtmosphere {
+        anchors.fill: parent
+        active: root.active && Config.saved.ambientIntensity > 0
+        opacity: Config.saved.ambientIntensity * .45 * root.ease(.2, .7)
     }
     Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -94,6 +121,7 @@ Rectangle {
         }
         spacing: 12
         height: 42
+        opacity: root.ease(.1, .4)
         ColumnLayout {
             spacing: 1
             Layout.fillWidth: true
@@ -101,7 +129,7 @@ Rectangle {
                 text: "CEDAR"
                 font.family: Theme.labelFont
                 font.bold: true
-                font.letterSpacing: 6
+                font.letterSpacing: 6 + 10 * (1 - root.ease(.1, .6))
                 font.pixelSize: 24
                 color: Theme.green
             }
@@ -147,17 +175,23 @@ Rectangle {
             color: Theme.muted
         }
     }
+    // The filament lights from the center outward: the light stays on.
     Rectangle {
         anchors {
             top: header.bottom
             topMargin: 12
-            left: parent.left
-            right: parent.right
-            leftMargin: root.margin
-            rightMargin: root.margin
+            horizontalCenter: parent.horizontalCenter
         }
+        width: (parent.width - root.margin * 2) * root.ease(.15, .6)
         height: 1
         color: Theme.border
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width, 180)
+            height: 1
+            color: Theme.green
+            opacity: .6 * (1 - root.ease(.45, .5))
+        }
     }
     Item {
         id: body
@@ -169,6 +203,28 @@ Rectangle {
             horizontalCenter: parent.horizontalCenter
         }
         width: Math.min(1800, parent.width - root.margin * 2)
+        // Lantern bloom behind the watch face. Painted once per size; only
+        // opacity and scale move, which the scene graph handles without repaint.
+        Canvas {
+            id: lantern
+            readonly property real bloom: root.ease(0, .7)
+            width: root.faceSize * 1.9
+            height: width
+            x: center.x + face.x + face.width / 2 - width / 2
+            y: center.y + face.y + face.height / 2 - height / 2
+            opacity: .9 * bloom
+            scale: .55 + .45 * bloom
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            onPaint: {
+                const c = getContext("2d"); c.reset();
+                const r = width / 2, g = c.createRadialGradient(r, r, 0, r, r, r);
+                g.addColorStop(0, Qt.alpha(Theme.green, .13));
+                g.addColorStop(.45, Qt.alpha(Theme.green, .05));
+                g.addColorStop(1, Qt.alpha(Theme.green, 0));
+                c.fillStyle = g; c.fillRect(0, 0, width, height);
+            }
+        }
         Column {
             id: center
             width: root.wide ? root.faceSize : parent.width
@@ -183,10 +239,14 @@ Rectangle {
                 date: root.date
                 active: root.active
                 lockLabel: root.preview ? "PREVIEW / NOT LOCKED" : "SESSION SECURED"
+                opacity: root.ease(.08, .6)
+                scale: .94 + .06 * root.ease(.08, .6)
             }
             Column {
                 width: parent.width
                 spacing: 4
+                opacity: root.ease(.3, .45)
+                transform: Translate { y: 14 * (1 - root.ease(.3, .45)) }
                 FieldText {
                     width: parent.width
                     text: "07  /  FOREST STATE   ·   " + Trailwatch.forestState
@@ -213,6 +273,8 @@ Rectangle {
                 active: root.active
                 preview: root.preview
                 onSubmitted: value => root.submitted(value)
+                opacity: root.ease(.38, .45)
+                transform: Translate { y: 14 * (1 - root.ease(.38, .45)) }
             }
         }
         Flickable {
@@ -237,18 +299,24 @@ Rectangle {
                     kind: "sky"
                     date: root.date
                     privateMode: root.privateMode
+                    opacity: root.ease(0.3, .45)
+                    transform: Translate { y: 18 * (1 - root.ease(0.3, .45)) }
                 }
                 Complication {
                     width: parent.width
                     kind: "trail"
                     date: root.date
                     privateMode: root.privateMode
+                    opacity: root.ease(0.38, .45)
+                    transform: Translate { y: 18 * (1 - root.ease(0.38, .45)) }
                 }
                 Complication {
                     width: parent.width
                     kind: "media"
                     date: root.date
                     privateMode: root.privateMode
+                    opacity: root.ease(0.46, .45)
+                    transform: Translate { y: 18 * (1 - root.ease(0.46, .45)) }
                 }
             }
         }
@@ -274,18 +342,24 @@ Rectangle {
                     kind: "power"
                     date: root.date
                     privateMode: root.privateMode
+                    opacity: root.ease(0.34, .45)
+                    transform: Translate { y: 18 * (1 - root.ease(0.34, .45)) }
                 }
                 Complication {
                     width: parent.width
                     kind: "signal"
                     date: root.date
                     privateMode: root.privateMode
+                    opacity: root.ease(0.42, .45)
+                    transform: Translate { y: 18 * (1 - root.ease(0.42, .45)) }
                 }
                 Complication {
                     width: parent.width
                     kind: "system"
                     date: root.date
                     privateMode: root.privateMode
+                    opacity: root.ease(0.5, .45)
+                    transform: Translate { y: 18 * (1 - root.ease(0.5, .45)) }
                 }
             }
         }
@@ -315,11 +389,14 @@ Rectangle {
                     model: ["sky", "trail", "power", "signal", "media", "system"]
                     Complication {
                         required property string modelData
+                        required property int index
                         kind: modelData
                         date: root.date
                         privateMode: root.privateMode
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignTop
+                        opacity: root.ease(.3 + .06 * index, .45)
+                        transform: Translate { y: 18 * (1 - root.ease(.3 + .06 * index, .45)) }
                     }
                 }
             }
@@ -336,6 +413,7 @@ Rectangle {
             bottomMargin: 14
         }
         height: 20
+        opacity: root.ease(.55, .4)
         FieldText {
             Layout.fillWidth: true
             text: root.width < 700 ? "TRAILWATCH / " + (root.privateMode ? "PRIVACY ON" : "DETAILS ON") : Trailwatch.ready.reason
