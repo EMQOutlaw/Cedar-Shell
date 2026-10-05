@@ -50,3 +50,5 @@ TrailwatchView 1.0 TrailwatchView.qml
 WeatherLocationSettings 1.0 WeatherLocationSettings.qml
 QuickControls 1.0 QuickControls.qml
 SessionControls 1.0 SessionControls.qml
+
+FirstRunSettings 1.0 FirstRunSettings.qml

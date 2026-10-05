@@ -5,6 +5,50 @@ from pathlib import Path
 import distribution as d
 
 
+def request(value):
+    """Settings frontend uses the same planner, gates and recovery executor."""
+    import contextlib,io
+    backend=d.session_backend()
+    action=value.get('action')
+    if action=='status':
+        if backend.__name__=='portable_session':return backend.status_report()
+        row=backend.read_record()
+        return {key:row.get(key) for key in ('stage','login','deadline','error','locker')} if row else {'stage':'not active'}
+    if backend.__name__!='portable_session' and action in ('plan','try'):
+        raise d.Refused('This existing Omarchy integration keeps its reviewed terminal flow. Run cedar try in a terminal; no provider was changed here.')
+    launcher=value.get('launcher') is True
+    trailwatch=value.get('trailwatch') is True
+    if action=='activation-plan':
+        if backend.__name__!='portable_session':raise d.Refused('Use the existing Omarchy terminal activation flow.')
+        with backend.guard():
+            row=backend.read_record()
+            if not row or row['stage']!='kept':raise d.Refused('Keep a healthy trial before reviewing login activation.')
+            backend.unlocked(row);backend.healthy(row)
+            path,content=backend.startup_entry(row)
+            digest=backend.adoption_plan.fingerprint({'path':str(path),'before':d.info(path),'content':content.decode()})
+            return {'digest':digest,'path':str(path),'change':'Add the owned CEDAR startup block; preserve all other startup commands.','undo':'cedar restore'}
+    if action=='plan':
+        with backend.guard():
+            _,plan=backend.inspect_plan(d.installed(),launcher,trailwatch)
+        return {'digest':plan['digest'],'roles':plan['roles'],'mode':plan['mode'],
+                'changes':[op['kind'] for op in plan['operations']],
+                'recovery':'Independent recovery supervisor; an unconfirmed trial restores the prior unlocked desktop.'}
+    if value.get('approved') is not True:raise d.Refused('Review and explicitly approve this operation first.')
+    # Do not forward helper chatter, file paths, or authentication output to a
+    # generic GUI log. Failures remain clear structured errors.
+    with contextlib.redirect_stdout(io.StringIO()):
+        if action=='try':
+            if not value.get('digest'):raise d.Refused('Review a desktop plan first.')
+            backend.trial(d.installed(),approved=True,cedar_launcher=launcher,trailwatch=trailwatch,expected_plan=value['digest'])
+        elif action=='keep':backend.keep()
+        elif action=='activate':
+            if not value.get('loginDigest'):raise d.Refused('Review the login change before confirming.')
+            backend.keep(login=True,approved=True,expected_login_digest=value['loginDigest'])
+        elif action=='restore':backend.request_restore()
+        else:raise d.Refused('Unknown setup action.')
+    return request({'action':'status'})
+
+
 def main(args=None):
     args = list(sys.argv[1:] if args is None else args)
     root = Path(__file__).resolve().parents[1]
@@ -12,6 +56,11 @@ def main(args=None):
         raise d.Refused('Run bash ./install.sh as your ordinary user, never root.')
     if sys.version_info < (3, 11):
         raise d.Refused('CEDAR needs Python 3.11 or newer. Update Python using your distribution package manager first.')
+    if args==['--request']:
+        import json
+        try: print(json.dumps({'ok':True,'data':request(json.loads(sys.stdin.readline(65537)))}))
+        except (d.Refused,OSError,ValueError,d.subprocess.SubprocessError) as error: print(json.dumps({'ok':False,'error':str(error)}))
+        return
     if args or not sys.stdin.isatty():
         # Explicit automation retains narrow, existing install-only semantics.
         return d.main(['install', *args])

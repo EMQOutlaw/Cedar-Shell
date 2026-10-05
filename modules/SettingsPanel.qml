@@ -15,7 +15,8 @@ Rectangle {
     property string pendingPage:""
     property string pendingAnchor:""
     property bool resetConfirm:false
-    readonly property bool narrow:width<780
+    readonly property bool dirty:loader.item?.dirty === true
+    readonly property bool narrow:width<760
     readonly property var page:Schema.pages.find(p=>p.id===section) || Schema.pages[0]
     readonly property var searchEntries:Schema.fields.concat(DefaultApps.data.roles.map(r=>({page:"apps",key:r.id,label:r.label,description:r.description,aliases:"default applications"})),Schema.pages.map(p=>({page:p.id,key:"",label:p.label,description:p.description})),Schema.extras.filter(e=>e.key!=="vrr" || DesktopSettings.data.monitors.some(m=>"vrr" in m)),Schema.inputFields.filter(f=>f.key in DesktopSettings.data.input && (!f.key.startsWith("touchpad:") || DesktopSettings.data.hasTouchpad===true)).map(f=>Object.assign({page:"input"},f)))
     readonly property var results:Schema.search(searchEntries,search.text)
@@ -47,8 +48,8 @@ Rectangle {
         if(section==="core")Config.set("coreMonitor","");
         resetConfirm=false;
     }
-    onSectionChanged:{highlightKey="";resetConfirm=false;Qt.callLater(()=>scroll.contentItem.contentY=0);}
-    onActiveChanged:if(active){SettingsInfo.refresh();DefaultApps.refresh();DesktopSettings.refresh();Controls.refresh();if(ShellState.settingsPage){root.navigate(ShellState.settingsPage, ShellState.settingsAnchor);ShellState.settingsPage="";ShellState.settingsAnchor="";}}
+    onSectionChanged:{if(active)ShellState.settingsSection=section;highlightKey="";resetConfirm=false;Qt.callLater(()=>scroll.contentItem.contentY=0);}
+    onActiveChanged:if(active){ShellState.settingsSection=section;SettingsInfo.refresh();DefaultApps.refresh();DesktopSettings.refresh();Controls.refresh();if(ShellState.settingsPage){root.navigate(ShellState.settingsPage, ShellState.settingsAnchor);ShellState.settingsPage="";ShellState.settingsAnchor="";}}
     Component.onCompleted:if(active){SettingsInfo.refresh();DefaultApps.refresh();DesktopSettings.refresh();}
     Timer { id:reveal; interval:120; onTriggered:root.revealSetting() }
     Timer { id:highlightTimer; interval:4000; onTriggered:root.highlightKey="" }
@@ -83,7 +84,7 @@ Rectangle {
             Layout.fillWidth:true; Layout.fillHeight:true; spacing:24
             ScrollView {
                 id:nav; visible:!root.narrow || root.navigationOpen
-                Layout.preferredWidth:root.narrow ? -1:180; Layout.fillWidth:root.narrow; Layout.fillHeight:true
+                Layout.preferredWidth:root.narrow ? -1:208; Layout.fillWidth:root.narrow; Layout.fillHeight:true
                 contentWidth:availableWidth; clip:true; ScrollBar.horizontal.policy:ScrollBar.AlwaysOff
                 ColumnLayout {
                     width:nav.availableWidth; spacing:3
@@ -109,7 +110,7 @@ Rectangle {
                     visible:root.pendingPage!==""; Layout.fillWidth:true; padding:12
                     GlowText { text:"You have unapplied changes on this page."; Layout.fillWidth:true; wrapMode:Text.WordWrap; color:Theme.amber }
                     Flow { Layout.fillWidth:true; spacing:8
-                        StationButton { text:"Discard and continue"; onClicked:{const p=root.pendingPage,a=root.pendingAnchor;root.pendingPage="";root.section=p;root.navigate(p,a);} }
+                        StationButton { text:"Discard and continue"; onClicked:{if(root.section==="input")DesktopSettings.loadInput();const p=root.pendingPage,a=root.pendingAnchor;root.pendingPage="";root.section=p;root.navigate(p,a);} }
                         StationButton { text:"Keep editing"; onClicked:root.pendingPage="" }
                     }
                 }
@@ -140,7 +141,7 @@ Rectangle {
                         id:content; width:scroll.availableWidth; spacing:16
                         ColumnLayout {
                             Layout.fillWidth:true; spacing:6
-                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:32; Layout.fillWidth:true }
+                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round(28*Theme.fontScale); Layout.fillWidth:true }
                             GlowText { text:root.page.description; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
                         }
                         GlowText {
@@ -152,7 +153,9 @@ Rectangle {
                         GlowText { visible:Config.persistenceMessage!==""; text:Config.persistenceMessage; color:Theme.amber; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
                         Loader {
                             id:loader; Layout.fillWidth:true
-                            sourceComponent:({overview:overview,appearance:appearance,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,system:system,about:about})[root.section] || overview
+                            asynchronous:true
+                            active:root.active || !!item?.dirty
+                            sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,system:system,about:about})[root.section] || overview
                             onLoaded:Qt.callLater(reveal.restart)
                         }
                         Flow {
@@ -169,6 +172,7 @@ Rectangle {
     }
     Component { id:overview; SettingsOverview { onNavigate:(page,anchor)=>root.navigate(page,anchor) } }
     Component { id:appearance; AppearanceSettings { highlightKey:root.highlightKey } }
+    Component { id:setupPage; FirstRunSettings { active:root.active; onNavigate:page=>root.navigate(page) } }
     Component { id:appsPage; DefaultAppsSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:desktop; DesktopSettingsPage { highlightKey:root.highlightKey } }
     Component { id:bar; TopBarSettings { highlightKey:root.highlightKey } }

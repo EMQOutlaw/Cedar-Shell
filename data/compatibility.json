@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "date": "2026-10-04",
+  "date": "2026-10-05",
   "architecture": "x86_64",
   "environments": [
     {
@@ -33,7 +33,7 @@
     },
     {
       "id": "plain-hyprland",
-      "adapterVersion": 2,
+      "adapterVersion": 3,
       "status": "Experimental",
       "evidence": "Portable menu/QML tests, local configuration fixtures, supervised timeout/restore fixtures. No clean stock desktop or live trial tested.",
       "versions": {},
@@ -80,7 +80,7 @@
     },
     {
       "id": "noctalia-v4",
-      "adapterVersion": 1,
+      "adapterVersion": 3,
       "status": "Experimental",
       "versions": {
         "noctalia": "4.7.7"

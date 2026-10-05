@@ -1,6 +1,14 @@
-# Development verification — 2026-10-04
+# Development verification — 2026-10-05
 
-These checks ran against the private distribution candidate. They do not certify a public release or native desktop activation.
+These checks ran against local distribution candidates. They do not certify a public release or native desktop activation.
+
+Candidate **0.1.0-dev.12**: 312 Python tests passed locally. Real GIO tests launched a temporary desktop entry with Unicode/literal arguments and its declared working directory, verified unchanged MIME defaults create no writes, and observed AppInfoMonitor hidden invalidation/rearming. Sixteen offscreen Qt/Quickshell suites passed, including quiet hover/focus, popup containment, 100 Settings and 100 Go creation/destruction cycles, stable delegate identity/focus, disappeared-network password clearing, response-size rejection, missing optional Bluetooth import isolation, existing bars/Core/OSD/Canopy, offline identity and simulated lock/auth wiring. These are actual component tests and controlled external-service fixtures, not native desktop or security certification.
+
+The candidate archive passed its exact hash and first-party inclusion checks, extracted transaction/GIO tests, and actual fresh/repeated offscreen installation in disposable XDG paths containing spaces and Unicode. QML syntax parsing passed for 142 files. Bash syntax, Python compilation, source-inventory reconciliation and the current publication-input privacy scan passed. No GitHub CI run or upload was performed for this candidate.
+
+The live personal shell uses another checkout; its older IPC interface does not provide the candidate's session-info contract. It was not stopped, reloaded or changed. The resource ledger and measurement collector are implemented, but no three-run before/after native performance comparison was obtained. No FPS, CPU saving, memory plateau, native monitor scaling, real PAM or hardware compatibility claim follows from the fixture or geometry tests. See `IMPLEMENTATION-REPORT.md` for remaining implementation gaps.
+
+
 
 Candidate **0.1.0-dev.11**: 294 Python tests passed, including 24 complete public-workflow fixtures. The new scenarios select Go/Trailwatch through the real wizard and CLI, preserve the original locker until the simulated secure unlock succeeds, check the owned sleep bridge, keep/login/restore, and reject failed PAM, shortcut conflicts, post-plan edits, failed sleep protection and absent suspend coverage. Files, journals, hashes and restoration are real; external processes, compositor responses and authentication are simulated. The QML production lock wiring test passed with two fake lock surfaces, rejected authentication, retry, and a secure-unlock counter that does not advance on failed authentication. No real password or session lock was used here.
 

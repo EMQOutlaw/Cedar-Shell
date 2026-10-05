@@ -18,7 +18,8 @@ import distribution as d
 PROC = Path('/proc')
 DESKTOP_PROCESSES = frozenset(('hyprland', 'qs', 'quickshell', 'noctalia',
     'waybar', 'mako', 'dunst', 'hyprlock', 'swaylock', 'hypridle', 'swayidle',
-    'swww-daemon', 'awww-daemon', 'hyprpaper', 'swaybg'))
+    'swww-daemon', 'awww-daemon', 'hyprpaper', 'swaybg',
+    'wl-paste', 'cliphist', 'clipman', 'clipse', 'wl-clip-persist'))
 
 
 def process_stat(path):
@@ -93,9 +94,21 @@ def processes(names=None):
 
 def process_environment(pid):
     allowed = {'HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME',
-               'NOCTALIA_CONFIG_HOME', 'NOCTALIA_STATE_HOME', 'NOCTALIA_CONFIG_DIR', 'NOCTALIA_SETTINGS_FILE'}
+               'NOCTALIA_CONFIG_HOME', 'NOCTALIA_STATE_HOME', 'NOCTALIA_CONFIG_DIR', 'NOCTALIA_SETTINGS_FILE',
+               'WAYLAND_DISPLAY','HYPRLAND_INSTANCE_SIGNATURE','XDG_RUNTIME_DIR'}
     raw = (Path('/proc') / str(pid) / 'environ').read_bytes().decode().split('\0')
     return {k: v for item in raw if '=' in item for k, v in [item.split('=', 1)] if k in allowed}
+
+
+def require_session(environment):
+    """The user bus spans sessions. A same-user PID is not session ownership."""
+    keys=('HYPRLAND_INSTANCE_SIGNATURE','WAYLAND_DISPLAY','XDG_RUNTIME_DIR')
+    for key in keys:
+        if environment.get(key) and os.environ.get(key) and environment[key]!=os.environ[key]:
+            raise d.Refused('A provider belongs to a different graphical session. It will not be changed.')
+    if not any(environment.get(key) and environment[key]==os.environ.get(key)
+               for key in ('HYPRLAND_INSTANCE_SIGNATURE','WAYLAND_DISPLAY')):
+        raise d.Refused('Provider session ownership could not be verified. Use isolated preview; no process will be paused.')
 
 
 def same_process(row):
@@ -359,10 +372,11 @@ def v4_settings(original):
 
 def inspect_noctalia(root, process, source=None):
     env = process_environment(process['pid'])
+    require_session(env)
     home = Path(env.get('HOME') or Path.home())
     config = Path(env.get('XDG_CONFIG_HOME') or home / '.config')
     state = Path(env.get('XDG_STATE_HOME') or home / '.local/state')
-    row = {'provider': process, 'providerExe': process['exe'], 'paused': [], 'locker': 'noctalia', 'background': 'external'}
+    row = {'provider': process, 'providerExe': process['exe'], 'paused': [], 'locker': 'noctalia', 'background': 'external','clipboardProvider':'Noctalia capabilities unverified (retained)'}
     if source:
         row.update(adapter='noctalia-v4', providerSource=str(source))
         verify_noctalia(root, row)
@@ -389,6 +403,7 @@ def inspect_noctalia(root, process, source=None):
         values = v5_overrides(exports['full'], exports['merged'])
         row['settingsAfter'] = toml_overrides(path.read_text() if path.exists() else '', values)
     row['providerSettings'] = str(path)
+    row['settingsBefore'] = d.info(path)
     status = noctalia_state(row)
     if type(status.get('locked')) is not bool or type(status.get('barVisible')) is not bool:
         raise d.Refused('Noctalia did not report its lock and bar state.')
@@ -422,6 +437,8 @@ def inspect(root):
     if native:
         raise d.Refused('Multiple native Noctalia processes need review before switching.')
     row = {'adapter': 'hyprland', 'locker': 'trailwatch', 'paused': [], 'background': 'cedar'}
+    clipboard=[Path(p['exe']).name for p in all_processes if Path(p['exe']).name in ('wl-paste','cliphist','clipman','clipse','wl-clip-persist')]
+    row['clipboardProvider']=', '.join(sorted(set(clipboard)))+' (retained)' if clipboard else 'CEDAR history off; no recognized active history process'
     owner = notification_owner()
     for process in all_processes:
         name = Path(process['exe']).name
@@ -454,6 +471,7 @@ def inspect(root):
                 raise d.Refused('A shared service owns a competing provider. CEDAR will not stop unrelated processes.')
         process['cwd'] = str((Path('/proc') / str(process['pid']) / 'cwd').resolve())
         process['environment'] = process_environment(process['pid'])
+        require_session(process['environment'])
     return row
 
 

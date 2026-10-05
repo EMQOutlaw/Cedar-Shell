@@ -9,6 +9,8 @@ ColumnLayout {
     property string highlightKey: ""
     property bool active: true
     property bool allApps: false
+    property bool moreAssociations: false
+    readonly property var mainRoles: ["browser","terminal","files","editor"]
     property string appFilter: ""
     property string roleFilter: ""
     spacing: 12
@@ -59,7 +61,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
     }
     Repeater {
-        model: DefaultApps.data.roles
+        model: DefaultApps.data.roles.filter(role=>root.moreAssociations || root.roleFilter || root.highlightKey || root.mainRoles.includes(role.id)).slice().sort((a,b)=>{const ai=root.mainRoles.indexOf(a.id),bi=root.mainRoles.indexOf(b.id);return (ai<0 ? 99:ai)-(bi<0 ? 99:bi);})
         SettingRow {
             id: row
             required property var modelData
@@ -81,6 +83,11 @@ ColumnLayout {
                 Accessible.name: row.modelData.label
             }
         }
+    }
+    StationButton {
+        text:root.moreAssociations ? "Fewer associations":"More file and link associations"
+        checked:root.moreAssociations
+        onClicked:root.moreAssociations=!root.moreAssociations
     }
     SettingsHeading {
         text: "Advanced quick-launch commands"

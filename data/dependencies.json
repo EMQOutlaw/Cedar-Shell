@@ -1215,12 +1215,12 @@
     {
       "name": "Quickshell.Bluetooth",
       "archPackage": "quickshell",
-      "status": "required",
-      "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
+      "status": "feature-required",
+      "reason": "Optional URL-loaded Bluetooth backend. A missing module leaves Bluetooth unavailable without preventing the basic shell from loading.",
       "consumers": [
-        "services/BluetoothService.qml"
+        "services/optional/BluetoothBackend.qml"
       ],
-      "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
+      "verification": "Optional backend load test; absence must preserve the shell"
     },
     {
       "name": "Quickshell.Hyprland",
@@ -1376,13 +1376,17 @@
     {
       "name": "gi",
       "archPackage": "python-gobject",
-      "status": "feature-required",
-      "feature": "Gio default apps and GLib Bluetooth agent",
+      "status": "required",
+      "feature": "Shared GIO application catalog and launch semantics; event-driven NetworkManager and Bluetooth helpers",
       "consumers": [
-        "scripts/default_apps.py",
-        "scripts/bluetooth.py"
+        "scripts/bluetooth.py",
+        "scripts/connections.py",
+        "scripts/default_apps.py"
       ],
-      "verification": "Import gi.repository Gio and GLib"
+      "verification": "Import gi.repository Gio and GLib",
+      "scope": "core",
+      "probe": "from gi.repository import Gio, GLib; assert Gio.DesktopAppInfo and Gio.AppInfoMonitor",
+      "missingBehavior": "Installation offers the configured package; Go application discovery/launch requires GIO. No replacement desktop provider is installed."
     },
     {
       "name": "tomllib",

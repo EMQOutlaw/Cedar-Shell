@@ -6,7 +6,7 @@ A living desktop environment for Hyprland. **Rooted in faith. Built with care.**
 
 CEDAR is an existing Qt Quick/Quickshell shell, previously Foxfire. It includes consolidated center controls, six bar styles, Field Station, Canopy, searchable Settings, Go, notifications, persistent OSDs, real system instruments and the Trailwatch session-lock interface. Its woodland design and local Christian identity remain available offline.
 
-**Private development candidate—not yet a certified public distribution.** First-party source is currently unlicensed by the owner's decision. Do not redistribute the artwork or original code under an invented license. Required upstream notices remain in [credits](docs/LICENSES.md).
+**Development candidate—not yet a certified public distribution.** First-party source is currently unlicensed by the owner's decision. Do not redistribute the artwork or original code under an invented license. Required upstream notices remain in [credits](docs/LICENSES.md).
 
 ## Installation and preview
 
@@ -16,7 +16,7 @@ With Git installed, copy and paste this command into your terminal:
 git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh
 ```
 
-The repository is currently private, so your GitHub account needs access and Git authentication must be configured. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop. The installer then offers Install Only, an isolated preview, or a reversible full desktop trial on Hyprland. Run it from a folder that does not already contain a `cedar-shell` directory.
+The repository is public; no GitHub sign-in is needed to clone it. This downloads the development candidate and opens the installer for your approval. Installation preserves your current desktop. The installer then offers Install Only, an isolated preview, or a reversible full desktop trial on Hyprland. Run it from a folder that does not already contain a `cedar-shell` directory.
 
 **Already cloned into your home folder?** Update that checkout instead of cloning again:
 
@@ -32,7 +32,9 @@ If Git reports local changes or divergent history, stop and preserve your edits;
 "$HOME/.local/bin/cedar" restore && cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
 ```
 
-Candidate **0.1.0-dev.11** adds the missing launcher and lockscreen selection. Choose **3**, then **yes** for **CEDAR Go** and, on native Noctalia 5.2.1, **Trailwatch**. The plan lists the exact shortcuts being redirected. Trailwatch first checks your password in a local window, then opens one real lockscreen test: unlock normally to continue. Your previous locker remains configured until that secure unlock succeeds and the sleep bridge is ready. Never enter your password in chat. Keep the desktop after checking it, then approve login activation separately.
+Candidate **0.1.0-dev.12** adds Settings → Desktop Setup, quiet controls, lazy views, shared application/network subscriptions and stricter handoff journals. See [implementation and verification](docs/IMPLEMENTATION-REPORT.md) for the exact scope and outstanding native gates. Desktop Setup uses the same backend as the terminal installer; it does not bypass local authentication, ownership checks or separate login approval.
+
+The launcher and lockscreen choices introduced in **0.1.0-dev.11** remain available. Choose **3**, then **yes** for **CEDAR Go** and, on native Noctalia 5.2.1, **Trailwatch**. The plan lists the exact shortcuts being redirected. Trailwatch first checks your password in a local window, then opens one real lockscreen test: unlock normally to continue. Your previous locker remains configured until that secure unlock succeeds and the sleep bridge is ready. Never enter your password in chat. Keep the desktop after checking it, then approve login activation separately.
 
 The Trailwatch replacement uses **hypridle 0.1.7** for logind lock and sleep requests; the dependency plan includes it when missing without enabling its global service. CEDAR starts a private instance with no extra idle timers. Noctalia's ordinary idle timings are retained. An existing independent idle daemon, special locked-state timeout or unreviewed runtime is left for review instead of being silently replaced. Go can be selected independently of Trailwatch.
 

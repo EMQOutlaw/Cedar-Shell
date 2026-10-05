@@ -149,7 +149,7 @@ keep = true
             if not self.running: raise AssertionError('IPC called before the candidate started')
             if argv[5:] == ['shell', 'isLocked']: result = 'true' if self.locked or self.qs_pending_lock else 'false'
             elif argv[5:] == ['shell', 'sessionInfo']:
-                result = json.dumps({'stage': 3, 'screenCount': 1, 'externalLock': self.external_lock, 'locked': self.locked,
+                result = json.dumps({'generation':s.read_record()['generation'], 'stage': 3, 'screenCount': 1, 'externalLock': self.external_lock, 'locked': self.locked,
                                      'lockReady':True, 'lockSecure':self.locked, 'securedUnlocks':self.secured_unlocks})
             elif argv[5:] == ['lock', 'lock']:
                 expected = not s.read_record().get('trailwatch', {}).get('ready', False)
@@ -396,7 +396,7 @@ class PortableLifecycle(unittest.TestCase):
     def test_approved_native_trial_keep_login_and_restore(self):
         world = DesktopFixture(self)
         world.start()
-        self.assertEqual(world.exports, ['full', 'merged'])
+        self.assertEqual(world.exports, ['full', 'merged', 'full', 'merged'])  # revalidate approved evidence
         self.assertEqual(s.read_record()['root'], str(world.root))
         world.keep(); world.keep(login=True)
         row = s.read_record()

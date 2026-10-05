@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import ".."
 import "../components/MenuModel.js" as MenuModel
+import "../components/StableRows.js" as StableRows
 
 // CEDAR owns its menu. Omarchy menus are loaded only by its explicit adapter.
 Singleton {
@@ -20,6 +21,14 @@ Singleton {
     property var userItems: []
     property var cedarItems: []
     property var items: ({})
+    onItemsChanged: {
+        // Source generations normalize once; typing reuses these descriptors.
+        for (const entry of Object.values(items)) {
+            entry._searchName = MenuModel.nameSearchText(entry);
+            entry._searchDescription = String(entry.description || "").toLowerCase();
+            entry._searchLabel = String(entry.label || "").toLowerCase();
+        }
+    }
     property var itemOrder: []
     property bool rowsLoaded: false
 
@@ -39,6 +48,18 @@ Singleton {
     property int selectedIndex: 0
     property var navStack: []
     property var rows: []
+    property bool resetSelection: false
+    readonly property alias displayModel: displayModel
+    ListModel { id: displayModel }
+    onRowsChanged: StableRows.reconcile(displayModel, rows, "itemId")
+    function setRows(next) {
+        const selected = !resetSelection && rows[selectedIndex]?.itemId;
+        rows = next;
+        const at = selected ? next.findIndex(row => row.itemId === selected) : -1;
+        if (at >= 0) selectedIndex = at;
+        resetSelection = false;
+        clampSelection();
+    }
     property bool searchDivider: false
     readonly property string title: {
         if (dmenuActive) return dmenuPrompt;
@@ -88,9 +109,15 @@ Singleton {
         const script = (Config.omarchyIntegration ? "export PATH=" + shellQuote(root.shimDir) + ':"$PATH"\n' : "") + command;
         Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--", "bash", "-lc", script]);
     }
+    Connections {
+        target: DefaultApps
+        function onLaunchErrorChanged() {
+            if (DefaultApps.launchError && !ShellState.locked && ShellState.panel === "") ShellState.open("menu");
+        }
+    }
     function launchApp(appId) {
         if (!appId) return;
-        Quickshell.execDetached(["bash", "-c", 'if command -v uwsm-app >/dev/null; then exec uwsm-app -- gtk-launch "$0"; fi; exec gtk-launch "$0"', appId + ".desktop"]);
+        DefaultApps.launch(appId);
     }
 
     // ---------------------------------------------------------------- sources
@@ -139,15 +166,15 @@ Singleton {
     // ------------------------------------------------------------------ apps
     function mergeAppRows() {
         const appRows = [];
-        for (const entry of DesktopEntries.applications.values) {
-            if (!entry || entry.noDisplay) continue;
+        for (const entry of DefaultApps.data.apps) {
+            if (!entry || !entry.visible) continue;
             const appId = String(entry.id || "");
             if (!appId) continue;
-            const subtext = String(entry.genericName || entry.comment || "");
+            const subtext = String(entry.description || "");
             let aliases = subtext ? [subtext] : [];
             try { if (entry.keywords && typeof entry.keywords.join === "function") aliases = aliases.concat(entry.keywords); } catch (_) {}
             appRows.push({id: "apps." + appId, parent: "apps", kind: "app", icon: "", appIcon: String(entry.icon || ""), appId: appId,
-                          label: String(entry.name || appId), title: "", target: "", description: subtext, action: "", provider: "",
+                          label: String(entry.label || appId), title: "", target: "", description: subtext, action: "", provider: "",
                           aliases: aliases, when: "", checked: "", order: 0});
         }
         const merged = MenuModel.mergeAppRows(root.items, root.itemOrder, appRows);
@@ -156,8 +183,8 @@ Singleton {
         if (root.visible) root.rebuildDisplay();
     }
     Connections {
-        target: DesktopEntries
-        function onApplicationsChanged() { if (root.providersLoaded["apps"]) root.mergeAppRows(); }
+        target: DefaultApps
+        function onDataChanged() { if (root.providersLoaded["apps"]) root.mergeAppRows(); }
     }
 
     // ------------------------------------------------------------- providers
@@ -286,6 +313,17 @@ Singleton {
     function displayRow(entry, detail, score, section) {
         return MenuModel.displayRow(root.items, root.itemOrder, root.checkedResults, entry, detail, score, section);
     }
+    function matches(entry, query, visible) {
+        if (entry.kind !== "app") return MenuModel.matchesQuery(entry, query, visible);
+        const text = entry._searchName + " " + entry._searchDescription;
+        return visible && query.toLowerCase().trim().split(/\s+/).every(term => text.includes(term));
+    }
+    function rank(entry, query) {
+        if (entry.kind !== "app") return MenuModel.searchScore(root.items, entry, query);
+        const needle=query.toLowerCase().trim(), label=entry._searchLabel;
+        const tier=label===needle ? 0 : label.startsWith(needle) ? 10 : label.split(/\s+/).some(word=>word.startsWith(needle)) ? 20 : label.includes(needle) ? 30 : 40;
+        return tier*1000;
+    }
     function rebuildDisplay() {
         if (root.dmenuActive) { root.rebuildDmenuDisplay(); return; }
         if (!root.rowsLoaded) { root.rows = []; return; }
@@ -300,8 +338,8 @@ Singleton {
                 const entry = root.item(id);
                 if (!entry || entry.id === "root") continue;
                 if (!MenuModel.isDescendantOf(root.items, entry.id, active)) continue;
-                if (!MenuModel.matchesQuery(entry, query, root.isVisibleEntry(entry))) continue;
-                const row = root.displayRow(entry, MenuModel.parentPathFor(root.items, entry.id), MenuModel.searchScore(root.items, entry, query));
+                if (!root.matches(entry, query, root.isVisibleEntry(entry))) continue;
+                const row = root.displayRow(entry, MenuModel.parentPathFor(root.items, entry.id), root.rank(entry, query));
                 if (entry.parent === active) currentRows.push(row); else drilldownRows.push(row);
             }
             const bySearch = (a, b) => a.score !== b.score ? a.score - b.score : a.path.localeCompare(b.path);
@@ -317,8 +355,7 @@ Singleton {
             }
             if (active === "apps") next.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()) || a.itemId.localeCompare(b.itemId));
         }
-        root.rows = next;
-        root.clampSelection();
+        root.setRows(query ? next.slice(0,256) : next);
     }
     function rebuildDmenuDisplay() {
         if (root.mode === "input") { root.rows = []; return; }
@@ -334,8 +371,7 @@ Singleton {
             next.push({itemId: "dmenu." + i, kind: "dmenu", icon: icon, iconFont: "", appIcon: "", appId: "", label: label, target: "",
                        detail: detail, path: "", childCount: 0, action: "", provider: "", score: i, section: ""});
         }
-        root.rows = next;
-        root.clampSelection();
+        root.setRows(query ? next.slice(0,256) : next);
     }
     function clampSelection() {
         if (root.rows.length === 0) root.selectedIndex = 0;
@@ -349,6 +385,7 @@ Singleton {
         root.selectedIndex = (root.selectedIndex + delta + root.rows.length) % root.rows.length;
     }
     function setFilter(next) {
+        root.resetSelection = true;
         root.filterText = next;
         root.selectedIndex = 0;
         if (!root.dmenuActive && root.filterText.trim()) root.loadProvidersForSearch();

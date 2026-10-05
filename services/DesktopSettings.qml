@@ -6,6 +6,24 @@ import "../components"
 Singleton {
     id: root
     property var data: ({monitors: [], bindings: [], input: {}, unsupported: {}, owned: {bindings: []}, pending: null})
+    // Draft ownership is independent of a lazy Settings page's lifetime.
+    property var inputDraft: ({})
+    property var inputBase: ({})
+    property var inputEdits: ({})
+    readonly property bool inputDirty: Object.keys(inputEdits).length > 0
+    property bool inputExternalChange: false
+    function loadInput() {
+        inputDraft = Object.assign({},data.input); inputBase = Object.assign({},data.input);
+        inputEdits = ({}); inputExternalChange = false;
+    }
+    function editInput(key,value) {
+        inputDraft = Object.assign({},inputDraft,{[key]:value});
+        const next = Object.assign({},inputEdits);
+        if (value === inputBase[key]) delete next[key]; else next[key]=value;
+        inputEdits=next;
+    }
+    onRefreshed: { if (!inputDirty) loadInput(); else inputExternalChange = JSON.stringify(data.input)!==JSON.stringify(inputBase); }
+    onApplied: action => { if (["input","reset-input"].includes(action)) inputEdits=({}); }
     property var pending: null
     property string error: ""
     property string message: ""

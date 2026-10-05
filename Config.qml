@@ -32,11 +32,12 @@ Singleton {
     readonly property alias saved: saved
     property string persistenceMessage:""
 
-    // Launch commands are stored as one line and split on whitespace.
-    readonly property var terminal: argv(saved.terminal, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "terminal"])
-    readonly property var browser: argv(saved.browser, ["xdg-open", "https://duckduckgo.com"])
-    readonly property var editor: argv(saved.editor, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "editor"])
-    readonly property var files: argv(saved.files, ["xdg-open", home])
+    // Legacy custom commands remain explicit user overrides. New app selections
+    // store desktop IDs and launch through GIO, never through command concatenation.
+    readonly property var terminal: appArgv("terminal", saved.terminal, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "terminal"])
+    readonly property var browser: appArgv("browser", saved.browser, ["xdg-open", "https://duckduckgo.com"])
+    readonly property var editor: appArgv("editor", saved.editor, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "editor"])
+    readonly property var files: appArgv("files", saved.files, ["xdg-open", home])
     // Saved coordinates override the optional automatic weather location service.
     readonly property string latitude: saved.latitude.trim()
     readonly property string longitude: saved.longitude.trim()
@@ -77,12 +78,23 @@ Singleton {
         saved.barRadius = 16; saved.barSpacing = 6; saved.barMargin = 12; saved.hiddenBarModules = [];
     }
 
+    function appArgv(role, legacy, fallback) {
+        const target = saved.applicationTargets[role];
+        if (target && target.kind === "desktop-entry" && typeof target.id === "string")
+            return ["python3", Quickshell.shellPath("scripts/default_apps.py"), "--launch", target.id];
+        return argv(legacy, fallback);
+    }
     function argv(text, fallback) {
         const line = String(text || "").trim();
         return line ? line.split(/\s+/) : fallback;
     }
     function set(key, value) {
         if (!(key in saved) || saved[key] === value) return;
+        if (key === "applicationTargets" && JSON.stringify(saved.applicationTargets) === JSON.stringify(value)) return;
+        if (["terminal", "browser", "editor", "files"].includes(key)) {
+            const targets = Object.assign({}, saved.applicationTargets);
+            delete targets[key]; saved.applicationTargets = targets;
+        }
         saved[key] = value;
     }
     function reset() {
@@ -95,11 +107,11 @@ Singleton {
         try { document = JSON.parse(store.text() || "{}"); }
         catch (error) { persistenceMessage = "Preferences contain invalid JSON. Repair the file before saving."; return; }
         if (!document || typeof document !== "object" || Array.isArray(document)) return;
-        const keys = ["localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "desktopSignature", "notificationsEnabled", "notificationSeconds", "hiddenBarModules", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
+        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "desktopSignature", "notificationsEnabled", "notificationSeconds", "hiddenBarModules", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
         keys.forEach(key => document[key] = saved[key]);
         store.setText(JSON.stringify(document, null, 2) + "\n");
     }
-    Process { command: ["mkdir", "-p", root.settingsDir, root.stateDir]; running: true }
+    Process { command: ["mkdir", "-p", "-m", "700", root.settingsDir, root.stateDir]; running: true }
     // Batch a preset/reset into one write so file reloads cannot restore an
     // intermediate snapshot over the remaining changes.
     Timer { id: saveTimer; interval: 100; onTriggered: root.savePreferences() }
@@ -116,6 +128,7 @@ Singleton {
         onAdapterUpdated: saveTimer.restart()
         JsonAdapter {
             id: saved
+            property var applicationTargets: ({})
             property string terminal: ""
             property string browser: ""
             property string editor: ""

@@ -26,7 +26,7 @@ class Portable(unittest.TestCase):
         temp = tempfile.TemporaryDirectory(prefix='cedar standalone 雨 ')
         self.addCleanup(temp.cleanup)
         self.base = Path(temp.name)
-        self.env = patch.dict(os.environ, {'HOME': str(self.base / 'home'), 'CEDAR_ADAPTER': 'hyprland',
+        self.env = patch.dict(os.environ, {'HOME': str(self.base / 'home'), 'HYPRLAND_INSTANCE_SIGNATURE':'fixture-session', 'CEDAR_ADAPTER': 'hyprland',
             'CEDAR_OMARCHY_SESSION': '', 'CEDAR_BACKGROUND': 'cedar',
             **{'XDG_' + key + '_HOME': str(self.base / key.lower()) for key in ('CONFIG', 'DATA', 'STATE', 'CACHE')}})
         self.env.start()
@@ -35,7 +35,7 @@ class Portable(unittest.TestCase):
         instances.start(); self.addCleanup(instances.stop)
 
     def row(self, adapter='hyprland'):
-        return {'root': str(d.ROOT), 'id': 'fixture', 'generation': 'one', 'adapter': adapter,
+        return {'root': str(d.ROOT), 'id': 'fixture', 'generation': 'one', 'supervisorReady':'one', 'adapter': adapter,
                 'stage': 'prepared', 'locker': 'trailwatch' if adapter == 'hyprland' else 'noctalia',
                 'background': 'cedar', 'paused': [], 'pausedIntents': [], 'login': False,
                 'statusFile': str(self.base / 'status.json')}
@@ -499,7 +499,7 @@ unknown = "preserve"
             self.assertEqual(kwargs['env']['XDG_STATE_HOME'], str(self.base / 'state'))
             return subprocess.CompletedProcess(argv, 0, replies[argv[3]], '')
         patches = [patch.object(p, 'processes', return_value=[process]),
-                   patch.object(p, 'process_environment', return_value={'XDG_STATE_HOME': str(self.base / 'state')}),
+                   patch.object(p, 'process_environment', return_value={'XDG_STATE_HOME': str(self.base / 'state'),'HYPRLAND_INSTANCE_SIGNATURE':'fixture-session'}),
                    patch.object(p, 'notification_owner', return_value=process['pid']),
                    patch.object(d, 'command', side_effect=command),
                    patch.object(p.subprocess, 'run', side_effect=export)]
@@ -773,10 +773,17 @@ unknown = "preserve"
     def test_interrupted_pause_is_retried_only_for_original_identity(self):
         row = self.row(); row['paused'] = [{'pid':123}]; row['pausedIntents'] = [123]
         self.journal(row)
-        with patch.object(p, 'locked', return_value=False), patch.object(p, 'same_process', return_value=True), patch.object(p, 'pause') as pause:
+        with patch.object(p, 'locked', return_value=False), patch.object(p, 'same_process', side_effect=[True, False]), patch.object(p, 'pause') as pause:
             s.prepare(row)
         pause.assert_called_once_with({'pid':123})
         self.assertEqual(s.read_record()['stage'], 'starting')
+
+    def test_pause_that_does_not_stop_provider_cannot_start_cedar(self):
+        row = self.row(); row['paused'] = [{'pid':123}]
+        self.journal(row)
+        with patch.object(p, 'locked', return_value=False), patch.object(p, 'same_process', return_value=True), patch.object(p, 'pause'):
+            with self.assertRaisesRegex(d.Refused, 'has not stopped'): s.prepare(row)
+        self.assertNotEqual(s.read_record()['stage'], 'starting')
 
     def test_noctalia_version_gate_is_rechecked_at_login(self):
         row = self.row('noctalia-v5')
@@ -799,7 +806,7 @@ unknown = "preserve"
         self.journal(row, target); s.save(row)
         state = {'running':False, 'time':1000, 'loops':0, 'restoredBar':False}
         def ipc(_, *args):
-            if args == ('shell', 'sessionInfo'):return json.dumps({'stage':3,'screenCount':1,'externalLock':True})
+            if args == ('shell', 'sessionInfo'):return json.dumps({'generation':row['generation'],'stage':3,'screenCount':1,'externalLock':True})
             if args == ('shell', 'isLocked'):return 'false'
             if args == ('shell', 'stop'):state['running']=False; return ''
             raise AssertionError(args)

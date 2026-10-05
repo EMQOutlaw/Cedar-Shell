@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 
@@ -20,17 +21,25 @@ def run(argv, timeout=3):
         return ''
 
 
-def stats(path):
+def fast_stats():
     cpu = list(map(int, Path('/proc/stat').read_text().splitlines()[0].split()[1:9]))
     mem = dict((k, int(v)) for k, v in re.findall(r'^(\w+):\s+(\d+)', Path('/proc/meminfo').read_text(), re.M))
-    disk = shutil.disk_usage(path)
     net = [line.split(':',1) for line in Path('/proc/net/dev').read_text().splitlines()[2:] if ':' in line]
     counters = [fields.split() for name,fields in net if name.strip()!='lo']
     return dict(netBytes=sum(int(v[0])+int(v[8]) for v in counters), total=sum(cpu), idle=cpu[3] + cpu[4],
                 ram=1 - mem['MemAvailable']/mem['MemTotal'],
                 ramUsed=(mem['MemTotal']-mem['MemAvailable'])/1048576,
                 ramTotal=mem['MemTotal']/1048576,
-                disk=disk.used/disk.total, uptime=float(Path('/proc/uptime').read_text().split()[0]))
+                monotonic=time.monotonic())
+
+
+def slow_stats(path):
+    disk = shutil.disk_usage(path)
+    return dict(disk=disk.used/disk.total, uptime=float(Path("/proc/uptime").read_text().split()[0]))
+
+
+def stats(path):
+    return {**fast_stats(), **slow_stats(path)}
 
 
 def temperatures():
@@ -113,6 +122,14 @@ def weather(lat, lon, unit):
 
 def main(args):
     kind = args[0]
+    if kind == 'sample':
+        topics=set(args[2].split(','))
+        if not topics <= {'fast','slow','temperature'}: raise ValueError('Unknown telemetry topic')
+        result={}
+        for topic in sorted(topics):
+            try:result[topic]=fast_stats() if topic=='fast' else slow_stats(args[1]) if topic=='slow' else temperatures()
+            except (OSError,ValueError,subprocess.SubprocessError):result[topic]={'error':'Unavailable'}
+        return result
     if kind == 'stats': return stats(args[1])
     if kind == 'temperature': return temperatures()
     if kind == 'network': return network()

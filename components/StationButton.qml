@@ -8,16 +8,21 @@ AbstractButton {
     property string hint: ""
     property bool iconOnly: false
     implicitWidth: Math.max(36, label.implicitWidth + 24)
-    implicitHeight: 36
+    implicitHeight: Theme.controlHeight
     padding: 8
     hoverEnabled: true
     activeFocusOnTab: true
     HoverHandler { cursorShape: Qt.PointingHandCursor }
     background: Rectangle {
-        radius: 6
-        color: root.down || root.checked ? Qt.alpha(root.accent, 0.16) : root.hovered || root.activeFocus ? Qt.alpha(Theme.teal, 0.08) : Theme.transparent
-        border.width: root.activeFocus || root.checked ? 1 : 0
-        border.color: Qt.alpha(root.accent, 0.45)
+        radius: Theme.controlRadius
+        color: root.down ? Qt.alpha(root.accent, 0.18) : root.checked ? Qt.alpha(root.accent, 0.10) : Theme.transparent
+        Rectangle {
+            anchors.fill: parent; anchors.margins: Theme.focusInset
+            radius: Math.max(0, parent.radius - Theme.focusInset)
+            color: Theme.transparent
+            border.width: root.visualFocus ? Theme.focusWidth : 0
+            border.color: root.accent
+        }
     }
     contentItem: Text {
         id: label
@@ -27,7 +32,7 @@ AbstractButton {
         font.pixelSize: root.iconOnly ? 16 : Theme.small
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        color: !root.enabled ? Qt.alpha(Theme.muted, 0.4) : root.hovered || root.checked ? root.accent : Theme.text
+        color: !root.enabled ? Theme.muted : root.checked || root.down ? root.accent : Theme.text
         elide: Text.ElideRight
     }
     Accessible.name: hint || text

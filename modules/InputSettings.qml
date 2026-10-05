@@ -9,22 +9,17 @@ ColumnLayout {
     objectName:"inputPage"
     property bool active:false
     property string highlightKey:""
-    property var draft:({})
-    property var base:({})
-    property var edits:({})
-    property bool dirty:false
-    property bool externalChange:false
+    readonly property var draft: DesktopSettings.inputDraft
+    readonly property var base: DesktopSettings.inputBase
+    readonly property var edits: DesktopSettings.inputEdits
+    readonly property bool dirty: DesktopSettings.inputDirty
+    readonly property bool externalChange: DesktopSettings.inputExternalChange
     property bool resetConfirm:false
     readonly property var fields:Schema.inputFields.filter(f=>f.key in draft && (!f.key.startsWith("touchpad:") || DesktopSettings.data.hasTouchpad===true))
-    function load(){draft=Object.assign({},DesktopSettings.data.input);base=Object.assign({},draft);edits=({});dirty=false;externalChange=false;}
-    function change(key,value){draft=Object.assign({},draft,{[key]:value});edits=Object.assign({},edits,{[key]:value});dirty=true;}
+    function load(){DesktopSettings.loadInput();}
+    function change(key,value){DesktopSettings.editInput(key,value);}
     onActiveChanged:if(active)DesktopSettings.refresh()
-    Component.onCompleted:load()
-    Connections {
-        target:DesktopSettings
-        function onRefreshed(){if(!root.dirty)root.load();else if(JSON.stringify(DesktopSettings.data.input)!==JSON.stringify(root.base))root.externalChange=true;}
-        function onApplied(action){if(["input","reset-input"].includes(action))root.dirty=false;}
-    }
+    Component.onCompleted:if(!DesktopSettings.inputDirty)load()
     spacing:8
     GlowText { text:"Edit the active values, then Apply. Only changed options are added to CEDAR’s generated configuration."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
     SettingsCard {

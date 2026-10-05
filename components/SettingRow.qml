@@ -6,9 +6,9 @@ Item {
     property string title: ""
     property string description: ""
     property bool highlighted: false
-    property bool compact: width < 570
+    property bool compact: width < 560
     default property alias controls: slot.data
-    implicitHeight: layout.implicitHeight + 24
+    implicitHeight: Math.max(Theme.settingRowHeight, layout.implicitHeight + 2 * Theme.spaceMd)
     Rectangle { anchors.fill: parent; radius: 7; color: root.highlighted ? Qt.alpha(Theme.green,.09) : Theme.transparent; border.width: root.highlighted ? 1:0; border.color: Qt.alpha(Theme.green,.45) }
     GridLayout {
         id: layout

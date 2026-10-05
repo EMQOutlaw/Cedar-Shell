@@ -9,6 +9,7 @@ Singleton {
     property string panel: ""
     property string settingsAnchor: ""
     property string settingsPage: ""
+    property string settingsSection: "overview"
     property string output: ""
     property bool locked: false
     property bool lockSecure: false

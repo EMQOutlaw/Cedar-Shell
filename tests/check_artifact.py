@@ -23,6 +23,9 @@ with tempfile.TemporaryDirectory(prefix='cedar artifact 雨 ') as temporary:
     result=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_portable_lifecycle.py'],cwd=root,env=env,text=True,capture_output=True)
     if result.returncode:print(result.stdout+result.stderr);raise SystemExit(1)
     print('PASS: extracted installer/CLI Trial, Keep, login and restore workflows; external desktop responses simulated')
+    result=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests','-p','test_master_changes.py'],cwd=root,env=env,text=True,capture_output=True)
+    if result.returncode:print(result.stdout+result.stderr);raise SystemExit(1)
+    print(result.stderr.strip())  # Keep explicit skipped GIO checks visible.
     if shutil.which('qs'):
         env.update(CEDAR_ADAPTER='hyprland', CEDAR_OMARCHY_SESSION='', OMARCHY_PATH=str(base/'absent-omarchy'))
         for expected in ('Files installed and verified.', 'This candidate is already installed.'):

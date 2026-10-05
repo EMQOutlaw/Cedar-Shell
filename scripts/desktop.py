@@ -370,10 +370,12 @@ def action(req):
         if name == 'primary': return apply_primary(state, req.get('output'))
         if name == 'input':
             values=validate_inputs(req['values'])
+            live=snapshot()['input']
             if 'expected' in req:
-                live=snapshot()['input']
                 changed=[key for key in values if live.get(key)!=req['expected'].get(key)]
                 if changed: raise ValueError('Input changed outside Settings: '+', '.join(changed)+'. Reload before applying.')
+            values={key:value for key,value in values.items() if live.get(key)!=value}
+            if not values:return {'status':'unchanged','message':'Input settings are already applied.'}
             state.setdefault('input',{}).update(values)
         elif name == 'reset-input': state['input']={}
         elif name == 'displays':

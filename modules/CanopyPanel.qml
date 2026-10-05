@@ -114,6 +114,7 @@ Rectangle {
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             Loader {
                 id: loader
+                asynchronous: true
                 width: parent.width
                 active: root.active && !Canopy.peeking
                 sourceComponent: ({

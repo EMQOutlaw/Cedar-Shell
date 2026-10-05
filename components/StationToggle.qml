@@ -19,7 +19,7 @@ RowLayout {
     }
     AbstractButton {
         id: toggle
-        implicitWidth: 42; implicitHeight: 30
+        implicitWidth: 42; implicitHeight: Theme.controlHeight
         enabled: !root.busy; activeFocusOnTab: true
         Accessible.name: root.accessibleLabel
         Accessible.role: Accessible.CheckBox
@@ -28,9 +28,9 @@ RowLayout {
         onClicked: root.toggled(!root.checked)
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         background: Rectangle {
-            y: 4; height: 22; radius: 11
+            y: (toggle.height - height) / 2; height: 22; radius: 11
             color: root.checked ? Qt.alpha(Theme.teal, 0.24) : Theme.surface
-            border.width: 1; border.color: toggle.activeFocus ? Theme.green : root.checked ? Theme.teal : Theme.border
+            border.width: toggle.visualFocus ? Theme.focusWidth : 1; border.color: toggle.visualFocus ? Theme.green : root.checked ? Theme.teal : Theme.border
             Rectangle { x: root.checked ? 23 : 5; y: 4; width: 14; height: 14; radius: 7; color: root.checked ? Theme.teal : Theme.muted }
         }
     }

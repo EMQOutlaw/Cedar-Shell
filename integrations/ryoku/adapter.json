@@ -1,0 +1,13 @@
+{
+  "id": "ryoku-materialized",
+  "adapterVersion": 1,
+  "status": "Experimental discovery; isolated preview only",
+  "reviewedDetectorBlob": "ab34fdd5f48e3f13d5afdf7332ec6c3c6cd0cfed",
+  "upstream": "https://github.com/Ryoku-dev/ryoku",
+  "stateFile": "ryoku/shell-install-state.json",
+  "preservedOverrides": [],
+  "managedOutputPolicy": "Treat materialized Hyprland files and launcher/update hooks as upstream-owned. Do not invoke materialize, doctor repair, installer, uninstaller or update during CEDAR discovery.",
+  "activationBlocker": "The installed materializer and startup chain need an explicit supported exclusion before takeover. Isolated preview is available; the existing session remains untouched.",
+  "tested": ["read-only state discovery fixtures"],
+  "nativeTested": false
+}

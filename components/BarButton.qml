@@ -11,9 +11,14 @@ AbstractButton {
     property string hint: ""
     property string canopyTopic: ""
     property string canopyOutput: ""
-    onHoveredChanged: { if(hovered && canopyTopic && Config.saved.canopyPeek)peekDelay.restart();else{peekDelay.stop();Canopy.leavePeek();} }
-    onActiveFocusChanged: if(activeFocus && canopyTopic && Config.saved.canopyPeek)peekDelay.restart()
-    Timer {id:peekDelay;interval:450;onTriggered:if(root.hovered || root.activeFocus)Canopy.open(root.canopyTopic,root.canopyOutput,true)}
+    function updatePeek() {
+        if (enabled && (hovered || visualFocus) && canopyTopic && Config.saved.canopyPeek) peekDelay.restart();
+        else { peekDelay.stop(); Canopy.leavePeek(); }
+    }
+    onHoveredChanged: updatePeek()
+    onVisualFocusChanged: updatePeek()
+    onEnabledChanged: updatePeek()
+    Timer {id:peekDelay;interval:450;onTriggered:if(root.enabled && (root.hovered || root.visualFocus))Canopy.open(root.canopyTopic,root.canopyOutput,true)}
     implicitWidth: iconOnly ? 32 : Math.max(32, label.implicitWidth + 20)
     implicitHeight: Math.max(24, Config.barHeight - 16)
     hoverEnabled: true
@@ -24,10 +29,14 @@ AbstractButton {
         radius: 5
         color: root.down ? Qt.alpha(root.accent, 0.18)
              : root.checked ? Qt.alpha(root.accent, 0.1)
-             : root.hovered || root.activeFocus ? Qt.alpha(Theme.text, 0.07)
              : Theme.transparent
-        border.width: root.activeFocus ? 1 : 0
-        border.color: Qt.alpha(root.accent, 0.5)
+        Rectangle {
+            anchors.fill: parent; anchors.margins: Theme.focusInset
+            radius: Math.max(0, parent.radius - Theme.focusInset)
+            color: Theme.transparent
+            border.width: root.visualFocus ? Theme.focusWidth : 0
+            border.color: root.accent
+        }
         Rectangle {
             visible: root.checked
             anchors.bottom: parent.bottom
@@ -43,7 +52,7 @@ AbstractButton {
         font.family: Theme.dataFont
         font.pixelSize: root.iconOnly ? 16 : Theme.small
         font.weight: Font.Medium
-        color: !root.enabled ? Theme.muted : root.checked || root.hovered || root.down ? root.accent : Theme.text
+        color: !root.enabled ? Theme.muted : root.checked || root.down ? root.accent : Theme.text
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

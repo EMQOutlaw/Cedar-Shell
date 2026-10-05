@@ -17,6 +17,8 @@ import uuid
 import distribution as d
 import portable_providers as providers
 import portable_controls as controls
+import adoption_plan
+import startup_graph
 
 ACTIVE = {'prepared', 'starting', 'trial', 'kept', 'restore-requested', 'failed'}
 
@@ -24,6 +26,18 @@ ACTIVE = {'prepared', 'starting', 'trial', 'kept', 'restore-requested', 'failed'
 def record_path(): return d.paths()['state'] / 'portable-session.json'
 def read_record(): return d.read_json(record_path()) if record_path().is_file() else None
 def save(row): d.write_json(record_path(), row)
+def status_report():
+    row=read_record()
+    if not row:return {'stage':'not active','mode':'Install-only'}
+    result={key:row.get(key) for key in ('stage','login','deadline','error','locker')}
+    adoption=row.get('adoption',{})
+    result['mode']='Trial' if row['stage']=='trial' else adoption.get('mode','Ownership review required') if row['stage']=='kept' else row['stage']
+    result['roles']=[{'role':role,'selected':selected,
+                      'verification':'Retained; not replaced' if '(retained)' in selected or '(preserved)' in selected else 'Session checks passed; native acceptance remains separate' if row['stage'] in ('trial','kept') else 'Pending',
+                      'restoration':'Recorded session transaction; cedar restore'}
+                     for role,selected in adoption.get('roles',{}).items()]
+    return result
+
 def active():
     row = read_record()
     return bool(row and row.get('stage') in ACTIVE)
@@ -72,7 +86,14 @@ def authenticate(root):
         raise d.Refused('Authentication test did not succeed. Existing desktop preserved; no session lock was requested.')
 
 
-def trial(root, approved=False, expected_adapter='auto', cedar_launcher=False, trailwatch=False):
+def inspect_plan(root, cedar_launcher=False, trailwatch=False):
+    root=root.resolve()
+    row={**providers.inspect(root),'root':str(root),'candidateFingerprint':d.plan_install(root)['release']}
+    controls.plan(row,cedar_launcher,trailwatch)
+    return row,adoption_plan.build_plan(row,{'launcher':cedar_launcher,'trailwatch':trailwatch})
+
+
+def trial(root, approved=False, expected_adapter='auto', cedar_launcher=False, trailwatch=False, expected_plan=None):
     root = root.resolve()
     for name in ('qs', 'hyprctl', 'systemd-run', 'systemctl', 'busctl'):
         if not shutil.which(name):
@@ -83,11 +104,13 @@ def trial(root, approved=False, expected_adapter='auto', cedar_launcher=False, t
             raise d.Refused('A managed CEDAR session already exists. Use cedar status, keep or restore.')
         # Discovery describes the existing providers, not the candidate. Every
         # following lock/IPC check must already know the explicit candidate path.
-        row = {**providers.inspect(root), 'root': str(root)}
+        row,approved_plan = inspect_plan(root,cedar_launcher,trailwatch)
+        if expected_plan is not None and approved_plan['digest']!=expected_plan:
+            raise d.Refused('The reviewed desktop plan is stale. Refresh it before approving changes.')
         if expected_adapter == 'noctalia' and row['locker'] != 'noctalia' or expected_adapter == 'hyprland' and row['adapter'] != 'hyprland':
             raise d.Refused('The requested adapter does not match the running desktop. Use cedar try for automatic detection.')
-        controls.plan(row, cedar_launcher, trailwatch)
-        plan = {'action': 'Try CEDAR for 120 seconds', 'adapter': row['adapter'],
+        selections = {'launcher':cedar_launcher,'trailwatch':trailwatch}
+        plan = {'planDigest':approved_plan['digest'],'result':approved_plan['mode'],'roles':approved_plan['roles'],'action': 'Try CEDAR for 120 seconds', 'adapter': row['adapter'],
                 'pause': [Path(p['exe']).name for p in row['paused']],
                 'changes': ['Start CEDAR bar, Core, Canopy, Go, Settings and notifications'],
                 'locker': row['locker'], 'wallpaperProvider': row['background'],
@@ -107,10 +130,18 @@ def trial(root, approved=False, expected_adapter='auto', cedar_launcher=False, t
         if row['locker'] == 'trailwatch':
             authenticate(root)
         unlocked(row)
+        refreshed = {**providers.inspect(root), 'root':str(root), 'candidateFingerprint':d.plan_install(root)['release']}
+        controls.plan(refreshed, cedar_launcher, trailwatch)
+        try: adoption_plan.require_unchanged(approved_plan, refreshed, selections)
+        except ValueError as error: raise d.Refused(str(error)) from error
         tx = d.Transaction('portable-session')
+        tx.record['plan'] = approved_plan
+        tx.record['operations'] = [dict(operation) for operation in approved_plan['operations']]
+        tx.save()
         row.update({'root': str(root), 'id': uuid.uuid4().hex, 'generation': uuid.uuid4().hex,
                     'stage': 'prepared', 'journal': str(tx.path), 'deadline': time.time() + 120,
                     'login': False, 'sessionSignature': os.environ.get('HYPRLAND_INSTANCE_SIGNATURE', ''),
+                    'adoption':{'mode':approved_plan['mode'],'roles':approved_plan['roles'],'planDigest':approved_plan['digest']},
                     'pausedIntents': [], 'statusFile': str(d.paths()['state'] / 'portable-status.json')})
         row['pausedProviders'] = row['paused']
         row['unit'] = 'cedar-session-' + row['id'] + '-' + row['generation'][:8]
@@ -162,14 +193,36 @@ def transaction(row):
     return tx
 
 
+def operation_state(row, kind, state, target=None):
+    """Journal coarse operation outcomes; file and process records hold evidence.
+
+    Applying is durable before an external effect. Recovery reconciles the
+    original file hashes/process identities rather than trusting this label.
+    Older recovery records without a versioned plan remain readable.
+    """
+    tx = transaction(row)
+    changed = False
+    for operation in tx.record.get('operations', []):
+        if operation['kind'] == kind and (target is None or operation['target'] == target):
+            operation['state'] = state
+            changed = True
+    if changed: tx.save()
+
+
 def prepare(row):
     unlocked(row)
+    if row.get('supervisorReady') != row.get('generation') or not row.get('supervisorReady'):
+        raise d.Refused('Recovery supervisor has not acknowledged this trial generation. Existing desktop preserved.')
     tx = transaction(row)
     if row.get('providerSettings'):
         entry = tx.record['files'][0]
         if not entry.get('after'):
+            operation_state(row, 'patch-provider-settings', 'applying')
+            tx = transaction(row)
+            entry = tx.record['files'][0]
             tx.apply_file(entry, row['settingsAfter'].encode(), entry['before'].get('mode', 0o600))
         normalize_provider_record(row)
+        operation_state(row, 'patch-provider-settings', 'verified')
     for process in row['paused']:
         if process['pid'] not in row['pausedIntents']:
             row['pausedIntents'].append(process['pid'])
@@ -177,10 +230,14 @@ def prepare(row):
         # If interruption happened between durable intent and stopping the
         # process, retry only that same verified identity.
         if providers.same_process(process):
+            operation_state(row, 'pause-provider', 'applying', process.get('unit') or str(process['pid']))
             providers.pause(process)
+        if providers.same_process(process):
+            raise d.Refused('The reviewed provider has not stopped; CEDAR will not overlap it.')
+        operation_state(row, 'pause-provider', 'verified', process.get('unit') or str(process['pid']))
     row['stage'] = 'starting'
     row['readyDeadline'] = time.time() + 25
-    tx.stage('activate')
+    transaction(row).stage('activate')
     save(row)
 
 
@@ -216,7 +273,7 @@ def start_cedar(row):
     d.verify_tree(root, d.read_json(root / 'release-files.json'))
     if cedar_rows(row):
         return
-    env = {**os.environ, 'CEDAR_ADAPTER': row['adapter'], 'CEDAR_MANAGED_SESSION': '1',
+    env = {**os.environ, 'CEDAR_ADAPTER': row['adapter'], 'CEDAR_SESSION_GENERATION': row['generation'], 'CEDAR_MANAGED_SESSION': '1',
            'CEDAR_EXTERNAL_LOCK': '0' if row['locker'] == 'trailwatch' else '1',
            'CEDAR_EXTERNAL_IDLE': '1' if row.get('trailwatch') else '0',
            'CEDAR_BACKGROUND': row['background'], 'CEDAR_PAM_SERVICE': 'login',
@@ -228,8 +285,10 @@ def start_cedar(row):
     with contextlib.suppress(d.Refused):
         env['CEDAR_HYPR_CONFIG'] = str(providers.main_config())
     publish(row, False)
+    operation_state(row, 'start-cedar', 'applying')
     subprocess.Popen(['qs', '-n', '-p', str(root / 'shell.qml')], env=env, stdin=subprocess.DEVNULL,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    operation_state(row, 'start-cedar', 'applied')
 
 
 def healthy(row):
@@ -237,6 +296,8 @@ def healthy(row):
     if len(matches) != 1:
         raise d.Refused('CEDAR is not running on this display.')
     state = json.loads(ipc(row, 'shell', 'sessionInfo'))
+    if state.get('generation') != row['generation']:
+        raise d.Refused('The running CEDAR instance belongs to a different trial generation.')
     if state.get('stage') != 3 or not state.get('screenCount'):
         raise d.Refused('CEDAR has not loaded its full desktop.')
     if state.get('externalLock') != (row['locker'] != 'trailwatch'):
@@ -317,6 +378,9 @@ def supervise(identity, generation):
                     if not row.get('login'):
                         restore(row)
                     return
+                if row.get('supervisorReady') != generation:
+                    row['supervisorReady'] = generation
+                    save(row)  # durable ACK before prepare can suppress a provider
                 is_locked = providers.locked(row)
                 publish(row, is_locked)
                 if not is_locked:
@@ -326,11 +390,16 @@ def supervise(identity, generation):
                         if not cedar_rows(row):
                             start_cedar(row)
                         healthy(row)
+                        operation_state(row, 'start-cedar', 'verified')
                         if not row.get('controlsApplied'):
+                            operation_state(row, 'bind-launcher', 'applying')
                             controls.apply(row, transaction(row))
+                            operation_state(row, 'bind-launcher', 'verified')
                             row['controlsApplied'] = True
                             save(row)
+                        if row.get('trailwatch'): operation_state(row, 'verify-trailwatch', 'applying')
                         if controls.finish_lock_handoff(row, transaction(row), save, ipc, unlocked):
+                            if row.get('trailwatch'): operation_state(row, 'verify-trailwatch', 'verified')
                             row['stage'] = 'kept' if row.get('login') else 'trial'
                             row['deadline'] = time.time() + 120
                             row.pop('error', None)
@@ -357,6 +426,9 @@ def startup_entry(row):
     providers.safe_target(path)
     if path.suffix not in ('.conf', '.lua'):
         raise d.Refused('Unsupported Hyprland startup syntax.')
+    graph=startup_graph.inspect(path,d.xdg('CONFIG','.config'),Path.home())
+    if path.suffix=='.conf' and not graph['complete']:
+        raise d.Refused('Startup includes could not be fully reviewed. Existing login configuration is preserved: '+', '.join(graph['unresolved']))
     original = path.read_text()
     if 'CEDAR LOGIN START' in original:
         raise d.Refused('An existing CEDAR startup block needs recovery first.')
@@ -372,7 +444,7 @@ def startup_entry(row):
     return path, (original + block).encode()
 
 
-def keep(login=False, approved=False):
+def keep(login=False, approved=False, expected_login_digest=None):
     with guard():
         row = read_record()
         if not row or row['stage'] not in ('trial', 'kept'):
@@ -388,6 +460,9 @@ def keep(login=False, approved=False):
                 print('CEDAR is already selected for login.')
                 return
             path, content = startup_entry(row)
+            proposed = adoption_plan.fingerprint({'path':str(path),'before':d.info(path),'content':content.decode()})
+            if expected_login_digest is not None and proposed!=expected_login_digest:
+                raise d.Refused('The reviewed login change is stale. Review it again; startup was not changed.')
             d.approve({'action': 'Use CEDAR at login', 'edit': str(path),
                        'changes': 'Enable the reviewed CEDAR session at login. All unselected startup commands and shortcuts stay intact.',
                        'undo': 'cedar restore'}, approved)

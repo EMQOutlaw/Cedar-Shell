@@ -34,6 +34,23 @@ def secure_parent(path):
         if parent.is_symlink():raise Refused('Managed or symlinked parent needs manual integration: '+str(parent))
     path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
 
+def private_directory(path):
+    """Create our private store, or validate it without repairing permissions.
+
+    Existing directories are not made private by mkdir(exist_ok=True). Never
+    silently chmod a user's managed directory or follow a symlink into it.
+    """
+    for parent in [path,*path.parents]:
+        if parent.is_symlink():raise Refused('A private recovery directory must not traverse a symlink: '+str(parent))
+    missing=[]
+    parent=path
+    while not parent.exists():
+        missing.append(parent);parent=parent.parent
+    for parent in reversed(missing):parent.mkdir(mode=0o700)
+    metadata=path.lstat()
+    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid!=os.getuid() or stat.S_IMODE(metadata.st_mode)&0o077:
+        raise Refused('CEDAR needs a private, user-owned recovery directory. Existing permissions were not changed: '+str(path))
+
 def atomic(path,data,mode=0o600):
     secure_parent(path)
     fd,name=tempfile.mkstemp(prefix='.cedar-',dir=path.parent)
@@ -55,7 +72,9 @@ def command(argv,timeout=30):
 
 @contextlib.contextmanager
 def exclusive():
+    private_directory(paths()['state'])
     lock=paths()['state']/'distribution.lock';secure_parent(lock)
+    if lock.is_symlink():raise Refused('The operation lock must not be a symlink.')
     with lock.open('a') as stream:
         os.chmod(lock,0o600)
         try:fcntl.flock(stream,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -89,6 +108,8 @@ def verify_tree(root,inventory):
 
 class Transaction:
     def __init__(self, action):
+        private_directory(paths()['state'])
+        private_directory(paths()['state']/'transactions')
         self.directory=paths()['state']/'transactions'/(str(time.time_ns())+'-'+uuid.uuid4().hex[:8])
         self.directory.mkdir(parents=True,mode=0o700)
         self.path=self.directory/'journal.json'
@@ -99,7 +120,7 @@ class Transaction:
         self.record['stage']=name;self.save()
         if os.environ.get('CEDAR_INJECT_FAILURE')==name:raise OSError('Injected interruption at '+name)
     def backup(self,path):
-        before=info(path);entry={'path':str(path),'before':before,'after':None}
+        before=info(path);entry={'id':uuid.uuid4().hex,'operation':'replace-file','state':'prepared','path':str(path),'before':before,'after':None}
         if before['type']=='file':
             backup=self.directory/('file-'+str(len(self.record['files'])))
             shutil.copy2(path,backup);backup.chmod(0o600)
@@ -110,22 +131,38 @@ class Transaction:
         path=Path(entry['path'])
         if not same(info(path),entry['before']):raise Refused('File changed since backup: '+str(path))
         # Intent is durable before replacement so interrupted writes are recoverable.
-        entry['after']={'type':'file','sha256':hashlib.sha256(data).hexdigest(),'mode':mode};self.save()
+        entry['after']={'type':'file','sha256':hashlib.sha256(data).hexdigest(),'mode':mode};entry['state']='applying';self.save()
         atomic(path,data,mode)
+        self.verify_entry(entry)
     def apply_link(self,entry,target):
         path=Path(entry['path']);secure_parent(path)
         if not same(info(path),entry['before']):raise Refused('Link changed since backup.')
-        entry['after']={'type':'link','target':str(target)};self.save()
+        entry['operation']='replace-link';entry['after']={'type':'link','target':str(target)};entry['state']='applying';self.save()
         temporary=path.with_name('.cedar-link-'+uuid.uuid4().hex)
         temporary.symlink_to(target);os.replace(temporary,path)
+        self.verify_entry(entry)
     def replace_owned_file(self,entry,data,mode=0o600):
         """A second journaled write, retaining every recoverable intermediate."""
         path=Path(entry['path'])
         if not entry.get('after') or not same(info(path),entry['after']):raise Refused('Integration changed during preparation; later edits preserved.')
         entry.setdefault('intermediate',[]).append(entry['after'])
-        entry['after']={'type':'file','sha256':hashlib.sha256(data).hexdigest(),'mode':mode};self.save()
+        entry['after']={'type':'file','sha256':hashlib.sha256(data).hexdigest(),'mode':mode};entry['state']='applying';self.save()
         atomic(path,data,mode)
-    def commit(self):self.stage('commit')
+        self.verify_entry(entry)
+    def verify_entry(self,entry):
+        entry['state']='applied';self.save()
+        if not same(info(Path(entry['path'])),entry['after']):raise Refused('Written integration did not verify; recovery journal retained.')
+        entry['state']='verified';self.save()
+    def commit(self):
+        operations=self.record.get('operations',[])
+        if any(operation['state'] not in ('verified','committed') for operation in operations):
+            raise Refused('A reviewed desktop operation is not verified; confirmation remains pending.')
+        for entry in self.record['files']:
+            if entry.get('after'):
+                if not same(info(Path(entry['path'])),entry['after']):raise Refused('Integration changed before commit; later edits preserved.')
+                entry['state']='committed'
+        for operation in operations:operation['state']='committed'
+        self.stage('commit')
 
 def check_restore_journal(journal):
     value=read_json(journal)
@@ -252,7 +289,7 @@ def validate_imports(root):
         runtime=base/'runtime';runtime.mkdir(mode=0o700)
         svg=base/'image.svg'
         svg.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#101E19"/></svg>')
-        imports='\n'.join('import '+r['name'] for r in read_json(root/'data/dependencies.json')['modules'])
+        imports='\n'.join('import '+r['name'] for r in read_json(root/'data/dependencies.json')['modules'] if r.get('status')=='required')
         probe.write_text(imports+'\nShellRoot { property var svg: Image { source: '+json.dumps(svg.as_uri())+' } Timer { interval: 200; running: true; onTriggered: { if (svg.status === Image.Ready) console.log("CEDAR_IMPORTS_OK"); else console.error("SVG image support unavailable"); Qt.quit(); } } }\n')
         env={**os.environ,'CEDAR_TEST':'1','CEDAR_LOCAL_ONLY':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
         result=subprocess.run(['qs','-p',str(probe)],capture_output=True,text=True,timeout=15,env=env)
@@ -271,7 +308,7 @@ def validate(root):
             if not (root/file).is_file():raise Refused('Plugin artifact missing: '+file)
     if shutil.which('qs'):
         validate_imports(root)
-        for test in ['check_navigation.py','check_identity.py','check_trailwatch.py','check_portable_ui.py']:
+        for test in ['check_navigation.py','check_identity.py','check_trailwatch.py','check_portable_ui.py','check_controls.py']:
             command([sys.executable,str(root/'tests'/test)],timeout=60)
         return 'Offscreen components validated; native Wayland/PAM are Not Tested.'
     return 'Not Tested: Quickshell missing; installation only, preview/activation unavailable.'
@@ -312,7 +349,7 @@ def install(root,approved=False,plan_only=False):
         recovery=paths()['data']/'recovery/distribution.py'
         session_recovery=paths()['data']/'recovery/omarchy_session.py'
         provider_recovery=paths()['data']/'recovery/omarchy_providers.py'
-        portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py','portable_controls.py')]
+        portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py','portable_controls.py','adoption_plan.py','startup_graph.py')]
         if binary.exists() or binary.is_symlink():
             if not binary.is_file() or b'# CEDAR distribution launcher' not in binary.read_bytes():raise Refused('The cedar command is already owned elsewhere. Existing installation preserved.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
@@ -554,7 +591,7 @@ def main(argv=None):
                 backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial)
         elif args.action=='status':
             row=backend.read_record()
-            print(json.dumps({k:row.get(k) for k in ('stage','login','deadline','error','locker')} if row else {'stage':'not active'},indent=2))
+            print(json.dumps(backend.status_report() if backend.__name__=='portable_session' else {k:row.get(k) for k in ('stage','login','deadline','error','locker')} if row else {'stage':'not active'},indent=2))
         else:backend.keep(args.action=='activate',args.approve_login)
     elif args.action=='session-login':session_backend(args.adapter).login()
     elif args.action in ('lock','launcher'):

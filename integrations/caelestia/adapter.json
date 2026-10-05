@@ -1,0 +1,13 @@
+{
+  "id": "caelestia-dots-lua",
+  "adapterVersion": 1,
+  "status": "Experimental discovery; isolated preview only",
+  "reviewedManifestBlob": "c569875a32b4470cece128560bf97e00c585bbce",
+  "upstream": "https://github.com/caelestia-dots/caelestia",
+  "stateFile": "caelestia/dots-state.json",
+  "preservedOverrides": ["caelestia/hypr-user.lua", "caelestia/hypr-vars.lua"],
+  "managedOutputPolicy": "Do not edit CLI-deployed files. Inspect deployed_files and enabled_components locally. The upstream updater may reload the compositor and relaunch its shell.",
+  "activationBlocker": "No installed-version-specific startup and lock/idle handoff has been validated. Use the isolated preview; preserve the existing shell and updater state.",
+  "tested": ["read-only state discovery fixtures"],
+  "nativeTested": false
+}

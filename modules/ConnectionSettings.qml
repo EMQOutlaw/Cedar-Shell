@@ -12,6 +12,15 @@ ColumnLayout {
     property var selected: null
     property string confirmForget: ""
     property bool hotspot: false
+    Connections {
+        target: Network
+        function onDataChanged() {
+            if (root.selected && !(Network.data.networks || []).some(row => row.path === root.selected.path)) {
+                password.text = "";
+                root.selected = null;
+            }
+        }
+    }
     onActiveChanged: {
         password.text = "";
         hotspotPassword.text = "";
@@ -76,9 +85,10 @@ ColumnLayout {
         }
     }
     Repeater {
-        model: Network.data.networks
+        model: Network.networks
         RowLayout {
-            required property var modelData
+            required property var model
+            readonly property var modelData: model
             Layout.fillWidth: true
             ColumnLayout {
                 Layout.fillWidth: true
@@ -110,7 +120,7 @@ ColumnLayout {
                             path: modelData.path
                         });
                     else
-                        root.selected = modelData;
+                        root.selected = {path: modelData.path, ssid: modelData.ssid, security: modelData.security};
                 }
             }
         }
@@ -131,6 +141,7 @@ ColumnLayout {
         }
         StationField {
             id: password
+            objectName: "networkPassword"
             Layout.fillWidth: true
             echoMode: TextInput.Password
             placeholderText: "Network password"
@@ -141,8 +152,13 @@ ColumnLayout {
             StationButton {
                 id: join
                 text: "Join network"
-                enabled: !Network.busy && password.text.length > 0 && !["enterprise", "unsupported"].includes(root.selected?.security)
+                enabled: root.selected !== null && !Network.busy && password.text.length > 0 && !["enterprise", "unsupported"].includes(root.selected?.security)
                 onClicked: {
+                    if (!enabled || !(Network.data.networks || []).some(row => row.path === root.selected?.path)) {
+                        password.text = "";
+                        root.selected = null;
+                        return;
+                    }
                     Network.run({
                         action: "connect",
                         path: root.selected.path,
@@ -173,7 +189,7 @@ ColumnLayout {
         StationCombo {
             id: hotspotAdapter
             Layout.fillWidth: true
-            model: Network.data.devices.filter(d => d.type === 2)
+            model: Network.data.devices.filter(d => d.type === 2 && d.hotspotCapable === true)
             textRole: "name"
         }
         StationField {
@@ -189,12 +205,22 @@ ColumnLayout {
             echoMode: TextInput.Password
             inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
         }
+        StationToggle {
+            id:hotspotConsent
+            property bool accepted: false
+            checked:accepted
+            label:"Allow this adapter to disconnect its current network"
+            description:"Starting a hotspot changes how the selected Wi-Fi adapter is used."
+            Layout.fillWidth:true
+            onToggled:value=>accepted=value
+        }
         StationButton {
             text: "Start hotspot"
-            enabled: !Network.busy && hotspotPassword.text.length >= 8 && hotspotAdapter.currentIndex >= 0
+            enabled: hotspotConsent.checked && !Network.busy && hotspotPassword.text.length >= 8 && hotspotAdapter.currentIndex >= 0
             onClicked: {
                 Network.run({
                     action: "hotspot",
+                    approveDisconnect: hotspotConsent.checked,
                     device: hotspotAdapter.model[hotspotAdapter.currentIndex].path,
                     ssid: hotspotName.text,
                     password: hotspotPassword.text
@@ -209,9 +235,10 @@ ColumnLayout {
         Layout.topMargin: 8
     }
     Repeater {
-        model: Network.data.saved.filter(c => c.type !== "loopback")
+        model: Network.savedNetworks
         ColumnLayout {
-            required property var modelData
+            required property var model
+            readonly property var modelData: model
             Layout.fillWidth: true
             RowLayout {
                 Layout.fillWidth: true

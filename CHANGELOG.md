@@ -1,3 +1,13 @@
+# 0.1.0-dev.12 — shared services, quiet controls and reviewed handoffs
+
+- Load Go, Settings, Field Station and Canopy content on demand; retain input drafts outside unloaded views. Preserve native hosts, monitor routing and authentication lifetime.
+- Share a GIO application catalog, defer hidden rescans, launch desktop entries through GIO and preserve unchanged default associations. Reconcile Go/network rows by stable IDs.
+- Subscribe to NetworkManager changes, bound scans and requests, gate hotspot disconnect approval, and isolate the optional Bluetooth import. Schedule telemetry by actual consumers with timeout/backoff.
+- Apply consistent quiet buttons, keyboard focus, responsive settings rows, control sizing and contained dropdown placement. Add Desktop Setup inside existing Settings using the existing transaction backend.
+- Bind approval to a pure plan digest, source fingerprint and provider evidence. Require a durable recovery-supervisor acknowledgment, verify trial generation, record operation states and refuse incomplete confirmation. Preserve later user edits and existing private-directory permissions.
+- Inspect bounded Hyprland include graphs and managed Caelestia/Ryoku state without executing upstream hooks. Managed-shell takeover remains unavailable pending installed-version review.
+- Add real offscreen pointer/focus, missing-import and page-lifetime checks; real GIO execution/catalog checks; interruption/ownership tests; private resource inspection and measurement tools. No native compatibility or performance improvement is claimed from these tests.
+
 # 0.1.0-dev.11 — select CEDAR Go and Trailwatch during setup
 
 - Offer explicit launcher and lockscreen choices during the portable installer trial. Detect and disclose recognized existing shortcuts, verify applied bindings, and restore their original configuration with the desktop.

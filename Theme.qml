@@ -48,6 +48,20 @@ Singleton {
     readonly property int small: Math.round(12*fontScale)
     readonly property int normal: Math.round(14*fontScale)
     readonly property int title: Math.round(23*fontScale)
+    // Logical pixels. Output scaling belongs to Qt, never to individual controls.
+    readonly property int spaceXs: 4
+    readonly property int spaceSm: 8
+    readonly property int spaceMd: 12
+    readonly property int spaceLg: 16
+    readonly property int spaceXl: 24
+    readonly property int spaceXxl: 32
+    readonly property int controlHeight: 36
+    readonly property int settingRowHeight: 52
+    readonly property int controlRadius: 8
+    readonly property int cardRadius: 12
+    readonly property int panelRadius: 16
+    readonly property int focusWidth: 2
+    readonly property int focusInset: 2
     readonly property int gap: 12
     readonly property int padding: 24
     readonly property int barHeight: 44

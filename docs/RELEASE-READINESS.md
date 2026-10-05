@@ -1,12 +1,14 @@
-# Release readiness — 0.1.0-dev.11
+# Release readiness — 0.1.0-dev.12
 
-**Private development candidate. Not a complete public release.** No first-party license or artwork redistribution grant has been selected. Required upstream notices and approved local KJV content remain intact.
+**Locally prepared development candidate. Not a complete public release.** No first-party license or artwork redistribution grant has been selected. Required upstream notices and approved local KJV content remain intact.
 
 ## What exists
 
 The complete working CEDAR source is included: six bars, consolidated Core/Canopy controls, real system services, Field Station/ROOTED/About, Go, Settings, OSD, notifications, Trailwatch, audio/routing/scenes, network/Bluetooth, local telemetry, themes/wallpapers, Pulse/Forest States/Echoes/Whispers/Trails, timers and optional clipboard/weather. `data/plugins.json` maps 15 built-in component bundles plus the portable Hyprland/Noctalia and optional Omarchy integration bundles to shipped files, settings, dependencies, sources, lifecycle limitations and tests. They are not falsely advertised as sandboxed independently unloadable plugins. Rituals, Constellation, general plugin API, full desktop profiles, Home Assistant and advanced DSP remain planned.
 
 The new distribution path provides versioned copied code, explicit-path IPC, an isolated ordinary-window preview, private ownership journals, verified file restoration, retained stable recovery, dependency plans, signature-verified local archive updates and deterministic complete archive packaging. Installation leaves the current shell and its startup untouched. The guided installer and normal shell are independent of Omarchy. The old Omarchy-specific helpers remain for explicit compatibility. Stock Hyprland and resident Noctalia trials, Keep and login integration are implemented with separate source/version gates; neither is yet native-certified.
+
+See [candidate 12 implementation evidence](IMPLEMENTATION-REPORT.md). The GitHub repository was observed public during this work; that does not authorize publication of this new candidate. No visibility change or public release was performed.
 
 ## Evidence and gates
 

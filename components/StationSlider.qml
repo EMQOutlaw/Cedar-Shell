@@ -4,7 +4,7 @@ import ".."
 Slider {
     id: root
     signal committed(real value)
-    implicitHeight: 32
+    implicitHeight: Theme.controlHeight
     from: 0; to: 1
     onPressedChanged: if (!pressed) committed(value)
     background: Rectangle {
@@ -18,6 +18,6 @@ Slider {
         y: root.topPadding + root.availableHeight/2 - height/2
         width: 12; height: 12; radius: 6
         color: !root.enabled ? Theme.muted : root.pressed ? Theme.green : Theme.teal
-        border.width:root.activeFocus ? 2:0; border.color:Theme.text
+        border.width:root.visualFocus ? Theme.focusWidth:0; border.color:Theme.text
     }
 }

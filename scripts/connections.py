@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """NetworkManager controls. Requests (including secrets) arrive over stdin only."""
 import json
+import os
 import subprocess
 import sys
 import time
@@ -67,7 +68,7 @@ class Network:
         return self.dbus.Interface(self.bus.get_object(NM, path), iface)
 
     def props(self, path, iface):
-        return self.interface(path, 'org.freedesktop.DBus.Properties').GetAll(iface)
+        return self.interface(path, 'org.freedesktop.DBus.Properties').GetAll(iface, timeout=3)
 
     def active_connections(self, manager):
         result = []
@@ -99,18 +100,19 @@ class Network:
                 continue
         return result
 
-    def snapshot(self):
+    def snapshot(self, detailed=True):
         settings = self.props(BASE, NM)
         connections = self.active_connections(settings)
-        saved = self.saved(connections)
+        saved = self.saved(connections) if detailed else []
         devices, networks = [], []
         for path in settings['Devices']:
             dev = self.props(path, NM+'.Device')
             item = {'path': str(path), 'name': str(dev['Interface']), 'type': int(dev['DeviceType']), 'state': int(dev['State'])}
             devices.append(item)
-            if dev['DeviceType'] != 2:
+            if dev['DeviceType'] != 2 or not detailed:
                 continue
             wifi = self.props(path, NM+'.Device.Wireless')
+            item['hotspotCapable'] = bool(int(wifi.get('WirelessCapabilities',0)) & 0x40)
             for ap in wifi.get('AccessPoints', []):
                 p = self.props(ap, NM+'.AccessPoint')
                 ssid = bytes(p['Ssid']).decode('utf-8', 'replace')
@@ -197,6 +199,10 @@ class Network:
             device = next((d for d in self.snapshot()['devices'] if d['type'] == 2 and d['path'] == req['device']), None)
             if not device:
                 raise ValueError('Select a Wi-Fi adapter.')
+            if not device.get('hotspotCapable'):
+                raise ValueError('This adapter does not report access-point support.')
+            if req.get('approveDisconnect') is not True:
+                raise ValueError('Starting a hotspot can disconnect this adapter. Confirm that change first.')
             password, ssid = req.get('password', ''), req.get('ssid', '').strip()
             if not 8 <= len(password) <= 63 or not 1 <= len(ssid.encode()) <= 32:
                 raise ValueError('Hotspot needs a name of 1–32 bytes and a password of 8–63 characters.')
@@ -208,6 +214,54 @@ class Network:
             self.wait_active(active)
         else:
             raise ValueError('Unknown network action.')
+
+
+def watch():
+    from dbus.mainloop.glib import DBusGMainLoop
+    from gi.repository import GLib
+    import dbus
+    DBusGMainLoop(set_as_default=True)
+    bus=dbus.SystemBus()
+    loop=GLib.MainLoop()
+    state={'sequence':0,'pending':0,'expanded':False}
+    generation=uuid.uuid4().hex
+    def publish():
+        state['pending']=0
+        try: data=Network().snapshot(state['expanded'])
+        except dbus.DBusException: data={'available':False,'devices':[],'networks':[],'saved':[],'label':'Network unavailable'}
+        state['sequence']+=1
+        line=json.dumps({'schema':1,'generation':generation,'sequence':state['sequence'],'kind':'snapshot','data':data})
+        if len(line.encode())>4*1024*1024: loop.quit(); return False
+        print(line,flush=True)
+        return False
+    def changed(*args,**kwargs):
+        if not state['pending']:state['pending']=GLib.timeout_add(200,publish)
+    # Subscribe before the first snapshot. Events queued while sampling schedule
+    # another complete revision; reconnects establish fresh service objects.
+    matches=[bus.add_signal_receiver(changed,bus_name=NM),
+             bus.add_signal_receiver(changed,signal_name='NameOwnerChanged',dbus_interface='org.freedesktop.DBus',arg0=NM)]
+    os.set_blocking(sys.stdin.fileno(),False)
+    buffer=bytearray()
+    def incoming(fd,condition):
+        data=os.read(fd,4096)
+        if not data:loop.quit();return False
+        buffer.extend(data)
+        if len(buffer)>65536:loop.quit();return False
+        while b'\n' in buffer:
+            line,_,tail=buffer.partition(b'\n');buffer[:]=tail
+            try:
+                request=json.loads(line)
+                if request.get('action')=='expanded':state['expanded']=request.get('value') is True
+                elif request.get('action')!='refresh':continue
+                changed()
+            except (ValueError,AttributeError):loop.quit();return False
+        return True
+    GLib.io_add_watch(sys.stdin.fileno(),GLib.IO_IN|GLib.IO_HUP,incoming)
+    changed()
+    try:loop.run()
+    finally:
+        for match in matches:match.remove()
+        if state['pending']:GLib.source_remove(state['pending'])
 
 
 def main():
@@ -226,4 +280,5 @@ def main():
         print(json.dumps({'ok': False, 'error': message}))
 
 if __name__ == '__main__':
-    main()
+    if sys.argv[1:]==['--watch']: watch()
+    else: main()

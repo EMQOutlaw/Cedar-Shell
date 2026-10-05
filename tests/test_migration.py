@@ -99,7 +99,10 @@ class Branding(unittest.TestCase):
         allow=json.loads((ROOT/'data/legacy-allowlist.json').read_text())
         import re
         found=[]
-        for path in ROOT.rglob('*'):
+        # Audit exactly the release inventory, including in extracted archives.
+        # Local handoffs/backups are deliberately not publication inputs.
+        for name in json.loads((ROOT/'data/source-files.json').read_text()):
+            path=ROOT/name
             if not path.is_file() or any(x in path.parts for x in ['.git','__pycache__']):continue
             if path.suffix in ['.png','.log']:continue
             try:text=path.read_text()
