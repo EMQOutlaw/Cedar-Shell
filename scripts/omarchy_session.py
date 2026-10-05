@@ -329,7 +329,7 @@ def supervise(identity,generation=None):
                     try:
                         if not cedar_rows(row):start_cedar(row)
                         healthy(row)
-                        row['stage']='kept' if row.get('login') else 'trial';row['deadline']=time.time()+120;save(row)
+                        row['stage']='kept' if row.get('login') else 'trial';row['deadline']=time.time()+120;row.pop('error',None);save(row)
                     except (d.Refused,OSError,ValueError,subprocess.SubprocessError) as error:
                         row['error']=str(error)[:500];save(row)
                         if time.time()>row['readyDeadline']:row['stage']='restore-requested';save(row)
@@ -380,6 +380,7 @@ def login():
         if signature and row.get('sessionSignature')==signature and row['stage'] in ('starting','trial','kept'):return
         row['generation']=uuid.uuid4().hex
         row['sessionSignature']=signature
+        row.pop('hostRestarted',None) # A new login session is a new host.
         row['unit']='cedar-session-'+row['id']+'-'+row['generation'][:8]
         # No retained confirmation means recovery, not an implicit login opt-in.
         row['stage']='starting' if row.get('login') else 'restore-requested'

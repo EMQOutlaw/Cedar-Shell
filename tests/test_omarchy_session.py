@@ -183,5 +183,15 @@ class OmarchySession(unittest.TestCase):
         with patch.object(s,'check_omarchy',return_value={'pid':7}),patch.object(s,'notification_owner',return_value=7),patch.object(s,'unlocked',side_effect=d.Refused('locked')),patch.object(s.subprocess,'run') as run:
             with self.assertRaisesRegex(d.Refused,'locked'):s.release_notifications(row)
         run.assert_not_called();self.assertNotIn('hostRestarted',row)
+    def test_successful_start_clears_previous_error(self):
+        row=self.row('starting');row['login']=True;row['error']='Omarchy shell restarted to release notifications; waiting for its plugins.';row['readyDeadline']=time.time()+30;s.save(row)
+        class Stop(Exception):pass
+        with patch.object(s,'lock_state',side_effect=[False,Stop()]),patch.object(s,'publish'),patch.object(s.time,'sleep'),patch.object(s,'cedar_rows',return_value=[{'pid':1}]),patch.object(s,'healthy'):
+            with self.assertRaises(Stop):s.supervise('fixture')
+        saved=s.read_record();self.assertEqual(saved['stage'],'kept');self.assertNotIn('error',saved)
+    def test_new_login_session_may_restart_its_new_host(self):
+        row=self.row('kept');row['login']=True;row['hostRestarted']=True;row['generation']='old';s.save(row)
+        with patch.dict(os.environ,{'HYPRLAND_INSTANCE_SIGNATURE':'next-boot'}),patch.object(s,'spawn_supervisor'):s.login()
+        saved=s.read_record();self.assertNotIn('hostRestarted',saved);self.assertEqual(saved['stage'],'starting')
 
 if __name__=='__main__':unittest.main()
