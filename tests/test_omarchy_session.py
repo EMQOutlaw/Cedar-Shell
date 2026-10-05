@@ -163,4 +163,25 @@ class OmarchySession(unittest.TestCase):
         self.assertEqual(d.info(config),original);self.assertEqual(d.info(locker),locker_before)
         self.assertFalse((config.parent/'plugins/cedar.omacale-guard/manifest.json').exists())
 
+    def test_host_restarted_once_to_release_notifications(self):
+        row=self.row('starting');row['omarchyShell']='/example/shell/shell.qml';row['readyDeadline']=time.time()
+        done=type('R',(),{'returncode':0,'stderr':''})()
+        with patch.object(s,'check_omarchy',return_value={'pid':7}),patch.object(s,'notification_owner',return_value=7),patch.object(s,'unlocked') as unlocked,patch.object(s.subprocess,'run',return_value=done) as run:
+            with self.assertRaisesRegex(d.Refused,'restarted'):s.release_notifications(row)
+            self.assertEqual(run.call_args[0][0],['/example/bin/omarchy-restart-shell'])
+            unlocked.assert_called_once();self.assertTrue(row['hostRestarted']);self.assertGreater(row['readyDeadline'],time.time()+30)
+            with self.assertRaisesRegex(d.Refused,'after its restart'):s.release_notifications(row)
+            self.assertEqual(run.call_count,1)
+    def test_no_restart_when_host_does_not_own_notifications(self):
+        row=self.row('starting')
+        for owner in [{'return_value':8},{'side_effect':d.Refused('unowned')}]:
+            with patch.object(s,'check_omarchy',return_value={'pid':7}),patch.object(s,'notification_owner',**owner),patch.object(s.subprocess,'run') as run:
+                s.release_notifications(row);run.assert_not_called()
+        self.assertNotIn('hostRestarted',row)
+    def test_locked_session_never_restarts_host(self):
+        row=self.row('starting')
+        with patch.object(s,'check_omarchy',return_value={'pid':7}),patch.object(s,'notification_owner',return_value=7),patch.object(s,'unlocked',side_effect=d.Refused('locked')),patch.object(s.subprocess,'run') as run:
+            with self.assertRaisesRegex(d.Refused,'locked'):s.release_notifications(row)
+        run.assert_not_called();self.assertNotIn('hostRestarted',row)
+
 if __name__=='__main__':unittest.main()

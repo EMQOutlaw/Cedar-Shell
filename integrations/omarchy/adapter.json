@@ -14,6 +14,12 @@
     ],
     "bin/omarchy-hook": [
       "c64ea844feb1849375e7cd43dde98933293b0e0f0f522e1ba2c6572d86386c7b"
+    ],
+    "bin/omarchy-restart-shell": [
+      "e4c996275a15025c9aac829d34913d6bcaf8a30a17fae5ce5e260df2ddf21cd7"
+    ],
+    "bin/omarchy-launch-shell": [
+      "484f3af00ee3d13b8f4e33b118d9b7355c72d254a631fc740a160f5f1d140cff"
     ]
   },
   "externalAccess": false,

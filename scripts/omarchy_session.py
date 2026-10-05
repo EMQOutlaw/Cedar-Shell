@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Opt-in Omarchy 4 desktop trial. Never stop the existing authentication host.
+"""Opt-in Omarchy 4 desktop trial. Never stop the existing authentication host
+except through Omarchy's own lock-safe restart, once, while unlocked.
 
 The independent supervisor is installed beside distribution.py for offline recovery.
 The adapter only accepts audited upstream source and requires live provider checks.
@@ -143,7 +144,7 @@ def trial(root,approved=False):
     with guard():
         if active():raise d.Refused('A CEDAR desktop trial/session already exists. Use cedar keep, status, or restore.')
         row=inspect(root)
-        plan={'action':'Try CEDAR for 120 seconds','adapter':row['adapter'],'changes':['Select the CEDAR empty-bar bridge in Omarchy user settings','Temporarily disable Omarchy notification and OSD plugins','Start the full CEDAR bar, Core, Canopy, Settings and notifications','Create a temporary post-boot recovery hook'],
+        plan={'action':'Try CEDAR for 120 seconds','adapter':row['adapter'],'changes':['Select the CEDAR empty-bar bridge in Omarchy user settings','Temporarily disable Omarchy notification and OSD plugins','Restart the Omarchy shell once, while unlocked, if it still holds notifications','Start the full CEDAR bar, Core, Canopy, Settings and notifications','Create a temporary post-boot recovery hook'],
               'preserve':['Omarchy lockscreen, PAM, idle handling, polkit agent, wallpaper, secret service and portals','Display configuration, existing keyboard shortcuts and applications'],
               'confirmation':'Run cedar keep before the timer expires; login startup needs cedar activate afterwards','recovery':'Independent supervisor restores the recorded configuration after timeout or a CEDAR crash; it defers while locked.'}
         if row.get('omacale'):
@@ -225,10 +226,28 @@ def cedar_rows(row):return matching(instances(),Path(row['root'])/'shell.qml')
 def check_omarchy(row):
     matches=matching(instances(),row['omarchyShell'])
     if len(matches)!=1:raise d.Refused('Omarchy authentication host is unavailable.')
-    # A session restart is allowed at login; never terminate or restart this host.
+    # Only release_notifications may restart this host, through Omarchy's own command.
     state=json.loads(ipc(row['omarchyShell'],'lock','status'))
     if state.get('passwordPam') is not True:raise d.Refused('Omarchy authentication is not ready.')
     return matches[0]
+
+def release_notifications(row):
+    """Quickshell keeps org.freedesktop.Notifications for the life of any process
+    that ever loaded a NotificationServer, so disabling Omarchy's notification
+    plugins cannot free it. Restart the host once, while unlocked, through
+    Omarchy's own lock-safe command; the new host loads without those plugins."""
+    host=check_omarchy(row)
+    try:owner=notification_owner()
+    except d.Refused:return # Unowned: CEDAR registers on start.
+    if owner!=host['pid']:return
+    if row.get('hostRestarted'):raise d.Refused('Omarchy still owns notifications after its restart.')
+    unlocked(row)
+    upstream=Path(row['omarchyShell']).parent.parent
+    row['hostRestarted']=True;row['readyDeadline']=time.time()+45;save(row)
+    env={**os.environ,'PATH':str(upstream/'bin')+os.pathsep+os.environ.get('PATH','')}
+    r=subprocess.run([str(upstream/'bin/omarchy-restart-shell')],env=env,text=True,capture_output=True,timeout=40)
+    if r.returncode:raise d.Refused('Omarchy shell restart failed: '+r.stderr.strip()[:300])
+    raise d.Refused('Omarchy shell restarted to release notifications; waiting for its plugins.')
 
 def start_cedar(row):
     verify_session_api(row);check_omarchy(row);unlocked(row)
@@ -237,6 +256,7 @@ def start_cedar(row):
     disabled=DISABLE+row.get('omacale',{}).get('disable',[])
     if any(p.get('id') in disabled and p.get('enabled') for p in plugins):raise d.Refused('Overlapping Omarchy plugins have not stopped yet.')
     if row.get('omacale') and ipc(row['omarchyShell'],'cedarOmacaleGuard','ready')!='true':raise d.Refused('Omacale handover coordination is not ready.')
+    release_notifications(row)
     if ipc(row['omarchyShell'],'cedarBridge','enable')!='true':raise d.Refused('Keyboard IPC bridge did not become ready.')
     source=Path(row['root']);d.verify_tree(source,d.read_json(source/'release-files.json'))
     env={**os.environ,'CEDAR_OMARCHY_SESSION':'1','CEDAR_SESSION_STATUS':str(status_path()),'CEDAR_SESSION_HELPER':str(d.paths()['data']/'recovery/omarchy_session.py'),'CEDAR_SHELL_PATH':str(source/'shell.qml'),'CEDAR_QS_BIN':shutil.which('qs'),'QS_DISABLE_FILE_WATCHER':'1','QS_NO_RELOAD_POPUP':'1'}

@@ -165,6 +165,70 @@
       "policy": "preserve",
       "notes": "Leave the dictation overlay enabled. Omarchy reload may briefly recreate its UI and audio bridge; the separate dictation daemon is not stopped.",
       "source": "https://github.com/Blizl/Omarchy-Voxtype-OSD/tree/4283c22b3e8e7a4e3e24453952758b62667c231a"
+    },
+    {
+      "key": "luna-taskbar-1",
+      "name": "Windows XP Luna Taskbar 1.0.0",
+      "contract": {
+        "schemaVersion": 1,
+        "version": "1.0.0",
+        "kinds": [
+          "bar"
+        ],
+        "entryPoints": {
+          "bar": "Taskbar.qml"
+        },
+        "keepLoaded": false
+      },
+      "files": {
+        "Balloon.qml": "d94f0e778dbf96beb91bea25d529e15ba360df18728265321fefdd008e1ce24b",
+        "Bar.qml": "5f633221a8eb3aea450583c4b05bbbe6b583a61e963e8d839212a312bb1f37f9",
+        "ClickCatcher.qml": "719be0a98b04c2430f0b89b762aadb7ee8ad4fa590860b4b3123529f860346bf",
+        "DateTimeWindow.qml": "a8825d055a563849bb88934345eb0e3be0742446c7d8eec893419bb7b2d5cb3e",
+        "DesktopIcons.qml": "c515f3e5b6a0d51e029cef1e05aafb637ab81bd3180c800b5773a8f96fd5cafa",
+        "LunaButton.qml": "1497c7c7008d97e2e6f871085bd58f805482e04ce281b8a200f9fe48d3d882dd",
+        "Minesweeper.qml": "387f2a2d042b94f3d7b00d30da17a4bb268b95ef50402a511fbd46cfd69316df",
+        "RunDialog.qml": "07231cfa04cabfc918fa5c26e73f328afa3ea66488f1fb31355e9129f4f5edce",
+        "StartMenu.qml": "225363e39e49856f2eeb90395905757c9a05da9d25b83574136fb89c8afe1556",
+        "TaskManager.qml": "f875c678a2e694b61af3e5f0218e8b36aa525e5ae362875ad4d77d87ea1dd38e",
+        "Taskbar.qml": "207113a37e810c22753093ba6962b18d511adcc599443cb7452719c69b96bc0a",
+        "TurnOffDialog.qml": "3ae21c8bba9e664a19fa10f64fa990ee3124ee14b602b28308fa3eb546a8e027",
+        "VolumePopup.qml": "78ed2f0b2b6dc1836ea040c05a0948313414b31036d1e11fb6e4121dc07a5742",
+        "XpButton.qml": "e532d3f625debf37da518204fbb29cccdaf3035b1af62930ff863fa6c202ae66",
+        "XpWindow.qml": "fe22b1343f02866ca1ff1ccff24146e63659b1869de6b70c665295f94ad79a4e",
+        "xp-sysinfo.py": "3c43c16f97e2bdb6ae0ed366e5930fce82c280d5cbb54815a84752cb99442b83"
+      },
+      "policy": "replace-bar",
+      "notes": "The selected Luna taskbar, Start menu, desktop icons and Task Manager unload with the bar; its xp-sysinfo.py reader stops with them. Its settings and welcome state remain. Restoring re-selects it.",
+      "source": "Owner-supplied source-only review; no private source or manifest redistributed.",
+      "dependencies": []
+    },
+    {
+      "key": "isle-1",
+      "name": "Isle 1.0.0",
+      "contract": {
+        "schemaVersion": 1,
+        "version": "1.0.0",
+        "kinds": [
+          "bar"
+        ],
+        "entryPoints": {
+          "bar": "Isle.qml"
+        },
+        "keepLoaded": false
+      },
+      "files": {
+        "ControlCenter.qml": "a7709cce9dd949bd46bdc6dbb6a5a7f021fd8aa4d393302f82e167853256e8fa",
+        "Dock.qml": "3305cfe2d4024b03e40d03ac23ce7d17b438e4a2867a5d22bd9d795140c6d5a5",
+        "Island.qml": "7f09715dd4a7e0571ec8a4ef4eba974909f2353e5823ffc7cc1ca9168bb470a3",
+        "Isle.qml": "cf6766b9532eef1c6e4c2316c3e7f64541409538344b14ebd3f15ca189fd156d",
+        "NotificationCenter.qml": "bcd393f7ebef35ed332454b45906506aaf826feb4b34d991a709fa0002ac7c01",
+        "isle-sys.py": "e9a9489cf4c8debe84761aca7bbb82282d0a4111e61e96cdabb41075196fae43"
+      },
+      "policy": "replace-bar",
+      "notes": "The selected Isle menu bar, dynamic island, dock, Control Center and Notification Center unload with the bar; its isle-sys.py reader stops with them. Isle's own notification server unloads too, and its in-memory notification history is cleared by the Omarchy shell restart. Restoring re-selects it.",
+      "source": "Owner-supplied source-only review; no private source or manifest redistributed.",
+      "dependencies": []
     }
   ]
 }
