@@ -64,7 +64,7 @@ Rectangle {
                 spacing: 2
                 GlowText {
                     // Hidden when a standalone panel's content carries its own heading.
-                    visible: !(root.standalone && root.topic === "network")
+                    visible: !(root.standalone && ["network", "go"].includes(root.topic))
                     text: Canopy.titleFor(root.topic).toUpperCase()
                     color: Forest.accent
                     font.family: Theme.labelFont
@@ -121,7 +121,8 @@ Rectangle {
                             notifications: "Notes",
                             quick: "Quick",
                             trails: "Trails",
-                            station: "Station"
+                            station: "Station",
+                            go: "Apps"
                         })[modelData]
                     background: ChamferFrame {
                         cut: 5
@@ -167,7 +168,8 @@ Rectangle {
                         notifications: notifications,
                         quick: quick,
                         trails: trails,
-                        station: station
+                        station: station,
+                        go: go
                     })[root.topic]
             }
         }
@@ -250,6 +252,12 @@ Rectangle {
     Component {
         id: quick
         QuickControls {
+            active: root.active
+        }
+    }
+    Component {
+        id: go
+        GoCanopy {
             active: root.active
         }
     }

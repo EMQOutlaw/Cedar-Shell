@@ -130,7 +130,11 @@ ShellRoot {
     IpcHandler {
         target: "menu"
         function toggle(route: string): void {
-            if (Config.stage >= 3)
+            if (Config.stage < 3)
+                return;
+            if (route === "apps" && Config.saved.canopyEnabled)
+                Canopy.toggleTopic("go");
+            else
                 Go.toggle(route);
         }
         function summon(payload: string): void {

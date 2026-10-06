@@ -16,7 +16,7 @@ Singleton {
     property bool launching: false
     property string message: ""
     readonly property bool busy: worker.running
-    readonly property bool catalogVisible: !ShellState.locked && (ShellState.panel === "menu" || (ShellState.panel === "settings" && ["apps","setup"].includes(ShellState.settingsSection)))
+    readonly property bool catalogVisible: !ShellState.locked && (ShellState.panel === "menu" || (Canopy.shown && Canopy.topic === "go") || (ShellState.panel === "settings" && ["apps","setup"].includes(ShellState.settingsSection)))
     property string generation: ""
     property int sequence: 0
     property int retryDelay: 1000

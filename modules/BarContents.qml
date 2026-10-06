@@ -55,7 +55,14 @@ Item {
                 iconOnly: true
                 hint: "Applications"
                 accent: Theme.teal
-                onClicked: Go.toggle("root")
+                anchorTopic: "go"
+                checked: Canopy.shown && Canopy.topic === "go" && !Canopy.peeking
+                onClicked: {
+                    if (Config.saved.canopyEnabled)
+                        Canopy.toggleTopic("go", root.output.name);
+                    else
+                        Go.toggle("root");
+                }
             }
             Row {
                 visible: Config.moduleEnabled("workspaces")

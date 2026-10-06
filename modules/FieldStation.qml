@@ -91,7 +91,7 @@ Rectangle {
                 visible: Config.stage >= 3 && !Config.moduleEnabled("go")
                 text: "󰀻"
                 hint: "Applications"
-                onClicked: Go.toggle("root")
+                onClicked: Config.saved.canopyEnabled ? Canopy.toggleTopic("go") : Go.toggle("root")
             }
             StationButton {
                 iconOnly: true

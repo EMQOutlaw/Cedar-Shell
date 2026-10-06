@@ -46,11 +46,11 @@ PanelWindow {
 
     // ---- targets -----------------------------------------------------------
     function topicWidth(topic) {
-        const w = Canopy.peeking ? 360 : topic === "station" ? 760 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "quick" ? 420 : 520;
+        const w = Canopy.peeking ? 360 : topic === "station" ? 760 : topic === "go" ? 480 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "quick" ? 420 : 520;
         return Math.min(width - 24, w);
     }
     function topicHeight(topic) {
-        const cap = Math.min(height - barJoin - 16, Canopy.peeking ? 160 : topic === "station" ? 1200 : topic === "quick" ? 660 : 700);
+        const cap = Math.min(height - barJoin - 16, Canopy.peeking ? 160 : topic === "station" ? 1200 : topic === "go" ? 760 : topic === "quick" ? 660 : 700);
         return Math.max(Canopy.peeking ? 120 : 160, Math.min(cap, panel.preferredHeight));
     }
     // Where the open panel sits: centred on its control, else centred on the screen.

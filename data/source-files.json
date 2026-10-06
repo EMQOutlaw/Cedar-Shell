@@ -147,6 +147,7 @@
   "modules/DisplaySettings.qml",
   "modules/FieldStation.qml",
   "modules/FirstRunSettings.qml",
+  "modules/GoCanopy.qml",
   "modules/HotspotSettings.qml",
   "modules/Hud.qml",
   "modules/InputSettings.qml",

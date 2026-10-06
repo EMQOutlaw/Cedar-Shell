@@ -5,11 +5,11 @@ import ".."
 
 Singleton {
     id: root
-    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station"]
+    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go"]
     // One route per destination: a topic with a visible bar button gets no tab.
     // The bar's center control always opens Quick Controls.
     function barRoute(value) {
-        return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications")) || (value === "station" && Config.stage >= 2 && Config.moduleEnabled("identity"));
+        return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications")) || (value === "station" && Config.stage >= 2 && Config.moduleEnabled("identity")) || (value === "go" && Config.stage >= 3 && Config.moduleEnabled("go"));
     }
     readonly property var tabs: topics.filter(t => !barRoute(t))
     // Include the originating controls in the compositor grab. Otherwise an
@@ -88,7 +88,8 @@ Singleton {
             notifications: "Notifications",
             quick: "Quick Controls",
             trails: "Recent Trail",
-            station: "Field Station"
+            station: "Field Station",
+            go: "Applications"
         })[value] || "Canopy";
     }
     readonly property string title: ({
@@ -103,7 +104,8 @@ Singleton {
             notifications: "Notifications",
             quick: "Quick Controls",
             trails: "Recent Trail",
-            station: "Field Station"
+            station: "Field Station",
+            go: "Applications"
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
         if (!topics.includes(value) || ShellState.locked || !Config.saved.canopyEnabled)
