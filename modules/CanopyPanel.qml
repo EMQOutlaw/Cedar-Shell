@@ -257,6 +257,7 @@ Rectangle {
         id: station
         FieldStation {
             active: root.active
+            bare: !root.framed
         }
     }
 }
