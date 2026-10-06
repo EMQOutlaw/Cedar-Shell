@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import ".."
@@ -14,7 +15,10 @@ ColumnLayout {
     property string query: ""
     property int selected: 0
     readonly property int columns: width < 380 ? 3 : 4
-    readonly property int limit: 20
+    // The grid scrolls under a fixed search field; five rows show at once.
+    readonly property int tileHeight: 92
+    readonly property int tileGap: 8
+    readonly property int visibleRows: 5
     spacing: 12
     function beat(order, span = .4) { return Canopy.ease(.06 * order, span); }
 
@@ -35,7 +39,7 @@ ColumnLayout {
         scored.sort((x, y) => x.tier - y.tier || String(x.app.label).localeCompare(String(y.app.label)));
         return scored.map(s => s.app);
     }
-    readonly property var shown: matches.slice(0, limit)
+    readonly property var shown: matches
     // The last four apps launched from Go, oldest trail first after dedupe.
     readonly property var recents: {
         const seen = {}, out = [];
@@ -73,7 +77,16 @@ ColumnLayout {
             Qt.callLater(() => field.forceActiveFocus());
         }
     }
-    onQueryChanged: root.selected = 0
+    onQueryChanged: { root.selected = 0; flick.contentY = 0; }
+    // Keep the selected tile in view when the keyboard moves it.
+    onSelectedChanged: {
+        const row = Math.floor(root.selected / root.columns), step = root.tileHeight + root.tileGap;
+        const top = row * step, bottom = top + root.tileHeight;
+        if (top < flick.contentY)
+            flick.contentY = top;
+        else if (bottom > flick.contentY + flick.height)
+            flick.contentY = Math.max(0, bottom - flick.height);
+    }
 
     RowLayout {
         Layout.fillWidth: true
@@ -164,18 +177,27 @@ ColumnLayout {
         SectionMark { text: root.query ? "MATCHES" : "ALL APPS"; size: 9; tone: Theme.muted }
         Item { Layout.fillWidth: true }
         Text {
-            visible: root.matches.length > root.limit
-            text: "showing " + root.limit + " of " + root.matches.length + " · type to narrow"
+            visible: root.query !== "" && root.matches.length > 0
+            text: root.matches.length + (root.matches.length === 1 ? " match" : " matches")
             textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1; color: Theme.muted
         }
     }
-    GridLayout {
-        id: grid
+    Flickable {
+        id: flick
         Layout.fillWidth: true
-        columns: root.columns
-        columnSpacing: 8; rowSpacing: 8
-        uniformCellWidths: true
-        Repeater {
+        implicitHeight: Math.min(grid.implicitHeight, root.visibleRows * root.tileHeight + (root.visibleRows - 1) * root.tileGap)
+        contentWidth: width
+        contentHeight: grid.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: flick.contentHeight > flick.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+        GridLayout {
+            id: grid
+            width: flick.width - (flick.contentHeight > flick.height ? 10 : 0)
+            columns: root.columns
+            columnSpacing: root.tileGap; rowSpacing: root.tileGap
+            uniformCellWidths: true
+            Repeater {
             model: root.shown
             Item {
                 id: tile
@@ -184,7 +206,7 @@ ColumnLayout {
                 readonly property bool current: index === root.selected
                 readonly property real sweep: root.beat(3 + Math.min(index, 11) * .6, .35)
                 Layout.fillWidth: true; Layout.preferredWidth: 1
-                implicitHeight: 92
+                implicitHeight: root.tileHeight
                 opacity: sweep
                 scale: .92 + .08 * sweep
                 Accessible.role: Accessible.Button
@@ -228,6 +250,7 @@ ColumnLayout {
                     onClicked: root.launch(tile.modelData)
                 }
             }
+        }
         }
     }
     Column {
