@@ -53,6 +53,30 @@ Rectangle {
                 color: Theme.muted
                 Layout.fillWidth: true
             }
+            RowLayout {
+                id: fingerprint
+                readonly property string state: root.preview ? "" : ShellState.fingerprint
+                readonly property bool scanning: state === "scanning"
+                readonly property color tone: state === "accepted" ? Theme.green : state === "retry" ? Theme.amber : state === "unavailable" ? Theme.muted : Theme.teal
+                visible: state !== ""
+                spacing: 5
+                Layout.rightMargin: 10
+                Accessible.name: "Fingerprint " + state
+                FieldText {
+                    objectName: "fingerprintIndicator"
+                    text: "󰈷"
+                    font.pixelSize: 15
+                    color: fingerprint.tone
+                    opacity: fingerprint.scanning && pulse.running ? pulse.value : 1
+                    Breath { id: pulse; running: fingerprint.scanning && root.active && Motion.active; from: 1; to: .45; rise: 1100 }
+                }
+                FieldText {
+                    text: ({ready: "TOUCH SENSOR", scanning: "TOUCH SENSOR", retry: "TRY AGAIN", accepted: "MATCHED", unavailable: "READER OFF"})[fingerprint.state] || ""
+                    font.pixelSize: 10
+                    font.letterSpacing: 1
+                    color: fingerprint.tone
+                }
+            }
             FieldText {
                 text: Trailwatch.capsKnown ? (Trailwatch.keyboard.capslock ? "CAPS LOCK ON" : "CAPS OFF") : "CAPS UNKNOWN"
                 font.pixelSize: 10
@@ -107,7 +131,9 @@ Rectangle {
         }
         FieldText {
             Layout.fillWidth: true
-            text: root.preview ? "Visual preview · no session lock" : root.auth.status
+            // The reader's own prompt shows only while the password line has nothing to say.
+            readonly property bool readerPrompt: !root.preview && root.auth.status === "Enter your password" && ShellState.fingerprint === "scanning" && ShellState.fingerprintMessage !== ""
+            text: root.preview ? "Visual preview · no session lock" : readerPrompt ? "Enter your password or " + ShellState.fingerprintMessage.charAt(0).toLowerCase() + ShellState.fingerprintMessage.slice(1) : root.auth.status
             color: root.auth.status === "Enter your password" ? Theme.muted : root.auth.busy ? Theme.teal : Theme.amber
             font.pixelSize: 11
             wrapMode: Text.WordWrap

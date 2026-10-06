@@ -17,6 +17,9 @@ Singleton {
     property int securedUnlocks: 0
     // Successful local PAM checks that did not involve a session lock.
     property int authTests: 0
+    // Fingerprint unlock: "" (not offered), ready, scanning, retry, accepted, unavailable.
+    property string fingerprint: ""
+    property string fingerprintMessage: ""
     property bool authTest: false
     property bool suspendAfterLock: false
     property string osdKind: ""

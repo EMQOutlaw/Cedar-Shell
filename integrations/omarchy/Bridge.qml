@@ -40,7 +40,7 @@ Item {
         return JSON.stringify({
             locked: root.lockLocked, requested: root.lockRequested, pending: root.lockRequested && !root.lockLocked,
             sessionLocked: root.lockLocked, secure: root.lockSecure, realScreens: Quickshell.screens.length,
-            passwordPam: root.lockReady, fingerprint: false, authenticating: false,
+            passwordPam: root.lockReady, fingerprint: root.lockFresh && root.lockState.fingerprint === true, authenticating: false,
             lastEvent: root.lockFresh ? String(root.lockState.event || "") : "stale",
             lastEventAt: root.lockFresh ? new Date(Number(root.lockState.updated)).toISOString() : "", provider: "cedar"
         });

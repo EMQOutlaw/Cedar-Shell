@@ -231,7 +231,7 @@ ShellRoot {
             return ShellState.locked;
         }
         function sessionInfo(): string {
-            return JSON.stringify({generation: Quickshell.env("CEDAR_SESSION_GENERATION"), externalLock: Config.externalSession, trailwatch: Config.trailwatchLock, locked: ShellState.locked, lockReady: ShellState.nativeLockReady, lockSecure: ShellState.lockSecure, securedUnlocks: ShellState.securedUnlocks, authTests: ShellState.authTests, screenCount: Quickshell.screens.length, stage: Config.stage});
+            return JSON.stringify({generation: Quickshell.env("CEDAR_SESSION_GENERATION"), externalLock: Config.externalSession, trailwatch: Config.trailwatchLock, locked: ShellState.locked, lockReady: ShellState.nativeLockReady, lockSecure: ShellState.lockSecure, securedUnlocks: ShellState.securedUnlocks, authTests: ShellState.authTests, fingerprint: ShellState.fingerprint !== "", screenCount: Quickshell.screens.length, stage: Config.stage});
         }
         function stop(): void {
             if (!ShellState.locked)

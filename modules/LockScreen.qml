@@ -12,8 +12,8 @@ Scope {
     id: root
     readonly property string status: authController.status
     property bool hadSecureLock: false
-    Component.onCompleted: ShellState.nativeLockReady = true
-    Component.onDestruction: ShellState.nativeLockReady = false
+    Component.onCompleted: { ShellState.nativeLockReady = true; refreshFingerprint(); }
+    Component.onDestruction: { ShellState.nativeLockReady = false; ShellState.fingerprint = ""; }
     // Keep this ID distinct from TrailwatchView.auth: an implicit lock-surface
     // component otherwise resolves `auth: auth` to its own unset property.
     LockAuth {
@@ -27,12 +27,65 @@ Scope {
                 ShellState.authTests++;
                 return;
             }
-            if (root.hadSecureLock) ShellState.securedUnlocks++;
-            lock.locked = false;
-            ShellState.locked = false;
-            ShellState.suspendAfterLock = false;
+            root.release();
         }
     }
+    function release() {
+        root.stopFingerprint();
+        if (root.hadSecureLock) ShellState.securedUnlocks++;
+        lock.locked = false;
+        ShellState.locked = false;
+        ShellState.suspendAfterLock = false;
+    }
+    // Fingerprint: a second PAM conversation that needs no typed response, on
+    // the same service Omarchy's lock uses. It starts only once the compositor
+    // lock is secure, retries while locked, and is aborted on unlock. The
+    // password path above is untouched by it.
+    property bool fingerprintConfigured: false
+    function startFingerprint() {
+        if (!ShellState.locked || !ShellState.lockSecure || !fingerprintConfigured || Config.testMode) return;
+        if (fingerprintPam.active) return;
+        ShellState.fingerprint = "scanning";
+        if (!fingerprintPam.start()) ShellState.fingerprint = "unavailable";
+    }
+    function stopFingerprint() {
+        fingerprintRetry.stop();
+        if (fingerprintPam.active) fingerprintPam.abort();
+        ShellState.fingerprintMessage = "";
+        ShellState.fingerprint = fingerprintConfigured ? "ready" : "";
+    }
+    PamContext {
+        id: fingerprintPam
+        config: "omarchy-lock-fingerprint"
+        configDirectory: Config.pamDirectory
+        onPamMessage: if (ShellState.locked && message) ShellState.fingerprintMessage = message
+        onCompleted: result => {
+            if (!ShellState.locked) return;
+            if (result === PamResult.Success) { ShellState.fingerprint = "accepted"; ShellState.fingerprintMessage = ""; root.release(); return; }
+            ShellState.fingerprint = "retry";
+            fingerprintRetry.restart();
+        }
+        onError: error => {
+            if (!ShellState.locked) return;
+            ShellState.fingerprint = "retry";
+            fingerprintRetry.restart();
+        }
+    }
+    // fprintd ends a verification after its own attempt limit; a short pause
+    // before the next one keeps the reader from being hammered.
+    Timer { id: fingerprintRetry; interval: 600; onTriggered: root.startFingerprint() }
+    ServiceRequest {
+        id: fingerprintCheck
+        script: "scripts/fingerprint.py"
+        onResult: value => {
+            root.fingerprintConfigured = value.configured === true;
+            if (ShellState.fingerprint === "" || ShellState.fingerprint === "ready" || ShellState.fingerprint === "unavailable")
+                ShellState.fingerprint = root.fingerprintConfigured ? "ready" : "";
+            root.startFingerprint();
+        }
+        onFailed: message => { root.fingerprintConfigured = false; ShellState.fingerprint = ""; }
+    }
+    function refreshFingerprint() { if (!Config.testMode && !fingerprintCheck.running) fingerprintCheck.send({}); }
     PamContext {
         id: pam
         config: Config.pamService
@@ -60,7 +113,9 @@ Scope {
                 root.hadSecureLock = false;
                 lock.locked = true;
                 root.clearInputs();
-            }
+                root.refreshFingerprint();
+            } else if (!ShellState.locked)
+                root.stopFingerprint();
         }
     }
     PanelWindow {
@@ -101,7 +156,7 @@ Scope {
         id: lock
         onSecureChanged: {
             ShellState.lockSecure = secure;
-            if (secure) root.hadSecureLock = true;
+            if (secure) { root.hadSecureLock = true; root.startFingerprint(); }
             if (secure && ShellState.suspendAfterLock) {
                 ShellState.suspendAfterLock = false;
                 Quickshell.execDetached(["systemctl", "suspend"]);

@@ -31,6 +31,16 @@ Use **Settings → Power & Lock** for these persistent preferences:
 | `lockAgendaDetails` | `false` | Allows calendar/reminder/timer labels when privacy is off |
 | `lockMediaControls` | `true` | Allows playback and volume adjustment while locked |
 
+## Fingerprint
+
+When `/etc/pam.d/omarchy-lock-fingerprint` exists and `fprintd-list` reports an
+enrolled print, the access terminal shows a small fingerprint indicator and the
+reader's prompt. A second PAM conversation on that service starts as soon as
+the compositor lock is secure, retries after each failed verification, and is
+aborted the moment the session unlocks by any means. The password field keeps
+working throughout; neither path can unlock without PAM success. Nothing is
+enrolled or changed by CEDAR; `scripts/fingerprint.py` only reads availability.
+
 The **Shield** button hides details for the remainder of the lock session,
 on every display. It cannot reveal information forbidden by preferences.
 Notification bodies, album art, SSIDs and VPN names are never drawn. A visible
