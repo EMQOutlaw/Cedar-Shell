@@ -46,6 +46,16 @@ Singleton {
         }[kind] || "?")
     property string error: ""
     readonly property bool busy: action.running
+    // A short notice for the network chip after a change: {title, detail, tone, until}.
+    // Tone is "ok", "lost" or "vpn". Core no longer carries network or VPN rows.
+    property var notice: null
+    function announce(title, detail, tone, duration) {
+        const ms = duration || 4000;
+        notice = { title: title, detail: detail || "", tone: tone || "ok", until: Date.now() + ms };
+        noticeClear.interval = ms;
+        noticeClear.restart();
+    }
+    Timer { id: noticeClear; onTriggered: root.notice = null }
     readonly property bool expanded: !ShellState.locked && ((ShellState.panel === "settings" && ShellState.settingsSection === "connections") || (Canopy.shown && ["network", "quick"].includes(Canopy.topic)))
     property string generation: ""
     property int sequence: 0

@@ -155,31 +155,22 @@ Scope {
         lastNetwork = data;
         if (!primed || !data.available || !previous?.available)
             return;
-        const live = data.saved.filter(c => c.active && !["vpn", "wireguard"].includes(c.type));
-        const before = previous.saved.filter(c => c.active && !["vpn", "wireguard"].includes(c.type));
-        const name = live.map(c => c.name).join(", "), oldName = before.map(c => c.name).join(", ");
+        // `active` is present in every snapshot; `saved` is only sampled while a panel
+        // is open, so comparing it announced a lost network each time one closed.
+        // Only real links count: loopback, bridges, tunnels and VPNs are not "the network".
+        const virtual = ["vpn", "wireguard", "loopback", "bridge", "tun", "dummy", "veth", "bond", "team"];
+        const links = d => (d.active || []).filter(c => c.state === 2 && !c.vpn && !virtual.includes(c.type)).map(c => c.name).sort();
+        const name = links(data).join(", "), oldName = links(previous).join(", ");
+        // These belong to the network chip, not the pill: the chip flashes and
+        // shows a short label beside its glyph (see NetworkIndicator).
+        if (!Config.saved.coreConnections)
+            return;
         if (name !== oldName)
-            service.publish({
-                id: "network",
-                type: "network",
-                priority: name ? "normal" : "high",
-                title: name || "Network connection lost",
-                subtitle: name ? "Connected" : "No active network connection",
-                timeout: name ? 4000 : 6000,
-                remember: true,
-                actions: []
-            });
-        const vpn = data.saved.filter(c => c.active && ["vpn", "wireguard"].includes(c.type));
-        const oldVpn = previous.saved.filter(c => c.active && ["vpn", "wireguard"].includes(c.type));
+            Network.announce(name || "Network lost", name ? "Connected" : "No active link", name ? "ok" : "lost", name ? 4000 : 6000);
+        const vpns = d => (d.active || []).filter(c => c.state === 2 && (c.vpn || ["vpn", "wireguard"].includes(c.type)));
+        const vpn = vpns(data), oldVpn = vpns(previous);
         if (vpn.map(c => c.path).join() !== oldVpn.map(c => c.path).join())
-            service.publish({
-                id: "vpn",
-                type: "vpn",
-                title: vpn.length ? "VPN active" : "VPN disconnected",
-                subtitle: (vpn.length ? vpn : oldVpn).map(c => c.name).join(", "),
-                timeout: 4500,
-                remember: true
-            });
+            Network.announce(vpn.length ? "VPN active" : "VPN off", (vpn.length ? vpn : oldVpn).map(c => c.name).join(", "), "vpn", 4500);
     }
     function syncProbe() {
         const data = service.probe.data, ids = data.recordings.map(r => "recording/" + r.pid + "/" + r.startTicks);

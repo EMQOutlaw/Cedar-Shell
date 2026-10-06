@@ -26,6 +26,26 @@ Singleton {
     property bool pinned: false
     property bool peeking: false
     property string outputName: ""
+    // Bar controls register a provider returning the screen x of their centre,
+    // keyed by topic and output. The open panel descends from that point when
+    // one exists, otherwise from the screen centre under the Core pill.
+    property var anchorProviders: ({})
+    function setAnchorProvider(value, output, provider) {
+        const next = Object.assign({}, anchorProviders), key = value + "@" + output;
+        if (provider)
+            next[key] = provider;
+        else
+            delete next[key];
+        anchorProviders = next;
+    }
+    // A panel descending from its own bar control is its own thing: no topic
+    // tabs, no Quick Controls footer, and the Core pill does not react to it.
+    readonly property bool standalone: shown && anchorX >= 0
+    readonly property real anchorX: {
+        const provider = shown ? anchorProviders[topic + "@" + (screen?.name || "")] : null;
+        const x = provider ? provider() : -1;
+        return Number.isFinite(x) && x >= 0 ? x : -1;
+    }
     readonly property var screen: Quickshell.screens.find(s => s.name === outputName) || CoreService.hostScreen
     readonly property bool shown: Config.saved.canopyEnabled && !ShellState.locked && (ShellState.panel === "canopy" || pinned)
     readonly property string title: ({

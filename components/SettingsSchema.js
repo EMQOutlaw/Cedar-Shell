@@ -52,7 +52,7 @@ var fields = [
 {"page": "core", "group": "Activities", "key": "coreMedia", "label": "Media", "description": "Track changes and playback controls from MPRIS.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreNotifications", "label": "Important notifications", "description": "Route critical alerts through Core. Ordinary notifications keep their normal popups.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreScreenshots", "label": "Screenshot actions", "description": "Show Open, Copy and Reveal for saved Omarchy screenshot notifications.", "type": "toggle", "defaultValue": true},
-{"page": "core", "group": "Activities", "key": "coreConnections", "label": "Connections", "description": "Bluetooth, network and VPN changes.", "type": "toggle", "defaultValue": true},
+{"page": "core", "group": "Activities", "key": "coreConnections", "label": "Connections", "description": "Bluetooth changes in Core; network and VPN changes on the network button.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "corePower", "label": "Power", "description": "Battery warnings, power connection and system profile changes.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "corePrivacy", "label": "Privacy indicators", "description": "Active PipeWire links from identifiable microphones and cameras. Direct hardware access outside PipeWire is not monitored.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreWorkspaces", "label": "Workspace changes", "description": "Brief feedback when the focused workspace changes.", "type": "toggle", "defaultValue": false},

@@ -21,14 +21,16 @@ Item {
     readonly property bool volume: activity?.type === "volume" || activity?.type === "brightness"
     readonly property bool alert: !!activity && (activity.sticky || activity.attentionUntil > CoreService.model.now)
     readonly property bool detailed: CoreService.expanded
-    readonly property bool peek: hovering && !!activity && !Canopy.shown
+    // A standalone Canopy (one hanging from its own bar control) is not the pill's.
+    readonly property bool canopyHere: Canopy.shown && !Canopy.standalone
+    readonly property bool peek: hovering && !!activity && !root.canopyHere
     readonly property color accent: activity?.priority === 3 || ["recording", "camera", "microphone"].includes(activity?.type) ? Theme.ember : activity?.priority === 2 ? Theme.amber : (Config.saved.forestPulse ? Forest.accent : Theme.teal)
     // The pill has two widths: resting (clock) and active (one signal). The network
     // nub sits outside it, mirrored by equal space on the left so the pill stays centered.
     readonly property bool panel: detailed || peek || CoreService.dropHover
     // Settled background activity (e.g. media playing) leaves the pill at rest; only
     // something asking for attention, an ongoing capture, or a live control widens it.
-    readonly property bool signalling: alert || volume || CoreService.recording || CoreService.privacy.length > 0 || CoreService.timer.active || Canopy.shown || !!Forest.whisper
+    readonly property bool signalling: alert || volume || CoreService.recording || CoreService.privacy.length > 0 || CoreService.timer.active || root.canopyHere || !!Forest.whisper
     readonly property bool showNetwork: Config.moduleEnabled("network") && !panel
     readonly property real nubWidth: showNetwork ? networkStatus.implicitWidth : 0
     readonly property real nubSpace: showNetwork ? nubWidth + 6 : 0
@@ -44,31 +46,68 @@ Item {
     property alias nubItem: networkStatus
     width: targetWidth
     implicitHeight: detailed ? Math.min(maximumHeight, hub.implicitHeight + root.restingHeight + 38) : peek ? root.restingHeight + Math.min(180, preview.implicitHeight) + 28 : CoreService.dropHover ? root.restingHeight + 60 : root.restingHeight
-    height: implicitHeight
-    // Allocate the end size once, animate inside it, then shrink after settling.
-    // Avoid negotiating a new Wayland surface size on every animation frame.
+    // Morph rather than scale: width leads on a short curve, height follows on a
+    // longer expressive curve with a hint of overshoot on the way out and a plain
+    // decelerate on the way back. Content is staged by `reveal`. Reduced Motion
+    // and an inactive surface snap every one of these.
+    readonly property bool morphing: root.active && !Theme.reducedMotion
+    property bool growing: true
+    // Allocate the end size once (plus the overshoot while growing), animate
+    // inside it, then shrink after settling. Avoid negotiating a new Wayland
+    // surface size on every animation frame.
     property int windowHeight: Math.ceil(implicitHeight) + 2
-    onImplicitHeightChanged: windowHeight = Math.max(windowHeight, Math.ceil(implicitHeight) + 2)
+    onImplicitHeightChanged: {
+        growing = implicitHeight > height;
+        windowHeight = Math.max(windowHeight, Math.ceil(implicitHeight * (morphing && growing ? 1.03 : 1)) + 2);
+        height = implicitHeight;
+    }
+    Component.onCompleted: height = implicitHeight
     onHeightChanged: {
         if (!heightAnimation.running)
             windowHeight = Math.ceil(height) + 2;
     }
     Behavior on width {
-        enabled: root.active && !Theme.reducedMotion
+        enabled: root.morphing
         NumberAnimation {
-            duration: Theme.transition
+            duration: 150
             easing.type: Easing.OutCubic
         }
     }
     Behavior on height {
-        enabled: root.active && !Theme.reducedMotion
+        enabled: root.morphing
         NumberAnimation {
             id: heightAnimation
-            duration: Theme.transition
+            duration: root.growing ? 320 : 200
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.growing ? [0.38, 1.21, 0.22, 1.0, 1, 1] : [0.05, 0.7, 0.1, 1.0, 1, 1]
             onRunningChanged: if (!running)
                 root.windowHeight = Math.ceil(root.height) + 2
-            easing.type: Easing.OutCubic
         }
+    }
+    // 0 while the pill rests, 1 once a panel is open. Content settles in after the
+    // geometry has started moving and leaves quickly, ahead of the shrink.
+    property real reveal: panel ? 1 : 0
+    Behavior on reveal {
+        enabled: root.morphing
+        SequentialAnimation {
+            PauseAnimation { duration: root.panel ? 110 : 0 }
+            NumberAnimation { duration: root.panel ? 220 : 90; easing.type: Easing.OutCubic }
+        }
+    }
+    // The hub has its own reveal so its scroll view never sits over a hover peek.
+    property real hubReveal: detailed ? 1 : 0
+    Behavior on hubReveal {
+        enabled: root.morphing
+        SequentialAnimation {
+            PauseAnimation { duration: root.detailed ? 110 : 0 }
+            NumberAnimation { duration: root.detailed ? 220 : 90; easing.type: Easing.OutCubic }
+        }
+    }
+    // The chamfers open up a little with the panel, so the silhouette flows rather than stretches.
+    property real chamfer: panel ? 1.35 : 1
+    Behavior on chamfer {
+        enabled: root.morphing
+        NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
     }
     // Keep the native surface and its controls mapped; geometry grows from the center.
     Item {
@@ -83,15 +122,15 @@ Item {
                 strokeWidth: 1
                 strokeColor: Qt.alpha(root.lineColor, root.alert ? .36 : .15)
                 fillColor: Qt.alpha(Theme.background, Math.max(.94, Config.barOpacity))
-                startX: 0; startY: 9
-                PathLine { x: 9; y: 0 }
-                PathLine { x: pill.width - 16; y: 0 }
-                PathLine { x: pill.width; y: 16 }
-                PathLine { x: pill.width; y: pill.height - 9 }
-                PathLine { x: pill.width - 9; y: pill.height }
-                PathLine { x: 16; y: pill.height }
-                PathLine { x: 0; y: pill.height - 16 }
-                PathLine { x: 0; y: 9 }
+                startX: 0; startY: 9 * root.chamfer
+                PathLine { x: 9 * root.chamfer; y: 0 }
+                PathLine { x: pill.width - 16 * root.chamfer; y: 0 }
+                PathLine { x: pill.width; y: 16 * root.chamfer }
+                PathLine { x: pill.width; y: pill.height - 9 * root.chamfer }
+                PathLine { x: pill.width - 9 * root.chamfer; y: pill.height }
+                PathLine { x: 16 * root.chamfer; y: pill.height }
+                PathLine { x: 0; y: pill.height - 16 * root.chamfer }
+                PathLine { x: 0; y: 9 * root.chamfer }
             }
         }
         // The ember line: the only signal indicator. It rests as a faint filament,
@@ -102,17 +141,18 @@ Item {
             readonly property bool lit: root.signalling || root.alert
             readonly property bool echo: !lit && Config.saved.forestEchoes && Forest.echoes.length > 0
             anchors.horizontalCenter: parent.horizontalCenter
-            y: root.restingHeight - 2
-            visible: !root.panel
-            width: lit ? pill.width - 40 : echo ? pill.width * .4 : 28
-            height: lit ? 2 : 1
+            // At rest it is the pill's foot; with a panel open it rides up to the seam with the bar.
+            y: root.panel ? 0 : root.restingHeight - 2
+            width: root.panel ? pill.width * .55 : lit ? pill.width - 40 : echo ? pill.width * .4 : 28
+            height: lit && !root.panel ? 2 : 1
             radius: 1
-            color: lit ? root.lineColor : Theme.teal
+            color: lit || root.panel ? root.lineColor : Theme.teal
             // Breathing steps at Motion.ambientFps and rests with the user; the
             // line is always mapped, so a vsync animator here never stopped.
-            readonly property bool breathing: root.active && Motion.active && Config.saved.ambientIntensity > 0 && Config.saved.forestPulse && Forest.state !== "HUNT" && !lit && !echo
-            opacity: lit ? .85 : echo ? .3 : breathing ? breath.value : .45
-            Behavior on width { enabled: !Theme.reducedMotion; NumberAnimation { duration: Theme.transition; easing.type: Easing.OutCubic } }
+            readonly property bool breathing: root.active && Motion.active && Config.saved.ambientIntensity > 0 && Config.saved.forestPulse && Forest.state !== "HUNT" && !lit && !echo && !root.panel
+            opacity: root.panel ? .5 : lit ? .85 : echo ? .3 : breathing ? breath.value : .45
+            Behavior on y { enabled: root.morphing; NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+            Behavior on width { enabled: root.morphing; NumberAnimation { duration: Theme.transition; easing.type: Easing.OutCubic } }
             Behavior on opacity { enabled: !Theme.reducedMotion && !emberLine.breathing; NumberAnimation { duration: 600 } }
             Breath {
                 id: breath
@@ -122,10 +162,6 @@ Item {
                 rise: Forest.breathDuration
                 fall: Forest.breathDuration + 800
             }
-        }
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 0; visible: root.panel; width: root.width * .55; height: 1; color: root.lineColor; opacity: .5
         }
     }
     MouseArea {
@@ -205,10 +241,10 @@ Item {
                 x: 12 + Math.max(0, (parent.width - 24 - (root.dots.length ? dotRow.width + 8 : 0) - width) / 2)
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.min(implicitWidth, parent.width - 24 - (root.dots.length ? dotRow.width + 8 : 0))
-                visible: !(root.volume && !root.panel && !Canopy.shown)
+                visible: !(root.volume && !root.panel && !root.canopyHere)
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
-                text: root.detailed ? "CEDAR CORE" : Canopy.shown ? Canopy.title.toUpperCase() : root.alert ? (root.activity?.title || "") : CoreService.recording ? "REC  " + Media.elapsed((CoreService.now - CoreService.recordings[0].started) / 1000) : CoreService.timer.active ? "TIMER  " + Media.elapsed(CoreService.timer.remaining) : Forest.whisper || (Config.moduleEnabled("clock") ? Config.formatTime(clock.date) : "◈")
+                text: root.detailed ? "CEDAR CORE" : root.canopyHere ? Canopy.title.toUpperCase() : root.alert ? (root.activity?.title || "") : CoreService.recording ? "REC  " + Media.elapsed((CoreService.now - CoreService.recordings[0].started) / 1000) : CoreService.timer.active ? "TIMER  " + Media.elapsed(CoreService.timer.remaining) : Forest.whisper || (Config.moduleEnabled("clock") ? Config.formatTime(clock.date) : "◈")
                 font.family: root.detailed ? Theme.labelFont : Theme.dataFont
                 font.pixelSize: root.detailed ? 19 : Theme.small
                 color: root.alert && !root.detailed && root.activity?.priority >= 2 ? root.accent : Theme.text
@@ -219,7 +255,7 @@ Item {
                 anchors.right: parent.right; anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
-                visible: !root.panel && !(root.volume && !Canopy.shown) && root.dots.length > 0
+                visible: !root.panel && !(root.volume && !root.canopyHere) && root.dots.length > 0
                 Accessible.role: Accessible.StaticText
                 Accessible.name: CoreService.rows.length + " active signals"
                 Repeater {
@@ -259,7 +295,7 @@ Item {
     }
     // Volume and brightness replace the text inside the pill; no second row.
     CoreVolume {
-        visible: root.volume && !root.panel && !Canopy.shown
+        visible: root.volume && !root.panel && !root.canopyHere
         compact: true
         x: pill.x + 10
         width: pill.width - 20
@@ -271,7 +307,8 @@ Item {
         active: root.peek && !root.volume && !root.detailed
         visible: active
         x: 18
-        y: root.restingHeight + 8
+        y: root.restingHeight + 8 + 10 * (1 - root.reveal)
+        opacity: root.reveal
         width: parent.width - 36
         sourceComponent: root.activity?.type === "media" ? mediaPreview : detailPreview
     }
@@ -287,9 +324,10 @@ Item {
     }
     ScrollView {
         id: fullScroll
-        visible: root.detailed
+        visible: root.detailed || root.hubReveal > 0
         x: 18
-        y: root.restingHeight + 8
+        y: root.restingHeight + 8 + 10 * (1 - root.hubReveal)
+        opacity: root.hubReveal
         width: parent.width - 36
         height: parent.height - y - 18
         contentWidth: availableWidth
@@ -303,6 +341,7 @@ Item {
     GlowText {
         visible: CoreService.dropHover && !root.detailed
         y: root.restingHeight + 12
+        opacity: root.reveal
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
         text: "Drop a file for actions"

@@ -36,7 +36,7 @@ Singleton {
     readonly property bool linked: netKnown && Network.data.devices.some(d => d.state === 100)
     readonly property string link: !netKnown ? "Unavailable" : Network.data.devices.some(d => d.type === 1 && d.state === 100) ? "Ethernet" : Network.data.devices.some(d => d.type === 2 && d.state === 100) ? "Wi-Fi" : linked ? "Network" : "Disconnected"
     readonly property string internet: !netKnown ? "Network unavailable" : !linked ? "Offline" : Network.data.connectivity === 4 ? "Online" : Network.data.connectivity === 2 ? "Captive portal" : Network.data.connectivity === 3 ? "Limited connectivity" : "Link active · internet unverified"
-    readonly property bool vpn: netKnown && Network.data.saved.some(c => ["vpn", "wireguard"].includes(c.type) && c.active)
+    readonly property bool vpn: netKnown && (Network.data.active || []).some(c => c.state === 2 && (c.vpn || ["vpn", "wireguard"].includes(c.type)))
     readonly property bool capsKnown: Object.prototype.hasOwnProperty.call(keyboard, "capslock")
     readonly property var keyboard: CoreService.enabled ? (CoreService.probe.error ? {} : CoreService.probe.data.keyboard) : (lockProbe.error ? {} : lockProbe.data.keyboard)
     readonly property bool weatherStale: Weather.stale || !Weather.updatedAt || now - Weather.updatedAt.getTime() > 1800000

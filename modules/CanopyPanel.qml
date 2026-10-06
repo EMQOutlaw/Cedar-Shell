@@ -8,6 +8,8 @@ import "../services"
 Rectangle {
     id: root
     property bool active: false
+    // Panel x of the control this panel descends from, or -1 for the centre.
+    property real tieX: -1
     // Panels descend from the Core pill, so they share its chamfered silhouette.
     color: Theme.transparent
     clip: true
@@ -18,7 +20,11 @@ Rectangle {
         stroke: Qt.alpha(Forest.accent, .25)
     }
     // A short lit line at the top edge ties the panel to the pill above it.
-    Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: 0; width: 64; height: 2; radius: 1; color: Forest.accent; opacity: .7 }
+    Rectangle {
+        x: root.tieX >= 0 ? Math.round(Math.max(14, Math.min(root.tieX - width / 2, parent.width - width - 14))) : Math.round((parent.width - width) / 2)
+        y: 0; width: 64; height: 2; radius: 1; color: Forest.accent; opacity: .7
+        Behavior on x { enabled: !Theme.reducedMotion; NumberAnimation { duration: Theme.transition; easing.type: Easing.OutCubic } }
+    }
     CedarAtmosphere {
         anchors.fill: parent
         anchors.margins: 8
@@ -47,6 +53,8 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 2
                 GlowText {
+                    // A standalone panel's content carries its own heading.
+                    visible: !Canopy.standalone
                     text: Canopy.title.toUpperCase()
                     color: Forest.accent
                     font.family: Theme.labelFont
@@ -78,7 +86,7 @@ Rectangle {
             }
         }
         GridLayout {
-            visible: !Canopy.peeking && Canopy.tabs.length > 0
+            visible: !Canopy.peeking && !Canopy.standalone && Canopy.tabs.length > 0
             Layout.fillWidth: true
             columns: Math.min(Canopy.tabs.length, root.width < 600 ? 4 : 8)
             uniformCellWidths: true
@@ -152,7 +160,7 @@ Rectangle {
             }
         }
         RowLayout {
-            visible: !Canopy.peeking
+            visible: !Canopy.peeking && !Canopy.standalone
             Layout.fillWidth: true
             GlowText {
                 Layout.fillWidth: true

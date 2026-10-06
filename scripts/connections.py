@@ -128,9 +128,13 @@ class Network:
         for ap in sorted(networks, key=lambda x: (x['active'], x['strength']), reverse=True):
             unique.setdefault((ap['ssid'], ap['security'], ap['device']), ap)
         status = link_status(settings, connections, devices, networks)
+        # Active connections ride along in every snapshot, so change detection
+        # never depends on the detailed rows that only an open panel samples.
+        active = [{'path': c['path'], 'name': c['name'], 'type': c['type'], 'state': c['state'], 'vpn': c['vpn'], 'default': c['default'] or c['default6']}
+                  for c in connections if c['state'] in (1, 2)]
         return {'available': True, 'enabled': bool(settings['WirelessEnabled']),
             'hardware': bool(settings['WirelessHardwareEnabled']), 'connectivity': int(settings.get('Connectivity', 0)), 'devices': devices,
-            'networks': list(unique.values()), 'saved': saved, 'label': status['label'], 'status': status}
+            'networks': list(unique.values()), 'saved': saved, 'active': active, 'label': status['label'], 'status': status}
 
     def wait_active(self, path):
         deadline = time.monotonic() + 35
@@ -237,7 +241,7 @@ def watch():
     def publish():
         state['pending']=0
         try: data=Network().snapshot(state['expanded'])
-        except dbus.DBusException: data={'available':False,'devices':[],'networks':[],'saved':[],'label':'Network unavailable'}
+        except dbus.DBusException: data={'available':False,'devices':[],'networks':[],'saved':[],'active':[],'label':'Network unavailable'}
         state['sequence']+=1
         line=json.dumps({'schema':1,'generation':generation,'sequence':state['sequence'],'kind':'snapshot','data':data})
         if len(line.encode())>4*1024*1024: loop.quit(); return False

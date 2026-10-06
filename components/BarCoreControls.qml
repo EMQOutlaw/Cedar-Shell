@@ -26,5 +26,6 @@ Row {
         visible: Config.moduleEnabled("network")
         height: parent.height
         outputName: parent.outputName
+        inline: true
     }
 }

@@ -16,7 +16,8 @@ PanelWindow {
     visible: CoreService.available && CoreService.hostScreen === modelData && (!covered || Canopy.shown || CoreService.expanded || surface.alert || CoreService.recording || CoreService.privacy.length > 0)
     anchors.top: true
     margins.top: (Config.barDetached ? Config.barMargin : 0) + surface.barInset
-    implicitWidth: Math.min(480, modelData?.width || 480)
+    // Wide enough for the network chip's notice label beside an active-width pill; input is masked to the pill and chip.
+    implicitWidth: Math.min(620, modelData?.width || 620)
     implicitHeight: surface.windowHeight
     exclusionMode: ExclusionMode.Ignore
     color: Theme.transparent

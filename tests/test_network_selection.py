@@ -72,3 +72,24 @@ class WatchFiltering(unittest.TestCase):
             self.assertTrue(m.relevant(path, False), path)
 
 if __name__=='__main__':unittest.main()
+
+class SnapshotActiveRows(unittest.TestCase):
+    """Every snapshot carries the active links; `saved` is only sampled while a panel is open."""
+    def network(self, rows):
+        n = object.__new__(m.Network)
+        props = {(m.BASE, m.NM): {'Devices': ['/device/ether'], 'WirelessEnabled': False, 'WirelessHardwareEnabled': False, 'Connectivity': 4, 'PrimaryConnection': rows[0]['path']},
+                 ('/device/ether', m.NM+'.Device'): {'Interface': 'eth0', 'DeviceType': 1, 'State': 100}}
+        n.props = lambda path, iface: props[(path, iface)]
+        n.active_connections = lambda settings: rows
+        n.saved = lambda connections=None: [dict(path='/profile/x', name='Office cable', type='802-3-ethernet', active='/active/Office cable')]
+        return n
+    def test_closed_panel_snapshot_still_lists_active_links(self):
+        rows = [connection('Office cable','802-3-ethernet','ether',default=True), connection('VPN','wireguard','ether'), connection('Gone','802-11-wireless','ether',state=4)]
+        rows[1]['vpn'] = True
+        for row in rows: row.setdefault('vpn', False)
+        for detailed in (False, True):
+            s = self.network(rows).snapshot(detailed)
+            self.assertEqual([c['name'] for c in s['active']], ['Office cable', 'VPN'], 'deactivated rows are dropped')
+            self.assertEqual([c['vpn'] for c in s['active']], [False, True])
+            self.assertTrue(s['active'][0]['default'])
+            self.assertEqual(len(s['saved']), 1 if detailed else 0)
