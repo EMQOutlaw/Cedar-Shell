@@ -12,6 +12,9 @@ ColumnLayout {
     property var selected: null
     property string confirmForget: ""
     property bool hotspot: false
+    // The Settings Connections page shows these in sections of its own.
+    property bool showTitle: true
+    property bool showHotspot: true
     Connections {
         target: Network
         function onDataChanged() {
@@ -23,7 +26,6 @@ ColumnLayout {
     }
     onActiveChanged: {
         password.text = "";
-        hotspotPassword.text = "";
         if (active)
             Network.refresh();
         else
@@ -31,6 +33,7 @@ ColumnLayout {
     }
     spacing: 12
     GlowText {
+        visible: root.showTitle
         text: "Connections"
         color: Theme.teal
         font.pixelSize: 19
@@ -71,6 +74,7 @@ ColumnLayout {
             })
         }
         StationButton {
+            visible: root.showHotspot
             text: "Hotspot"
             enabled: Network.data.enabled && !Network.busy
             checked: root.hotspot
@@ -177,57 +181,9 @@ ColumnLayout {
             }
         }
     }
-    ColumnLayout {
-        visible: root.hotspot
+    HotspotSettings {
+        visible: root.hotspot && root.showHotspot
         Layout.fillWidth: true
-        GlowText {
-            text: "Sharing an adapter disconnects it from its current Wi-Fi network."
-            color: Theme.amber
-            Layout.fillWidth: true
-            wrapMode: Text.WordWrap
-        }
-        StationCombo {
-            id: hotspotAdapter
-            Layout.fillWidth: true
-            model: Network.data.devices.filter(d => d.type === 2 && d.hotspotCapable === true)
-            textRole: "name"
-        }
-        StationField {
-            id: hotspotName
-            Layout.fillWidth: true
-            placeholderText: "Hotspot name"
-            text: "CEDAR"
-        }
-        StationField {
-            id: hotspotPassword
-            Layout.fillWidth: true
-            placeholderText: "Password (8–63 characters)"
-            echoMode: TextInput.Password
-            inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
-        }
-        StationToggle {
-            id:hotspotConsent
-            property bool accepted: false
-            checked:accepted
-            label:"Allow this adapter to disconnect its current network"
-            description:"Starting a hotspot changes how the selected Wi-Fi adapter is used."
-            Layout.fillWidth:true
-            onToggled:value=>accepted=value
-        }
-        StationButton {
-            text: "Start hotspot"
-            enabled: hotspotConsent.checked && !Network.busy && hotspotPassword.text.length >= 8 && hotspotAdapter.currentIndex >= 0
-            onClicked: {
-                Network.run({
-                    action: "hotspot",
-                    approveDisconnect: hotspotConsent.checked,
-                    device: hotspotAdapter.model[hotspotAdapter.currentIndex].path,
-                    ssid: hotspotName.text,
-                    password: hotspotPassword.text
-                });
-                hotspotPassword.text = "";
-            }
-        }
     }
     GlowText {
         text: "SAVED NETWORKS & VPN"

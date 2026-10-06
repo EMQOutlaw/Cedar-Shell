@@ -5,37 +5,54 @@ import "../components"
 import "../services"
 ColumnLayout {
     id:root
-    spacing:8
-    SettingsHeading { text:"Output"; objectName:"output" }
-    SettingRow {
-        Layout.fillWidth:true; title:"Output device"; description:"Choose where desktop sound plays."
-        StationCombo { Layout.fillWidth:true; model:Audio.outputs; textRole:"description"; currentIndex:Audio.outputs.indexOf(Audio.sink); enabled:count>0; onActivated:Audio.selectOutput(Audio.outputs[currentIndex]) }
+    spacing:16
+    // A large live level with its own mute; used for output and microphone.
+    component Level: RowLayout {
+        id:level
+        property real value:0
+        property bool muted:false
+        property bool available:false
+        property string name:""
+        signal moved(real value)
+        signal toggled()
+        Layout.fillWidth:true; spacing:14
+        Text { Layout.preferredWidth:84; text:!level.available ? "—" : level.muted ? "MUTED" : Math.round(level.value*100)+"%"; font.family:Theme.labelFont; font.pixelSize:Math.round(30*Theme.fontScale); color:level.muted || !level.available ? Theme.muted : Theme.green }
+        StationSlider { Layout.fillWidth:true; enabled:level.available; value:level.value; onMoved:level.moved(value); Accessible.name:level.name }
+        StationButton { text:level.muted ? "Unmute":"Mute"; checked:level.muted; accent:level.muted ? Theme.amber : Theme.teal; enabled:level.available; onClicked:level.toggled() }
     }
-    SettingRow {
-        Layout.fillWidth:true; title:"Output volume"; description:Audio.audio ? Math.round(Audio.volume*100)+"%" : "No output device available"
-        StationSlider { Layout.fillWidth:true; enabled:!!Audio.audio; value:Audio.volume; onMoved:Audio.setVolume(value); Accessible.name:"Output volume" }
-        StationButton { text:Audio.muted ? "Unmute":"Mute"; checked:Audio.muted; enabled:!!Audio.audio; onClicked:Audio.toggleMute() }
+
+    SettingsSection {
+        objectName:"output"
+        heading:"Output"; caption:"Where desktop sound plays."
+        badge:Audio.outputs.length+(Audio.outputs.length===1 ? " device":" devices")
+        StationCombo { Layout.fillWidth:true; model:Audio.outputs; textRole:"description"; currentIndex:Audio.outputs.indexOf(Audio.sink); enabled:count>0; Accessible.name:"Output device"; onActivated:Audio.selectOutput(Audio.outputs[currentIndex]) }
+        Level { name:"Output volume"; available:!!Audio.audio; value:Audio.volume; muted:Audio.muted; onMoved:value=>Audio.setVolume(value); onToggled:Audio.toggleMute() }
+        GlowText { visible:!Audio.audio; text:"No output device is available."; color:Theme.muted; font.pixelSize:Theme.small }
     }
-    SettingsHeading { text:"Input"; objectName:"microphone" }
-    SettingRow {
-        Layout.fillWidth:true; title:"Microphone"; description:"Choose the default recording device."
-        StationCombo { Layout.fillWidth:true; model:Audio.inputs; textRole:"description"; currentIndex:Audio.inputs.indexOf(Audio.source); enabled:count>0; onActivated:Audio.selectInput(Audio.inputs[currentIndex]) }
+
+    SettingsSection {
+        objectName:"microphone"
+        heading:"Microphone"; caption:"The default recording device."
+        badge:Audio.inputs.length+(Audio.inputs.length===1 ? " device":" devices")
+        StationCombo { Layout.fillWidth:true; model:Audio.inputs; textRole:"description"; currentIndex:Audio.inputs.indexOf(Audio.source); enabled:count>0; Accessible.name:"Microphone"; onActivated:Audio.selectInput(Audio.inputs[currentIndex]) }
+        Level { name:"Microphone volume"; available:!!Audio.microphone; value:Audio.microphone?.volume ?? 0; muted:Audio.microphone?.muted ?? false; onMoved:value=>Audio.setMicrophone(value); onToggled:Audio.toggleMicrophone() }
+        GlowText { visible:!Audio.microphone; text:"No input device is available."; color:Theme.muted; font.pixelSize:Theme.small }
     }
-    SettingRow {
-        Layout.fillWidth:true; title:"Input volume"; description:Audio.microphone ? Math.round(Audio.microphone.volume*100)+"%" : "No input device available"
-        StationSlider { Layout.fillWidth:true; enabled:!!Audio.microphone; value:Audio.microphone?.volume ?? 0; onMoved:Audio.setMicrophone(value); Accessible.name:"Microphone volume" }
-        StationButton { text:Audio.microphone?.muted ? "Unmute":"Mute"; checked:Audio.microphone?.muted ?? false; enabled:!!Audio.microphone; onClicked:Audio.toggleMicrophone() }
-    }
-    SettingsHeading { text:"Applications"; objectName:"streams" }
-    GlowText { visible:!Audio.streams.length; text:"Active playback and recording streams appear here."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; Layout.leftMargin:12 }
-    Repeater {
-        model:Audio.streams
-        SettingRow {
-            required property var modelData
-            Layout.fillWidth:true; title:modelData.description || modelData.name
-            description:Math.round(modelData.audio.volume*100)+"%"
-            StationSlider { Layout.fillWidth:true; value:modelData.audio.volume; onMoved:modelData.audio.volume=value; Accessible.name:modelData.description+" volume" }
-            StationButton { text:modelData.audio.muted ? "Unmute":"Mute"; checked:modelData.audio.muted; onClicked:modelData.audio.muted=!modelData.audio.muted }
+
+    SettingsSection {
+        objectName:"streams"
+        heading:"Applications"; caption:"Apps playing or recording right now. Their volume is separate from the device level."
+        badge:Audio.streams.length ? Audio.streams.length+" active" : ""
+        Repeater {
+            model:Audio.streams
+            SettingRow {
+                required property var modelData
+                Layout.fillWidth:true; title:modelData.description || modelData.name
+                description:modelData.audio.muted ? "Muted" : Math.round(modelData.audio.volume*100)+"%"
+                StationSlider { Layout.fillWidth:true; value:modelData.audio.volume; onMoved:modelData.audio.volume=value; Accessible.name:(modelData.description || modelData.name)+" volume" }
+                StationButton { text:modelData.audio.muted ? "Unmute":"Mute"; checked:modelData.audio.muted; onClicked:modelData.audio.muted=!modelData.audio.muted }
+            }
         }
+        GlowText { visible:!Audio.streams.length; text:"Nothing is playing or recording."; color:Theme.muted; font.pixelSize:Theme.small }
     }
 }

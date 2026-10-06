@@ -28,3 +28,9 @@ ReadingText 1.0 ReadingText.qml
 NetworkIndicator 1.0 NetworkIndicator.qml
 BarCoreControls 1.0 BarCoreControls.qml
 Breath 1.0 Breath.qml
+Keycap 1.0 Keycap.qml
+ChoiceChips 1.0 ChoiceChips.qml
+SettingsSection 1.0 SettingsSection.qml
+StatusPill 1.0 StatusPill.qml
+Readout 1.0 Readout.qml
+ChamferFrame 1.0 ChamferFrame.qml

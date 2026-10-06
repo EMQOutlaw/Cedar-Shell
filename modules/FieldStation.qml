@@ -61,9 +61,10 @@ Rectangle {
             Item {
                 Layout.fillWidth: true
             }
+            // Go already has a bar button; offer it here only when that is hidden.
             StationButton {
                 iconOnly: true
-                visible: Config.stage >= 3
+                visible: Config.stage >= 3 && !Config.moduleEnabled("go")
                 text: "󰀻"
                 hint: "Applications"
                 onClicked: Go.toggle("root")
@@ -304,20 +305,12 @@ Rectangle {
                     {
                         name: "Files",
                         cmd: Config.files
-                    },
-                    {
-                        name: "Settings",
-                        cmd: null
                     }
                 ]
                 StationButton {
                     required property var modelData
                     text: modelData.name
                     onClicked: {
-                        if (!modelData.cmd) {
-                            ShellState.toggle("settings");
-                            return;
-                        }
                         Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--"].concat(modelData.cmd));
                         ShellState.close();
                     }
@@ -341,14 +334,6 @@ Rectangle {
                 text: Branding.content.psalm.reference + " · " + Branding.content.psalm.translation
                 color: Theme.muted
                 font.pixelSize: Theme.normal
-            }
-            StationButton {
-                text: "About CEDAR"
-                onClicked: {
-                    ShellState.settingsPage = "about";
-                    ShellState.settingsAnchor = "cedarMeaning";
-                    ShellState.toggle("settings");
-                }
             }
         }
     }

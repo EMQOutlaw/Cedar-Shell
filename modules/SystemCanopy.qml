@@ -19,7 +19,6 @@ ColumnLayout {
     Repeater {model:root.gpus;SettingRow {required property var modelData;Layout.fillWidth:true;title:modelData.name;description:"GPU "+(modelData.load??"—")+"% · "+(modelData.temperature??"—")+"°C\nVRAM "+(modelData.used??"—")+" / "+(modelData.total??"—")+" MiB"} }
     GlowText {visible:!root.gpus.length;Layout.fillWidth:true;wrapMode:Text.WordWrap;text:root.error || "GPU telemetry is unavailable for this device.";color:Theme.muted}
     GlowText {Layout.fillWidth:true;wrapMode:Text.WordWrap;text:"FPS and 1% lows need a game-side telemetry provider. They are not inferred from monitor refresh or GPU load.";color:Theme.muted}
-    StationButton {text:"Open System Health";onClicked:{ShellState.settingsPage="system";ShellState.open("settings");}}
     function refresh(){if(root.active && !Config.testMode && !reader.running)reader.send({});}
     onActiveChanged:if(active)refresh()
     Component.onCompleted:refresh()

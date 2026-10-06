@@ -8,13 +8,20 @@ import "../services"
 Rectangle {
     id: root
     property bool active: false
-    color: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
-    radius: Config.panelRadius
-    border.color: Qt.alpha(Forest.accent, .25)
-    border.width: 1
+    // Panels descend from the Core pill, so they share its chamfered silhouette.
+    color: Theme.transparent
     clip: true
+    ChamferFrame {
+        anchors.fill: parent
+        cut: 12
+        fill: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
+        stroke: Qt.alpha(Forest.accent, .25)
+    }
+    // A short lit line at the top edge ties the panel to the pill above it.
+    Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: 0; width: 64; height: 2; radius: 1; color: Forest.accent; opacity: .7 }
     CedarAtmosphere {
         anchors.fill: parent
+        anchors.margins: 8
         active: root.active && !Canopy.peeking && Forest.state !== "HUNT" && Config.saved.ambientIntensity > 0
         opacity: Config.saved.ambientIntensity * .22
     }
@@ -26,7 +33,11 @@ Rectangle {
                 Canopy.leavePeek();
         }
     }
+    // The panel hugs its content; CanopyWindow shrinks the visible frame and mask
+    // to this height without resizing the native surface.
+    readonly property real preferredHeight: Math.ceil(layout.implicitHeight + 40)
     ColumnLayout {
+        id: layout
         anchors.fill: parent
         anchors.margins: 20
         spacing: 12
@@ -36,26 +47,22 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 2
                 GlowText {
-                    text: "◈  " + Canopy.title.toUpperCase()
+                    text: Canopy.title.toUpperCase()
                     color: Forest.accent
                     font.family: Theme.labelFont
-                    font.pixelSize: 24
+                    font.pixelSize: 20
+                    font.letterSpacing: 2
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
                 GlowText {
                     visible: Canopy.peeking
-                    text: "PEEK · click Open for controls"
+                    text: "PEEK · click the bar control to open"
                     color: Theme.muted
                     font.pixelSize: 10
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
-            }
-            StationButton {
-                visible: Canopy.peeking
-                text: "Open"
-                onClicked: Canopy.open(Canopy.topic)
             }
             StationButton {
                 visible: !Canopy.peeking
@@ -70,14 +77,20 @@ Rectangle {
                 onClicked: Canopy.close()
             }
         }
-        Flow {
-            visible: !Canopy.peeking
+        GridLayout {
+            visible: !Canopy.peeking && Canopy.tabs.length > 0
             Layout.fillWidth: true
-            spacing: 4
+            columns: Math.min(Canopy.tabs.length, root.width < 600 ? 4 : 8)
+            uniformCellWidths: true
+            columnSpacing: 4; rowSpacing: 4
             Repeater {
-                model: Canopy.topics
+                model: Canopy.tabs
                 StationButton {
+                    id: tab
                     required property string modelData
+                    Layout.fillWidth: true
+                    implicitHeight: 28
+                    checked: Canopy.topic === modelData
                     text: ({
                             audio: "Audio",
                             network: "Connections",
@@ -91,8 +104,13 @@ Rectangle {
                             quick: "Quick",
                             trails: "Trails"
                         })[modelData]
-                    implicitHeight: 30
-                    checked: Canopy.topic === modelData
+                    background: ChamferFrame {
+                        cut: 5
+                        fill: tab.checked ? Qt.alpha(Forest.accent, .10) : tab.hovered ? Qt.alpha(Theme.teal, .05) : Theme.transparent
+                        stroke: tab.visualFocus ? Theme.green : tab.checked ? Qt.alpha(Forest.accent, .5) : Qt.alpha(Theme.teal, .12)
+                        strokeWidth: tab.visualFocus ? 2 : 1
+                    }
+                    contentItem: Text { text: tab.text.toUpperCase(); textFormat: Text.PlainText; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1.2; color: tab.checked ? Forest.accent : Theme.text; elide: Text.ElideRight }
                     onClicked: Canopy.open(modelData)
                 }
             }
@@ -109,6 +127,7 @@ Rectangle {
             visible: !Canopy.peeking
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.preferredHeight: loader.implicitHeight
             contentWidth: availableWidth
             clip: true
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -150,6 +169,7 @@ Rectangle {
                 }
             }
             StationButton {
+                objectName: "fullSettings"
                 text: "Full Settings"
                 onClicked: {
                     Canopy.close();

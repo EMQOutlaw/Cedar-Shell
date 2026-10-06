@@ -6,37 +6,92 @@ import "../services"
 ColumnLayout {
     id: root
     property string highlightKey:""
-    property bool browseThemes:false
-    spacing:12
-    SettingsHeading { text:"Theme"; objectName:"theme" }
-    SettingsCard {
-        Layout.fillWidth:true
-        GlowText { text:SettingsInfo.data.theme; font.family:Theme.labelFont; font.pixelSize:30; color:Theme.green }
-        GlowText { text:"Quiet light. Familiar tools."; color:Theme.muted }
-        Row { spacing:8; Repeater { model:[Theme.background,Theme.surface,Theme.elevated,Theme.green,Theme.teal,Theme.amber,Theme.ember]; Rectangle { required property color modelData; width:24; height:24; radius:12; color:modelData; border.color:Theme.border } } }
-        GlowText { text:"CEDAR themes apply to this shell. Add local JSON palettes in the CEDAR themes folder; your applications and desktop session stay running."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
-    }
-    StationButton { text:root.browseThemes ? "Close theme library":"Browse installed themes"; checked:root.browseThemes; onClicked:root.browseThemes=!root.browseThemes }
-    GridLayout {
-        visible:root.browseThemes; Layout.fillWidth:true; columns:root.width<550 ? 2:3; columnSpacing:8; rowSpacing:8
-        Repeater {
-            model:root.browseThemes ? SettingsInfo.data.themes:[]
-            ColumnLayout {
-                required property var modelData
-                Layout.fillWidth:true; Layout.preferredWidth:180; spacing:2
-                Rectangle {
-                    Layout.fillWidth:true; implicitHeight:82; color:Theme.surface; radius:8; clip:true
-                    Image { anchors.fill:parent; source:Config.imageSource(modelData.preview); fillMode:Image.PreserveAspectCrop; sourceSize.width:640; asynchronous:true }
-                    GlowText { anchors.centerIn:parent; visible:!modelData.preview; text:modelData.label; color:Theme.muted }
+    spacing:16
+    readonly property var themes: SettingsInfo.data.themes || []
+    readonly property string current: (SettingsInfo.data.theme || "").toLowerCase()
+
+    SettingsSection {
+        objectName:"theme"
+        heading:"Theme"; caption:"Palettes apply to this shell immediately. Add local JSON palettes to the CEDAR themes folder; your applications keep running."
+        badge:SettingsInfo.data.theme || ""; badgeColor:Theme.green
+        Row { spacing:6; Repeater { model:[Theme.background,Theme.surface,Theme.elevated,Theme.border,Theme.green,Theme.teal,Theme.amber,Theme.ember,Theme.text]; Rectangle { required property color modelData; width:28; height:28; radius:6; color:modelData; border.color:Qt.alpha(Theme.text,.12) } } }
+        GridLayout {
+            Layout.fillWidth:true; columns:root.width<560 ? 2:3; columnSpacing:10; rowSpacing:10
+            Repeater {
+                model:root.themes
+                StationButton {
+                    id:tile
+                    required property var modelData
+                    readonly property bool inUse:modelData.name.toLowerCase()===root.current
+                    Layout.fillWidth:true; Layout.preferredWidth:180; implicitHeight:128
+                    checked:inUse; enabled:!SettingsInfo.busy
+                    Accessible.name:modelData.label+(inUse ? ", in use":"")
+                    onClicked:if(!inUse)SettingsInfo.run({action:"theme",name:modelData.name})
+                    background:Rectangle {
+                        radius:10; color:Theme.surface; clip:true
+                        border.width:tile.visualFocus ? Theme.focusWidth:tile.inUse ? 2:1
+                        border.color:tile.visualFocus || tile.inUse ? Theme.green:tile.hovered ? Qt.alpha(Theme.teal,.45):Qt.alpha(Theme.teal,.14)
+                    }
+                    contentItem:ColumnLayout {
+                        spacing:6
+                        Rectangle {
+                            Layout.fillWidth:true; Layout.fillHeight:true; radius:6; color:Theme.background; clip:true
+                            Image { anchors.fill:parent; source:Config.imageSource(tile.modelData.preview); fillMode:Image.PreserveAspectCrop; sourceSize.width:480; asynchronous:true }
+                            Text { anchors.centerIn:parent; visible:!tile.modelData.preview; text:"Aa"; font.family:Theme.labelFont; font.pixelSize:28; color:Theme.muted }
+                        }
+                        RowLayout {
+                            Layout.fillWidth:true
+                            Text { Layout.fillWidth:true; text:tile.modelData.label; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:tile.inUse ? Theme.green:Theme.text; elide:Text.ElideRight }
+                            Text { visible:tile.inUse; text:"IN USE"; font.family:Theme.dataFont; font.pixelSize:9; font.letterSpacing:1.2; color:Theme.green }
+                        }
+                    }
                 }
-                StationButton { text:modelData.label; Layout.fillWidth:true; checked:modelData.name.toLowerCase()===SettingsInfo.data.theme.toLowerCase(); enabled:!SettingsInfo.busy; onClicked:SettingsInfo.run({action:"theme",name:modelData.name}) }
+            }
+        }
+        GlowText { visible:!root.themes.length; text:"No installed themes were found."; color:Theme.muted; font.pixelSize:Theme.small }
+    }
+
+    SettingsSection {
+        heading:"Typography"; caption:"Display type for headings, monospace for controls and readings."
+        Rectangle {
+            Layout.fillWidth:true; implicitHeight:specimen.implicitHeight+28; radius:8; color:Theme.background; border.color:Qt.alpha(Theme.teal,.12)
+            ColumnLayout {
+                id:specimen; anchors.left:parent.left; anchors.right:parent.right; anchors.top:parent.top; anchors.margins:14; spacing:6
+                Text { Layout.fillWidth:true; text:"Field notes, clearly spoken."; font.family:Theme.labelFont; font.pixelSize:Math.round(28*Theme.fontScale); color:Theme.green; wrapMode:Text.WordWrap }
+                Text { Layout.fillWidth:true; text:"THE WOODS ARE QUIET.  ·  Aa Bb Cc  ·  0123456789  ·  12:48"; font.family:Theme.dataFont; font.pixelSize:Theme.normal; color:Theme.text; wrapMode:Text.WordWrap }
+                Text { Layout.fillWidth:true; text:Theme.labelFont+"  /  "+Theme.dataFont+"  ·  "+Math.round(Theme.fontScale*100)+"%"; font.family:Theme.dataFont; font.pixelSize:10; color:Theme.muted; elide:Text.ElideRight }
+            }
+        }
+        SettingsFields { page:"appearance"; groups:["Typography"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+    }
+
+    SettingsSection {
+        heading:"Panels"; caption:"Shape and depth for Settings, Canopy and Field Station."
+        GridLayout {
+            Layout.fillWidth:true; columns:root.width<620 ? 1:2; columnSpacing:16; rowSpacing:8
+            SettingsFields { page:"appearance"; groups:["Interface"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+            // Live miniature of a panel at the current radius and opacity.
+            Item {
+                Layout.preferredWidth:root.width<620 ? -1:220; Layout.fillWidth:root.width<620; implicitHeight:130
+                Rectangle { anchors.fill:parent; radius:8; color:Theme.background; border.color:Qt.alpha(Theme.teal,.1)
+                    Rectangle { anchors.fill:parent; anchors.margins:1; radius:8; gradient:Gradient { GradientStop { position:0; color:Qt.alpha(Theme.green,.10) } GradientStop { position:1; color:Qt.alpha(Theme.teal,.02) } } }
+                }
+                Rectangle {
+                    anchors.centerIn:parent; width:parent.width-44; height:parent.height-36
+                    radius:Math.min(height/2,Config.panelRadius*.6); color:Qt.alpha(Theme.background,Config.panelOpacity); border.color:Qt.alpha(Theme.teal,.3)
+                    Column {
+                        anchors.left:parent.left; anchors.top:parent.top; anchors.margins:12; spacing:6
+                        Text { text:"CEDAR"; font.family:Theme.labelFont; font.pixelSize:16; color:Theme.green }
+                        Rectangle { width:90; height:4; radius:2; color:Qt.alpha(Theme.teal,.4) }
+                        Rectangle { width:60; height:4; radius:2; color:Qt.alpha(Theme.teal,.2) }
+                    }
+                }
             }
         }
     }
-    SettingsFields { page:"appearance"; highlightKey:root.highlightKey; Layout.fillWidth:true }
-    SettingsCard {
-        Layout.fillWidth:true
-        GlowText { text:"Field notes, clearly spoken."; font.family:Theme.labelFont; font.pixelSize:Math.round(26*Theme.fontScale); Layout.fillWidth:true; wrapMode:Text.WordWrap }
-        GlowText { text:"Aa Bb Cc · 0123456789 · 12:48"; font.family:Theme.dataFont; font.pixelSize:Theme.normal; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap }
+
+    SettingsSection {
+        heading:"Motion & light"; caption:"Ambient light follows real activity. Reduced Motion stops every decorative cycle."
+        SettingsFields { page:"appearance"; groups:["Motion & light"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
     }
 }

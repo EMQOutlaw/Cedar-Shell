@@ -7,11 +7,15 @@ import "../../services"
 ColumnLayout {
     id: root
     property bool volume: true
+    // Compact: a single centered row that fits inside the resting pill.
+    property bool compact: false
     readonly property bool dragging: slider.pressed
     spacing: 6
     RowLayout {
         Layout.fillWidth: true
+        Layout.fillHeight: root.compact
         StationButton {
+            implicitHeight: root.compact ? 28 : Theme.controlHeight
             visible: root.volume
             text: Audio.muted ? "󰝟" : "󰕾"
             iconOnly: true
@@ -46,12 +50,13 @@ ColumnLayout {
         GlowText {
             text: Math.round((root.volume ? Audio.volume : Brightness.value) * 100) + "%"
             color: Theme.green
-            Layout.preferredWidth: 48
+            font.pixelSize: root.compact ? Theme.small : Theme.normal
+            Layout.preferredWidth: root.compact ? 40 : 48
             horizontalAlignment: Text.AlignRight
         }
     }
     GlowText {
-        visible: CoreService.expanded
+        visible: CoreService.expanded && !root.compact
         text: root.volume ? (Audio.sink?.description || "No output device") : "Display backlight"
         color: Theme.muted
         Layout.fillWidth: true

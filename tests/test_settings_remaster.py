@@ -59,6 +59,34 @@ class RemasterTransactions(unittest.TestCase):
         saved=d.validate_monitors([{**draft,'vrrPolicy':2}],[live])
         self.assertIn('["vrr"]=2',d.render({'monitors':saved}))
         with self.assertRaises(ValueError):d.validate_monitors([{**draft,'vrrPolicy':99}],[live])
+    def test_mirror_is_validated_and_rendered_in_both_syntaxes(self):
+        live=[{'name':n,'width':1920,'height':1080,'refreshRate':60,'availableModes':['1920x1080@60.00Hz']} for n in ('DP-1','DP-2')]
+        row=lambda n,**k:{'name':n,'mode':'1920x1080@60.00','x':0,'y':0,'scale':1,'transform':0,**k}
+        saved=d.validate_monitors([row('DP-1'),row('DP-2',mirror='DP-1')],live)
+        self.assertEqual(saved[1]['mirror'],'DP-1');self.assertNotIn('mirror',saved[0])
+        self.assertIn('["mirror"]="DP-1"',d.render_lua({'monitors':saved}))
+        self.assertIn('monitor = DP-2, 1920x1080@60.00, 0x0, 1.0, transform, 0, mirror, DP-1',d.render_conf({'monitors':saved}))
+        for bad in ([row('DP-1',mirror='DP-1'),row('DP-2')],[row('DP-1',mirror='DP-2'),row('DP-2',mirror='DP-1')],[row('DP-1'),row('DP-2',mirror='HDMI-A-9')]):
+            with self.assertRaises(ValueError):d.validate_monitors(bad,live)
+    def test_display_profiles_store_data_without_reloading(self):
+        live=[{'name':'DP-2','width':2560,'height':1440,'refreshRate':240,'availableModes':['2560x1440@240.00Hz']}]
+        layout=[{'name':'DP-2','mode':'2560x1440@240.00','x':0,'y':0,'scale':1,'transform':0}]
+        with patch.object(d,'hypr',return_value=live),patch.object(d,'install') as install,patch.object(d,'reload_validate') as reload:
+            d.action({'action':'save-profile','name':'Desk','monitors':layout,'mainDisplay':'DP-2'})
+            install.assert_not_called();reload.assert_not_called()
+            state=json.loads((self.own/'settings.json').read_text())
+            self.assertEqual([p['name'] for p in state['displayProfiles']],['Desk'])
+            self.assertEqual(state['mainDisplay'],'DP-2');self.assertEqual(state['input'],{'sensitivity':.2})
+            self.assertNotIn('Desk',d.render(state))
+            with self.assertRaises(ValueError):d.action({'action':'save-profile','name':'bad/name','monitors':layout})
+            with self.assertRaises(ValueError):d.action({'action':'save-profile','name':'Other','monitors':[{**layout[0],'name':'DP-9'}]})
+            with self.assertRaises(ValueError):d.action({'action':'save-profile','name':'Main','monitors':layout,'mainDisplay':'DP-1'})
+            d.action({'action':'delete-profile','name':'Desk'})
+            self.assertEqual(json.loads((self.own/'settings.json').read_text())['displayProfiles'],[])
+            with self.assertRaises(ValueError):d.action({'action':'delete-profile','name':'Desk'})
+    def test_profile_actions_wait_for_display_trial(self):
+        (self.own/'pending.json').write_text(json.dumps({'token':'t','deadline':0,'files':{}}))
+        with self.assertRaisesRegex(ValueError,'display trial'):d.action({'action':'save-profile','name':'Desk','monitors':[]})
     def test_service_actions_are_whitelisted(self):
         with patch.object(info,'run') as run:
             with self.assertRaises(ValueError):info.action({'action':'restart','unit':'sshd.service'})
@@ -72,3 +100,50 @@ class RemasterTransactions(unittest.TestCase):
             run.return_value.returncode=0
             obj.action({'action':'autoconnect','path':'/connection/1','enabled':False})
             self.assertEqual(run.call_args.args[0],['nmcli','connection','modify','uuid','a-b-c','connection.autoconnect','no'])
+
+
+PAGES=['FirstRunSettings','SettingsOverview','AppearanceSettings','DefaultAppsSettings','DesktopSettingsPage','TopBarSettings','CoreSettings','DisplaySettings','InputSettings','KeybindSettings','ConnectionsPage','HotspotSettings','AudioSettings','NotificationSettings','PowerSettings','TimeSettings','SystemSettings','AboutSettings','WeatherLocationSettings']
+class SingleEntryPoints(unittest.TestCase):
+    """Settings has one way to reach each place: the sidebar (and search)."""
+    def test_pages_do_not_navigate_or_open_other_surfaces(self):
+        import re
+        pattern=re.compile(r'\bnavigate\(|signal navigate|ShellState\.(toggle|open|lock|settingsPage)|Canopy\.(open|context|toggle)|CoreService\.expand')
+        for name in PAGES:
+            text=(ROOT/'modules'/f'{name}.qml').read_text()
+            self.assertIsNone(pattern.search(text),f'{name} adds a second route to another place')
+    def test_each_preference_has_one_custom_control(self):
+        import re
+        owners={}
+        for name in PAGES:
+            for key in set(re.findall(r'Config\.set\("(\w+)"',(ROOT/'modules'/f'{name}.qml').read_text())):
+                owners.setdefault(key,[]).append(name)
+        self.assertEqual({k:v for k,v in owners.items() if len(v)>1},{})
+    def test_sidebar_is_the_only_page_navigation(self):
+        panel=(ROOT/'modules/SettingsPanel.qml').read_text()
+        self.assertNotIn('family-',panel)
+        self.assertEqual(panel.count('onClicked:root.navigate('),2)  # sidebar item, search result
+
+
+class DesktopSingleRoutes(unittest.TestCase):
+    """Across the desktop, each place has one visible button."""
+    def sources(self):
+        return {f.relative_to(ROOT).as_posix():f.read_text() for d in ('modules','components') for f in (ROOT/d).rglob('*.qml')}
+    def test_settings_has_one_button(self):
+        import re
+        route=re.compile(r'ShellState\.(open|toggle)\("settings"\)|settingsPage *=')
+        # Canopy's Full Settings; the legacy Control Center replaces Canopy when it is disabled;
+        # the network indicator falls back only when Canopy is disabled; Trails replays history.
+        allowed={'modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml'}
+        found={name for name,text in self.sources().items() if route.search(text) and not name.startswith('modules/Settings')}
+        self.assertEqual(found-allowed,set())
+    def test_canopy_tabs_skip_destinations_with_bar_buttons(self):
+        canopy=(ROOT/'services/Canopy.qml').read_text();panel=(ROOT/'modules/CanopyPanel.qml').read_text()
+        self.assertIn('model: Canopy.tabs',panel);self.assertNotIn('text: "Open"',panel)
+        for topic in ('"quick"','"network"','"notifications"'):self.assertIn(topic,canopy.split('function barRoute')[1].split('}')[0])
+    def test_signals_do_not_carry_navigation(self):
+        text=(ROOT/'services/CoreSources.qml').read_text()+(ROOT/'services/CoreService.qml').read_text()
+        for label in ('"Connections"','"System settings"','"Notification Center"','"Open update menu"'):self.assertNotIn('label: '+label,text)
+    def test_overlays_do_not_link_to_each_other(self):
+        self.assertNotIn('toggle("themes")',(ROOT/'modules/WallpaperPicker.qml').read_text())
+        station=(ROOT/'modules/FieldStation.qml').read_text()
+        self.assertNotIn('toggle("settings")',station);self.assertIn('!Config.moduleEnabled("go")',station)

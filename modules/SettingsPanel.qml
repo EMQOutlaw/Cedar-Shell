@@ -18,6 +18,7 @@ Rectangle {
     readonly property bool dirty:loader.item?.dirty === true
     readonly property bool narrow:width<760
     readonly property var page:Schema.pages.find(p=>p.id===section) || Schema.pages[0]
+    readonly property string groupLabel:Schema.groupOf(page.id)
     readonly property var searchEntries:Schema.fields.concat(DefaultApps.data.roles.map(r=>({page:"apps",key:r.id,label:r.label,description:r.description,aliases:"default applications"})),Schema.pages.map(p=>({page:p.id,key:"",label:p.label,description:p.description})),Schema.extras.filter(e=>e.key!=="vrr" || DesktopSettings.data.monitors.some(m=>"vrr" in m)),Schema.inputFields.filter(f=>f.key in DesktopSettings.data.input && (!f.key.startsWith("touchpad:") || DesktopSettings.data.hasTouchpad===true)).map(f=>Object.assign({page:"input"},f)))
     readonly property var results:Schema.search(searchEntries,search.text)
     property alias searchText:search.text
@@ -93,11 +94,23 @@ Rectangle {
                         ColumnLayout {
                             required property var modelData
                             Layout.fillWidth:true; spacing:4
-                            GlowText { visible:modelData.group!==""; text:modelData.group; font.pixelSize:10; color:Theme.muted; Layout.topMargin:14; Layout.bottomMargin:3; Layout.leftMargin:12 }
+                            GlowText { visible:modelData.group!==""; text:modelData.group.toUpperCase(); font.pixelSize:9; font.letterSpacing:1.8; color:Qt.alpha(Theme.muted,.85); Layout.topMargin:16; Layout.bottomMargin:2; Layout.leftMargin:14 }
                             StationButton {
-                                Layout.fillWidth:true; implicitHeight:40; checked:root.section===modelData.id
-                                text:modelData.icon+"  "+modelData.label
-                                contentItem:Text { text:parent.text; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:parent.checked ? Theme.green:Theme.text; verticalAlignment:Text.AlignVCenter; leftPadding:4 }
+                                id:navItem
+                                Layout.fillWidth:true; implicitHeight:38; checked:root.section===modelData.id
+                                text:modelData.label
+                                Accessible.name:modelData.label
+                                background:Rectangle {
+                                    radius:Theme.controlRadius
+                                    color:navItem.checked ? Qt.alpha(Theme.teal,.10):navItem.hovered ? Qt.alpha(Theme.teal,.045):Theme.transparent
+                                    border.width:navItem.visualFocus ? Theme.focusWidth:0; border.color:Theme.green
+                                    Rectangle { visible:navItem.checked; x:0; anchors.verticalCenter:parent.verticalCenter; width:3; height:18; radius:2; color:Theme.green }
+                                }
+                                contentItem:Row {
+                                    spacing:10; leftPadding:8
+                                    Text { width:16; anchors.verticalCenter:parent.verticalCenter; horizontalAlignment:Text.AlignHCenter; text:modelData.icon; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:navItem.checked ? Theme.green:Theme.muted }
+                                    Text { anchors.verticalCenter:parent.verticalCenter; text:modelData.label; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:navItem.checked ? Theme.green:Theme.text }
+                                }
                                 onClicked:root.navigate(modelData.id)
                             }
                         }
@@ -141,8 +154,10 @@ Rectangle {
                         id:content; width:scroll.availableWidth; spacing:16
                         ColumnLayout {
                             Layout.fillWidth:true; spacing:6
-                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round(28*Theme.fontScale); Layout.fillWidth:true }
+                            GlowText { text:root.groupLabel.toUpperCase()+"  /  "+root.page.label.toUpperCase(); color:Theme.teal; font.pixelSize:10; font.letterSpacing:1.6 }
+                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round(30*Theme.fontScale); Layout.fillWidth:true }
                             GlowText { text:root.page.description; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
+                            Rectangle { Layout.fillWidth:true; Layout.topMargin:10; implicitHeight:1; gradient:Gradient { orientation:Gradient.Horizontal; GradientStop { position:0; color:Qt.alpha(Theme.teal,.35) } GradientStop { position:1; color:Qt.alpha(Theme.teal,0) } } }
                         }
                         GlowText {
                             visible:["displays","input","keybinds"].includes(root.section) && (DesktopSettings.busy || DesktopSettings.error!=="" || DesktopSettings.message!=="")
@@ -170,47 +185,21 @@ Rectangle {
             }
         }
     }
-    Component { id:overview; SettingsOverview { onNavigate:(page,anchor)=>root.navigate(page,anchor) } }
+    Component { id:overview; SettingsOverview {} }
     Component { id:appearance; AppearanceSettings { highlightKey:root.highlightKey } }
-    Component { id:setupPage; FirstRunSettings { active:root.active; onNavigate:page=>root.navigate(page) } }
+    Component { id:setupPage; FirstRunSettings { active:root.active } }
     Component { id:appsPage; DefaultAppsSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:desktop; DesktopSettingsPage { highlightKey:root.highlightKey } }
     Component { id:bar; TopBarSettings { highlightKey:root.highlightKey } }
     Component { id:corePage; CoreSettings { highlightKey:root.highlightKey } }
-    Component { id:displays; DisplaySettings { active:root.active } }
+    Component { id:displays; DisplaySettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:input; InputSettings { active:root.active; highlightKey:root.highlightKey } }
-    Component { id:keybinds; KeybindSettings { active:root.active } }
-    Component { id:connections; ColumnLayout {
-        id:connectionPage
-        property bool bluetooth:false
-        Component.onCompleted:bluetooth=root.highlightKey==="bluetooth"
-        Connections { target:root; function onHighlightKeyChanged(){if(root.highlightKey==="bluetooth")connectionPage.bluetooth=true;else if(root.highlightKey==="wifi")connectionPage.bluetooth=false;} }
-        Layout.fillWidth:true; spacing:16
-        RowLayout {
-            StationButton { text:"Wi-Fi & VPN"; checked:!parent.parent.bluetooth; onClicked:parent.parent.bluetooth=false }
-            StationButton { text:"Bluetooth"; checked:parent.parent.bluetooth; onClicked:parent.parent.bluetooth=true }
-        }
-        Loader { Layout.fillWidth:true; sourceComponent:parent.bluetooth ? bt:net }
-        Component { id:net; ConnectionSettings { active:root.active } }
-        Component { id:bt; BluetoothSettings { active:root.active } }
-    } }
+    Component { id:keybinds; KeybindSettings { active:root.active; highlightKey:root.highlightKey } }
+    Component { id:connections; ConnectionsPage { active:root.active; highlightKey:root.highlightKey } }
     Component { id:audio; AudioSettings {} }
-    Component { id:notifications; ColumnLayout {
-        spacing:12
-        SettingsFields { Layout.fillWidth:true; page:"notifications"; highlightKey:root.highlightKey }
-        SettingRow { Layout.fillWidth:true; title:"Notification history"; description:NoticeStore.history.length+" retained notifications"; StationButton { text:"Open history"; onClicked:ShellState.toggle("history") } }
-    } }
+    Component { id:notifications; NotificationSettings { highlightKey:root.highlightKey } }
     Component { id:power; PowerSettings { highlightKey:root.highlightKey } }
-    Component { id:time; ColumnLayout {
-        spacing:12
-        SystemClock { id:clock; precision:SystemClock.Minutes }
-        SettingsCard {
-            Layout.fillWidth:true
-            GlowText { text:Config.formatTime(clock.date); font.family:Theme.labelFont; font.pixelSize:46; color:Theme.green }
-            GlowText { text:Config.formatDate(clock.date); color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap }
-        }
-        SettingsFields { Layout.fillWidth:true; page:"time"; highlightKey:root.highlightKey }
-    } }
+    Component { id:time; TimeSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:system; SystemSettings {} }
     Component { id:about; AboutSettings {} }
 }

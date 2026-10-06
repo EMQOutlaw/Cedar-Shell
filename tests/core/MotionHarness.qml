@@ -38,10 +38,11 @@ ShellRoot {
                     ShellState.osd("VOLUME", 0.72, "72%");
                     break;
                 case 1:
+                    // Volume lives inside the pill: it widens smoothly and never grows a second row.
+                    window.check(core.height === core.restingHeight, "Volume stays inside the resting pill");
                     window.check(Motion.active, "Ambience is active while motion is allowed");
                     window.check(breath.value > 0.05 && breath.value <= 1, "Breath steps its value without an animator: " + breath.value);
                     window.breathSeen = breath.value;
-                    window.check(window.frames > 2, "Core actually interpolates its expansion");
                     window.check(window.sizes <= 3, "Core does not resize its window each animation frame: " + window.sizes);
                     window.check(core.windowHeight === Math.ceil(core.height) + 2, "Window fits settled Core");
                     window.sizes = 0; window.frames = 0;

@@ -15,5 +15,6 @@ ColumnLayout {
     GlowText {Layout.fillWidth:true;wrapMode:Text.WordWrap;text:Weather.sunrise?"Sunrise · "+root.timeLabel(Weather.sunrise):"Sunrise unavailable";color:Theme.muted}
     SettingsHeading {text:"Next hours"}
     Repeater {model:Weather.hours;SettingRow {required property var modelData;Layout.fillWidth:true;title:root.timeLabel(modelData.time);description:modelData.temperature+" · Rain "+modelData.rain+"%"}}
-    StationButton {text:Weather.configured?"Refresh":"Set location";onClicked:{if(Weather.configured)Weather.refresh();else{ShellState.settingsPage="desktop";ShellState.open("settings");}}}
+    StationButton {visible:Weather.configured;text:"Refresh";onClicked:Weather.refresh()}
+    GlowText {visible:!Weather.configured;Layout.fillWidth:true;wrapMode:Text.WordWrap;text:"No forecast location. Choose one in Settings · Desktop · Weather.";color:Theme.muted}
 }

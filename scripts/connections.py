@@ -95,7 +95,7 @@ class Network:
                 c = data['connection']
                 wifi = data.get('802-11-wireless', {})
                 result.append({'path': str(path), 'name': str(c['id']), 'type': str(c['type']),
-                    'active': active.get(str(path), ''), 'uuid':str(c.get('uuid','')), 'autoconnect':bool(c.get('autoconnect',True)), 'ssid': bytes(wifi.get('ssid', [])).decode('utf-8', 'replace')})
+                    'active': active.get(str(path), ''), 'uuid':str(c.get('uuid','')), 'autoconnect':bool(c.get('autoconnect',True)), 'ssid': bytes(wifi.get('ssid', [])).decode('utf-8', 'replace'), 'mode': str(wifi.get('mode', ''))})
             except self.dbus.DBusException:
                 continue
         return result

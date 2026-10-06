@@ -95,12 +95,6 @@ Overlay {
                     }
                 }
             }
-            RowLayout {
-                Layout.fillWidth: true
-                HudButton { text: "THEMES"; onClicked: ShellState.toggle("themes") }
-                Item { Layout.fillWidth: true }
-                HudButton { text: "CLOSE"; onClicked: ShellState.close() }
-            }
         }
     }
     }

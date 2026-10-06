@@ -42,7 +42,8 @@ PanelWindow {
     contentItem.Keys.onEscapePressed: Canopy.close()
     Loader {
         id: presentation
-        width: parent.width; height: parent.height
+        width: parent.width
+        height: item && !Canopy.peeking ? Math.min(parent.height, item.preferredHeight) : parent.height
         active: root.mapped
         asynchronous: true
         enabled: root.requested

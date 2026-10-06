@@ -145,12 +145,7 @@ Scope {
                     subtitle: "Connected" + (d.battery !== null ? " · " + Math.round(d.battery * 100) + "% battery" : ""),
                     timeout: 4000,
                     remember: true,
-                    actions: [
-                        {
-                            id: "connections",
-                            label: "Connections"
-                        }
-                    ]
+                    actions: []
                 });
         }
         lastBluetooth = next;
@@ -172,12 +167,7 @@ Scope {
                 subtitle: name ? "Connected" : "No active network connection",
                 timeout: name ? 4000 : 6000,
                 remember: true,
-                actions: [
-                    {
-                        id: "connections",
-                        label: "Connections"
-                    }
-                ]
+                actions: []
             });
         const vpn = data.saved.filter(c => c.active && ["vpn", "wireguard"].includes(c.type));
         const oldVpn = previous.saved.filter(c => c.active && ["vpn", "wireguard"].includes(c.type));
@@ -305,12 +295,7 @@ Scope {
                 title: "High temperature · " + Math.round(hot) + "°C",
                 subtitle: "Reported by the system temperature sensors.",
                 announce: !service.model.rows.some(r => r.id === "thermal"),
-                actions: [
-                    {
-                        id: "system",
-                        label: "System settings"
-                    }
-                ]
+                actions: []
             });
         else if (hot < limit - 5)
             service.remove("thermal", false);
@@ -325,12 +310,7 @@ Scope {
                 title: "Storage is nearly full",
                 subtitle: Math.round(disk * 100) + "% used at " + Config.diskPath,
                 announce: !service.model.rows.some(r => r.id === "disk"),
-                actions: [
-                    {
-                        id: "system",
-                        label: "System settings"
-                    }
-                ]
+                actions: []
             });
         else if (disk < threshold - .03)
             service.remove("disk", false);
@@ -381,12 +361,7 @@ Scope {
                 actions: n.actions.map(a => ({
                             id: "notice:" + a.identifier,
                             label: a.text
-                        })).concat([
-                    {
-                        id: "history",
-                        label: "Notification Center"
-                    }
-                ])
+                        }))
             }))
                 service.routedNoticeIds = service.routedNoticeIds.concat([n.id]);
         }

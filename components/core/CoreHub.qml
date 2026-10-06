@@ -69,56 +69,36 @@ ColumnLayout {
             onClicked: CoreService.dismiss(root.activity.id)
         }
     }
-    ListView {
-        id: list
-        Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(160, contentHeight)
-        clip: true
-        spacing: 4
-        model: CoreService.rows
-        keyNavigationEnabled: true
-        ScrollBar.vertical: ScrollBar {}
-        Keys.onReturnPressed: if (currentItem)
-            currentItem.clicked()
-        delegate: StationButton {
+    // The top signal is the card above; others are one line each, three at most.
+    readonly property var others: CoreService.rows.filter(r => r.id !== root.activity?.id)
+    property bool allOthers: false
+    Repeater {
+        model: root.allOthers ? root.others : root.others.slice(0, 3)
+        StationButton {
             required property var modelData
-            width: ListView.view.width
-            implicitHeight: 42
-            text: modelData.icon + "  " + modelData.title
-            checked: root.activity?.id === modelData.id
+            Layout.fillWidth: true
+            implicitHeight: 34
             hint: modelData.subtitle
+            Accessible.name: modelData.title
             onClicked: CoreService.model.selectedId = modelData.id
+            contentItem: RowLayout {
+                spacing: 10
+                Rectangle { implicitWidth: 5; implicitHeight: 5; radius: 3; color: modelData.priority >= 3 || ["recording", "microphone", "camera"].includes(modelData.type) ? Theme.ember : modelData.priority === 2 ? Theme.amber : Theme.teal }
+                Text { Layout.fillWidth: true; text: modelData.title; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: Theme.text; elide: Text.ElideRight }
+                Text { text: modelData.icon || ""; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: Theme.muted }
+            }
         }
+    }
+    StationButton {
+        visible: root.others.length > 3
+        text: root.allOthers ? "Show fewer" : (root.others.length - 3) + " more"
+        checked: root.allOthers
+        onClicked: root.allOthers = !root.allOthers
     }
     Rectangle {
         Layout.fillWidth: true
         implicitHeight: 1
         color: Qt.alpha(Theme.teal, .15)
-    }
-    RowLayout {
-        Layout.fillWidth: true
-        StationField {
-            id: minutes
-            Layout.fillWidth: true
-            placeholderText: "Timer · minutes"
-            Accessible.name: "Timer duration in minutes"
-            validator: DoubleValidator {
-                bottom: 1 / 60
-                top: 1440
-            }
-            onAccepted: start.clicked()
-        }
-        StationButton {
-            id: start
-            text: "Start timer"
-            enabled: !CoreService.timer.active && minutes.acceptableInput && Number(minutes.text) > 0
-            onClicked: {
-                if (CoreService.timer.start(Number(minutes.text) * 60)) {
-                    CoreService.model.selectedId = "timer";
-                    minutes.text = "";
-                }
-            }
-        }
     }
     Flow {
         Layout.fillWidth: true
@@ -134,14 +114,6 @@ ColumnLayout {
             onClicked: CoreService.run({
                 action: "check-updates"
             })
-        }
-        StationButton {
-            text: "Settings"
-            onClicked: {
-                CoreService.collapse();
-                ShellState.settingsPage = "core";
-                ShellState.open("settings");
-            }
         }
     }
     ColumnLayout {

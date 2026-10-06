@@ -20,8 +20,13 @@ PanelWindow {
     implicitHeight: surface.windowHeight
     exclusionMode: ExclusionMode.Ignore
     color: Theme.transparent
+    // Only the pill and the network nub take input; the gap between them stays click-through.
     mask: Region {
-        item: surface
+        item: surface.pillItem
+        Region {
+            item: surface.nubItem.visible ? surface.nubItem : null
+            intersection: Intersection.Combine
+        }
     }
     WlrLayershell.namespace: "cedar-core"
     // A fixed layer avoids compositor restacking/remapping on volume updates and

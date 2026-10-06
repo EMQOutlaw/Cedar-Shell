@@ -9,17 +9,24 @@ var pages = [
  {id:"desktop",label:"Desktop",icon:"▧",group:"",description:"Wallpaper and Field Station preferences."},
  {id:"bar",label:"Top Bar",icon:"━",group:"",description:"Shape a bar that fits the way you work."},
  {id:"core",label:"CEDAR Core",icon:"◈",group:"",description:"A quiet awareness center for the things happening now."},
- {id:"displays",label:"Displays",icon:"▣",group:"Devices",description:"Arrange your screens and choose your main display."},
- {id:"input",label:"Input",icon:"⌨",group:"",description:"Keyboard, mouse, and touchpad behavior."},
- {id:"keybinds",label:"Keybinds",icon:"⌘",group:"",description:"Direct paths to your applications and desktop actions."},
- {id:"connections",label:"Connections",icon:"⌁",group:"",description:"Wi-Fi, Bluetooth, and VPN connections."},
- {id:"audio",label:"Audio",icon:"♫",group:"",description:"Output devices, microphones, and application volume."},
- {id:"notifications",label:"Notifications",icon:"◌",group:"Daily use",description:"Choose when CEDAR asks for your attention."},
+ {id:"displays",label:"Displays",icon:"▣",group:"System",description:"Detect and arrange monitors: resolution, scale, rotation, mirroring, and saved layout profiles."},
+ {id:"input",label:"Input",icon:"⌨",group:"",description:"Keyboard layout, pointer feel, touchpad behavior, and key repeat."},
+ {id:"keybinds",label:"Keybinds",icon:"⌘",group:"",description:"Every shortcut, read live from your Hyprland config, plus your own custom binds."},
+ {id:"connections",label:"Connections",icon:"⌁",group:"",description:"Wi-Fi networks, Bluetooth devices, and your hotspot, in one place."},
+ {id:"audio",label:"Audio",icon:"♫",group:"Daily use",description:"Output devices, microphones, and application volume."},
+ {id:"notifications",label:"Notifications",icon:"◌",group:"",description:"Choose when CEDAR asks for your attention."},
  {id:"power",label:"Power & Lock",icon:"⏻",group:"",description:"Energy, brightness, and session security."},
  {id:"time",label:"Time & Date",icon:"◷",group:"",description:"A familiar clock across every CEDAR surface."},
- {id:"system",label:"System",icon:"⌁",group:"Station",description:"Service health, diagnostics, and useful error details."},
+ // The page id remains "system" for existing IPC, Go and search routes.
+ {id:"system",label:"Health",icon:"✚",group:"Station",description:"Service health, diagnostics, updates, and useful error details."},
  {id:"about",label:"About CEDAR",icon:"✧",group:"",description:"A quiet, living forest interface with the precision of a personal command station."}
 ];
+// The sidebar group a page belongs to (groups are declared on their first page).
+function groupOf(id) {
+    var group = "CEDAR";
+    for (var i = 0; i < pages.length; ++i) { if (pages[i].group) group = pages[i].group; if (pages[i].id === id) return pages[i].group || (i < 2 ? "CEDAR" : group); }
+    return "CEDAR";
+}
 var fields = [
  {page:"desktop",group:"Privacy",key:"localOnly",label:"Local-only mode",description:"Block CEDAR external weather, location and artwork requests.",type:"toggle",defaultValue:true},
  {page:"desktop",group:"Privacy",key:"weatherEnabled",label:"Weather access",description:"Allow Open-Meteo forecasts, IP-based location and explicitly requested city search when local-only is off.",type:"toggle",defaultValue:false},
@@ -32,14 +39,14 @@ var fields = [
 {"page": "core", "group": "Canopy", "key": "canopyEnabled", "label": "Canopy", "description": "Panels descend beneath the bar.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Canopy", "key": "canopyPeek", "label": "Peek", "description": "Hover or focus a bar control for a compact preview.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Forest", "key": "forestPulse", "label": "Pulse", "description": "Subtle illumination follows real activity and semantic Forest State.", "type": "toggle", "defaultValue": true},
-{"page": "core", "group": "Forest", "key": "forestEchoes", "label": "Echoes", "description": "Keep up to three brief glyphs after recent system activity.", "type": "toggle", "defaultValue": true},
+{"page": "core", "group": "Forest", "key": "forestEchoes", "label": "Echoes", "description": "After a signal recedes, Core\u2019s line lingers faintly for a few seconds.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Forest", "key": "forestWhispers", "label": "Whispers", "description": "Quiet observations; at least ten minutes apart and six hours per type.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Whisper types", "key": "whisperQuiet", "label": "Quiet observations", "description": "An observation after twenty minutes idle.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Whisper types", "key": "whisperBattery", "label": "Battery observations", "description": "An observation when charging reaches 90%.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Privacy", "key": "forestTrails", "label": "Trails", "description": "Opt-in, session-only application identity and CEDAR navigation. Cleared on lock.", "type": "toggle", "defaultValue": false},
 {"page": "core", "group": "Privacy", "key": "clipboardHistory", "label": "Clipboard history", "description": "Opt-in session history, cleared on lock. Unmarked secrets may be captured.", "type": "toggle", "defaultValue": false},
 {"page": "core", "group": "Instruments", "key": "audioSpectrum", "label": "Audio spectrum", "description": "Real CAVA playback spectrum, only while Audio Canopy is open.", "type": "toggle", "defaultValue": false},
- {page:"apps",group:"Quick launch",key:"editor",label:"Editor command",description:"Empty uses the editor selected in Omarchy.",type:"text",defaultValue:"",placeholder:"omarchy launch editor"},
+ {page:"apps",group:"Quick launch",key:"editor",label:"Editor command",description:"Launch command. Empty finds your default text editor.",type:"text",defaultValue:"",placeholder:"zeditor"},
 {"page": "core", "group": "Core", "key": "coreEnabled", "label": "CEDAR Core", "description": "Show one contextual surface at the center of the preferred display’s bar.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreVolume", "label": "Volume & brightness", "description": "Use Core for live sliders. The existing OSD remains available when Core is hidden.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreMedia", "label": "Media", "description": "Track changes and playback controls from MPRIS.", "type": "toggle", "defaultValue": true},
@@ -63,7 +70,7 @@ var fields = [
  {page:"appearance",group:"Motion & light",key:"reducedMotion",label:"Reduced Motion",description:"Stop decorative spores, orbiting accents, and breathing light.",type:"toggle",defaultValue:false,aliases:"animation accessibility motion"},
  {page:"desktop",group:"Background",key:"wallpaperMode",label:"Wallpaper fit",description:"How an image fills each display.",type:"choice",options:[{value:"crop",label:"Fill screen"},{value:"fit",label:"Fit image"},{value:"stretch",label:"Stretch"}],defaultValue:"crop",aliases:"background mode"},
  {page:"desktop",group:"Background",key:"desktopSignature",label:"CEDAR signature",description:"Show the small CEDAR identity on the desktop.",type:"toggle",defaultValue:true,aliases:"background branding text"},
- {page:"apps",group:"Quick launch",key:"terminal",label:"Terminal",description:"Launch command. Empty uses kitty; arguments are separated by spaces.",type:"text",defaultValue:"",placeholder:"kitty"},
+ {page:"apps",group:"Quick launch",key:"terminal",label:"Terminal",description:"Launch command. Empty finds your installed terminal; arguments are separated by spaces.",type:"text",defaultValue:"",placeholder:"kitty"},
  {page:"apps",group:"Quick launch",key:"browser",label:"Browser",description:"Launch command. Empty uses your default browser.",type:"text",defaultValue:"",placeholder:"xdg-open https://duckduckgo.com"},
  {page:"apps",group:"Quick launch",key:"files",label:"Files",description:"Launch command. Empty opens your home folder.",type:"text",defaultValue:"",placeholder:"xdg-open ~"},
  {page:"desktop",group:"Field Station weather",key:"weatherAutomatic",label:"Automatic weather location",description:"Find an approximate city from your public IP whenever weather is on and no saved location overrides it. Turn off to use only a chosen city.",type:"toggle",defaultValue:true,aliases:"weather automatic detect IP city location"},
@@ -117,7 +124,13 @@ var extras = [
  {page:"audio",key:"output",label:"Output device",description:"Choose your speakers or headphones.",aliases:"sound volume"},
  {page:"audio",key:"microphone",label:"Microphone",description:"Recording device, input volume, and mute."},
  {page:"audio",key:"streams",label:"Application volume",description:"Volume for active playback and recording streams."},
- {page:"connections",key:"wifi",label:"Wi-Fi and VPN",description:"Wireless networks, saved connections, and hotspots.",aliases:"internet network"},
+ {page:"connections",key:"wifi",label:"Wi-Fi and VPN",description:"Wireless networks and saved connections.",aliases:"internet network"},
+ {page:"connections",key:"hotspot",label:"Hotspot",description:"Share this computer\u2019s connection over Wi-Fi.",aliases:"tether share access point"},
+ {page:"displays",key:"mirror",label:"Mirror displays",description:"Show the same picture on more than one screen.",aliases:"duplicate clone projector"},
+ {page:"displays",key:"profiles",label:"Saved display layouts",description:"Save an arrangement and test it again later.",aliases:"profile preset docking"},
+ {page:"displays",key:"detect",label:"Detect displays",description:"Read connected monitors again.",aliases:"scan monitor refresh"},
+ {page:"keybinds",key:"customBinds",label:"Your custom shortcuts",description:"Shortcuts you added in CEDAR.",aliases:"bind keyboard shortcut add"},
+ {page:"input",key:"repeatTest",label:"Try key repeat",description:"Hold a key to feel the applied repeat rate and delay.",aliases:"typing"},
  {page:"connections",key:"bluetooth",label:"Bluetooth",description:"Discover, pair, and manage nearby devices."},
  {page:"power",key:"powerProfile",label:"System power profile",description:"Choose from profiles supported by this computer.",aliases:"performance balanced battery saver"},
  {page:"power",key:"brightness",label:"Brightness",description:"Adjust a supported backlight."},

@@ -3,25 +3,40 @@ import QtQuick.Layouts
 import ".."
 import "../components"
 import "../services"
-SettingsCard {
+import "../components/SettingsSchema.js" as Schema
+// Where Field Station's forecast comes from. Permissions live in Privacy.
+SettingsSection {
+    id: root
     objectName: "weatherLocation"
-    title: "Weather location"
-    StationToggle { Layout.fillWidth:true; label:"Local-only mode"; description:"Blocks CEDAR weather, location and remote artwork requests. Local desktop controls keep working."; checked:Config.saved.localOnly; onToggled:value=>Config.set("localOnly",value) }
-    StationToggle { Layout.fillWidth:true; label:"Allow weather"; description:"Finds your approximate city from your public IP, then Open-Meteo receives those coordinates for forecasts every 15 minutes. City search sends your query only when you use it."; enabled:!Config.localOnly; checked:Config.saved.weatherEnabled; onToggled:value=>Config.set("weatherEnabled",value) }
-    StationToggle { Layout.fillWidth:true; label:"Allow remote media artwork"; description:"Artwork URLs supplied by media players contact their hosts when shown. Off by default."; enabled:!Config.localOnly; checked:Config.saved.remoteArtwork; onToggled:value=>Config.set("remoteArtwork",value) }
-    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:WeatherLocation.status; color:WeatherLocation.error ? Theme.amber : Theme.muted }
-    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:"Location comes from your public IP through IPWhois unless you choose a city below. VPNs can point to another region. Your IP is not saved by CEDAR."; color:Theme.muted }
-    Flow {
+    property string highlightKey: ""
+    property bool exact: highlightKey !== "" && ["locationName","latitude","longitude"].includes(highlightKey)
+    function spec(key) { return Schema.fields.find(f => f.key === key); }
+    readonly property bool allowed: !Config.localOnly && Config.saved.weatherEnabled
+    heading: "Weather"
+    badge: !allowed ? "Off" : WeatherLocation.automatic ? "Automatic" : Weather.configured ? "Saved place" : "No location"
+    badgeColor: allowed && Weather.configured ? Theme.green : Theme.muted
+    caption: allowed ? "Forecasts come from Open-Meteo for the place below." : "Weather is off. Turn off Local-only mode and allow Weather access in Privacy to use it."
+    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:WeatherLocation.status; color:WeatherLocation.error ? Theme.amber : Theme.text; font.pixelSize:Theme.small }
+    SettingControl { Layout.fillWidth:true; enabled:root.allowed; spec:root.spec("weatherAutomatic"); highlightKey:root.highlightKey }
+    StationButton { visible:Config.saved.weatherAutomatic; text:WeatherLocation.manual ? "Use automatic location instead of the saved city" : "Detect again"; enabled:root.allowed && !WeatherLocation.busy; onClicked:WeatherLocation.useAutomatic() }
+    RowLayout {
         Layout.fillWidth:true; spacing:8
-        StationButton { text:WeatherLocation.manual ? "Use automatic location" : "Detect again"; enabled:!Config.localOnly && Config.saved.weatherEnabled && !WeatherLocation.busy; onClicked:WeatherLocation.useAutomatic() }
-        StationButton { text:"Turn off automatic location"; visible:Config.saved.weatherAutomatic; onClicked:Config.set("weatherAutomatic",false) }
+        StationField { id:city; Layout.fillWidth:true; enabled:root.allowed; placeholderText:"Choose a city or postal code"; Accessible.name:"Search weather location"; onAccepted:find.clicked() }
+        StationButton { id:find; text:WeatherLocation.searching ? "Searching…" : "Find"; enabled:root.allowed && !WeatherLocation.searching && city.text.trim().length>=2; onClicked:WeatherLocation.search(city.text) }
     }
-    StationField { id:city; Layout.fillWidth:true; placeholderText:"City or postal code"; Accessible.name:"Search weather location"; onAccepted:WeatherLocation.search(text) }
-    StationButton { text:WeatherLocation.searching ? "Searching…" : "Find city"; enabled:!Config.localOnly && Config.saved.weatherEnabled && !WeatherLocation.searching && city.text.trim().length>=2; onClicked:WeatherLocation.search(city.text) }
-    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; visible:text!==""; text:WeatherLocation.searchMessage; color:Theme.muted }
+    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; visible:text!==""; text:WeatherLocation.searchMessage; color:Theme.muted; font.pixelSize:Theme.small }
+    Flow {
+        Layout.fillWidth:true; spacing:6
+        Repeater {
+            model:WeatherLocation.results
+            StationButton { required property var modelData; text:modelData.name; onClicked:WeatherLocation.select(modelData) }
+        }
+    }
+    SettingControl { Layout.fillWidth:true; spec:root.spec("temperatureUnit"); highlightKey:root.highlightKey }
+    StationButton { text:root.exact ? "Hide exact coordinates" : "Enter exact coordinates"; checked:root.exact; onClicked:root.exact=!root.exact }
     Repeater {
-        model:WeatherLocation.results
-        StationButton { required property var modelData; Layout.fillWidth:true; text:modelData.name; onClicked:WeatherLocation.select(modelData) }
+        model:root.exact ? ["locationName","latitude","longitude"] : []
+        SettingControl { required property string modelData; Layout.fillWidth:true; spec:root.spec(modelData); highlightKey:root.highlightKey }
     }
-    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:"City search: Open-Meteo / GeoNames"; color:Theme.muted; font.pixelSize:Theme.small }
+    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:"City search: Open-Meteo / GeoNames"; color:Theme.muted; font.pixelSize:10 }
 }

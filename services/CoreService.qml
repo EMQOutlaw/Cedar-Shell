@@ -150,20 +150,7 @@ Singleton {
                 pid: row.data.pid,
                 startTicks: row.data.startTicks
             });
-        else if (action === "connections") {
-            collapse();
-            if(Config.saved.canopyEnabled)Canopy.open("network");else ShellState.open("control");
-        } else if (action === "system") {
-            collapse();
-            ShellState.settingsPage = "system";
-            ShellState.open("settings");
-        } else if (action === "updates") {
-            collapse();
-            Go.toggle("update");
-        } else if (action === "history") {
-            collapse();
-            if(Config.saved.canopyEnabled)Canopy.open("notifications");else ShellState.open("history");
-        } else if (["open-file", "reveal-file", "copy-path", "copy-image", "share-file", "trash-file"].includes(action)) {
+        else if (["open-file", "reveal-file", "copy-path", "copy-image", "share-file", "trash-file"].includes(action)) {
             if (action === "trash-file" && confirmTrash !== row.id) {
                 confirmTrash = row.id;
                 return;
@@ -301,12 +288,7 @@ Singleton {
                     subtitle: value.message,
                     persistent: value.count > 0,
                     timeout: 5000,
-                    actions: [
-                        {
-                            id: "updates",
-                            label: "Open update menu"
-                        }
-                    ]
+                    actions: []
                 });
             } else if (["copy-path", "copy-image"].includes(value.action))
                 root.publish({

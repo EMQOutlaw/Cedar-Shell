@@ -10,9 +10,10 @@ ColumnLayout {
     onActiveChanged:if(!active){BluetoothService.cancelPairing();BluetoothService.stopScan();}
     Component.onDestruction:{BluetoothService.cancelPairing();BluetoothService.stopScan();}
     property string confirmForget: ""
+    property bool showTitle: true
     onVisibleChanged: if (!visible) { code.text=""; BluetoothService.cancelPairing(); BluetoothService.stopScan(); }
     spacing: 12
-    GlowText { text: "BLUETOOTH / NEARBY"; color: Theme.teal; font.pixelSize: 19 }
+    GlowText { visible: root.showTitle; text: "BLUETOOTH / NEARBY"; color: Theme.teal; font.pixelSize: 19 }
     Repeater {
         model: BluetoothService.adapters
         StationToggle {

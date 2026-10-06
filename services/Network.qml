@@ -28,6 +28,8 @@ Singleton {
     readonly property string label: data.available ? (data.status?.label || data.label) : "Network unavailable"
     readonly property string state: data.available ? (data.status?.state || "unknown") : "unavailable"
     readonly property string kind: data.status?.kind || "unknown"
+    // An active access-point profile is a hotspot this computer is sharing.
+    readonly property var hotspot: data.available ? ((data.saved || []).find(row => row.mode === "ap" && row.active) || null) : null
     readonly property bool vpnActive: data.available && (data.status?.vpns?.length || 0) > 0
     readonly property string statusDescription: label + (vpnActive ? " · VPN active" : "") + " · " + ({
             unknown: "Internet access not checked",
