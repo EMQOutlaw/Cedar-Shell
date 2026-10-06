@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 import ".."
 import "../services"
 
@@ -11,6 +12,30 @@ AbstractButton {
     property string hint: ""
     property string canopyTopic: ""
     property string canopyOutput: ""
+    // A control with a Canopy topic registers where that panel descends from:
+    // the screen x of its centre, for a full-width bar or a centred window alike.
+    property bool anchorsCanopy: true
+    readonly property string anchorOutput: canopyOutput || CoreService.hostName
+    function anchorX() {
+        const win = root.QsWindow.window;
+        if (!win || !win.screen)
+            return -1;
+        const p = root.mapToItem(null, root.width / 2, 0);
+        return (win.screen.width - win.width) / 2 + p.x;
+    }
+    function publishAnchor() {
+        if (!canopyTopic)
+            return;
+        if (visible && anchorsCanopy)
+            Canopy.setAnchorProvider(canopyTopic, anchorOutput, root.anchorX);
+        else
+            Canopy.clearAnchorProvider(canopyTopic, anchorOutput, root.anchorX);
+    }
+    Component.onCompleted: publishAnchor()
+    Component.onDestruction: if (canopyTopic) Canopy.clearAnchorProvider(canopyTopic, anchorOutput, root.anchorX)
+    onVisibleChanged: publishAnchor()
+    onCanopyTopicChanged: publishAnchor()
+    onAnchorOutputChanged: publishAnchor()
     function updatePeek() {
         if (enabled && (hovered || visualFocus) && canopyTopic && Config.saved.canopyPeek) peekDelay.restart();
         else { peekDelay.stop(); Canopy.leavePeek(); }

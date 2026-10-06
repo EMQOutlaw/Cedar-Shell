@@ -31,11 +31,18 @@ Singleton {
     // one exists, otherwise from the screen centre under the Core pill.
     property var anchorProviders: ({})
     function setAnchorProvider(value, output, provider) {
-        const next = Object.assign({}, anchorProviders), key = value + "@" + output;
-        if (provider)
-            next[key] = provider;
-        else
-            delete next[key];
+        const next = Object.assign({}, anchorProviders);
+        next[value + "@" + output] = provider;
+        anchorProviders = next;
+    }
+    // Only the registered provider may clear its key: bar layouts instantiate
+    // the same control more than once and hide the spares.
+    function clearAnchorProvider(value, output, provider) {
+        const key = value + "@" + output;
+        if (anchorProviders[key] !== provider)
+            return;
+        const next = Object.assign({}, anchorProviders);
+        delete next[key];
         anchorProviders = next;
     }
     // A panel descending from its own bar control is its own thing: no topic

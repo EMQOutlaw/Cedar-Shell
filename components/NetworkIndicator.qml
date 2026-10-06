@@ -30,9 +30,14 @@ BarButton {
         return (win.screen.width - win.width) / 2 + p.x;
     }
     readonly property string anchorOutput: outputName || CoreService.hostName
-    function publishAnchor() { Canopy.setAnchorProvider("network", anchorOutput, visible ? root.anchorX : null); }
+    function publishAnchor() {
+        if (visible)
+            Canopy.setAnchorProvider("network", anchorOutput, root.anchorX);
+        else
+            Canopy.clearAnchorProvider("network", anchorOutput, root.anchorX);
+    }
     Component.onCompleted: publishAnchor()
-    Component.onDestruction: Canopy.setAnchorProvider("network", anchorOutput, null)
+    Component.onDestruction: Canopy.clearAnchorProvider("network", anchorOutput, root.anchorX)
     onVisibleChanged: publishAnchor()
     onAnchorOutputChanged: publishAnchor()
     onNoticeChanged: {

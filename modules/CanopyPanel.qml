@@ -53,8 +53,8 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 2
                 GlowText {
-                    // A standalone panel's content carries its own heading.
-                    visible: !Canopy.standalone
+                    // Hidden when a standalone panel's content carries its own heading.
+                    visible: !(Canopy.standalone && Canopy.topic === "network")
                     text: Canopy.title.toUpperCase()
                     color: Forest.accent
                     font.family: Theme.labelFont

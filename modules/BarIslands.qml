@@ -213,11 +213,14 @@ Item {
                 implicitWidth: 32
                 canopyOutput: root.output.name
                 canopyTopic: "notifications"
+                checked: Canopy.shown && Canopy.topic === "notifications" && !Canopy.peeking
                 onClicked: {
-                    if (Config.saved.canopyEnabled)
-                        Canopy.open("notifications", root.output.name);
-                    else
+                    if (!Config.saved.canopyEnabled)
                         ShellState.toggle("history");
+                    else if (checked)
+                        Canopy.close();
+                    else
+                        Canopy.open("notifications", root.output.name);
                 }
             }
         }
