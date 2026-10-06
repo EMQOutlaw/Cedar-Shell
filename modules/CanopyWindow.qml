@@ -87,7 +87,7 @@ PanelWindow {
         const w = topicWidth(drop.topic);
         snap(topicX(w), w, 0);
         drop.reveal = 0;
-        Qt.callLater(() => { root.retarget(); openReveal.restart(); });
+        Qt.callLater(() => { root.retarget(); openReveal.restart(); Canopy.enter(); });
     }
     // Collapse straight back up into the bar.
     function collapse() {
@@ -190,7 +190,7 @@ PanelWindow {
             PauseAnimation { duration: root.morphing ? 210 : 0 }
             ScriptAction { script: { drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; root.aim(); } }
             PauseAnimation { duration: root.morphing ? 40 : 0 }
-            ScriptAction { script: { root.switching = false; root.retarget(); } }
+            ScriptAction { script: { root.switching = false; root.retarget(); Canopy.enter(); } }
             PauseAnimation { duration: root.morphing ? 110 : 0 }
             NumberAnimation { target: drop; property: "reveal"; to: 1; duration: root.morphing ? 220 : 0; easing.type: Easing.OutCubic }
         }

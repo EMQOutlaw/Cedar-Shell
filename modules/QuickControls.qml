@@ -19,6 +19,9 @@ ColumnLayout {
         Controls.refresh()
     spacing: 10
 
+    // Each instrument settles a beat after the last; `order` sets the beat.
+    function beat(order, span = .4) { return Canopy.ease(.06 * order, span); }
+
     component LevelPill: Item {
         id: level
         property string icon: ""
@@ -27,12 +30,17 @@ ColumnLayout {
         property bool muted: false
         property bool canMute: true
         property string sliderName: ""
+        property int order: 0
+        readonly property real sweep: root.beat(order)
         signal moved(real value)
         signal committed(real value)
         signal toggled()
         Layout.fillWidth: true
         implicitHeight: 44
-        ChamferFrame { anchors.fill: parent; cut: 7; stroke: Qt.alpha(level.muted ? Theme.amber : Theme.teal, level.muted ? .35 : .16) }
+        opacity: sweep
+        transform: Translate { x: 12 * (1 - level.sweep) }
+        // A filament lights along the foot of the row as it arrives.
+        ChamferFrame { anchors.fill: parent; cut: 7; stroke: Qt.alpha(level.muted ? Theme.amber : Theme.teal, level.muted ? .35 : .16); line: true; lineColor: level.muted ? Theme.amber : Theme.teal; lineFraction: .55 * level.sweep; lineOpacity: .45 }
         RowLayout {
             anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 14; spacing: 8
             StationButton {
@@ -54,7 +62,7 @@ ColumnLayout {
             }
             Text {
                 Layout.preferredWidth: 46; horizontalAlignment: Text.AlignRight
-                text: level.muted ? "MUTED" : Math.round(level.value * 100) + "%"
+                text: level.muted ? "MUTED" : Math.round(level.value * 100 * level.sweep) + "%"
                 textFormat: Text.PlainText
                 font.family: Theme.dataFont; font.pixelSize: level.muted ? 9 : Theme.small; font.letterSpacing: level.muted ? 1.2 : 0
                 color: level.muted ? Theme.amber : Theme.green
@@ -67,8 +75,12 @@ ColumnLayout {
         property string label: ""
         property string value: ""
         property bool on: false
+        property int order: 0
+        readonly property real sweep: root.beat(order)
         Layout.fillWidth: true; Layout.preferredWidth: 1
         implicitHeight: 58
+        opacity: sweep
+        scale: .94 + .06 * sweep
         checked: on
         Accessible.name: label + ": " + value
         background: ChamferFrame {
@@ -96,6 +108,7 @@ ColumnLayout {
 
     // Levels
     LevelPill {
+        order: 0
         label: "Volume"; sliderName: "quickVolume"
         icon: Audio.muted ? root.glyph("󰝟", "×") : root.glyph("󰕾", "♪")
         enabled: Audio.audio !== null
@@ -104,6 +117,7 @@ ColumnLayout {
         onToggled: Audio.toggleMute()
     }
     LevelPill {
+        order: 1
         label: "Microphone"
         icon: Audio.microphone?.muted ? root.glyph("󰍭", "×") : root.glyph("󰍬", "M")
         visible: Audio.microphone !== null
@@ -112,6 +126,7 @@ ColumnLayout {
         onToggled: Audio.toggleMicrophone()
     }
     LevelPill {
+        order: 2
         label: "Brightness"; canMute: false
         icon: root.glyph("󰃠", "☼")
         visible: Brightness.available
@@ -120,6 +135,8 @@ ColumnLayout {
     }
     GridLayout {
         Layout.fillWidth: true; columns: root.width < 360 ? 1 : 2; columnSpacing: 8; rowSpacing: 6
+        opacity: root.beat(3)
+        transform: Translate { y: 6 * (1 - root.beat(3)) }
         StationCombo {
             Layout.fillWidth: true; Layout.preferredWidth: 1; implicitHeight: 30
             visible: Audio.outputs.length > 1
@@ -144,12 +161,14 @@ ColumnLayout {
         columns: 2; columnSpacing: 8; rowSpacing: 8
         uniformCellWidths: true
         Tile {
+            order: 4
             visible: Controls.data.nightlight !== null
             label: "Night light"; value: Controls.data.nightlight === true ? "On" : "Off"; on: Controls.data.nightlight === true
             enabled: !Controls.busy
             onClicked: Controls.run({action: "nightlight"})
         }
         Tile {
+            order: 5
             label: "Do not disturb"; value: Config.saved.doNotDisturb ? "Quiet" : "Off"; on: Config.saved.doNotDisturb
             onClicked: Config.set("doNotDisturb", !Config.saved.doNotDisturb)
         }
@@ -158,7 +177,9 @@ ColumnLayout {
     ColumnLayout {
         visible: Controls.data.profiles.length > 0
         Layout.fillWidth: true; spacing: 6
-        Text { text: "POWER"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1.3; color: Theme.muted }
+        opacity: root.beat(6)
+        transform: Translate { y: 6 * (1 - root.beat(6)) }
+        SectionMark { text: "POWER"; size: 9; tone: Theme.muted }
         GridLayout {
             Layout.fillWidth: true
             columns: Math.max(1, Controls.data.profiles.length); columnSpacing: 8
@@ -168,8 +189,11 @@ ColumnLayout {
                 StationButton {
                     id: profile
                     required property string modelData
+                    required property int index
                     readonly property bool on: Controls.data.profile === modelData
                     Layout.fillWidth: true; implicitHeight: 40
+                    opacity: root.beat(7 + index, .35)
+                    scale: .94 + .06 * root.beat(7 + index, .35)
                     checked: on; enabled: !Controls.busy
                     text: ({"power-saver": "Saver", "balanced": "Balanced", "performance": "Performance"})[modelData] || modelData
                     Accessible.name: "Power profile " + text + (on ? ", in use" : "")
@@ -189,6 +213,7 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         visible: (UPower.displayDevice?.isPresent ?? false) || !Config.saved.canopyEnabled
+        opacity: root.beat(10)
         StatusPill {
             visible: UPower.displayDevice?.isPresent ?? false
             text: Math.round((UPower.displayDevice?.percentage ?? 0) * 100) + "% · " + (UPower.onBattery ? "battery" : "plugged in")
@@ -206,7 +231,9 @@ ColumnLayout {
     Item {
         Layout.fillWidth: true; Layout.topMargin: 4
         implicitHeight: 52
-        ChamferFrame { anchors.fill: parent; cut: 7; stroke: Qt.alpha(Theme.teal, .14); line: root.player?.isPlaying ?? false; lineColor: Theme.teal; lineFraction: .5; lineOpacity: .6 }
+        opacity: root.beat(11)
+        transform: Translate { y: 8 * (1 - root.beat(11)) }
+        ChamferFrame { anchors.fill: parent; cut: 7; stroke: Qt.alpha(Theme.teal, .14); line: root.player?.isPlaying ?? false; lineColor: Theme.teal; lineFraction: .5 * root.beat(11, .6); lineOpacity: .6 }
         RowLayout {
             anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 8; spacing: 6
             ColumnLayout {

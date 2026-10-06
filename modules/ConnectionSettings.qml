@@ -32,17 +32,29 @@ ColumnLayout {
             selected = null;
     }
     spacing: 12
-    GlowText {
+    // Instruments settle one beat after another while the panel enters; in the
+    // Settings page the clock is already at rest, so nothing moves.
+    function beat(order, span = .4) { return Canopy.ease(.06 * order, span); }
+    RowLayout {
         visible: root.showTitle
-        text: "Connections"
-        color: Theme.teal
-        font.pixelSize: 19
+        spacing: 8
+        opacity: root.beat(0)
+        transform: Translate { y: 6 * (1 - root.beat(0)) }
+        Rectangle { width: 14; height: 1; color: Theme.teal; opacity: .7 }
+        GlowText {
+            text: "Connections"
+            color: Theme.teal
+            font.pixelSize: 19
+        }
     }
-    GlowText {
-        text: Network.statusDescription
-        color: Theme.green
+    Flow {
         Layout.fillWidth: true
-        wrapMode: Text.WordWrap
+        spacing: 8
+        opacity: root.beat(1)
+        transform: Translate { y: 6 * (1 - root.beat(1)) }
+        StatusPill { text: Network.label; tone: Network.state === "connected" ? Theme.green : Theme.muted }
+        StatusPill { visible: Network.vpnActive; text: "VPN"; tone: Theme.green }
+        StatusPill { text: ({ unknown: "Internet unchecked", none: "No internet", portal: "Sign-in required", limited: "Limited internet", verified: "Internet verified" })[Network.data.available ? Network.data.status?.internet || "unknown" : "unknown"]; tone: Network.data.status?.internet === "verified" ? Theme.green : Network.data.status?.internet === "none" ? Theme.amber : Theme.muted }
     }
     GlowText {
         visible: Network.error !== ""
@@ -53,6 +65,8 @@ ColumnLayout {
     }
     StationToggle {
         Layout.fillWidth: true
+        opacity: root.beat(2)
+        transform: Translate { x: 10 * (1 - root.beat(2)) }
         label: "Wi-Fi"
         checked: Network.data.enabled
         enabled: Network.data.available && Network.data.hardware
@@ -66,6 +80,8 @@ ColumnLayout {
     Flow {
         Layout.fillWidth: true
         spacing: 8
+        opacity: root.beat(3)
+        transform: Translate { x: 10 * (1 - root.beat(3)) }
         StationButton {
             text: Network.busy ? "Working…" : "Scan"
             enabled: Network.data.enabled && !Network.busy
@@ -90,22 +106,46 @@ ColumnLayout {
     }
     Repeater {
         model: Network.networks
+        // Each network settles a beat after the last; its signal bar sweeps to strength.
         RowLayout {
+            id: row
             required property var model
+            required property int index
             readonly property var modelData: model
+            readonly property real sweep: root.beat(4 + Math.min(index, 8), .4)
             Layout.fillWidth: true
+            opacity: sweep
+            transform: Translate { x: 10 * (1 - row.sweep) }
             ColumnLayout {
                 Layout.fillWidth: true
+                spacing: 4
                 GlowText {
-                    text: modelData.ssid
+                    text: row.modelData.ssid
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    color: modelData.active ? Theme.green : Theme.text
+                    color: row.modelData.active ? Theme.green : Theme.text
                 }
-                GlowText {
-                    text: modelData.strength + "% · " + modelData.security + (modelData.saved ? " · saved" : "")
-                    color: Theme.muted
-                    font.pixelSize: 10
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Rectangle {
+                        Layout.preferredWidth: 72
+                        implicitHeight: 2
+                        color: Qt.alpha(Theme.teal, .12)
+                        Rectangle {
+                            width: parent.width * Math.max(0, Math.min(1, row.modelData.strength / 100)) * row.sweep
+                            height: parent.height
+                            color: row.modelData.active ? Theme.green : Theme.teal
+                            Rectangle { visible: parent.width > 12; anchors.right: parent.right; width: 8; height: parent.height; color: Theme.green; opacity: .8 }
+                        }
+                    }
+                    GlowText {
+                        Layout.fillWidth: true
+                        text: Math.round(row.modelData.strength * row.sweep) + "% · " + row.modelData.security + (row.modelData.saved ? " · saved" : "")
+                        color: Theme.muted
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                    }
                 }
             }
             StationButton {
@@ -185,17 +225,22 @@ ColumnLayout {
         visible: root.hotspot && root.showHotspot
         Layout.fillWidth: true
     }
-    GlowText {
+    SectionMark {
         text: "SAVED NETWORKS & VPN"
-        color: Theme.teal
         Layout.topMargin: 8
+        opacity: root.beat(6)
     }
     Repeater {
         model: Network.savedNetworks
         ColumnLayout {
+            id: saved
             required property var model
+            required property int index
             readonly property var modelData: model
+            readonly property real sweep: root.beat(7 + Math.min(index, 8), .4)
             Layout.fillWidth: true
+            opacity: sweep
+            transform: Translate { x: 10 * (1 - saved.sweep) }
             RowLayout {
                 Layout.fillWidth: true
                 GlowText {

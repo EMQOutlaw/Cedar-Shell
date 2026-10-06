@@ -23,6 +23,22 @@ Singleton {
         controlWindows = controlWindows.filter(w => w !== window);
     }
     property string topic: "quick"
+    // Entrance clock for whichever panel is showing: 0→1 over about a second,
+    // started by the drop when content begins to show. Panels stagger their
+    // instruments through ease(start, span). Reduced Motion and tests snap.
+    property real reveal: 1
+    function ease(start, span) {
+        const t = Math.max(0, Math.min(1, (reveal - start) / span));
+        return 1 - Math.pow(1 - t, 3);
+    }
+    function enter() {
+        entrance.stop();
+        if (Theme.reducedMotion || Config.testMode) { reveal = 1; return; }
+        reveal = 0;
+        entrance.start();
+    }
+    property NumberAnimation entrance: NumberAnimation { target: root; property: "reveal"; from: 0; to: 1; duration: 1050 }
+    property Connections motionGuard: Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { root.entrance.stop(); root.reveal = 1; } } }
     property bool pinned: false
     property bool peeking: false
     property string outputName: ""

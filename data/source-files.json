@@ -35,6 +35,7 @@
   "components/ReadingText.qml",
   "components/Readout.qml",
   "components/Search.js",
+  "components/SectionMark.qml",
   "components/ServiceRequest.qml",
   "components/SettingControl.qml",
   "components/SettingRow.qml",
