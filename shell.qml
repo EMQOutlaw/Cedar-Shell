@@ -100,7 +100,11 @@ ShellRoot {
     IpcHandler {
         target: "hud"
         function toggle(): void {
-            if (Config.stage >= 2)
+            if (Config.stage < 2)
+                return;
+            if (Config.saved.canopyEnabled)
+                Canopy.toggleTopic("station");
+            else
                 ShellState.toggle("hud");
         }
     }

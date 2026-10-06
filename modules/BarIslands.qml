@@ -76,8 +76,16 @@ Item {
                 iconOnly: root.compact
                 hint: "Open dashboard"
                 implicitWidth: root.compact ? 36 : 108
-                onClicked: if (Config.stage >= 2)
-                    ShellState.toggle("hud")
+                anchorTopic: "station"
+                checked: Canopy.shown && Canopy.topic === "station" && !Canopy.peeking
+                onClicked: {
+                    if (Config.stage < 2)
+                        return;
+                    if (Config.saved.canopyEnabled)
+                        Canopy.toggleTopic("station", root.output.name);
+                    else
+                        ShellState.toggle("hud");
+                }
             }
             BarButton {
                 visible: Config.stage >= 3 && Config.moduleEnabled("go")

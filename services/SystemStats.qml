@@ -20,7 +20,7 @@ Singleton {
     property real previousTotal: 0
     property real previousIdle: 0
     property bool available: false
-    readonly property bool instrument: !ShellState.locked && (ShellState.panel === "hud" || (ShellState.panel === "settings" && ["overview","system"].includes(ShellState.settingsSection)) || (Canopy.shown && ["system", "quick"].includes(Canopy.topic)))
+    readonly property bool instrument: !ShellState.locked && (ShellState.panel === "hud" || (ShellState.panel === "settings" && ["overview","system"].includes(ShellState.settingsSection)) || (Canopy.shown && ["system", "quick", "station"].includes(Canopy.topic)))
     readonly property bool ambient: Config.saved.forestPulse && Config.saved.coreEnabled && !ShellState.locked
     readonly property bool warnings: Config.saved.coreWarnings
     readonly property int fastCadence: instrument ? 2000 : ambient ? 20000 : 0

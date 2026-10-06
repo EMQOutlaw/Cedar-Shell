@@ -5,11 +5,11 @@ import ".."
 
 Singleton {
     id: root
-    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails"]
+    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station"]
     // One route per destination: a topic with a visible bar button gets no tab.
     // The bar's center control always opens Quick Controls.
     function barRoute(value) {
-        return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications"));
+        return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications")) || (value === "station" && Config.stage >= 2 && Config.moduleEnabled("identity"));
     }
     readonly property var tabs: topics.filter(t => !barRoute(t))
     // Include the originating controls in the compositor grab. Otherwise an
@@ -71,7 +71,8 @@ Singleton {
             clipboard: "Clipboard",
             notifications: "Notifications",
             quick: "Quick Controls",
-            trails: "Recent Trail"
+            trails: "Recent Trail",
+            station: "Field Station"
         })[value] || "Canopy";
     }
     readonly property string title: ({
@@ -85,7 +86,8 @@ Singleton {
             clipboard: "Clipboard",
             notifications: "Notifications",
             quick: "Quick Controls",
-            trails: "Recent Trail"
+            trails: "Recent Trail",
+            station: "Field Station"
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
         if (!topics.includes(value) || ShellState.locked || !Config.saved.canopyEnabled)
@@ -99,6 +101,13 @@ Singleton {
         ShellState.output = screen?.name || "";
         if (!peek)
             Forest.record("canopy", title, value);
+    }
+    // Open a control's topic, or close it when that topic is already open.
+    function toggleTopic(value, output = "") {
+        if (shown && topic === value && !peeking)
+            close();
+        else
+            open(value, output);
     }
     function toggleQuick(output = "") {
         if (ShellState.locked)

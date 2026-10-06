@@ -27,7 +27,8 @@ PanelWindow {
     margins.top: Config.barDetached ? Config.barMargin : 0
     margins.left: sideInset
     margins.right: sideInset
-    implicitHeight: Math.min((modelData?.height || 800) - margins.top - 16, Config.barHeight + 724)
+    // Tall enough for Field Station; the surface is transparent and masked to the drop.
+    implicitHeight: (modelData?.height || 800) - margins.top - 16
     color: Theme.transparent
     exclusionMode: ExclusionMode.Ignore
     mask: Region { item: drop }
@@ -45,11 +46,11 @@ PanelWindow {
 
     // ---- targets -----------------------------------------------------------
     function topicWidth(topic) {
-        const w = Canopy.peeking ? 360 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "quick" ? 420 : 520;
+        const w = Canopy.peeking ? 360 : topic === "station" ? 760 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "quick" ? 420 : 520;
         return Math.min(width - 24, w);
     }
     function topicHeight(topic) {
-        const cap = Math.min(height - barJoin - 16, Canopy.peeking ? 160 : topic === "quick" ? 660 : 700);
+        const cap = Math.min(height - barJoin - 16, Canopy.peeking ? 160 : topic === "station" ? 1200 : topic === "quick" ? 660 : 700);
         return Math.max(Canopy.peeking ? 120 : 160, Math.min(cap, panel.preferredHeight));
     }
     // Where the open panel sits: centred on its control, else centred on the screen.

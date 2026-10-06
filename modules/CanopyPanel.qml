@@ -56,6 +56,8 @@ Rectangle {
         anchors.margins: 20
         spacing: 12
         RowLayout {
+            // Field Station brings its own header and close control.
+            visible: !(root.standalone && root.topic === "station")
             Layout.fillWidth: true
             ColumnLayout {
                 Layout.fillWidth: true
@@ -118,7 +120,8 @@ Rectangle {
                             clipboard: "Clipboard",
                             notifications: "Notes",
                             quick: "Quick",
-                            trails: "Trails"
+                            trails: "Trails",
+                            station: "Station"
                         })[modelData]
                     background: ChamferFrame {
                         cut: 5
@@ -163,7 +166,8 @@ Rectangle {
                         clipboard: clipboard,
                         notifications: notifications,
                         quick: quick,
-                        trails: trails
+                        trails: trails,
+                        station: station
                     })[root.topic]
             }
         }
@@ -246,6 +250,12 @@ Rectangle {
     Component {
         id: quick
         QuickControls {
+            active: root.active
+        }
+    }
+    Component {
+        id: station
+        FieldStation {
             active: root.active
         }
     }

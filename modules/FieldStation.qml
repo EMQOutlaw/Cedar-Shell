@@ -87,7 +87,7 @@ Rectangle {
                 iconOnly: true
                 text: "×"
                 hint: "Close Field Station"
-                onClicked: ShellState.close()
+                onClicked: Canopy.shown && Canopy.topic === "station" ? Canopy.close() : ShellState.close()
             }
         }
         Rule {}
