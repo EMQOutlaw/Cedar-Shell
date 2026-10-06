@@ -15,26 +15,28 @@ AbstractButton {
     // A control with a Canopy topic registers where that panel descends from:
     // the screen x of its centre, for a full-width bar or a centred window alike.
     property bool anchorsCanopy: true
+    // The topic whose panel grows out of this control; defaults to the peek topic.
+    property string anchorTopic: canopyTopic
     readonly property string anchorOutput: canopyOutput || CoreService.hostName
-    function anchorX() {
+    function anchorRect() {
         const win = root.QsWindow.window;
         if (!win || !win.screen)
-            return -1;
-        const p = root.mapToItem(null, root.width / 2, 0);
-        return (win.screen.width - win.width) / 2 + p.x;
+            return null;
+        const p = root.mapToItem(null, 0, 0);
+        return { x: (win.screen.width - win.width) / 2 + p.x, width: root.width };
     }
     function publishAnchor() {
-        if (!canopyTopic)
+        if (!anchorTopic)
             return;
         if (visible && anchorsCanopy)
-            Canopy.setAnchorProvider(canopyTopic, anchorOutput, root.anchorX);
+            Canopy.setAnchorProvider(anchorTopic, anchorOutput, root.anchorRect);
         else
-            Canopy.clearAnchorProvider(canopyTopic, anchorOutput, root.anchorX);
+            Canopy.clearAnchorProvider(anchorTopic, anchorOutput, root.anchorRect);
     }
     Component.onCompleted: publishAnchor()
-    Component.onDestruction: if (canopyTopic) Canopy.clearAnchorProvider(canopyTopic, anchorOutput, root.anchorX)
+    Component.onDestruction: if (anchorTopic) Canopy.clearAnchorProvider(anchorTopic, anchorOutput, root.anchorRect)
     onVisibleChanged: publishAnchor()
-    onCanopyTopicChanged: publishAnchor()
+    onAnchorTopicChanged: publishAnchor()
     onAnchorOutputChanged: publishAnchor()
     function updatePeek() {
         if (enabled && (hovered || visualFocus) && canopyTopic && Config.saved.canopyPeek) peekDelay.restart();

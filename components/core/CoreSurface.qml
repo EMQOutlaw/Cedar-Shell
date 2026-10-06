@@ -44,6 +44,23 @@ Item {
     readonly property var dots: CoreService.rows.length > 1 || (CoreService.rows.length === 1 && !alert) ? CoreService.rows.slice(0, 3) : []
     property alias pillItem: pill
     property alias nubItem: networkStatus
+    // Quick Controls grows out of the pill: register its screen rect.
+    readonly property string anchorOutput: CoreService.hostName
+    function pillRect() {
+        const win = root.QsWindow.window;
+        if (!win || !win.screen)
+            return null;
+        const p = pill.mapToItem(null, 0, 0);
+        return { x: (win.screen.width - win.width) / 2 + p.x, width: pill.width };
+    }
+    function publishAnchor() {
+        if (root.active)
+            Canopy.setAnchorProvider("quick", anchorOutput, root.pillRect);
+        else
+            Canopy.clearAnchorProvider("quick", anchorOutput, root.pillRect);
+    }
+    Component.onDestruction: Canopy.clearAnchorProvider("quick", anchorOutput, root.pillRect)
+    onAnchorOutputChanged: publishAnchor()
     width: targetWidth
     implicitHeight: detailed ? Math.min(maximumHeight, hub.implicitHeight + root.restingHeight + 38) : peek ? root.restingHeight + Math.min(180, preview.implicitHeight) + 28 : CoreService.dropHover ? root.restingHeight + 60 : root.restingHeight
     // Morph rather than scale: width leads on a short curve, height follows on a
@@ -61,7 +78,10 @@ Item {
         windowHeight = Math.max(windowHeight, Math.ceil(implicitHeight * (morphing && growing ? 1.03 : 1)) + 2);
         height = implicitHeight;
     }
-    Component.onCompleted: height = implicitHeight
+    Component.onCompleted: {
+        height = implicitHeight;
+        publishAnchor();
+    }
     onHeightChanged: {
         if (!heightAnimation.running)
             windowHeight = Math.ceil(height) + 2;
@@ -188,6 +208,7 @@ Item {
     // Foreground depends on heldId: defer its update out of the binding evaluation.
     onActivityChanged: Qt.callLater(root.syncHold)
     onActiveChanged: {
+        publishAnchor();
         if (!active) {
             hovering = false;
             CoreService.hold("");

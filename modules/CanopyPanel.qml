@@ -8,12 +8,17 @@ import "../services"
 Rectangle {
     id: root
     property bool active: false
+    // The topic this panel renders; the drop lags it while it cross-fades.
+    property string topic: Canopy.topic
+    // The drop draws the silhouette itself; the harness and fallbacks keep this frame.
+    property bool framed: true
     // Panel x of the control this panel descends from, or -1 for the centre.
     property real tieX: -1
     // Panels descend from the Core pill, so they share its chamfered silhouette.
     color: Theme.transparent
     clip: true
     ChamferFrame {
+        visible: root.framed
         anchors.fill: parent
         cut: 12
         fill: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
@@ -21,6 +26,7 @@ Rectangle {
     }
     // A short lit line at the top edge ties the panel to the pill above it.
     Rectangle {
+        visible: root.framed
         x: root.tieX >= 0 ? Math.round(Math.max(14, Math.min(root.tieX - width / 2, parent.width - width - 14))) : Math.round((parent.width - width) / 2)
         y: 0; width: 64; height: 2; radius: 1; color: Forest.accent; opacity: .7
         Behavior on x { enabled: !Theme.reducedMotion; NumberAnimation { duration: Theme.transition; easing.type: Easing.OutCubic } }
@@ -54,8 +60,8 @@ Rectangle {
                 spacing: 2
                 GlowText {
                     // Hidden when a standalone panel's content carries its own heading.
-                    visible: !(Canopy.standalone && Canopy.topic === "network")
-                    text: Canopy.title.toUpperCase()
+                    visible: !(Canopy.standalone && root.topic === "network")
+                    text: Canopy.titleFor(root.topic).toUpperCase()
                     color: Forest.accent
                     font.family: Theme.labelFont
                     font.pixelSize: 20
@@ -98,7 +104,7 @@ Rectangle {
                     required property string modelData
                     Layout.fillWidth: true
                     implicitHeight: 28
-                    checked: Canopy.topic === modelData
+                    checked: root.topic === modelData
                     text: ({
                             audio: "Audio",
                             network: "Connections",
@@ -128,7 +134,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             wrapMode: Text.WordWrap
-            text: Canopy.topic === "audio" ? (Audio.sink?.description || "No output") + " · " + Audio.label : Canopy.topic === "network" ? Network.label : Canopy.topic === "bluetooth" ? (BluetoothService.adapter?.enabled ? "Bluetooth on" : "Bluetooth off") : Forest.phrase
+            text: root.topic === "audio" ? (Audio.sink?.description || "No output") + " · " + Audio.label : root.topic === "network" ? Network.label : root.topic === "bluetooth" ? (BluetoothService.adapter?.enabled ? "Bluetooth on" : "Bluetooth off") : Forest.phrase
             color: Theme.text
         }
         ScrollView {
@@ -156,7 +162,7 @@ Rectangle {
                         notifications: notifications,
                         quick: quick,
                         trails: trails
-                    })[Canopy.topic]
+                    })[root.topic]
             }
         }
         RowLayout {

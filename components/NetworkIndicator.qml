@@ -22,22 +22,22 @@ BarButton {
     checked: Canopy.shown && Canopy.topic === "network" && !Canopy.peeking
     // Screen x of the glyph's centre, so the Connections panel descends from it.
     // Works for a centred Core window and a full-width bar alike.
-    function anchorX() {
+    function anchorRect() {
         const win = root.QsWindow.window;
         if (!win || !win.screen)
-            return -1;
-        const p = root.mapToItem(null, (Network.vpnActive ? 46 : 32) / 2, 0);
-        return (win.screen.width - win.width) / 2 + p.x;
+            return null;
+        const p = root.mapToItem(null, 0, 0);
+        return { x: (win.screen.width - win.width) / 2 + p.x, width: Network.vpnActive ? 46 : 32 };
     }
     readonly property string anchorOutput: outputName || CoreService.hostName
     function publishAnchor() {
         if (visible)
-            Canopy.setAnchorProvider("network", anchorOutput, root.anchorX);
+            Canopy.setAnchorProvider("network", anchorOutput, root.anchorRect);
         else
-            Canopy.clearAnchorProvider("network", anchorOutput, root.anchorX);
+            Canopy.clearAnchorProvider("network", anchorOutput, root.anchorRect);
     }
     Component.onCompleted: publishAnchor()
-    Component.onDestruction: Canopy.clearAnchorProvider("network", anchorOutput, root.anchorX)
+    Component.onDestruction: Canopy.clearAnchorProvider("network", anchorOutput, root.anchorRect)
     onVisibleChanged: publishAnchor()
     onAnchorOutputChanged: publishAnchor()
     onNoticeChanged: {

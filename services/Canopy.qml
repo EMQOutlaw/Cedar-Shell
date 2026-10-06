@@ -47,14 +47,33 @@ Singleton {
     }
     // A panel descending from its own bar control is its own thing: no topic
     // tabs, no Quick Controls footer, and the Core pill does not react to it.
-    readonly property bool standalone: shown && anchorX >= 0
-    readonly property real anchorX: {
+    // Decided by topic, not by the anchor lookup: the pill's width depends on
+    // this, and the pill's own anchor provider reads that width.
+    readonly property bool standalone: shown && topic !== "quick" && barRoute(topic)
+    // The registered control's screen rect {x, width} for the shown topic, or null.
+    readonly property var anchorRect: {
         const provider = shown ? anchorProviders[topic + "@" + (screen?.name || "")] : null;
-        const x = provider ? provider() : -1;
-        return Number.isFinite(x) && x >= 0 ? x : -1;
+        const r = provider ? provider() : null;
+        return r && Number.isFinite(r.x) && Number.isFinite(r.width) && r.width > 0 ? r : null;
     }
+    readonly property real anchorX: anchorRect ? anchorRect.x + anchorRect.width / 2 : -1
     readonly property var screen: Quickshell.screens.find(s => s.name === outputName) || CoreService.hostScreen
     readonly property bool shown: Config.saved.canopyEnabled && !ShellState.locked && (ShellState.panel === "canopy" || pinned)
+    function titleFor(value) {
+        return ({
+            audio: "Audio",
+            network: "Connections",
+            bluetooth: "Bluetooth",
+            power: "Power & Session",
+            system: "System",
+            weather: "Sky Watch",
+            calendar: "Time & Calendar",
+            clipboard: "Clipboard",
+            notifications: "Notifications",
+            quick: "Quick Controls",
+            trails: "Recent Trail"
+        })[value] || "Canopy";
+    }
     readonly property string title: ({
             audio: "Audio",
             network: "Connections",
