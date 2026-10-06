@@ -484,6 +484,40 @@ def lock_handoff(identity):
     wait_for(lambda:bridge_serving(row),20,'Omarchy did not hand its lock requests to CEDAR. Run cedar restore to return to the previous locker.')
     print('Trailwatch is now the lock screen. Keyboard, idle, lid and sleep lock requests reach it through Omarchy.',flush=True)
 
+def switch_trailwatch(approved=False):
+    """Select Trailwatch on a session that is already running: restart CEDAR
+    with the lock surface loaded, then run the same verified handoff as keep."""
+    with guard():
+        row=read_record()
+        if not row or row['stage'] not in ('trial','kept'):raise d.Refused('No running CEDAR session. Start one with cedar try --trailwatch.')
+        if row.get('trailwatch'):
+            raise d.Refused('Trailwatch is already the lock screen for this session.' if trailwatch_active(row) else 'Trailwatch is loaded; run cedar keep to finish its handoff.')
+        unlocked(row);healthy(row)
+        lock_id=(row.get('omacale') or {}).get('lockId') or 'omarchy.lock'
+        d.approve({'action':'Switch this session\'s lock screen to CEDAR Trailwatch','changes':['Restart CEDAR with its lock surface loaded (PAM service omarchy-lock-password)','Run a local password test and one real Trailwatch lock/unlock','Only then disable '+lock_id+' and answer Omarchy\'s lock requests from CEDAR'],
+                   'preserve':['Omarchy idle timings, lid, sleep and keyboard lock requests; PAM files; login startup choice'],'undo':'cedar restore'},approved)
+        row['trailwatch']={'lockId':lock_id,'tested':False,'ready':False};row['locker']='trailwatch-pending'
+        # The supervisor restarts a missing shell in the starting stage, now with the Trailwatch environment.
+        row['stage']='starting';row['readyDeadline']=time.time()+60;row['deadline']=time.time()+900;save(row)
+        identity=row['id']
+        cedar_ipc(row,'shell','stop')
+    print('Restarting CEDAR with Trailwatch...',flush=True)
+    def restarted():
+        row=read_record()
+        if not row or row['id']!=identity:raise d.Refused('The session changed while switching. Inspect cedar status.')
+        if row['stage']=='restored':raise d.Refused('CEDAR did not restart; the previous desktop was restored. '+row.get('error',''))
+        return row['stage'] in ('trial','kept') and cedar_info(row).get('trailwatch') is True
+    wait_for(restarted,60,'CEDAR did not restart with Trailwatch. Inspect cedar status.')
+    with guard():
+        row=read_record();row['deadline']=time.time()+900;save(row)
+    lock_handoff(identity)
+    with guard():
+        row=read_record()
+        if row and row['id']==identity and row['stage']=='trial':
+            row['stage']='kept';save(row)
+            journal=Path(row['journal']);record=d.read_json(journal);record['stage']='commit';d.write_json(journal,record)
+    print('Trailwatch selected. Login startup is unchanged; use cedar activate to change it.')
+
 def request_lock(suspend=False):
     row=read_record()
     if not row or row['stage'] not in ACTIVE:raise d.Refused('No managed Omarchy session.')

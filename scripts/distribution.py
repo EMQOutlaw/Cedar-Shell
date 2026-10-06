@@ -588,11 +588,15 @@ def main(argv=None):
             if backend.__name__ == 'portable_session': backend.trial(installed(),args.approve_trial, expected_adapter=args.adapter, cedar_launcher=args.cedar_launcher, trailwatch=args.trailwatch)
             else:
                 if args.cedar_launcher: raise Refused('The launcher choice applies to the portable adapter; existing Omarchy shortcuts are preserved.')
-                backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial,trailwatch=args.trailwatch)
+                if args.trailwatch and backend.active(): backend.switch_trailwatch(args.approve_trial or args.approve_omarchy_trial)
+                else: backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial,trailwatch=args.trailwatch)
         elif args.action=='status':
             row=backend.read_record()
             print(json.dumps(backend.status_report() if backend.__name__=='portable_session' else {k:row.get(k) for k in ('stage','login','deadline','error','locker')} if row else {'stage':'not active'},indent=2))
-        else:backend.keep(args.action=='activate',args.approve_login)
+        else:
+            if args.trailwatch and backend.__name__!='portable_session' and backend.active() and not (backend.read_record() or {}).get('trailwatch'):
+                backend.switch_trailwatch(args.approve_trial or args.approve_omarchy_trial)
+            backend.keep(args.action=='activate',args.approve_login)
     elif args.action=='session-login':session_backend(args.adapter).login()
     elif args.action in ('lock','launcher'):
         backend=session_backend(args.adapter)

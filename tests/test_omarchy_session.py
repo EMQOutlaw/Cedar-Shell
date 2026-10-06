@@ -256,4 +256,33 @@ class OmarchySession(unittest.TestCase):
         self.assertNotIn('omarchy.lock',d.read_json(config).get('disabledPlugins',[]))
         row=s.read_record();self.assertEqual(row['stage'],'trial');self.assertFalse(row['trailwatch']['ready']);self.assertFalse(row['trailwatch']['tested'])
 
+    def test_switch_trailwatch_restarts_shell_then_hands_off(self):
+        config=Path.home()/'.config/omarchy/shell.json';d.write_json(config,self.config)
+        row=self.row();row.update({'original':self.config,'adapter':'fixture','omarchyPid':1,'config':str(config)})
+        with patch.object(s,'inspect',return_value=row),patch.object(d,'validate',return_value='Fixture'),patch.object(s,'unlocked'),patch.object(s,'spawn_supervisor'),contextlib.redirect_stdout(io.StringIO()):s.trial(d.ROOT,True)
+        with patch.object(s,'unlocked'):s.prepare(s.read_record())
+        row=s.read_record();row['stage']='kept';row['login']=True;s.save(row)
+        calls=[]
+        def cedar_ipc(row,*args):
+            calls.append(args)
+            if args==('shell','stop'):
+                saved=s.read_record();self.assertEqual(saved['stage'],'starting');self.assertEqual(saved['trailwatch']['lockId'],'omarchy.lock')
+                saved['stage']='kept';s.save(saved) # the supervisor restarts the shell
+            return ''
+        infos=[{'trailwatch':True},{'trailwatch':True,'lockReady':True,'authTests':0,'securedUnlocks':0,'locked':False},{'trailwatch':True,'lockReady':True,'authTests':1,'securedUnlocks':0,'locked':False},
+               {'trailwatch':True,'lockReady':True,'authTests':1,'securedUnlocks':0,'locked':False},{'trailwatch':True,'lockReady':True,'authTests':1,'securedUnlocks':1,'locked':False}]
+        def bridge(source,*args):
+            if args==('lock','status'):return json.dumps({'provider':'cedar','passwordPam':True})
+            if args==('shell','listPlugins'):return json.dumps([{'id':'omarchy.lock','enabled':False}])
+            return ''
+        with patch.object(s,'cedar_ipc',side_effect=cedar_ipc),patch.object(s,'cedar_info',side_effect=infos+[infos[-1]]*10),patch.object(s,'ipc',side_effect=bridge),patch.object(s,'unlocked'),patch.object(s,'healthy'),patch.object(s.time,'sleep'),contextlib.redirect_stdout(io.StringIO()):
+            s.switch_trailwatch(approved=True)
+        self.assertEqual(calls,[('shell','stop'),('lock','testAuthentication'),('lock','lock')])
+        row=s.read_record();self.assertEqual(row['stage'],'kept');self.assertTrue(row['login']);self.assertEqual(row['locker'],'trailwatch');self.assertTrue(row['trailwatch']['ready'])
+        self.assertIn('omarchy.lock',d.read_json(config)['disabledPlugins'])
+        with patch.object(s,'unlocked'),patch.object(s,'healthy'):
+            with self.assertRaisesRegex(d.Refused,'already'):s.switch_trailwatch(approved=True)
+    def test_switch_trailwatch_needs_running_session(self):
+        with self.assertRaisesRegex(d.Refused,'cedar try --trailwatch'):s.switch_trailwatch(approved=True)
+
 if __name__=='__main__':unittest.main()
