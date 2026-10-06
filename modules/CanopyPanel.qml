@@ -12,6 +12,8 @@ Rectangle {
     property string topic: Canopy.topic
     // The drop draws the silhouette itself; the harness and fallbacks keep this frame.
     property bool framed: true
+    // Standalone look (no tabs, footer or big title); the drop lags this while closing.
+    property bool standalone: Canopy.standalone
     // Panel x of the control this panel descends from, or -1 for the centre.
     property real tieX: -1
     // Panels descend from the Core pill, so they share its chamfered silhouette.
@@ -60,7 +62,7 @@ Rectangle {
                 spacing: 2
                 GlowText {
                     // Hidden when a standalone panel's content carries its own heading.
-                    visible: !(Canopy.standalone && root.topic === "network")
+                    visible: !(root.standalone && root.topic === "network")
                     text: Canopy.titleFor(root.topic).toUpperCase()
                     color: Forest.accent
                     font.family: Theme.labelFont
@@ -92,7 +94,7 @@ Rectangle {
             }
         }
         GridLayout {
-            visible: !Canopy.peeking && !Canopy.standalone && Canopy.tabs.length > 0
+            visible: !Canopy.peeking && !root.standalone && Canopy.tabs.length > 0
             Layout.fillWidth: true
             columns: Math.min(Canopy.tabs.length, root.width < 600 ? 4 : 8)
             uniformCellWidths: true
@@ -166,7 +168,7 @@ Rectangle {
             }
         }
         RowLayout {
-            visible: !Canopy.peeking && !Canopy.standalone
+            visible: !Canopy.peeking && !root.standalone
             Layout.fillWidth: true
             GlowText {
                 Layout.fillWidth: true
