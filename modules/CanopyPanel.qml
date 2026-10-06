@@ -56,8 +56,8 @@ Rectangle {
         anchors.margins: 20
         spacing: 12
         RowLayout {
-            // Field Station brings its own header and close control.
-            visible: !(root.standalone && root.topic === "station")
+            // Field Station and Power bring their own header and close control.
+            visible: !(root.standalone && ["station", "power"].includes(root.topic))
             Layout.fillWidth: true
             ColumnLayout {
                 Layout.fillWidth: true

@@ -54,12 +54,14 @@ Item {
         return { x: (win.screen.width - win.width) / 2 + p.x, width: pill.width };
     }
     function publishAnchor() {
-        if (root.active)
-            Canopy.setAnchorProvider("quick", anchorOutput, root.pillRect);
-        else
-            Canopy.clearAnchorProvider("quick", anchorOutput, root.pillRect);
+        for (const topic of ["quick", "power"]) {
+            if (root.active)
+                Canopy.setAnchorProvider(topic, anchorOutput, root.pillRect);
+            else
+                Canopy.clearAnchorProvider(topic, anchorOutput, root.pillRect);
+        }
     }
-    Component.onDestruction: Canopy.clearAnchorProvider("quick", anchorOutput, root.pillRect)
+    Component.onDestruction: { Canopy.clearAnchorProvider("quick", anchorOutput, root.pillRect); Canopy.clearAnchorProvider("power", anchorOutput, root.pillRect); }
     onAnchorOutputChanged: publishAnchor()
     width: targetWidth
     implicitHeight: detailed ? Math.min(maximumHeight, hub.implicitHeight + root.restingHeight + 38) : peek ? root.restingHeight + Math.min(180, preview.implicitHeight) + 28 : CoreService.dropHover ? root.restingHeight + 60 : root.restingHeight

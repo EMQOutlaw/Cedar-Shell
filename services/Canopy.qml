@@ -11,7 +11,8 @@ Singleton {
     function barRoute(value) {
         return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications")) || (value === "station" && Config.stage >= 2 && Config.moduleEnabled("identity")) || (value === "go" && Config.stage >= 3 && Config.moduleEnabled("go"));
     }
-    readonly property var tabs: topics.filter(t => !barRoute(t))
+    // Power is its own panel (Super+Esc), never a tab in Quick Controls.
+    readonly property var tabs: topics.filter(t => !barRoute(t) && t !== "power")
     // Include the originating controls in the compositor grab. Otherwise an
     // outside-click dismissal can run before Core's click and reopen the panel.
     property var controlWindows: []
@@ -65,7 +66,7 @@ Singleton {
     // tabs, no Quick Controls footer, and the Core pill does not react to it.
     // Decided by topic, not by the anchor lookup: the pill's width depends on
     // this, and the pill's own anchor provider reads that width.
-    readonly property bool standalone: shown && topic !== "quick" && barRoute(topic)
+    readonly property bool standalone: shown && topic !== "quick" && (barRoute(topic) || topic === "power")
     // The registered control's screen rect {x, width} for the shown topic, or null.
     readonly property var anchorRect: {
         const provider = shown ? anchorProviders[topic + "@" + (screen?.name || "")] : null;
