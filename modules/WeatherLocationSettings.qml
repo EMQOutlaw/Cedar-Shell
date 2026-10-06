@@ -7,10 +7,10 @@ SettingsCard {
     objectName: "weatherLocation"
     title: "Weather location"
     StationToggle { Layout.fillWidth:true; label:"Local-only mode"; description:"Blocks CEDAR weather, location and remote artwork requests. Local desktop controls keep working."; checked:Config.saved.localOnly; onToggled:value=>Config.set("localOnly",value) }
-    StationToggle { Layout.fillWidth:true; label:"Allow weather and city search"; description:"Open-Meteo receives coordinates for forecasts every 15 minutes, or city search text when requested."; enabled:!Config.localOnly; checked:Config.saved.weatherEnabled; onToggled:value=>Config.set("weatherEnabled",value) }
+    StationToggle { Layout.fillWidth:true; label:"Allow weather"; description:"Finds your approximate city from your public IP, then Open-Meteo receives those coordinates for forecasts every 15 minutes. City search sends your query only when you use it."; enabled:!Config.localOnly; checked:Config.saved.weatherEnabled; onToggled:value=>Config.set("weatherEnabled",value) }
     StationToggle { Layout.fillWidth:true; label:"Allow remote media artwork"; description:"Artwork URLs supplied by media players contact their hosts when shown. Off by default."; enabled:!Config.localOnly; checked:Config.saved.remoteArtwork; onToggled:value=>Config.set("remoteArtwork",value) }
     GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:WeatherLocation.status; color:WeatherLocation.error ? Theme.amber : Theme.muted }
-    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:"Automatic mode uses your public IP to estimate a city through IPWhois. VPNs can point to another region. Your IP is not saved by CEDAR. Choose a city below to keep weather fixed there."; color:Theme.muted }
+    GlowText { Layout.fillWidth:true; wrapMode:Text.WordWrap; text:"Location comes from your public IP through IPWhois unless you choose a city below. VPNs can point to another region. Your IP is not saved by CEDAR."; color:Theme.muted }
     Flow {
         Layout.fillWidth:true; spacing:8
         StationButton { text:WeatherLocation.manual ? "Use automatic location" : "Detect again"; enabled:!Config.localOnly && Config.saved.weatherEnabled && !WeatherLocation.busy; onClicked:WeatherLocation.useAutomatic() }

@@ -24,6 +24,7 @@ Scope {
         onSucceeded: {
             if (!ShellState.locked) {
                 authController.status = "Authentication succeeded. Your password works.";
+                ShellState.authTests++;
                 return;
             }
             if (root.hadSecureLock) ShellState.securedUnlocks++;

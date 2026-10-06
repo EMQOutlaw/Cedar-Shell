@@ -1445,11 +1445,12 @@
     {
       "id": "location",
       "destination": "https://ipwho.is",
-      "purpose": "Opt-in approximate location",
+      "purpose": "Approximate location once weather is enabled",
       "sent": "Connection IP metadata; no separate identity",
       "frequency": "24 hour successful cache; 30 minute retry",
       "retention": "Private approximate location cache; no saved public IP",
-      "defaultEnabled": false
+      "defaultEnabled": false,
+      "note": "Follows the weather permission; can be turned off separately"
     },
     {
       "id": "city-search",

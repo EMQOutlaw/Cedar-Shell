@@ -62,4 +62,13 @@ class NetworkSelection(unittest.TestCase):
         self.eth['state']=2;self.eth['devices']=['/vanished']
         self.assertEqual(self.status([self.eth])['state'],'disconnected')
 
+class WatchFiltering(unittest.TestCase):
+    def test_access_point_churn_ignored_while_collapsed(self):
+        ap=m.AP_PREFIX+'7'
+        self.assertFalse(m.relevant(ap, False))
+        self.assertTrue(m.relevant(ap, True))
+    def test_everything_else_always_refreshes(self):
+        for path in [m.BASE, m.BASE+'/Devices/3', m.BASE+'/ActiveConnection/9', m.BASE+'/Settings/12', None, '']:
+            self.assertTrue(m.relevant(path, False), path)
+
 if __name__=='__main__':unittest.main()

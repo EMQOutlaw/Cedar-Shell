@@ -13,9 +13,13 @@ Singleton {
     readonly property int stage: Math.max(1, Math.min(3, Number(Quickshell.env("CEDAR_STAGE") || Quickshell.env("FOXFIRE_STAGE") || 3)))
     readonly property bool testMode: (Quickshell.env("CEDAR_TEST") || Quickshell.env("FOXFIRE_TEST")) === "1"
     readonly property bool omarchyIntegration: Quickshell.env("CEDAR_ADAPTER") === "omarchy" || Quickshell.env("CEDAR_OMARCHY_SESSION") === "1"
-    readonly property bool externalSession: Quickshell.env("CEDAR_EXTERNAL_LOCK") === "1" || omarchyIntegration
+    // Opt-in Trailwatch on Omarchy: the session helper sets this only after the
+    // user chose it; the handoff itself happens after a verified lock cycle.
+    readonly property bool trailwatchLock: omarchyIntegration && Quickshell.env("CEDAR_OMARCHY_LOCK") === "trailwatch"
+    readonly property bool externalSession: (Quickshell.env("CEDAR_EXTERNAL_LOCK") === "1" || omarchyIntegration) && !trailwatchLock
     readonly property bool externalIdle: Quickshell.env("CEDAR_EXTERNAL_IDLE") === "1"
-    readonly property bool managedSession: Quickshell.env("CEDAR_MANAGED_SESSION") === "1" || externalSession
+    readonly property bool managedSession: Quickshell.env("CEDAR_MANAGED_SESSION") === "1" || externalSession || omarchyIntegration
+    readonly property string lockStatePath: Quickshell.env("CEDAR_LOCK_STATE") || stateDir + "/lock-state.json"
     readonly property bool externalBackground: Quickshell.env("CEDAR_BACKGROUND") === "external" || omarchyIntegration
     readonly property bool authOnly: Quickshell.env("CEDAR_AUTH_ONLY") === "1"
     readonly property bool localOnly: saved.localOnly || Quickshell.env("CEDAR_LOCAL_ONLY") === "1"
@@ -88,6 +92,26 @@ Singleton {
         const line = String(text || "").trim();
         return line ? line.split(/\s+/) : fallback;
     }
+    // Settings that other local processes may change over `settings set`.
+    // Anything that launches commands, reaches the network, stores location,
+    // or weakens the lock screen stays with the Settings panel and the file.
+    readonly property var ipcProtected: ["applicationTargets", "terminal", "browser", "editor", "files", "localOnly", "weatherEnabled", "weatherAutomatic", "remoteArtwork", "latitude", "longitude", "locationName", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "clipboardHistory", "forestTrails", "whisperLedger"]
+    function ipcSet(key, value) {
+        if (!(key in saved)) return "unknown setting: " + key;
+        if (ipcProtected.includes(key)) return "protected setting: " + key + " (use Settings)";
+        if (ShellState.locked) return "locked";
+        const current = saved[key];
+        if (typeof current === "boolean") { if (value !== "true" && value !== "false") return "expected true or false"; set(key, value === "true"); }
+        else if (typeof current === "number") { const n = Number(value); if (!isFinite(n)) return "expected a number"; set(key, n); }
+        else if (typeof current === "string") set(key, String(value).slice(0, 1000));
+        else return "unsupported setting type: " + key;
+        return "ok";
+    }
+    function ipcGet(key) {
+        if (!(key in saved)) return "unknown setting: " + key;
+        if (ipcProtected.includes(key)) return "protected setting: " + key;
+        return String(saved[key]);
+    }
     function set(key, value) {
         if (!(key in saved) || saved[key] === value) return;
         if (key === "applicationTargets" && JSON.stringify(saved.applicationTargets) === JSON.stringify(value)) return;
@@ -136,7 +160,7 @@ Singleton {
             property bool localOnly: true
             property bool weatherEnabled: false
             property bool remoteArtwork: false
-            property bool weatherAutomatic: false
+            property bool weatherAutomatic: true
             property string latitude: ""
             property string longitude: ""
             property string locationName: ""

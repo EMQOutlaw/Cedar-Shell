@@ -1,3 +1,21 @@
+# 0.1.0-dev.14 — Trailwatch on Omarchy, after a verified lock cycle
+
+- `cedar try --adapter omarchy --trailwatch` loads CEDAR's own lock surface (PAM service `omarchy-lock-password`) beside the existing locker. `cedar keep` then opens the local password test window, locks once with Trailwatch and waits for a secure unlock; only after that does it disable the existing lock plugin or clone and mark CEDAR the locker. A failed or skipped step leaves the previous locker selected.
+- The bridge bar now answers Omarchy's `lock` IPC (`lock`, `isLocked`, `status`) from a lock-state file CEDAR writes on every change and as a 5 s heartbeat. Keyboard, idle, lid and sleep lock requests keep using `omarchy-system-lock` and reach Trailwatch unchanged; a stale file reads as "no lock screen", never as unlocked.
+- Trailwatch enters with a lantern bloom behind the dial, contours drifting up, the header filament lighting from the center outward and the instrument cards settling in with a short stagger, all inside about a second and driven by one clock. The surface is opaque from its first frame; Reduced Motion shows the settled view immediately. Spores drift on the lock surface and rest with Motion.
+- Weather finds its location from the public IP by default once weather is enabled: `weatherAutomatic` now defaults to true, the policy helper treats a missing key as true, and the settings page says so. A saved city still overrides it and automatic location can still be turned off.
+- While CEDAR is the locker the supervisor reads lock state from the compositor's lock indicator and CEDAR's session info, so a CEDAR crash restores the previous locker instead of deferring forever. `cedar lock [--suspend]` works on Omarchy in this mode. Malformed Omarchy lock status is reported as such instead of a JSON parse message.
+
+# 0.1.0-dev.13 — rest when unwatched, refuse what IPC does not need
+
+- Add `Motion`, one gate for decorative loops: ambience pauses after 120 s without input, under Reduced Motion and in tests. Add `Breath`, a 12-step-per-second sine for always-mapped surfaces. Core's filament, gauge pulses and the lock-surface status pulse no longer commit a frame every refresh for the life of the session; spores and the Field Station core rest with the user.
+- Read the backlight only while a brightness control or OSD is visible; sample the ambient CPU hint every 20 s instead of 10 s; wake the recorder probe once per second and scan `/proc` every third second; ignore NetworkManager access-point strength churn while no network list is shown.
+- Build Control Center, Power, Themes, Wallpapers and notification history on first show and release them on close, per output, like Go and Settings already did.
+- Refuse `settings set`/`get` for application commands, network, location, lock-privacy, clipboard and trail settings (`Config.ipcProtected`); type-check values; refuse writes while locked. Bound `core publish` (16 KiB), `menu summon` (256 KiB, capped prompt/options) and strip control characters from provider text.
+- Answer Go prompts through `scripts/menu_reply.py`: temporary-directory paths only, selection file must be an owned regular file opened without following symlinks, done marker created exclusively, replies queued in order. No shell string is built from caller paths. Never run a bare `python3` when the session helper path is missing.
+- Remove two binding loops the live smoke test reported on every open: the Settings loader bound `active` through its own item's `dirty`, and the Field Station loader bound `height` through the scroll view's content height. Both now copy the value from the page's signal.
+- Document the trust model and IPC surface in `docs/SECURITY.md` and the resource rules in `docs/PERFORMANCE.md`. Measurements remain per-device; no frame-rate or battery figure is claimed here.
+
 # 0.1.0-dev.12 — shared services, quiet controls and reviewed handoffs
 
 - Follow-up from Ubuntu CI: support older PyGObject/GioUnix method bindings; exit failed catalog callbacks so the shared service can retry instead of stalling.

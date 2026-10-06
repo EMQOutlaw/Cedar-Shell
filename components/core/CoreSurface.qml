@@ -103,18 +103,17 @@ Item {
         width: root.alert ? root.width * .55 : 36
         height: 1
         color: root.accent
-        opacity: .5
-        SequentialAnimation on opacity {
-            running: root.active && !Theme.reducedMotion && Config.saved.ambientIntensity > 0 && Config.saved.forestPulse && Forest.state !== "HUNT" && !root.alert
-            loops: Animation.Infinite
-            OpacityAnimator {
-                to: Math.max(.12, Forest.strength * .5)
-                duration: Forest.breathDuration
-            }
-            OpacityAnimator {
-                to: Forest.strength
-                duration: Forest.breathDuration + 800
-            }
+        // Breathing steps at Motion.ambientFps and rests with the user; the
+        // filament is always mapped, so a vsync animator here never stopped.
+        readonly property bool breathing: root.active && Motion.active && Config.saved.ambientIntensity > 0 && Config.saved.forestPulse && Forest.state !== "HUNT" && !root.alert
+        opacity: breathing ? breath.value : .5
+        Breath {
+            id: breath
+            running: filament.breathing
+            from: Forest.strength
+            to: Math.max(.12, Forest.strength * .5)
+            rise: Forest.breathDuration
+            fall: Forest.breathDuration + 800
         }
         Behavior on width {
             enabled: !Theme.reducedMotion

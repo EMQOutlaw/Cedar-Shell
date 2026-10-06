@@ -52,3 +52,4 @@ QuickControls 1.0 QuickControls.qml
 SessionControls 1.0 SessionControls.qml
 
 FirstRunSettings 1.0 FirstRunSettings.qml
+LockStatePublisher 1.0 LockStatePublisher.qml

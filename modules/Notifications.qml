@@ -65,9 +65,15 @@ Scope {
     Overlay {
         id: historyPanel
         output: root.output; panelName: "history"
-        HudPanel {
+        Loader {
             anchors.centerIn: parent
             width: Math.min(720, historyPanel.width - 32); height: Math.min(700, historyPanel.height - 32)
+            active: historyPanel.visible
+            sourceComponent: historyList
+        }
+        Component {
+        id: historyList
+        HudPanel {
             ColumnLayout {
                 anchors.fill: parent
                 RowLayout {
@@ -93,6 +99,7 @@ Scope {
                     }
                 }
             }
+        }
         }
     }
 }

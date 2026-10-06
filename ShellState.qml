@@ -15,6 +15,8 @@ Singleton {
     property bool lockSecure: false
     property bool nativeLockReady: false
     property int securedUnlocks: 0
+    // Successful local PAM checks that did not involve a session lock.
+    property int authTests: 0
     property bool authTest: false
     property bool suspendAfterLock: false
     property string osdKind: ""
@@ -99,7 +101,9 @@ Singleton {
         close();
         if (Config.externalSession) {
             locked = true;
-            Quickshell.execDetached(["python3", Quickshell.env("CEDAR_SESSION_HELPER"), "lock", ...(suspend ? ["--suspend"] : [])]);
+            const helper = Quickshell.env("CEDAR_SESSION_HELPER");
+            if (helper && helper.startsWith("/"))
+                Quickshell.execDetached(["python3", helper, "lock", ...(suspend ? ["--suspend"] : [])]);
             return;
         }
         suspendAfterLock = suspend;

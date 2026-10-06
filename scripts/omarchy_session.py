@@ -42,13 +42,39 @@ def matching(rows,source):
     return [row for row in rows if Path(row.get('config_path','/unavailable')).resolve()==Path(source).resolve()]
 
 def ipc(source,*args):return d.command(['qs','ipc','-p',str(source),'call',*args],timeout=3).strip()
+def cedar_ipc(row,*args):return ipc(Path(row['root'])/'shell.qml',*args)
+def cedar_info(row):
+    try:data=json.loads(cedar_ipc(row,'shell','sessionInfo'))
+    except (ValueError,d.Refused):raise d.Refused('CEDAR session state is unavailable.')
+    if not isinstance(data,dict):raise d.Refused('CEDAR session state is unavailable.')
+    return data
+def lock_state_path():return d.paths()['state']/'lock-state.json'
+def trailwatch_active(row):return bool((row.get('trailwatch') or {}).get('ready'))
+def handoff_config(row):
+    """After the verified lock cycle: retire the existing locker and let the
+    bridge answer Omarchy's lock IPC from CEDAR's published state."""
+    value=copy.deepcopy(row['configAfter'])
+    value['disabledPlugins']=list(dict.fromkeys([*value.get('disabledPlugins',[]),row['trailwatch']['lockId']]))
+    value['bar']['cedarLock']='trailwatch'
+    value['bar']['cedarLockState']=str(lock_state_path())
+    return value
 
 def lock_state(row):
     """Unknown is locked for all mutations; a network link or process is not proof."""
     monitors=json.loads(d.command(['hyprctl','-j','monitors'],timeout=3))
     if not isinstance(monitors,list) or not monitors:raise d.Refused('Monitor lock state is unavailable.')
     if any(not isinstance(m.get('solitaryBlockedBy'),list) for m in monitors):raise d.Refused('Compositor does not expose the audited lock indicator.')
-    state=json.loads(ipc(row['omarchyShell'],'lock','status'))
+    if trailwatch_active(row):
+        # CEDAR owns the lock. The compositor indicator is authoritative; CEDAR's
+        # own state covers the moment between a request and the surface. A
+        # shell that is gone cannot be holding a lock the compositor does not show.
+        if any('LOCK' in m['solitaryBlockedBy'] for m in monitors):return True
+        if not any('WORKSPACE' not in m['solitaryBlockedBy'] for m in monitors):raise d.Refused('No readable compositor lock state.')
+        try:data=cedar_info(row)
+        except d.Refused:return False
+        return bool(data.get('locked') or data.get('lockSecure'))
+    try:state=json.loads(ipc(row['omarchyShell'],'lock','status'))
+    except (ValueError,d.Refused):raise d.Refused('Omarchy lock status is unavailable.')
     if not isinstance(state,dict) or state.get('passwordPam') is not True:raise d.Refused('Existing Omarchy authentication is not ready.')
     if any('LOCK' in m['solitaryBlockedBy'] for m in monitors):return True
     if not any('WORKSPACE' not in m['solitaryBlockedBy'] for m in monitors):raise d.Refused('No readable compositor lock state.')
@@ -139,7 +165,7 @@ def notification_owner():
     if not match:raise d.Refused('Cannot identify the notification provider.')
     return int(match.group(1))
 
-def trial(root,approved=False):
+def trial(root,approved=False,trailwatch=False):
     root=root.resolve()
     with guard():
         if active():raise d.Refused('A CEDAR desktop trial/session already exists. Use cedar keep, status, or restore.')
@@ -151,6 +177,12 @@ def trial(root,approved=False):
             plan['changes'].extend(['Pause Omacale notification/OSD repair watchers until restoration','Temporarily disable reviewed notification/OSD clones alongside their stock providers'])
             plan['preserve'].append('Existing Omacale lock clone, PAM, lock view and all Omacale files/settings; no authentication handover')
             plan['reviewedCompanions']=[{'name':p['name'],'action':p['policy'],'details':p['notes']} for p in row['omacale']['providers'] if p.get('role')=='companion']
+        if trailwatch:
+            lock_id=(row.get('omacale') or {}).get('lockId') or 'omarchy.lock'
+            row['trailwatch']={'lockId':lock_id,'tested':False,'ready':False};row['locker']='trailwatch-pending'
+            plan['changes'].append('Load CEDAR Trailwatch (PAM service omarchy-lock-password) beside the existing locker. cedar keep then runs a local password test and one real Trailwatch lock/unlock; only after that is '+lock_id+' disabled and Omarchy\'s lock requests answered by CEDAR')
+            plan['preserve']=[p for p in plan['preserve'] if 'lock' not in p.lower()]+['Omarchy idle timings, lid, sleep and keyboard lock requests (they reach Trailwatch through the bridge after the handoff); PAM files, Omacale files and all other settings']
+            plan['confirmation']='Run cedar keep before the timer expires; it completes the Trailwatch handoff after you unlock once. Login startup needs cedar activate afterwards'
         d.approve(plan,approved)
         print(d.validate(root));unlocked(row);companions_ready(row)
         tx=d.Transaction('omarchy-session')
@@ -227,8 +259,10 @@ def check_omarchy(row):
     matches=matching(instances(),row['omarchyShell'])
     if len(matches)!=1:raise d.Refused('Omarchy authentication host is unavailable.')
     # Only release_notifications may restart this host, through Omarchy's own command.
-    state=json.loads(ipc(row['omarchyShell'],'lock','status'))
-    if state.get('passwordPam') is not True:raise d.Refused('Omarchy authentication is not ready.')
+    if trailwatch_active(row):return matches[0] # Omarchy's lock target is CEDAR's bridge; healthy() checks CEDAR itself.
+    try:state=json.loads(ipc(row['omarchyShell'],'lock','status'))
+    except (ValueError,d.Refused):raise d.Refused('Omarchy lock status is unavailable.')
+    if not isinstance(state,dict) or state.get('passwordPam') is not True:raise d.Refused('Omarchy authentication is not ready.')
     return matches[0]
 
 def release_notifications(row):
@@ -261,6 +295,7 @@ def start_cedar(row):
     source=Path(row['root']);d.verify_tree(source,d.read_json(source/'release-files.json'))
     env={**os.environ,'CEDAR_OMARCHY_SESSION':'1','CEDAR_SESSION_STATUS':str(status_path()),'CEDAR_SESSION_HELPER':str(d.paths()['data']/'recovery/omarchy_session.py'),'CEDAR_SHELL_PATH':str(source/'shell.qml'),'CEDAR_QS_BIN':shutil.which('qs'),'QS_DISABLE_FILE_WATCHER':'1','QS_NO_RELOAD_POPUP':'1'}
     env['PATH']=str(source/'scripts/shim')+os.pathsep+os.environ.get('PATH','')
+    if row.get('trailwatch'):env.update({'CEDAR_OMARCHY_LOCK':'trailwatch','CEDAR_EXTERNAL_IDLE':'1','CEDAR_LOCK_STATE':str(lock_state_path())})
     publish(False)
     subprocess.Popen([env['CEDAR_QS_BIN'],'-n','-p',str(source/'shell.qml')],env=env,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
@@ -268,8 +303,10 @@ def healthy(row):
     check_omarchy(row);rows=cedar_rows(row)
     if row.get('omacale') and ipc(row['omarchyShell'],'cedarOmacaleGuard','ready')!='true':raise d.Refused('Omacale coordination stopped; returning to the recorded desktop.')
     if len(rows)!=1:raise d.Refused('CEDAR is not running.')
-    data=json.loads(ipc(Path(row['root'])/'shell.qml','shell','sessionInfo'))
-    if data.get('externalLock') is not True:raise d.Refused('CEDAR lock delegation was not enabled.')
+    data=cedar_info(row)
+    if row.get('trailwatch'):
+        if data.get('externalLock') is not False or data.get('lockReady') is not True:raise d.Refused('CEDAR Trailwatch lock surface is not ready.')
+    elif data.get('externalLock') is not True:raise d.Refused('CEDAR lock delegation was not enabled.')
     if data.get('stage')!=3 or not data.get('screenCount'):raise d.Refused('The full desktop has not loaded on an output.')
     if notification_owner()!=rows[0]['pid']:raise d.Refused('CEDAR notification ownership was not acquired.')
     return rows[0]
@@ -352,6 +389,15 @@ def keep(login=False,approved=False):
         if row['stage'] not in ('trial','kept'):raise d.Refused('The trial is not ready. Run cedar status; wait for startup or resolve its reported error.')
         unlocked(row);healthy(row)
         if row['stage']=='trial' and time.time()>row['deadline']:raise d.Refused('Trial expired. Let recovery finish and start a new trial.')
+        pending=bool(row.get('trailwatch')) and not row['trailwatch'].get('ready') and not login
+        if pending:
+            # The handoff waits for the user; give the trial time and leave the guard.
+            row['deadline']=time.time()+900;save(row)
+    if pending:
+        lock_handoff(row['id'])
+    with guard():
+        row=read_record()
+        if not row or row['stage'] not in ('trial','kept'):raise d.Refused('The trial ended before it could be kept. Inspect cedar status.')
         if login:
             if row['stage']!='kept':raise d.Refused('First confirm the running desktop with cedar keep.')
             d.approve({'action':'Use CEDAR at login','startup':'Keep the existing CEDAR post-boot hook; preserve Omarchy authentication, idle and wallpaper','undo':'cedar restore'},approved)
@@ -387,9 +433,66 @@ def login():
         row['readyDeadline']=time.time()+30;save(row)
         spawn_supervisor(row)
 
+def wait_for(predicate,seconds,message):
+    deadline=time.monotonic()+seconds
+    while time.monotonic()<deadline:
+        try:
+            if predicate():return
+        except d.Refused:pass
+        time.sleep(.5)
+    raise d.Refused(message)
+
+def bridge_serving(row):
+    try:
+        state=json.loads(ipc(row['omarchyShell'],'lock','status'))
+        plugins=json.loads(ipc(row['omarchyShell'],'shell','listPlugins'))
+    except (ValueError,d.Refused):return False
+    return isinstance(state,dict) and state.get('provider')=='cedar' and state.get('passwordPam') is True and isinstance(plugins,list) and not any(p.get('id')==row['trailwatch']['lockId'] and p.get('enabled') for p in plugins)
+
+def lock_handoff(identity):
+    """Trailwatch on Omarchy. Nothing about the existing locker changes until the
+    user has passed a local PAM check and one real Trailwatch lock/unlock."""
+    def current():
+        row=read_record()
+        if not row or row['id']!=identity or row['stage'] not in ('trial','kept'):raise d.Refused('The trial ended before the Trailwatch handoff finished. Inspect cedar status.')
+        return row
+    row=current()
+    if not row['trailwatch'].get('tested'):
+        info=cedar_info(row)
+        if info.get('lockReady') is not True:raise d.Refused('CEDAR Trailwatch is not ready; the existing locker stays selected.')
+        tests=int(info.get('authTests') or 0)
+        cedar_ipc(row,'lock','testAuthentication')
+        print('Enter your password in the CEDAR test window, not in this terminal. This does not lock the desktop.',flush=True)
+        wait_for(lambda:int(cedar_info(row).get('authTests') or 0)>tests,180,'The password test was not completed. The existing locker stays selected; run cedar keep to try again.')
+        unlocks=int(cedar_info(row).get('securedUnlocks') or 0)
+        print('Password accepted. Locking once with Trailwatch now; unlock with your password to continue.',flush=True)
+        cedar_ipc(row,'lock','lock')
+        def unlocked_once():
+            info=cedar_info(row)
+            return info.get('locked') is False and int(info.get('securedUnlocks') or 0)>unlocks
+        wait_for(unlocked_once,180,'A secure Trailwatch unlock was not confirmed. The existing locker stays selected; run cedar keep to try again.')
+        with guard():
+            row=current();row['trailwatch']['tested']=True;save(row)
+    with guard():
+        row=current();unlocked(row);healthy(row)
+        tx=d.Transaction.__new__(d.Transaction);tx.path=Path(row['journal']);tx.directory=tx.path.parent;tx.record=d.read_json(tx.path)
+        desired=handoff_config(row)
+        # Mark CEDAR as the locker before the swap so the supervisor reads lock
+        # state from CEDAR while Omarchy reloads its plugins.
+        row['trailwatch']['ready']=True;row['locker']='trailwatch';row['configAfter']=desired;save(row)
+        tx.replace_owned_file(tx.record['files'][0],(json.dumps(desired,indent=2)+'\n').encode())
+    wait_for(lambda:bridge_serving(row),20,'Omarchy did not hand its lock requests to CEDAR. Run cedar restore to return to the previous locker.')
+    print('Trailwatch is now the lock screen. Keyboard, idle, lid and sleep lock requests reach it through Omarchy.',flush=True)
+
 def request_lock(suspend=False):
     row=read_record()
     if not row or row['stage'] not in ACTIVE:raise d.Refused('No managed Omarchy session.')
+    if trailwatch_active(row):
+        cedar_ipc(row,'lock','lock')
+        if suspend:
+            wait_for(lambda:cedar_info(row).get('lockSecure') is True and lock_state(row),10,'Lock coverage was not confirmed. Suspend canceled.')
+            d.command(['systemctl','suspend'])
+        return
     result=ipc(row['omarchyShell'],'lock','lock')
     if result!='ok':raise d.Refused('Omarchy could not begin locking: '+result)
     if suspend:

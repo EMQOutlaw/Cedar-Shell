@@ -22,7 +22,7 @@ var pages = [
 ];
 var fields = [
  {page:"desktop",group:"Privacy",key:"localOnly",label:"Local-only mode",description:"Block CEDAR external weather, location and artwork requests.",type:"toggle",defaultValue:true},
- {page:"desktop",group:"Privacy",key:"weatherEnabled",label:"Weather access",description:"Allow Open-Meteo forecasts and explicitly requested city search when local-only is off.",type:"toggle",defaultValue:false},
+ {page:"desktop",group:"Privacy",key:"weatherEnabled",label:"Weather access",description:"Allow Open-Meteo forecasts, IP-based location and explicitly requested city search when local-only is off.",type:"toggle",defaultValue:false},
  {page:"desktop",group:"Privacy",key:"remoteArtwork",label:"Remote artwork",description:"Allow media artwork hosts when local-only is off.",type:"toggle",defaultValue:false},
  {page:"power",group:"Trailwatch privacy",key:"lockPrivacy",label:"Privacy while locked",description:"Hide media, event, reminder and device names. Notification contents never appear on Trailwatch.",type:"toggle",defaultValue:true},
  {page:"power",group:"Trailwatch privacy",key:"lockMediaDetails",label:"Show media details",description:"Show track and artist when lockscreen privacy is off.",type:"toggle",defaultValue:false},
@@ -66,7 +66,7 @@ var fields = [
  {page:"apps",group:"Quick launch",key:"terminal",label:"Terminal",description:"Launch command. Empty uses kitty; arguments are separated by spaces.",type:"text",defaultValue:"",placeholder:"kitty"},
  {page:"apps",group:"Quick launch",key:"browser",label:"Browser",description:"Launch command. Empty uses your default browser.",type:"text",defaultValue:"",placeholder:"xdg-open https://duckduckgo.com"},
  {page:"apps",group:"Quick launch",key:"files",label:"Files",description:"Launch command. Empty opens your home folder.",type:"text",defaultValue:"",placeholder:"xdg-open ~"},
- {page:"desktop",group:"Field Station weather",key:"weatherAutomatic",label:"Automatic weather location",description:"Use an approximate IP-based city when no saved location overrides it.",type:"toggle",defaultValue:false,aliases:"weather automatic detect IP city location"},
+ {page:"desktop",group:"Field Station weather",key:"weatherAutomatic",label:"Automatic weather location",description:"Find an approximate city from your public IP whenever weather is on and no saved location overrides it. Turn off to use only a chosen city.",type:"toggle",defaultValue:true,aliases:"weather automatic detect IP city location"},
  {page:"desktop",group:"Field Station weather",key:"locationName",label:"Saved location name",description:"A name for the place shown in Field Station.",type:"text",defaultValue:"",placeholder:"Your ridge",aliases:"weather city"},
  {page:"desktop",group:"Field Station weather",key:"latitude",label:"Latitude",description:"Optional manual override. City search fills this automatically.",type:"text",defaultValue:"",placeholder:"36.2",aliases:"weather location"},
  {page:"desktop",group:"Field Station weather",key:"longitude",label:"Longitude",description:"Optional manual override. Clear both coordinates to return to automatic location.",type:"text",defaultValue:"",placeholder:"-81.7",aliases:"weather location"},

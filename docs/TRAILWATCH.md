@@ -35,8 +35,11 @@ The **Shield** button hides details for the remainder of the lock session,
 on every display. It cannot reveal information forbidden by preferences.
 Notification bodies, album art, SSIDs and VPN names are never drawn. A visible
 calendar time still reveals that an event exists; privacy replaces its title.
-Theme Reduced Motion disables the breathing indicator and seconds cursor,
-while time and the solar position continue to update once a minute.
+Theme Reduced Motion disables the breathing indicator, the seconds cursor and
+the entrance (lantern bloom, filament and staggered instruments settle in over
+about a second otherwise), while time and the solar position continue to
+update once a minute. The lock surface is opaque from its first frame; the
+entrance only reveals content, it never uncovers the desktop.
 
 Password fields mask immediately, preserve PAM's visible-response behavior for
 interactive challenges, clear on submission and controller reset, and regain

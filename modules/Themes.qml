@@ -11,9 +11,15 @@ Overlay {
     id: root
     panelName: "themes"
     onVisibleChanged: if (visible) SettingsInfo.refresh(true)
-    HudPanel {
+    Loader {
         anchors.centerIn: parent
         width: Math.min(600, root.width - 32); height: Math.min(640, root.height - 32)
+        active: root.visible
+        sourceComponent: themePicker
+    }
+    Component {
+    id: themePicker
+    HudPanel {
         ColumnLayout {
             anchors.fill: parent
             RowLayout {
@@ -32,5 +38,6 @@ Overlay {
                 }
             }
         }
+    }
     }
 }

@@ -1,10 +1,11 @@
 import QtQuick
 import ".."
+import "../services"
 
 Item {
     id: root
     property bool active: false
-    readonly property bool moving: active && visible && !Theme.reducedMotion
+    readonly property bool moving: active && visible && Motion.active
     clip: true
     // Quiet fungal filaments at the edges leave the reading area clear.
     Canvas {
