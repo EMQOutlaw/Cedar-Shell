@@ -20,6 +20,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_portability.py
           python3 -m unittest discover -s tests -p test_portable_lifecycle.py
           python3 -m unittest discover -s tests -p test_master_changes.py
+          python3 -m unittest discover -s tests -p test_update_checkout.py
       - name: Python syntax and shell bootstrap
         run: |
           python3 -m compileall -q scripts

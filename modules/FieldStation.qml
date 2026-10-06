@@ -370,6 +370,20 @@ Rectangle {
                     }
                 }
             }
+            // Update runs the documented checkout update in a terminal: git pull
+            // --ff-only, cedar restore while a session is active, then the
+            // interactive installer. Its own scope outlives the shell that restore stops.
+            StationButton {
+                text: "Update CEDAR"
+                hint: "Pull the Git checkout and reinstall in a terminal"
+                accent: Theme.green
+                onClicked: {
+                    Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--",
+                        "python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "terminal",
+                        "python3", Quickshell.shellPath("scripts/update_checkout.py")]);
+                    Canopy.shown && Canopy.topic === "station" ? Canopy.close() : ShellState.close();
+                }
+            }
         }
         Rule {}
         ColumnLayout {

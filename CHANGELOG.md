@@ -1,5 +1,6 @@
 # 0.1.0-dev.15 — Settings remaster, ember line and one button per destination
 
+- Field Station gains an Update CEDAR button beside Terminal, Browser and Files. It opens a terminal in its own scope and runs the documented checkout update: `git pull --ff-only` in `~/cedar-shell` (or `$CEDAR_CHECKOUT`), `cedar restore` only while a session is active, then the interactive installer. Git decides whether local edits block the pull and nothing is reset; the installer still asks before changing anything. `desktop_runtime.py launch terminal CMD...` now runs a command inside the chosen terminal, with the right flag per emulator.
 - The Core pill morphs open instead of scaling: width leads, height follows on an expressive curve with a hint of overshoot, content settles in after the shape moves, the ember line rides up to the bar seam and the chamfers open with the panel. Reduced Motion still snaps.
 - Fix a false "Network connection lost" signal whenever a network panel closed: every network snapshot now carries the active links, only real links count, and Trailwatch's VPN readout no longer depends on an open panel.
 - Network and VPN changes now show on the network button, which pulses and reveals a short label beside its glyph, instead of occupying the Core pill.

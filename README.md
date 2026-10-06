@@ -26,6 +26,8 @@ cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
 
 If Git reports local changes or divergent history, stop and preserve your edits; do not reset or delete the checkout. The installer copies only the reviewed source inventory, so an accidentally nested clone or local settings file is not included and is left untouched.
 
+From the desktop, **Field Station → Update CEDAR** opens a terminal that runs these same steps: `git pull --ff-only` in `~/cedar-shell` (or `$CEDAR_CHECKOUT`), `cedar restore` only if a CEDAR session is active, then `bash ./install.sh`. The installer keeps its approval prompts; a refused pull leaves the checkout and the desktop as they were. After a restore, start the new candidate with `cedar try`, then `cedar keep`.
+
 **Already running a kept CEDAR session?** Restore its desktop integration before updating the installed release:
 
 ```bash

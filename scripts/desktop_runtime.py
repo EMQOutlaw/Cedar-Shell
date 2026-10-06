@@ -114,7 +114,31 @@ def ipc(*args):
     return run(['qs', 'ipc', '-p', source, 'call', *args])
 
 
-def launch(role):
+TERMINAL_FLAGS = {'alacritty': ['-e'], 'ghostty': ['-e'], 'xterm': ['-e'], 'wezterm': ['start', '--']}
+
+
+def terminal_argv(command=()):
+    """Argv that opens a terminal, running `command` inside it when given.
+
+    xdg-terminal-exec, foot and kitty take the command as positional
+    arguments; alacritty, ghostty and xterm need -e; wezterm needs start --.
+    """
+    if shutil.which('xdg-terminal-exec'):
+        argv = ['xdg-terminal-exec']
+    else:
+        choices = [shlex.split(os.environ.get('TERMINAL', ''))] + [[name] for name in ('foot', 'kitty', 'alacritty', 'ghostty', 'wezterm', 'xterm')]
+        argv = next((a for a in choices if a and shutil.which(a[0])), None)
+        if not argv:
+            raise RuntimeError('Choose an installed terminal in Settings → Applications.')
+    command = list(command)
+    if command:
+        argv = argv + TERMINAL_FLAGS.get(Path(argv[0]).name, []) + command
+    return argv
+
+
+def launch(role, command=()):
+    if command and role != 'terminal':
+        raise ValueError('Only the terminal role runs a command.')
     if role == 'browser':
         argv = ['xdg-open', 'https://duckduckgo.com']
     elif role == 'files':
@@ -125,13 +149,7 @@ def launch(role):
             raise RuntimeError('Choose an editor in Settings → Default Applications.')
         argv = ['gtk-launch', app]
     elif role == 'terminal':
-        if shutil.which('xdg-terminal-exec'):
-            argv = ['xdg-terminal-exec']
-        else:
-            choices = [shlex.split(os.environ.get('TERMINAL', ''))] + [[name] for name in ('foot', 'kitty', 'alacritty', 'ghostty', 'wezterm', 'xterm')]
-            argv = next((a for a in choices if a and shutil.which(a[0])), None)
-            if not argv:
-                raise RuntimeError('Choose an installed terminal in Settings → Applications.')
+        argv = terminal_argv(command)
     else:
         raise ValueError('Unknown application role.')
     subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -147,8 +165,9 @@ def main(args):
         ipc(*surfaces[name])
     elif name == 'canopy' and len(args) == 2:
         ipc('canopy', 'show', args[1])
-    elif name == 'launch' and len(args) == 2:
-        launch(args[1])
+    elif name == 'launch' and len(args) >= 2:
+        # `launch terminal CMD ARGS...` opens the terminal running CMD.
+        launch(args[1], args[2:])
     elif name == 'wallpaper' and len(args) == 2:
         set_wallpaper(args[1])
     else:
