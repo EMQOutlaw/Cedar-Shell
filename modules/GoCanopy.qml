@@ -6,16 +6,19 @@ import ".."
 import "../components"
 import "../services"
 
-// Applications, as a bar drop: a search filament, the apps you launched
-// last, and an icon grid that answers the keyboard. Launching goes through
-// DefaultApps like the Go menu does; the Go menu itself is unchanged.
+// Applications, as a bar drop: a search filament, favourites pinned above the
+// rest, the apps you launched last, and an icon grid that answers the
+// keyboard. Launching goes through DefaultApps like the Go menu does; the Go
+// menu itself is unchanged.
 ColumnLayout {
     id: root
     property bool active: false
     property string query: ""
     property int selected: 0
+    // After an arrow key the keyboard is on the tiles: F then marks a favourite.
+    // Typing anything returns the keys to the search field.
+    property bool browsing: false
     readonly property int columns: width < 380 ? 3 : 4
-    // The grid scrolls under a fixed search field; five rows show at once.
     readonly property int tileHeight: 92
     readonly property int tileGap: 8
     readonly property int visibleRows: 5
@@ -23,10 +26,13 @@ ColumnLayout {
     function beat(order, span = .4) { return Canopy.ease(.06 * order, span); }
 
     readonly property var all: (DefaultApps.data.apps || []).filter(a => a && a.visible !== false && a.id)
+    readonly property var favouriteIds: Config.saved.goFavorites || []
+    // Favourites keep the order they were marked in.
+    readonly property var favourites: favouriteIds.map(id => root.all.find(a => a.id === id)).filter(Boolean)
     readonly property var matches: {
         const q = root.query.toLowerCase().trim();
         if (!q)
-            return root.all;
+            return root.all.filter(a => !root.favouriteIds.includes(a.id));
         const terms = q.split(/\s+/), scored = [];
         for (const a of root.all) {
             const label = String(a.label || "").toLowerCase();
@@ -39,8 +45,10 @@ ColumnLayout {
         scored.sort((x, y) => x.tier - y.tier || String(x.app.label).localeCompare(String(y.app.label)));
         return scored.map(s => s.app);
     }
-    readonly property var shown: matches
-    // The last four apps launched from Go, oldest trail first after dedupe.
+    // One flat list for the keyboard: favourites first while there is no query.
+    readonly property var pinned: root.query ? [] : root.favourites
+    readonly property var shown: root.pinned.concat(root.matches)
+    // The last four apps launched from Go.
     readonly property var recents: {
         const seen = {}, out = [];
         for (const t of Forest.trails) {
@@ -56,6 +64,13 @@ ColumnLayout {
         }
         return out;
     }
+    function isFavourite(app) { return !!app && root.favouriteIds.includes(app.id); }
+    function toggleFavourite(app) {
+        if (!app)
+            return;
+        const ids = root.favouriteIds.slice();
+        Config.set("goFavorites", ids.includes(app.id) ? ids.filter(id => id !== app.id) : ids.concat([app.id]));
+    }
     function iconSource(app) { return Config.imageSource(Quickshell.iconPath(app.icon || "application-x-executable", true)); }
     function launch(app) {
         if (!app)
@@ -65,6 +80,7 @@ ColumnLayout {
         Canopy.close();
     }
     function move(delta) {
+        root.browsing = true;
         if (!root.shown.length)
             return;
         root.selected = Math.max(0, Math.min(root.shown.length - 1, root.selected + delta));
@@ -74,18 +90,96 @@ ColumnLayout {
             field.text = "";
             root.query = "";
             root.selected = 0;
+            root.browsing = false;
             Qt.callLater(() => field.forceActiveFocus());
         }
     }
     onQueryChanged: { root.selected = 0; flick.contentY = 0; }
-    // Keep the selected tile in view when the keyboard moves it.
+    // Keep the selected tile in view when the keyboard moves it through the grid.
     onSelectedChanged: {
-        const row = Math.floor(root.selected / root.columns), step = root.tileHeight + root.tileGap;
+        const inGrid = root.selected - root.pinned.length;
+        if (inGrid < 0) { flick.contentY = 0; return; }
+        const row = Math.floor(inGrid / root.columns), step = root.tileHeight + root.tileGap;
         const top = row * step, bottom = top + root.tileHeight;
         if (top < flick.contentY)
             flick.contentY = top;
         else if (bottom > flick.contentY + flick.height)
             flick.contentY = Math.max(0, bottom - flick.height);
+    }
+
+    // One tile, used by the favourites row and the grid. `flat` is its index
+    // in the keyboard's list; `order` sets its entrance beat.
+    component AppTile: Item {
+        id: tile
+        property var app: null
+        property int flat: 0
+        property int order: 0
+        readonly property bool current: flat === root.selected
+        readonly property bool favourite: root.isFavourite(app)
+        readonly property real sweep: root.beat(3 + Math.min(order, 11) * .6, .35)
+        Layout.fillWidth: true; Layout.preferredWidth: 1
+        implicitHeight: root.tileHeight
+        opacity: sweep
+        scale: .92 + .08 * sweep
+        Accessible.role: Accessible.Button
+        Accessible.name: "Launch " + (app?.label || "") + (favourite ? ", favourite" : "")
+        ChamferFrame {
+            anchors.fill: parent
+            cut: 7
+            fill: tile.current ? Qt.alpha(Theme.green, .07) : hover.containsMouse ? Qt.alpha(Theme.teal, .05) : Qt.alpha(Theme.background, .5)
+            stroke: tile.current ? Qt.alpha(Theme.green, .55) : tile.favourite ? Qt.alpha(Theme.amber, .3) : hover.containsMouse ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .13)
+            line: tile.current; lineColor: Theme.green; lineFraction: .55
+        }
+        Column {
+            anchors.centerIn: parent
+            width: parent.width - 12
+            spacing: 8
+            Image {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 34; height: 34
+                sourceSize.width: 68; sourceSize.height: 68
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+                source: tile.app ? root.iconSource(tile.app) : ""
+            }
+            Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: tile.app?.label || ""
+                textFormat: Text.PlainText
+                elide: Text.ElideRight
+                font.family: Theme.dataFont
+                font.pixelSize: 11
+                color: tile.current ? Theme.green : Theme.text
+            }
+        }
+        MouseArea {
+            id: hover
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onPositionChanged: root.selected = tile.flat
+            onClicked: root.launch(tile.app)
+        }
+        // The favourite mark: amber when set, faint while hovering, click to toggle.
+        Text {
+            id: star
+            anchors.top: parent.top; anchors.right: parent.right
+            anchors.topMargin: 6; anchors.rightMargin: 8
+            text: tile.favourite ? "★" : "☆"
+            textFormat: Text.PlainText
+            font.pixelSize: 12
+            color: tile.favourite ? Theme.amber : Theme.muted
+            opacity: tile.favourite ? .95 : hover.containsMouse || starHover.containsMouse ? .55 : 0
+            Behavior on opacity { enabled: !Theme.reducedMotion; NumberAnimation { duration: 120 } }
+            MouseArea {
+                id: starHover
+                anchors.fill: parent; anchors.margins: -6
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.toggleFavourite(tile.app)
+            }
+        }
     }
 
     RowLayout {
@@ -94,6 +188,7 @@ ColumnLayout {
         transform: Translate { y: 6 * (1 - root.beat(0)) }
         SectionMark { text: "APPLICATIONS" }
         Item { Layout.fillWidth: true }
+        StatusPill { visible: root.favourites.length > 0; text: root.favourites.length + (root.favourites.length === 1 ? " favourite" : " favourites"); tone: Theme.amber }
         StatusPill { text: DefaultApps.error ? "Catalog offline" : root.all.length + " apps"; tone: DefaultApps.error ? Theme.amber : Theme.teal }
     }
 
@@ -110,7 +205,7 @@ ColumnLayout {
             Layout.fillWidth: true
             placeholderText: "Type to find an app"
             Accessible.name: "Search applications"
-            onTextChanged: root.query = text
+            onTextChanged: { root.query = text; root.browsing = false; }
             Keys.onPressed: event => {
                 switch (event.key) {
                 case Qt.Key_Down: root.move(root.columns); break;
@@ -121,6 +216,11 @@ ColumnLayout {
                 case Qt.Key_Backtab: root.move(-1); break;
                 case Qt.Key_Return: case Qt.Key_Enter: root.launch(root.shown[root.selected]); break;
                 case Qt.Key_Escape: if (text) text = ""; else Canopy.close(); break;
+                case Qt.Key_F:
+                    if (!root.browsing || event.modifiers & (Qt.ControlModifier | Qt.AltModifier))
+                        return;
+                    root.toggleFavourite(root.shown[root.selected]);
+                    break;
                 default: return;
                 }
                 event.accepted = true;
@@ -137,6 +237,31 @@ ColumnLayout {
                 opacity: root.query ? .85 : .5
                 Behavior on width { enabled: !Theme.reducedMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                 Rectangle { anchors.right: parent.right; width: 24; height: parent.height; color: Theme.green; opacity: root.query ? 0 : .8 * (1 - root.beat(.5, .4)) }
+            }
+        }
+    }
+
+    // Favourites: pinned above everything while there is no query.
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 8
+        visible: root.pinned.length > 0
+        opacity: root.beat(2)
+        transform: Translate { y: 6 * (1 - root.beat(2)) }
+        RowLayout {
+            Layout.fillWidth: true
+            SectionMark { text: "FAVOURITES"; size: 9; tone: Theme.amber }
+            Item { Layout.fillWidth: true }
+            Text { text: "F while browsing marks or clears one"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1; color: Theme.muted }
+        }
+        GridLayout {
+            Layout.fillWidth: true
+            columns: root.columns
+            columnSpacing: root.tileGap; rowSpacing: root.tileGap
+            uniformCellWidths: true
+            Repeater {
+                model: root.pinned
+                AppTile { required property var modelData; required property int index; app: modelData; flat: index; order: index }
             }
         }
     }
@@ -182,6 +307,7 @@ ColumnLayout {
             textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1; color: Theme.muted
         }
     }
+    // The grid scrolls under the fixed search field; five rows show at once.
     Flickable {
         id: flick
         Layout.fillWidth: true
@@ -198,59 +324,9 @@ ColumnLayout {
             columnSpacing: root.tileGap; rowSpacing: root.tileGap
             uniformCellWidths: true
             Repeater {
-            model: root.shown
-            Item {
-                id: tile
-                required property var modelData
-                required property int index
-                readonly property bool current: index === root.selected
-                readonly property real sweep: root.beat(3 + Math.min(index, 11) * .6, .35)
-                Layout.fillWidth: true; Layout.preferredWidth: 1
-                implicitHeight: root.tileHeight
-                opacity: sweep
-                scale: .92 + .08 * sweep
-                Accessible.role: Accessible.Button
-                Accessible.name: "Launch " + modelData.label
-                ChamferFrame {
-                    anchors.fill: parent
-                    cut: 7
-                    fill: tile.current ? Qt.alpha(Theme.green, .07) : hover.containsMouse ? Qt.alpha(Theme.teal, .05) : Qt.alpha(Theme.background, .5)
-                    stroke: tile.current ? Qt.alpha(Theme.green, .55) : hover.containsMouse ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .13)
-                    line: tile.current; lineColor: Theme.green; lineFraction: .55
-                }
-                Column {
-                    anchors.centerIn: parent
-                    width: parent.width - 12
-                    spacing: 8
-                    Image {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 34; height: 34
-                        sourceSize.width: 68; sourceSize.height: 68
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                        source: root.iconSource(tile.modelData)
-                    }
-                    Text {
-                        width: parent.width
-                        horizontalAlignment: Text.AlignHCenter
-                        text: tile.modelData.label
-                        textFormat: Text.PlainText
-                        elide: Text.ElideRight
-                        font.family: Theme.dataFont
-                        font.pixelSize: 11
-                        color: tile.current ? Theme.green : Theme.text
-                    }
-                }
-                MouseArea {
-                    id: hover
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onPositionChanged: root.selected = tile.index
-                    onClicked: root.launch(tile.modelData)
-                }
+                model: root.matches
+                AppTile { required property var modelData; required property int index; app: modelData; flat: root.pinned.length + index; order: root.pinned.length + index }
             }
-        }
         }
     }
     Column {
@@ -266,7 +342,9 @@ ColumnLayout {
     }
     GlowText {
         Layout.fillWidth: true
-        text: DefaultApps.launchError ? DefaultApps.launchError : "ENTER launch   /   arrows move   /   ESC " + (root.query ? "clear" : "close")
+        text: DefaultApps.launchError ? DefaultApps.launchError
+            : root.browsing ? "ENTER launch   /   F favourite   /   arrows move   /   ESC " + (root.query ? "clear" : "close")
+            : "ENTER launch   /   arrows move   /   ESC " + (root.query ? "clear" : "close")
         color: DefaultApps.launchError ? Theme.amber : Theme.muted
         font.pixelSize: 10
         elide: Text.ElideRight
