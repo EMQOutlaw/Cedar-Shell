@@ -437,10 +437,8 @@ def without_login_block(text):
         return text
     if 'CEDAR LOGIN END' not in text:
         raise d.Refused('A CEDAR startup block in the Hyprland configuration is incomplete; review it before enabling login.')
-    cleaned = LOGIN_BLOCK.sub('\n', text)
-    if 'CEDAR LOGIN START' in cleaned:
-        raise d.Refused('More than one CEDAR startup block exists; review the Hyprland configuration before enabling login.')
-    return cleaned.rstrip('\n') + '\n'
+    # Every CEDAR block goes; more than one only means more than one stale installation.
+    return LOGIN_BLOCK.sub('\n', text).rstrip('\n') + '\n'
 
 
 def startup_entry(row):

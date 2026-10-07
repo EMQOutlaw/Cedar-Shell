@@ -333,7 +333,7 @@ class LoginBlock(unittest.TestCase):
         self.assertEqual(ps.without_login_block(lua), 'hl.monitor({})\n')
         self.assertEqual(ps.without_login_block('plain\n'), 'plain\n')
         with self.assertRaises(d.Refused): ps.without_login_block('# CEDAR LOGIN START\nexec-once = x\n')
-        with self.assertRaises(d.Refused): ps.without_login_block(stale + stale)
+        self.assertNotIn('CEDAR LOGIN', ps.without_login_block(stale + stale))   # two stale blocks: both go
 
 
 class BackupAndRestore(unittest.TestCase):
