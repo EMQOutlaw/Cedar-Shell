@@ -60,3 +60,4 @@ GoCanopy 1.0 GoCanopy.qml
 StartupCanopy 1.0 StartupCanopy.qml
 ShieldApp 1.0 ShieldApp.qml
 ShieldPages 1.0 ShieldPages.qml
+PermissionPrompt 1.0 PermissionPrompt.qml

@@ -72,7 +72,9 @@
         "services/CoreProbe.qml",
         "services/CoreService.qml",
         "services/CoreSources.qml",
-        "services/CoreTimer.qml"
+        "services/CoreTimer.qml",
+        "services/Permission.qml",
+        "modules/PermissionPrompt.qml"
       ],
       "dependencies": [
         "qs",
@@ -110,7 +112,9 @@
         "services/CoreProbe.qml",
         "services/CoreService.qml",
         "services/CoreSources.qml",
-        "services/CoreTimer.qml"
+        "services/CoreTimer.qml",
+        "services/Permission.qml",
+        "modules/PermissionPrompt.qml"
       ]
     },
     {

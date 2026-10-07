@@ -51,6 +51,12 @@ ShellRoot {
         }
     }
     CedarCore {}
+    // The session's polkit authentication agent: the prompt exists only while
+    // a request is open. Registration itself lives in the Permission service.
+    LazyLoader {
+        active: Permission.enabled && Permission.active
+        PermissionPrompt {}
+    }
     // CEDAR Shield: a first-party application window over the Shield service,
     // created when opened and released when closed.
     LazyLoader {
@@ -120,6 +126,10 @@ ShellRoot {
         }
     }
     // Shield: `shield refresh|status`; the page itself is `settings show shield`.
+    IpcHandler {
+        target: "permission"
+        function status(): string { return JSON.stringify({ enabled: Permission.enabled, registered: Permission.registered, active: Permission.active }); }
+    }
     IpcHandler {
         target: "shield"
         function open(): void { if (Config.stage >= 3) Shield.openApp(); }

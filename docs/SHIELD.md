@@ -79,9 +79,16 @@ change without a provider to verify it against.
 
 ## Privileges
 
-Only the firewall needs root. `scripts/shield.py` asks through `pkexec`, so
-the polkit agent prompts the user; without pkexec or an agent the card says
-so and the switch is disabled. DNS and Wi-Fi changes go through NetworkManager
+Only the firewall and stopping Avahi need root. `scripts/shield.py` asks
+through `pkexec`, and the polkit authentication agent prompts the user. CEDAR
+is that agent while it is the shell: `services/Permission.qml` registers
+`Quickshell.Services.Polkit.PolkitAgent` (not in test mode, and not under
+the Omarchy adapter, where the Omarchy shell owns it) and
+`modules/PermissionPrompt.qml` asks on the main display with exclusive
+keyboard focus. The password goes from the field to polkit's helper over
+D-Bus inside the shell process and is never logged or placed in a command
+line; locking the session cancels the request. Without pkexec the card says
+so and the switch is disabled; a dismissed prompt leaves everything as it was. DNS and Wi-Fi changes go through NetworkManager
 with the user's own permissions (polkit may prompt for system connections).
 No credentials ever pass through the shell.
 

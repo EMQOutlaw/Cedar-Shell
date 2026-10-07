@@ -117,9 +117,10 @@ def power():
 
 
 def privilege():
-    agent = False
-    code, out = run(['pgrep', '-f', 'polkit.*agent|hyprpolkitagent|polkit-gnome|polkit-kde|lxpolkit|mate-polkit|xfce-polkit'])
-    agent = code == 0 and bool(out)
+    # Standalone agents by exact process name; a shell-hosted agent (CEDAR's own,
+    # Omarchy's) is not a process and is reported by the shell instead.
+    names = ['hyprpolkitagent', 'polkit-gnome-authentication-agent-1', 'polkit-kde-authentication-agent-1', 'lxpolkit', 'mate-polkit', 'xfce-polkit', 'polkit-dumb-agent', 'lxqt-policykit-agent']
+    agent = any(run(['pgrep', '-x', name])[0] == 0 for name in names)
     return dict(helper='pkexec' if shutil.which('pkexec') else 'none', agent=agent)
 
 

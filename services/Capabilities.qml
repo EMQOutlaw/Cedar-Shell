@@ -35,7 +35,7 @@ Singleton {
     readonly property var distro: data.distro
     readonly property var network: data.network
     // Privileged actions need pkexec and an authentication agent to ask the user.
-    readonly property bool canElevate: privilege.helper === "pkexec" && privilege.agent
+    readonly property bool canElevate: privilege.helper === "pkexec" && (privilege.agent || Permission.registered)
     function refresh() {
         if (Config.testMode || probe.running) return;
         probe.send({ action: "snapshot" });

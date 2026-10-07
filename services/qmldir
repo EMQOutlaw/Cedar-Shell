@@ -33,3 +33,4 @@ singleton Capabilities 1.0 Capabilities.qml
 singleton VisualQuality 1.0 VisualQuality.qml
 singleton Gaming 1.0 Gaming.qml
 singleton Shield 1.0 Shield.qml
+singleton Permission 1.0 Permission.qml

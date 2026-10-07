@@ -358,13 +358,16 @@ def apply_discovery(request):
     run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', value, 'connection.llmnr', value])
     run(['nmcli', 'device', 'reapply', connection['device']], check=False)
     if not enable and unit_state_pair('avahi-daemon.service') == 'active':
-        priv = capabilities.privilege()
-        if priv['helper'] == 'pkexec' and priv['agent']:
-            try:
-                run(['pkexec', 'systemctl', 'disable', '--now', 'avahi-daemon.socket', 'avahi-daemon.service'], timeout=120)
-            except RuntimeError as error:
-                run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
-                raise RuntimeError('Avahi could not be stopped (' + str(error) + '); the resolver settings were restored.')
+        if capabilities.privilege()['helper'] != 'pkexec':
+            run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
+            raise RuntimeError('Avahi is answering and pkexec is not installed to stop it; the resolver settings were restored.')
+        try:
+            run(['pkexec', 'systemctl', 'disable', '--now', 'avahi-daemon.socket', 'avahi-daemon.service'], timeout=120)
+        except RuntimeError as error:
+            run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
+            text = str(error)
+            reason = 'permission was not granted' if 'dismissed' in text.lower() or 'not authorized' in text.lower() else text
+            raise RuntimeError('Avahi could not be stopped (' + reason + '); the resolver settings were restored.')
     status = parse_resolvectl(run(['resolvectl', 'status'], check=False))
     after = discovery(connection, status.get(connection['device']) or {})
     if after['answering'] == enable:
@@ -390,18 +393,15 @@ def apply_firewall(request):
     provider = before['provider']
     if provider == 'nftables' and not any(f['configured'] for f in before['providers'] if f['provider'] == 'nftables'):
         raise RuntimeError('nftables has no ruleset at /etc/nftables.conf to enable.')
-    priv = capabilities.privilege()
-    if priv['helper'] != 'pkexec':
+    if capabilities.privilege()['helper'] != 'pkexec':
         raise RuntimeError('pkexec is not installed, so the firewall cannot be changed from here.')
-    if not priv['agent']:
-        raise RuntimeError('No authentication agent is running to ask for permission. Start a polkit agent and try again.')
     argv = ['pkexec'] + firewall_commands(provider, enable)
     try:
         run(argv, timeout=120)
     except RuntimeError as error:
         text = str(error)
-        if 'dismissed' in text.lower() or 'not authorized' in text.lower() or 'request dismissed' in text.lower():
-            raise RuntimeError('Permission was not granted; the firewall was left as it was.')
+        if 'dismissed' in text.lower() or 'not authorized' in text.lower():
+            raise RuntimeError('Permission was not granted; the firewall was left as it was.' + ('' if capabilities.privilege()['agent'] else ' If no prompt appeared, no authentication agent is running: CEDAR provides one while it is the shell.'))
         raise
     after = capabilities.firewall()
     if after['active'] != enable:

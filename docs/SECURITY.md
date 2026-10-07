@@ -54,3 +54,13 @@ No sandboxing of QML, user menu entries or helper scripts. No protection from a
 compromised same-user process. Native PAM, lock coverage during suspend, and
 hardware acceptance are verified only on controlled devices, as recorded in
 LOCAL-VERIFICATION.md.
+
+## Privilege prompts
+
+CEDAR registers as the session's polkit authentication agent
+(`services/Permission.qml`, `modules/PermissionPrompt.qml`) when it is the
+shell. A request from pkexec or any polkit client is shown on the main
+display with exclusive keyboard focus; the response travels to
+polkit-agent-helper over D-Bus inside the process. Nothing about a request
+is logged, and a locked session cancels any open request. Under the Omarchy
+adapter the Omarchy shell remains the agent.
