@@ -39,6 +39,14 @@ class Checkout(unittest.TestCase):
         self.upstream('2');note=self.checkout/'notes.local';note.write_text('mine')
         with patch.object(u,'say'):u.pull(self.checkout)
         self.assertEqual((self.checkout/'VERSION').read_text(),'2\n');self.assertEqual(note.read_text(),'mine')
+    def test_broken_orig_head_is_cleared_and_the_pull_proceeds(self):
+        self.upstream('2');scratch=self.checkout/'.git/ORIG_HEAD';scratch.write_bytes(b'\x00garbage\n')
+        with patch.object(u,'say') as said:u.pull(self.checkout)
+        self.assertEqual((self.checkout/'VERSION').read_text(),'2\n')
+        self.assertTrue(any('ORIG_HEAD' in str(call) for call in said.call_args_list))
+        # A readable ORIG_HEAD is left alone.
+        head=git(self.checkout,'rev-parse','HEAD');scratch.write_text(head+'\n')
+        self.assertFalse(u.clear_broken_scratch_ref(self.checkout));self.assertEqual(scratch.read_text().strip(),head)
     def test_divergent_or_edited_history_is_refused_without_reset(self):
         self.upstream('2');(self.checkout/'VERSION').write_text('local\n');git(self.checkout,'commit','-q','-am','local work')
         with patch.object(u,'say'),self.assertRaises(d.Refused):u.pull(self.checkout)

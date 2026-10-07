@@ -64,8 +64,31 @@ def describe(checkout):
             say('  ' + line)
 
 
+def clear_broken_scratch_ref(checkout):
+    """Remove an unreadable ORIG_HEAD so git can pull again.
+
+    ORIG_HEAD is a scratch pointer git rewrites before every pull or merge;
+    an interrupted operation can leave the file unparseable, and git then
+    refuses to overwrite a ref it cannot read ("cannot lock ref 'ORIG_HEAD'").
+    Deleting that one file loses nothing: no branch, commit or edit points
+    through it. Anything else about the checkout is left exactly as found."""
+    git_dir = Path(git(checkout, 'rev-parse', '--git-dir', check=False) or '')
+    if not git_dir.is_absolute():
+        git_dir = checkout / git_dir
+    scratch = git_dir / 'ORIG_HEAD'
+    if not scratch.is_file():
+        return False
+    verified = subprocess.run(['git', '-C', str(checkout), 'rev-parse', '--verify', '-q', 'ORIG_HEAD'], capture_output=True, text=True)
+    if verified.returncode == 0:
+        return False
+    scratch.unlink()
+    say('Removed an unreadable scratch pointer (.git/ORIG_HEAD) left by an interrupted git operation; nothing else was touched.')
+    return True
+
+
 def pull(checkout):
     """Run the exact documented command; a refusal leaves the checkout as it was."""
+    clear_broken_scratch_ref(checkout)
     say('$ ' + shlex.join(GIT_PULL))
     result = subprocess.run(GIT_PULL, cwd=str(checkout), text=True)
     if result.returncode:
