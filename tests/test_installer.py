@@ -270,6 +270,22 @@ class BackupAndRestore(unittest.TestCase):
         self.assertEqual(backup_module.Backup.latest(self.home / '.local/state/cedar/installations'), backup.root)
 
 
+class PrivateStore(unittest.TestCase):
+    def test_store_folders_are_created_private_and_loose_ones_tightened(self):
+        from installer.engine.server import private_tree
+        import stat as stat_module
+        with tempfile.TemporaryDirectory(prefix='cedar store 雨 ') as temp:
+            root = Path(temp) / 'state/cedar'
+            root.mkdir(parents=True)                      # an earlier interrupted run: default mode
+            os.chmod(root, 0o755)
+            (root / 'installer').mkdir(); os.chmod(root / 'installer', 0o775)
+            tightened = private_tree(root, ('installer', 'installations'))
+            for path in (root, root / 'installer', root / 'installations'):
+                self.assertEqual(stat_module.S_IMODE(path.stat().st_mode), 0o700, path)
+            self.assertEqual(sorted(Path(t).name for t in tightened), ['cedar', 'installer'])
+            self.assertEqual(private_tree(root, ('installer',)), [])
+
+
 class RunnerResume(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='cedar runner 雨 ')

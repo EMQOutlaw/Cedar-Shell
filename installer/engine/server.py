@@ -20,6 +20,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import sys
 import threading
 import time
@@ -34,18 +35,33 @@ from .backup import Backup
 from .host import Host
 
 
-def private_tree(root, children=()):
-    """~/.local/state/cedar and the installer's folders under it, private to the user.
+def private_tree(root, children=(), log=None):
+    """CEDAR's own store folders, private to the user.
 
-    The existing engine refuses a recovery directory that is not 0700 and
-    user-owned, and Path.mkdir(parents=True) would create the parent with
-    the default mode. Existing directories keep their permissions."""
+    The recovery engine refuses a store that is not 0700 and user-owned,
+    and Path.mkdir(parents=True) creates parents with the default mode. The
+    folders are created privately, and an existing one that CEDAR owns (an
+    ordinary user-owned directory, not a symlink) is tightened to 0700: an
+    earlier interrupted run may have left it readable, and permissions are
+    only ever removed here, never added. Anything else is left alone and
+    the recovery engine reports it."""
     root = Path(root)
+    tightened = []
     for path in (root, *[root / child for child in children]):
+        if path.is_symlink():
+            continue
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.mkdir(mode=0o700)
             os.chmod(path, 0o700)
+            continue
+        info = path.lstat()
+        if stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid() and stat.S_IMODE(info.st_mode) & 0o077:
+            os.chmod(path, 0o700)
+            tightened.append(str(path))
+    if tightened and log:
+        log.info('Made CEDAR store folders private: ' + ', '.join(tightened))
+    return tightened
 
 
 class Engine:
@@ -57,7 +73,8 @@ class Engine:
         self.plan = None
         self.state_dir = self.host.state_home() / 'cedar/installer'
         self.state_path = self.state_dir / 'state.json'
-        private_tree(self.host.state_home() / 'cedar', ('installer', 'installer/logs', 'installations'))
+        private_tree(self.host.state_home() / 'cedar', ('installer', 'installer/logs', 'installations', 'transactions'))
+        private_tree(self.host.data_home() / 'cedar', ('releases', 'recovery'))
         self.log = None
         self.runner = None
         self.busy = False
