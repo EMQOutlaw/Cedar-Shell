@@ -57,7 +57,12 @@ else
         TAG="$CEDAR_VERSION"
     else
         TAG="$(fetch_text "https://api.github.com/repos/$REPO/releases/latest" | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
-        [ -n "$TAG" ] || fail "No published CEDAR release was found for $REPO. For the source branch: CEDAR_CHANNEL=development."
+        if [ -z "$TAG" ]; then
+            say "No published CEDAR release was found for $REPO yet."
+            say "To install the current source branch instead, run:"
+            say "  curl -fsSL https://raw.githubusercontent.com/$REPO/$BRANCH/installer/bootstrap/install.sh | CEDAR_CHANNEL=development sh"
+            exit 1
+        fi
     fi
     VERSION="${TAG#v}"
     ASSET="cedar-$VERSION-x86_64.tar.gz"
