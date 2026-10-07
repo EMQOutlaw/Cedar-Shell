@@ -5,6 +5,12 @@ are kept because people on older checkouts still hit them.
 
 ## Updating a checkout
 
+**Field Station → Update CEDAR** and `cedar installer --update` now do the whole
+update: a fast-forward pull of the checkout (or the latest release when there
+is no checkout), an unreadable `ORIG_HEAD` cleared, the desktop handed back
+from a running CEDAR session, the install, and CEDAR started again. The notes
+below describe the manual steps that still work.
+
 `git pull` updates the checkout; a successful installation updates the
 installed `cedar` command. If setup was canceled or failed, the previous
 installed version remains selected. If Git reports local changes or

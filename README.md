@@ -30,11 +30,13 @@ Prefer Git? Clone the repository and run the installer from it:
 git clone --branch main https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh
 ```
 
-To update an existing checkout later:
+To update later, press **Field Station → Update CEDAR**, or from a terminal:
 
 ```bash
-cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
+"$HOME/.local/bin/cedar" installer --update
 ```
+
+That fetches the newest CEDAR (a fast-forward pull of your checkout when you have one, otherwise the latest verified release), hands the desktop back from a running CEDAR session on its own, installs, and starts CEDAR again.
 
 ### What the installer does
 

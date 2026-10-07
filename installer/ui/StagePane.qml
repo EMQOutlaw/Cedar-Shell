@@ -53,8 +53,8 @@ Item {
                 anchors.centerIn: parent; width: Math.min(520, parent.width); spacing: 10
                 Text { Layout.alignment: Qt.AlignHCenter; text: "CEDAR"; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(54 * Theme.fontScale); font.weight: Font.Bold; font.letterSpacing: 12; color: Theme.green }
                 Text { Layout.alignment: Qt.AlignHCenter; text: "Contextual Environment & Desktop Automation Runtime"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 11; font.letterSpacing: 1.6; color: Theme.muted }
-                GlowText { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 26; text: "A complete environment for Hyprland."; font.family: Theme.labelFont; font.pixelSize: Math.round(20 * Theme.fontScale); color: Theme.text }
-                Primary { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 30; text: "Install CEDAR"; enabled: root.model.fixture || root.model.ready; onClicked: root.model.begin() }
+                GlowText { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 26; text: root.model.updating ? "The newest CEDAR is ready to install." : "A complete environment for Hyprland."; font.family: Theme.labelFont; font.pixelSize: Math.round(20 * Theme.fontScale); color: Theme.text }
+                Primary { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 30; text: root.model.updating ? "Update CEDAR" : "Install CEDAR"; enabled: root.model.fixture || root.model.ready; onClicked: root.model.begin() }
                 Quiet { Layout.alignment: Qt.AlignHCenter; text: root.model.showTechnical ? "Hide advanced" : "Advanced"; onClicked: root.model.showTechnical = !root.model.showTechnical }
                 ColumnLayout {
                     visible: root.model.showTechnical; Layout.fillWidth: true; Layout.topMargin: 6; spacing: 4

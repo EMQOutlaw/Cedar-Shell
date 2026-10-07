@@ -1,5 +1,6 @@
 # 0.1.2 — Keybinds in the Caelestia layout
 
+- Updating is one action: Field Station → Update CEDAR (or `cedar installer --update`) fetches the newest CEDAR, a fast-forward pull of the checkout when one exists or the latest verified release otherwise, then the installer hands the desktop back from a running CEDAR session by itself, installs, and starts CEDAR again. An unreadable `ORIG_HEAD` left by an interrupted git operation is cleared instead of stopping the update.
 - CEDAR ships a Hyprland binding set in the Caelestia layout for both configuration syntaxes (`themes/keybinds.lua`, `themes/keybinds.conf`): Super+T/W/C/E for the terminal, browser, editor and files chosen in Settings, Super+Q close, Super+F fullscreen, Super+1…0 workspaces, Super+arrows focus, Super+Z/X drag and resize, groups, special workspaces, media and volume keys, and the shell actions on CEDAR surfaces (tap Super for applications, Super+N Quick Controls, Super+K Field Station, Super+L lock, Ctrl+Alt+Delete power, Super+V clipboard, Super+G Gaming Mode, Super+Shift+Space Go menu). The installer offers "Use CEDAR's keybinds", on by default for plain Hyprland and Waybar setups; the copy lands in `~/.config/cedar/hypr/` and loads through CEDAR's journaled Hyprland loader, so your other bindings stay. See docs/KEYBINDS.md.
 
 # 0.1.1 — Installer fixes from the first real installations

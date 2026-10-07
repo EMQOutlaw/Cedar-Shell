@@ -140,6 +140,33 @@ def reopen_backup(ctx):
     return ctx.backup
 
 
+# ----------------------------------------------------------------- leave
+def leave_run(ctx, op):
+    """Hand the desktop back from an active CEDAR session so the release can change.
+
+    The adapters refuse to replace a running release; cedar restore returns
+    the previous desktop (applications stay open), the new release installs,
+    and the session step starts CEDAR again."""
+    d = ctx.module('distribution')
+    if not d.session_active():
+        raise ops.Skip('No CEDAR session is running')
+    ctx.progress(op, 0.2, 'Returning to the previous desktop; your applications stay open')
+    with ctx.capture(op):
+        d.session_backend().request_restore()
+    deadline = time.time() + 60
+    while d.session_active() and time.time() < deadline:
+        time.sleep(0.5)
+    if d.session_active():
+        raise RuntimeError('The CEDAR session did not finish restoring. Run "cedar status"; nothing else was changed.')
+    backup = reopen_backup(ctx)
+    if backup: backup.note('Left the active CEDAR session before installing; the session step starts the new release.')
+    op.detail = 'Previous desktop restored; CEDAR returns after the install'
+
+
+def leave_verify(ctx, op):
+    return not ctx.module('distribution').session_active()
+
+
 # ---------------------------------------------------------- dependencies
 def dependencies_run(ctx, op):
     missing = list(ctx.plan['packages'])
@@ -422,6 +449,7 @@ def build(ctx, state_path, log, emit, run_id, options):
         return run
     table = {
         'backup': (backup_run, backup_verify, None),
+        'leave': (leave_run, leave_verify, None),
         'dependencies': (dependencies_run, dependencies_verify, None),
         'runtime': (runtime_run, runtime_verify, None),
         'shell': (shell_run, None, None),

@@ -57,6 +57,40 @@ def ask(question, default=False):
     return reply in ('y', 'yes')
 
 
+def update_plan(source, environ=None):
+    """Where the newest CEDAR comes from: a Git checkout to pull, or the published release.
+
+    A checkout wins when one exists (CEDAR_CHECKOUT, ~/cedar-shell, or the
+    source itself when it is a checkout); otherwise the bootstrap downloads
+    and verifies the latest release."""
+    environ = os.environ if environ is None else environ
+    candidates = [Path(source)]
+    if environ.get('CEDAR_CHECKOUT'):
+        candidates.append(Path(environ['CEDAR_CHECKOUT']).expanduser())
+    candidates.append(Path(environ.get('HOME') or Path.home()) / 'cedar-shell')
+    for candidate in candidates:
+        if (candidate / '.git').exists() and (candidate / 'installer/cedar_install.py').is_file():
+            return 'checkout', candidate.resolve()
+    return 'bootstrap', (Path(source) / 'installer/bootstrap/install.sh').resolve()
+
+
+def update(source, argv):
+    """Pull or download the newest CEDAR, then run that copy's installer with the same arguments."""
+    passthrough = [a for a in argv if a != '--update'] + ['--updated']
+    kind, target = update_plan(source)
+    if kind == 'checkout':
+        sys.path.insert(0, str(target / 'scripts'))
+        import update_checkout as u  # the checkout's own updater: ff-only pull, broken scratch ref cleared, nothing reset
+        say('Updating the CEDAR checkout at ' + str(target))
+        u.describe(target)
+        u.pull(target)
+        installer = target / 'installer/cedar_install.py'
+        say('Starting the updated installer…'); sys.stdout.flush()
+        os.execv(sys.executable, [sys.executable, str(installer), '--source', str(target), *passthrough])
+    say('Downloading the latest CEDAR release…'); sys.stdout.flush()
+    os.execv('/bin/sh', ['sh', str(target), *passthrough])
+
+
 def wants_window(args, engine):
     if args.no_gui or args.dry_run or args.uninstall or args.repair or args.restore or args.last_log or args.json:
         return False
@@ -70,6 +104,7 @@ def launch_window(source, args):
     env = {**os.environ, 'CEDAR_INSTALLER_SOURCE': str(source), 'CEDAR_INSTALLER_PYTHON': sys.executable,
            'QS_DISABLE_FILE_WATCHER': '1', 'CEDAR_INSTALLER': '1'}
     if args.resume: env['CEDAR_INSTALLER_START'] = 'resume'
+    if args.updated: env['CEDAR_INSTALLER_UPDATE'] = '1'
     if args.start_over: env['CEDAR_INSTALLER_START'] = 'start-over'
     result = subprocess.run(['qs', '-p', str(source / 'installer.qml')], env=env)
     return result.returncode
@@ -104,6 +139,8 @@ def main(argv=None):
     parser.add_argument('--uninstall', action='store_true', help='undo CEDAR-owned changes; keep packages and your data')
     parser.add_argument('--repair', action='store_true', help='verify the installed copy and reinstall what does not match')
     parser.add_argument('--last-log', action='store_true', help='print the path of the most recent installer log')
+    parser.add_argument('--update', action='store_true', help='fetch the newest CEDAR (git pull in the checkout, or the latest release) and run its installer')
+    parser.add_argument('--updated', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--json', action='store_true', help='print facts and plan as JSON (with --dry-run)')
     parser.add_argument('--verbose', '-v', action='store_true', help='print the technical log while installing')
     parser.add_argument('--no-session', action='store_true', help='install without starting CEDAR in this session')
@@ -125,6 +162,8 @@ def main(argv=None):
         say('CEDAR needs Python 3.11 or newer. Update Python with your package manager first.'); return 1
     if args.serve:
         serve(source); return 0
+    if args.update:
+        return update(source, argv if argv is not None else sys.argv[1:])
 
     engine = Engine(source)
     if args.last_log:
@@ -152,7 +191,7 @@ def main(argv=None):
     say('  ' + facts['distro']['name'] + ' · ' + facts['architecture'] + ' · ' + (facts['compositor']['name'] or 'no compositor') + (' ' + facts['hyprlandVersion'] if facts['hyprlandVersion'] else ''))
     say('  Existing environment: ' + env['name'] + ('  (' + ', '.join(env.get('evidence', [])) + ')' if env.get('evidence') else ''))
     if facts['existingCedar']['installed']:
-        say('  CEDAR ' + (facts['existingCedar']['version'] or '?') + ' is already installed; this run updates it.')
+        say('  CEDAR ' + (facts['existingCedar']['version'] or '?') + ' is already installed; this run updates it' + (' and hands the desktop back while it does.' if facts['existingCedar']['session'] != 'not active' else '.'))
     previous = facts.get('previousInstall')
     if previous and not (args.resume or args.start_over):
         say()

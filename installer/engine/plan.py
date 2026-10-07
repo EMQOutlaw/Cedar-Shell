@@ -13,14 +13,14 @@ from ..migration import providers
 from ..providers import packages as package_providers
 from ..providers import privilege
 
-OPERATIONS = ('backup', 'dependencies', 'runtime', 'shell', 'migrate', 'session', 'verify')
+OPERATIONS = ('backup', 'leave', 'dependencies', 'runtime', 'shell', 'migrate', 'session', 'verify')
 MIN_FREE = 600 * 1024 * 1024
 
 
 def default_options(facts):
     env = facts['environment']
-    can_handoff = bool(env.get('adapter')) and facts['compositor']['name'] == 'hyprland' and facts['compositor']['running'] \
-        and facts['existingCedar']['session'] == 'not active'
+    # An active CEDAR session is handed back by the leave step, then re-entered.
+    can_handoff = bool(env.get('adapter')) and facts['compositor']['name'] == 'hyprland' and facts['compositor']['running']
     # CEDAR's keybinds (Caelestia layout) by default where no shell binding set exists; environments with their own keep theirs unless asked.
     keybinds = env.get('id') in ('plain-hyprland', 'waybar', 'generic-quickshell') and facts['compositor']['name'] == 'hyprland'
     return {'session': can_handoff, 'launcher': False, 'trailwatch': False, 'fonts': False, 'wallpapers': bool(facts['wallpapers']), 'migrate': True, 'keybinds': keybinds}
@@ -43,8 +43,6 @@ def attention(facts, options):
         add('hyprland', 'Hyprland is not installed', 'CEDAR runs on Hyprland. Install and start Hyprland first; the installer does not replace your compositor or login manager.')
     if facts['locked']:
         add('locked', 'The session is locked', 'Unlock the desktop normally, then continue. The installer never interrupts a locker.')
-    if facts['existingCedar']['session'] != 'not active':
-        add('session', 'A CEDAR desktop session is active', 'Run "cedar restore" to leave the current CEDAR session before installing another release. Your previous desktop comes back first.')
     if facts['defaultQuickshellProfile']:
         add('qsdefault', 'A default Quickshell profile masks named shells', '~/.config/quickshell/shell.qml would hide CEDAR’s named profile. Move it aside before installing; the installer will not replace it.')
     disk = facts.get('disk') or {}
@@ -103,6 +101,8 @@ def build(facts, options=None):
         cedar.append('Install dependencies: ' + ', '.join(missing))
     else:
         cedar.append('Dependencies already present')
+    if facts['existingCedar']['session'] != 'not active':
+        cedar.append('Hand the desktop back to the previous shell while CEDAR ' + facts['cedarVersion'] + ' installs, then start it again')
     cedar.append('Install CEDAR ' + facts['cedarVersion'] + ' as a versioned copy with the cedar command and offline recovery')
     cedar.append('Check that the CEDAR shell loads with this Quickshell and Qt')
     cedar.append('Install CEDAR application entries (Shield)')
@@ -118,10 +118,12 @@ def build(facts, options=None):
         cedar.append('Session handoff for ' + env['name'] + ' is not validated yet: CEDAR installs and opens as a preview; your current shell keeps running')
     cedar.append('Verify the installation')
 
+    active_session = facts['existingCedar']['session'] != 'not active'
     operations = []
     def op(id, title, description, optional=False, enabled=True, group=''):
         operations.append({'id': id, 'title': title, 'description': description, 'optional': optional, 'enabled': enabled, 'group': group})
     op('backup', 'System backup', 'Copy the configuration this plan may touch into a versioned backup with a manifest and restore script')
+    op('leave', 'Hand back the desktop', 'Return to the previous desktop while CEDAR updates; CEDAR comes back in the session step' if active_session else 'No CEDAR session is running', enabled=active_session)
     op('dependencies', 'Dependencies', package_provider.describe(missing) if missing else 'All required software is already present')
     op('runtime', 'CEDAR runtime', 'Install the versioned release, the cedar command and the offline recovery tools')
     op('shell', 'CEDAR shell', 'Load the shell offscreen with the installed Quickshell and Qt to prove it runs here', group='ready')

@@ -30,6 +30,7 @@ Item {
     readonly property string source: Quickshell.env("CEDAR_INSTALLER_SOURCE") || Quickshell.shellPath("../..")
     readonly property string python: Quickshell.env("CEDAR_INSTALLER_PYTHON") || "python3"
     readonly property string startWith: Quickshell.env("CEDAR_INSTALLER_START") || ""
+    readonly property bool updating: Quickshell.env("CEDAR_INSTALLER_UPDATE") === "1"
     readonly property var environment: facts.environment || ({})
     readonly property int doneCount: operations.filter(o => ["complete", "warning", "skipped"].includes(o.state)).length
     readonly property real progress: operations.length ? doneCount / operations.length : 0

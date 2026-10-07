@@ -232,13 +232,34 @@ class Planning(unittest.TestCase):
         row = next(a for a in plan['attention'] if a['id'] == 'nvidia')
         self.assertEqual(row['severity'], 'warn'); self.assertFalse(plan['blocked'])
 
-    def test_existing_cedar_session_blocks_until_restored(self):
+    def test_existing_cedar_session_is_handed_back_then_re_entered(self):
         host = arch_host(files={**arch_host().files, HOME + '/.local/state/cedar/portable-session.json': json.dumps({'stage': 'kept'})})
         plan_module.set_check_host(host)
         facts = facts_module.scan(host, ROOT)
         self.assertEqual(facts['existingCedar']['session'], 'kept')
         plan = plan_module.build(facts)
-        self.assertIn('session', [a['id'] for a in plan['attention']]); self.assertFalse(plan['options']['session'])
+        self.assertNotIn('session', [a['id'] for a in plan['attention']]); self.assertFalse(plan['blocked'])
+        leave = next(op for op in plan['operations'] if op['id'] == 'leave')
+        self.assertTrue(leave['enabled']); self.assertTrue(plan['options']['session'])
+        self.assertTrue(any('Hand the desktop back' in r for r in plan['cedar']))
+        quiet = plan_module.build(facts_module.scan(arch_host(), ROOT))
+        self.assertFalse(next(op for op in quiet['operations'] if op['id'] == 'leave')['enabled'])
+
+    def test_update_prefers_a_checkout_and_falls_back_to_the_bootstrap(self):
+        sys.path.insert(0, str(ROOT / 'installer'))
+        import cedar_install
+        with tempfile.TemporaryDirectory(prefix='cedar update 雨 ') as temp:
+            home = Path(temp)
+            kind, target = cedar_install.update_plan(ROOT / 'installer' / '..', {'HOME': str(home)})
+            self.assertEqual(kind, 'checkout'); self.assertEqual(target, ROOT)             # this source is a checkout
+            release_copy = home / 'release'; (release_copy / 'installer/bootstrap').mkdir(parents=True)
+            (release_copy / 'installer/bootstrap/install.sh').write_text('#!/bin/sh\n')
+            kind, target = cedar_install.update_plan(release_copy, {'HOME': str(home)})
+            self.assertEqual(kind, 'bootstrap'); self.assertEqual(target.name, 'install.sh')
+            checkout = home / 'cedar-shell'; (checkout / '.git').mkdir(parents=True); (checkout / 'installer').mkdir()
+            (checkout / 'installer/cedar_install.py').write_text('')
+            kind, target = cedar_install.update_plan(release_copy, {'HOME': str(home)})
+            self.assertEqual((kind, target), ('checkout', checkout.resolve()))
 
     def test_preview_only_environment_skips_session_honestly(self):
         host = arch_host(dirs=[HOME + '/.config/caelestia', '/sys/module/nvidia'], files={HOME + '/.local/state/caelestia/dots-state.json': '{}', HOME + '/.config/hypr/hyprland.conf': HYPR_CONF, ROOT / 'VERSION': '1', ROOT / 'data/dependencies.json': (ROOT / 'data/dependencies.json').read_text()},
@@ -375,28 +396,28 @@ class RunnerResume(unittest.TestCase):
         with self.assertRaises(ops.Failed) as caught:
             runner.run(object())
         self.assertEqual(caught.exception.operation.id, 'runtime')
-        self.assertEqual(calls, ['backup', 'dependencies', 'runtime'])
+        self.assertEqual(calls, ['backup', 'leave', 'dependencies', 'runtime'])
         state = ops.load_state(self.state)
         described = ops.describe_state(state)
-        self.assertEqual((described['completed'], described['total'], described['failed']), (2, 7, ['runtime']))
+        self.assertEqual((described['completed'], described['total'], described['failed']), (3, 8, ['runtime']))
         calls2 = []
         runner2 = ops.Runner(self.operations(calls=calls2), self.state, None, lambda e, d: None, run_id='run1')
         runner2.restore_from(state)
         summary = runner2.run(object(), resume=True)
         self.assertEqual(calls2[:1], ['runtime']); self.assertNotIn('backup', calls2)
-        self.assertEqual(summary['completed'], 7); self.assertEqual(summary['skipped'], ['migrate'])
+        self.assertEqual(summary['completed'], 8); self.assertEqual(summary['skipped'], ['migrate'])
         self.assertIsNone(ops.describe_state(ops.load_state(self.state)))
 
     def test_interrupted_running_step_runs_again(self):
         runner = ops.Runner(self.operations(), self.state, None, lambda e, d: None, run_id='run2')
         runner.run(object())
         state = ops.load_state(self.state)
-        state['finished'] = False; state['operations'][3]['state'] = ops.RUNNING
-        for row in state['operations'][4:]:
+        state['finished'] = False; state['operations'][4]['state'] = ops.RUNNING
+        for row in state['operations'][5:]:
             row['state'] = ops.PENDING
         self.state.write_text(json.dumps(state))
         described = ops.describe_state(ops.load_state(self.state))
-        self.assertEqual(described['interruptedAt'], 'shell'); self.assertEqual(described['completed'], 3)
+        self.assertEqual(described['interruptedAt'], 'shell'); self.assertEqual(described['completed'], 4)
         calls = []
         runner2 = ops.Runner(self.operations(calls=calls), self.state, None, lambda e, d: None, run_id='run2')
         runner2.restore_from(ops.load_state(self.state))

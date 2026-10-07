@@ -72,6 +72,7 @@ output to guess progress.
 | `--uninstall` | undo CEDAR-owned changes; keep packages and your data |
 | `--repair` | verify the installed copy and reinstall what does not match |
 | `--last-log` | print the most recent installer log |
+| `--update` | fetch the newest CEDAR (ff-only pull of the checkout when one exists, else the latest verified release) and run its installer; an active CEDAR session is handed back and re-entered by the plan itself |
 | `--no-session`, `--cedar-launcher`, `--trailwatch`, `--fonts`, `--keybinds` / `--no-keybinds` | plan options |
 
 After installation the same tool is available as `cedar installer …`.
@@ -111,6 +112,7 @@ After installation the same tool is available as `cedar installer …`.
 | Operation | What it does | Verified by |
 | --- | --- | --- |
 | System backup | copies the configuration the plan may touch into `~/.local/state/cedar/installations/<timestamp>/` with `manifest.json`, `restore.sh`, `config/`, `services.json`, `packages.json` | manifest and restore script present |
+| Hand back the desktop | only when a CEDAR session is running: `cedar restore` returns the previous desktop (applications stay open) so the release can change; the session step starts CEDAR again at the end | the session record reads restored |
 | Dependencies | `pacman -Syu --needed` for the missing manifest packages, through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer | each package's command present afterwards |
 | CEDAR runtime | `scripts/distribution.py install`: the versioned copy under `~/.local/share/cedar/releases/`, the `cedar` command, offline recovery, launcher entries, all journaled | release tree checksums |
 | CEDAR shell | loads the required QML imports and renders five offscreen checks with the installed Quickshell and Qt | the checks pass |
