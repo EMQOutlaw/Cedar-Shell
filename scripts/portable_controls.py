@@ -43,6 +43,13 @@ def destination(binding):
     if exe in ('wofi', 'rofi') and args in (['--show', 'drun'], ['-show', 'drun'], ['-show', 'combi']): return 'launcher'
     if exe == 'fuzzel' and not args: return 'launcher'
     if exe in ('hyprlock', 'swaylock') and not args: return 'lock'
+    # CEDAR's own shortcuts (themes/keybinds.*): the request is already satisfied.
+    if exe == 'cedar' and args[:1] == ['launcher']: return 'cedar-launcher'
+    if exe == 'cedar' and args[:1] == ['lock']: return 'cedar-lock'
+    if exe == 'qs' and 'ipc' in args and 'call' in args:
+        call = args[args.index('call') + 1:]
+        if call[:3] in (['menu', 'toggle', 'apps'], ['menu', 'toggle', 'root']): return 'cedar-launcher'
+        if call[:2] == ['lock', 'lock']: return 'cedar-lock'
     return None
 
 
@@ -52,6 +59,8 @@ def shortcut_plan(launcher, trailwatch):
     chosen = []
     for kind, wanted, fallback in (('launcher', launcher, ['space', 'D']), ('lock', trailwatch, ['L'])):
         if not wanted: continue
+        if any(destination(b) == 'cedar-' + kind for b in live):
+            continue   # a shortcut already reaches CEDAR (its shipped keybinds); nothing to redirect
         matches = [b for b in live if destination(b) == kind]
         for b in matches:
             if b.get('submap') or any(b.get(flag) for flag in ('release', 'repeat', 'mouse', 'locked', 'longPress', 'catchAll', 'multiKey', 'non_consuming', 'transparent', 'ignore_mods')):

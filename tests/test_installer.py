@@ -334,6 +334,25 @@ class CedarCommand(unittest.TestCase):
         self.assertEqual(calls[0][1:], ['/installed/release/installer/cedar_install.py', '--update', '--no-gui', '--yes'])
 
 
+class LauncherShortcut(unittest.TestCase):
+    def test_cedar_own_shortcuts_satisfy_the_launcher_request(self):
+        from unittest.mock import patch
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import distribution as d
+        import portable_controls as c
+        self.assertEqual(c.destination({'dispatcher': 'exec', 'arg': 'qs ipc -p /users/station/.local/share/cedar/current/shell.qml call menu toggle apps'}), 'cedar-launcher')
+        self.assertEqual(c.destination({'dispatcher': 'exec', 'arg': '/users/station/.local/bin/cedar launcher'}), 'cedar-launcher')
+        self.assertEqual(c.destination({'dispatcher': 'exec', 'arg': 'qs ipc -p /x/shell.qml call lock lock'}), 'cedar-lock')
+        self.assertIsNone(c.destination({'dispatcher': 'exec', 'arg': 'kitty'}))
+        live = [{'dispatcher': 'exec', 'arg': 'qs ipc -p /x/shell.qml call menu toggle apps', 'modmask': 64, 'key': 'space'},
+                {'dispatcher': 'togglespecialworkspace', 'arg': 'communication', 'modmask': 64, 'key': 'D'}]
+        with patch.object(d, 'command', return_value=json.dumps(live)):
+            self.assertEqual(c.shortcut_plan(True, False), [])          # already CEDAR's: nothing to redirect, no refusal
+        occupied = [{'dispatcher': 'exec', 'arg': 'kitty', 'modmask': 64, 'key': 'space'}, {'dispatcher': 'exec', 'arg': 'firefox', 'modmask': 64, 'key': 'D'}]
+        with patch.object(d, 'command', return_value=json.dumps(occupied)), self.assertRaises(d.Refused):
+            c.shortcut_plan(True, False)                                   # somebody else's keys stay theirs
+
+
 class LoginBlock(unittest.TestCase):
     def test_a_stale_block_is_replaced_not_refused(self):
         sys.path.insert(0, str(ROOT / 'scripts'))
