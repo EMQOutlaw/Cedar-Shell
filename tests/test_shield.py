@@ -30,7 +30,8 @@ Current DNS Server: 1.1.1.1#cloudflare-dns.com
 
 Link 3 (wlp8s0)
     Current Scopes: none
-         Protocols: -DefaultRoute -LLMNR -mDNS -DNSOverTLS DNSSEC=no/unsupported
+         Protocols: -DefaultRoute -LLMNR -mDNS DNSOverTLS=opportunistic
+       DNS Servers: 9.9.9.9#dns.quad9.net
 """
 
 class Listeners(unittest.TestCase):
@@ -57,7 +58,10 @@ class Dns(unittest.TestCase):
         self.assertFalse(blocks['global']['dot'])
         self.assertTrue(blocks['eno1']['dot'])
         self.assertEqual(blocks['eno1']['servers'], ['1.1.1.1#cloudflare-dns.com', '1.0.0.1#cloudflare-dns.com'])
-        self.assertFalse(blocks['wlp8s0']['dot'])
+        self.assertEqual(blocks['eno1']['dotMode'], 'strict')
+        self.assertTrue(blocks['wlp8s0']['dot'], 'opportunistic counts as DNS-over-TLS')
+        self.assertEqual(blocks['wlp8s0']['dotMode'], 'opportunistic')
+        self.assertEqual(blocks['global']['dotMode'], 'off')
 
     def test_provider_mapping(self):
         self.assertEqual(shield.provider_for(['1.1.1.1#cloudflare-dns.com']), 'cloudflare')

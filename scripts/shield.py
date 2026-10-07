@@ -135,7 +135,10 @@ def parse_resolvectl(text):
         key, _, value = line.strip().partition(':')
         key, value = key.strip(), value.strip()
         if key == 'Protocols':
-            blocks[current]['dot'] = '+DNSOverTLS' in value
+            # resolved prints "+DNSOverTLS" for strict, "DNSOverTLS=opportunistic"
+            # for opportunistic and "-DNSOverTLS" for off.
+            blocks[current]['dotMode'] = 'strict' if '+DNSOverTLS' in value or 'DNSOverTLS=yes' in value else 'opportunistic' if 'DNSOverTLS=opportunistic' in value else 'off'
+            blocks[current]['dot'] = blocks[current]['dotMode'] != 'off'
             blocks[current]['dnssec'] = 'DNSSEC=yes' in value
             blocks[current]['mdns'] = '+mDNS' in value
             blocks[current]['llmnr'] = '+LLMNR' in value
@@ -199,8 +202,7 @@ def dns(caps):
         except RuntimeError as error:
             connection['error'] = str(error)
     info['connection'] = connection
-    if link.get('dot'):
-        info['mode'] = 'strict' if (connection or {}).get('dnsOverTls') == 'yes' else 'opportunistic'
+    info['mode'] = link.get('dotMode', 'off') if link else 'off'
     if not connection:
         info['reason'] = 'No active NetworkManager connection carries the default route.'
     return info
@@ -237,7 +239,7 @@ def apply_dns(request, caps):
                   'ipv4.dns': ','.join(spec['v4']), 'ipv4.ignore-auto-dns': 'yes', 'ipv6.dns': ','.join(spec['v6']), 'ipv6.ignore-auto-dns': 'yes'}
     modify(wanted)
     verified = dns(caps)
-    ok = (mode == 'off' and verified['mode'] == 'off') or (mode != 'off' and verified['mode'] != 'off' and verified['provider'] == provider)
+    ok = (mode == 'off' and verified['mode'] == 'off') or (mode != 'off' and verified['mode'] == mode and verified['provider'] == provider)
     if not ok:
         restore = {k: (v if v not in ('', '-1') else ('default' if k == 'connection.dns-over-tls' else v)) for k, v in captured.items()}
         try:
