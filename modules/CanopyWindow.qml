@@ -46,7 +46,7 @@ PanelWindow {
 
     // ---- targets -----------------------------------------------------------
     function topicWidth(topic) {
-        const w = Canopy.peeking ? 360 : topic === "station" ? 760 : topic === "go" ? 480 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "quick" ? 420 : 520;
+        const w = Canopy.peeking ? 360 : topic === "station" ? 760 : topic === "go" ? 480 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "startup" ? 620 : topic === "quick" ? 420 : 520;
         return Math.min(width - 24, w);
     }
     function topicHeight(topic) {

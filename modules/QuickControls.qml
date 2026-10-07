@@ -172,6 +172,18 @@ ColumnLayout {
             label: "Do not disturb"; value: Config.saved.doNotDisturb ? "Quiet" : "Off"; on: Config.saved.doNotDisturb
             onClicked: Config.set("doNotDisturb", !Config.saved.doNotDisturb)
         }
+        // Performance mode: the basics only. A tap while it is on turns it off
+        // (back to Automatic if it was switched on by hand, Off if a game or
+        // battery saver turned it on); a tap while off switches it on.
+        Tile {
+            order: 6
+            label: "Performance"
+            value: Config.performanceActive ? (Config.performanceMode === "on" ? "On" : "Auto · " + (Config.powerSaving ? "battery saver" : "game"))
+                 : (Config.performanceMode === "off" ? "Off" : "Auto")
+            on: Config.performanceActive
+            hint: "Stops the breathing light, spores and entrance sweeps while keeping every control"
+            onClicked: Config.set("performanceMode", Config.performanceActive ? (Config.performanceMode === "on" ? "auto" : "off") : "on")
+        }
     }
     // Power profile: one three-way choice
     ColumnLayout {

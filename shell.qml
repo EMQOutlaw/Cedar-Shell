@@ -62,6 +62,11 @@ ShellRoot {
         function show(topic: string): void {
             Canopy.open(topic);
         }
+        // `qs ipc call canopy show …` never reaches the shell: the CLI reads
+        // `show` as its own `ipc show` subcommand. `open` is the usable spelling.
+        function open(topic: string): void {
+            Canopy.open(topic);
+        }
         function hide(): void {
             Canopy.close();
         }

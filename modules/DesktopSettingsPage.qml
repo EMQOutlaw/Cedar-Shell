@@ -12,7 +12,7 @@ ColumnLayout {
 
     SettingsSection {
         objectName:"wallpaper"
-        heading:"Wallpaper"; caption:"Shown on every display. Choose an image from the current theme’s background library."
+        heading:"Wallpaper"; caption:SettingsInfo.data.wallpaperFolder ? "Shown on every display. Choose an image from CEDAR’s backgrounds or your wallpaper folder." : "Shown on every display. Choose a bundled background, or set a wallpaper folder below to add your own images."
         Rectangle {
             Layout.fillWidth:true; implicitHeight:Math.min(280,width*.42); color:Theme.background; radius:10; clip:true; border.color:Qt.alpha(Theme.teal,.14)
             Image { id:hero; anchors.fill:parent; anchors.margins:1; source:root.current ? Config.imageSource("file://"+root.current) : ""; fillMode:Config.saved.wallpaperMode==="fit" ? Image.PreserveAspectFit : Config.saved.wallpaperMode==="stretch" ? Image.Stretch : Image.PreserveAspectCrop; sourceSize.width:1280; asynchronous:true }
@@ -41,7 +41,7 @@ ColumnLayout {
                 }
             }
         }
-        GlowText { visible:!root.wallpapers.length; text:"No images found in the current theme’s background library."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
+        GlowText { visible:!root.wallpapers.length; text:SettingsInfo.data.wallpaperFolder ? "No images found in CEDAR’s backgrounds or your wallpaper folder." : "No images found. Set a wallpaper folder below to add your own."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
         SettingsFields { page:"desktop"; groups:["Background"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
     }
 

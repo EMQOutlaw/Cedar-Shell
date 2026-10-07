@@ -65,9 +65,20 @@ ColumnLayout {
         }
     }
 
+    // Performance mode: the basics only. The pill says whether it is on right
+    // now and why, since Automatic follows the power profile and fullscreen focus.
+    SettingsSection {
+        objectName:"performanceMode"
+        heading:"Performance mode"
+        caption:"Stops the breathing light, spores, entrance sweeps, spectrum and ambient telemetry. Panels still open and close; nothing you need goes away."
+        badge:Config.performanceActive ? "On · "+Config.performanceReason : "Off"
+        badgeColor:Config.performanceActive ? Theme.amber : Theme.teal
+        SettingsFields { page:"power"; groups:["Performance mode"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+    }
+
     SettingsFields {
         page:"power"; Layout.fillWidth:true; highlightKey:root.highlightKey
-        exclude:["Session lock"]
+        exclude:["Session lock","Performance mode"]
         captions:({"Trailwatch privacy":"What the lock screen may reveal. Notification contents never appear there.","Trailwatch controls":"What may be done without unlocking."})
     }
     GlowText { visible:Controls.error!==""; text:Controls.error; color:Theme.amber; Layout.fillWidth:true; wrapMode:Text.WordWrap }

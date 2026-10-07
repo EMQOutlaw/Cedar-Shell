@@ -12,14 +12,15 @@ Overlay {
     panelName: "wallpapers"
     property var wallpapers: []
     property string selectedPath: ""
+    property string folder: ""
     onVisibleChanged: if (visible) { refresh.running = true; } else { root.wallpapers = []; }
     Process {
         id: listWallpapers
         command: ["python3", Quickshell.shellPath("scripts/wallpapers.py")]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { const data = JSON.parse(text); root.wallpapers = data.items; root.selectedPath = data.selected; }
-                catch (_) { root.wallpapers = []; root.selectedPath = ""; }
+                try { const data = JSON.parse(text); root.wallpapers = data.items; root.selectedPath = data.selected; root.folder = data.folder || ""; }
+                catch (_) { root.wallpapers = []; root.selectedPath = ""; root.folder = ""; }
             }
         }
     }
@@ -54,7 +55,7 @@ Overlay {
             }
             GlowText {
                 Layout.fillWidth: true
-                text: SettingsInfo.error ? SettingsInfo.error : root.wallpapers.length ? root.wallpapers.length + " images · choose one to set the desktop" : "No wallpapers found in this theme."
+                text: SettingsInfo.error ? SettingsInfo.error : root.wallpapers.length ? root.wallpapers.length + " images · choose one to set the desktop" + (root.folder ? " · includes " + root.folder.replace(Config.home, "~") : "") : root.folder ? "No images found in CEDAR’s backgrounds or " + root.folder.replace(Config.home, "~") + "." : "No wallpapers found. Set a wallpaper folder in Settings › Desktop."
                 color: Theme.muted
             }
             GridView {

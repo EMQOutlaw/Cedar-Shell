@@ -15,6 +15,7 @@ import sys
 from distribution import atomic, read_json, xdg
 
 ROOT = Path(__file__).resolve().parents[1]
+IMAGE_SUFFIXES = {'.png', '.jpg', '.jpeg', '.webp', '.bmp'}
 COLORS = ('background', 'surface', 'elevated', 'border', 'green', 'brightGreen',
           'teal', 'amber', 'ember', 'text', 'muted')
 
@@ -25,6 +26,40 @@ def omarchy():
 
 def config():
     return xdg('CONFIG', '.config') / 'cedar'
+
+
+def settings():
+    """CEDAR preferences (settings.json); unreadable or malformed files read as empty."""
+    try:
+        value = read_json(config() / 'settings.json')
+    except (OSError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def wallpaper_folder():
+    """The user's chosen wallpaper folder, or None when unset or not a directory."""
+    value = settings().get('wallpaperFolder', '')
+    if not isinstance(value, str) or not value.strip():
+        return None
+    folder = Path(value.strip()).expanduser()
+    if not folder.is_absolute():
+        folder = Path.home() / folder
+    return folder if folder.is_dir() else None
+
+
+def folder_images(folder, limit=1000):
+    """Images in a user folder and its subfolders, skipping hidden entries and bounded in size."""
+    found = []
+    for base, directories, files in os.walk(folder):
+        directories[:] = sorted(name for name in directories if not name.startswith('.'))
+        for name in sorted(files):
+            path = Path(base) / name
+            if not name.startswith('.') and path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES:
+                found.append(path)
+                if len(found) >= limit:
+                    return found
+    return found
 
 
 def desktop():
@@ -55,20 +90,32 @@ def wallpapers():
     if selected:
         roots.append(Path(selected).parent)
     items = {}
+
+    def add(path):
+        resolved = str(path.resolve())
+        items[resolved] = {'path': resolved, 'name': path.stem.replace('_', ' ').replace('-', ' ').title()}
+
     for directory in roots:
         try:
             for path in directory.iterdir():
-                if path.is_file() and path.suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp', '.bmp'}:
-                    resolved = str(path.resolve())
-                    items[resolved] = {'path': resolved, 'name': path.stem.replace('_', ' ').replace('-', ' ').title()}
+                if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES:
+                    add(path)
         except OSError:
             continue
-    return {'selected': selected, 'items': sorted(items.values(), key=lambda row: row['name'].casefold())}
+    folder = wallpaper_folder()
+    if folder is not None:
+        try:
+            for path in folder_images(folder):
+                add(path)
+        except OSError:
+            pass
+    return {'selected': selected, 'folder': str(folder) if folder is not None else '',
+            'items': sorted(items.values(), key=lambda row: row['name'].casefold())}
 
 
 def set_wallpaper(value):
     path = Path(value).expanduser().resolve(strict=True)
-    if not path.is_file() or path.suffix.lower() not in {'.png', '.jpg', '.jpeg', '.webp', '.bmp'}:
+    if not path.is_file() or path.suffix.lower() not in IMAGE_SUFFIXES:
         raise ValueError('Choose a local image file.')
     if omarchy():
         run(['omarchy-theme-bg-set', str(path)])

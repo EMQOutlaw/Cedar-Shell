@@ -40,7 +40,7 @@ def inventory():
     try: selected = json.loads((runtime.config()/'theme.json').read_text()).get('name', 'cedar')
     except (OSError, ValueError): selected = 'cedar'
     return {'theme': 'CEDAR' if selected == 'cedar' else selected,
-            'wallpaper': walls['selected'], 'themes': runtime.themes(), 'wallpapers': walls['items']}
+            'wallpaper': walls['selected'], 'wallpaperFolder': walls['folder'], 'themes': runtime.themes(), 'wallpapers': walls['items']}
 
 def snapshot():
     commands={'quickshell':['qs','--version'],'hyprland':['hyprctl','version'], 'qt':['/usr/lib/qt6/bin/qtpaths','--qt-version']}

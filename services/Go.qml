@@ -6,6 +6,7 @@ import ".."
 import "../components"
 import "../components/MenuModel.js" as MenuModel
 import "../components/StableRows.js" as StableRows
+import "../components/Compass.js" as Compass
 
 // CEDAR owns its menu. Omarchy menus are loaded only by its explicit adapter.
 Singleton {
@@ -309,6 +310,29 @@ Singleton {
         }
     }
 
+    // --------------------------------------------------------------- answers
+    // Compass rows for a search: arithmetic leads it, a web search (and a bare
+    // address) trails it. The value or URL rides in `action`.
+    function answerRow(kind, icon, label, detail, action, section) {
+        return {itemId: "compass." + kind, kind: kind, icon: icon, iconFont: "", appIcon: "", appId: "", label: label, target: "",
+                detail: detail, path: "", childCount: 0, action: action, provider: "", score: 0, section: section || ""};
+    }
+    function leadingAnswers(query) {
+        const calc = Compass.evaluate(query);
+        return calc ? [root.answerRow("calc", "\udb80\udcec", "= " + calc.display, calc.expression + "   ·   ENTER copies", calc.display)] : [];
+    }
+    function trailingAnswers(query, section) {
+        const out = [], address = Compass.urlFor(query);
+        if (address) out.push(root.answerRow("url", "\udb80\udf37", "Open " + address.replace(/^https?:\/\//i, ""), address, address, section));
+        out.push(root.answerRow("web", "\udb81\udd9f", "Search " + Compass.engine(Config.searchEngine).label + " for \u201c" + query + "\u201d",
+                                "Opens in your default browser", Compass.searchUrl(Config.searchEngine, query), section));
+        return out;
+    }
+    function openUrl(url) {
+        if (/^https?:\/\//i.test(String(url)))
+            Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--", "xdg-open", String(url)]);
+    }
+
     // --------------------------------------------------------------- display
     function isVisibleEntry(entry) { return MenuModel.isVisible(root.items, root.itemOrder, root.whenResults, entry); }
     function displayRow(entry, detail, score, section) {
@@ -347,7 +371,8 @@ Singleton {
             currentRows.sort(bySearch); drilldownRows.sort(bySearch);
             root.searchDivider = currentRows.length > 0 && drilldownRows.length > 0;
             if (root.searchDivider) for (const row of drilldownRows) row.section = "drilldown";
-            next = currentRows.concat(drilldownRows);
+            const found = currentRows.concat(drilldownRows);
+            next = root.leadingAnswers(query).concat(found, root.trailingAnswers(query, found.length ? "compass" : ""));
         } else {
             for (const id of root.itemOrder) {
                 const child = root.item(id);
@@ -424,6 +449,8 @@ Singleton {
         }
         if (index < 0 || index >= root.rows.length) return;
         const row = root.rows[index];
+        if (row.kind === "calc") { root.hide(); Quickshell.execDetached(["wl-copy", "--", String(row.action)]); return; }
+        if (row.kind === "web" || row.kind === "url") { root.hide(); root.openUrl(row.action); return; }
         Forest.record("go","Go / "+row.label,row.itemId || row.appId || row.label);
         if (row.kind === "menu" || row.kind === "link") root.setActiveMenu(row.target || row.itemId, true);
         else if (row.kind === "app") { root.hide(); root.launchApp(row.appId); }

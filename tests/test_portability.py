@@ -361,6 +361,38 @@ sys.stdin.buffer.read(1)
         self.assertEqual(runtime.wallpapers()['selected'], str(image))
         self.assertFalse((self.base / 'state/omarchy').exists())
 
+    def test_wallpaper_folder_setting_adds_user_images(self):
+        home = self.base / 'home'
+        folder = home / 'Pictures/Wallpapers/CEDAR'
+        (folder / 'ridge').mkdir(parents=True)
+        (folder / '.cache').mkdir()
+        (folder / 'dawn-mist.png').write_bytes(b'fixture')
+        (folder / 'ridge' / 'night_watch.jpg').write_bytes(b'fixture')
+        (folder / '.cache' / 'hidden.png').write_bytes(b'fixture')
+        (folder / 'notes.txt').write_text('not an image')
+        self.assertEqual(runtime.wallpapers()['folder'], '')
+        d.write_json(runtime.config() / 'settings.json', {'wallpaperFolder': '~/Pictures/Wallpapers/CEDAR', 'futureKey': 1})
+        with patch.object(runtime.Path, 'home', return_value=home):
+            walls = runtime.wallpapers()
+            self.assertEqual(walls['folder'], str(folder))
+            paths = [row['path'] for row in walls['items']]
+            self.assertIn(str(folder / 'dawn-mist.png'), paths)
+            self.assertIn(str(folder / 'ridge' / 'night_watch.jpg'), paths)
+            self.assertNotIn(str(folder / '.cache' / 'hidden.png'), paths)
+            self.assertFalse(any(path.endswith('notes.txt') for path in paths))
+            self.assertEqual(next(row['name'] for row in walls['items'] if row['path'].endswith('dawn-mist.png')), 'Dawn Mist')
+            with patch.object(runtime, 'run') as run:
+                runtime.set_wallpaper(str(folder / 'ridge' / 'night_watch.jpg'))
+                run.assert_not_called()
+            self.assertEqual(runtime.wallpapers()['selected'], str(folder / 'ridge' / 'night_watch.jpg'))
+        # A missing folder, a file, or a non-string value is ignored rather than an error.
+        for value in ['~/Pictures/Nowhere', str(folder / 'dawn-mist.png'), 7, '   ']:
+            d.write_json(runtime.config() / 'settings.json', {'wallpaperFolder': value})
+            with patch.object(runtime.Path, 'home', return_value=home):
+                self.assertEqual(runtime.wallpapers()['folder'], '')
+        (runtime.config() / 'settings.json').write_text('{not json')
+        self.assertEqual(runtime.wallpapers()['folder'], '')
+
     def test_external_wallpaper_is_preserved(self):
         image = self.base / 'wall.png'; image.touch()
         with patch.dict(os.environ, {'CEDAR_BACKGROUND': 'external'}):

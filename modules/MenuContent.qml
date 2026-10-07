@@ -7,7 +7,8 @@ import "../services"
 
 // Omarchy-style Go menu in CEDAR glass: Apps, Learn, Trigger, Style, Setup,
 // Install, Remove, Update, System and CEDAR's own panels. Typing searches the
-// whole tree; Backspace on an empty search goes up one level.
+// whole tree, answers arithmetic at the top and offers a web search at the
+// bottom; Backspace on an empty search goes up one level.
 Item {
     id: root
     readonly property int rowHeight: 48
@@ -94,8 +95,9 @@ Item {
                     section.criteria: ViewSection.FullString
                     section.delegate: Item {
                         required property string section
-                        width: ListView.view.width; height: section === "drilldown" ? 16 : 0
-                        Rectangle { anchors.centerIn: parent; width: parent.width - 8; height: 1; color: Theme.border; visible: parent.section === "drilldown" }
+                        readonly property bool divider: section === "drilldown" || section === "compass"
+                        width: ListView.view.width; height: divider ? 16 : 0
+                        Rectangle { anchors.centerIn: parent; width: parent.width - 8; height: 1; color: Theme.border; visible: parent.divider }
                     }
                     delegate: Item {
                         id: row
@@ -185,7 +187,10 @@ Item {
                     width: parent.width
                     text: DefaultApps.launchError ? DefaultApps.launchError : Go.mode === "input" ? "Type, then ENTER   /   ESC cancel"
                         : Go.dmenuActive ? "Type to filter   /   ENTER choose   /   ESC cancel"
-                        : (Go.filterText ? "ENTER open   /   ESC clear search" : (Go.activeMenu === "root" ? "Type to search apps and commands   /   ESC close" : "BACKSPACE back   /   ENTER open   /   ESC close"))
+                        : (Go.filterText ? (Go.rows[Go.selectedIndex]?.kind === "calc" ? "ENTER copy the answer   /   ESC clear search"
+                                            : ["web", "url"].includes(Go.rows[Go.selectedIndex]?.kind) ? "ENTER open in browser   /   ESC clear search"
+                                            : "ENTER open   /   ESC clear search")
+                           : (Go.activeMenu === "root" ? "Type an app, a command, a sum or a web search   /   ESC close" : "BACKSPACE back   /   ENTER open   /   ESC close"))
                     color: Theme.muted; font.pixelSize: 11; elide: Text.ElideRight
                 }
             }

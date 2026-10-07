@@ -24,7 +24,7 @@ The adapter inspects processes, explicit Quickshell source paths, notification o
 
 Existing Hyprlock is used when its configuration is present. Existing idle handling is preserved; an unidentified locker/idle combination is refused. Without an existing locker, the candidate requires a local PAM test against the system `login` service before starting Trailwatch. This test is not proof of native session-lock coverage, hotplug or suspend safety. Authentication files are never altered. Trial activation requires positively unlocked compositor state.
 
-CEDAR provides its own background only when no recognized background provider is running. It does not replace an existing swww/awww/hyprpaper/swaybg setup. In retained-background sessions, the picker explains that the existing provider owns wallpaper changes.
+CEDAR provides its own background only when no recognized background provider is running. It does not replace an existing swww/awww/hyprpaper/swaybg setup. In retained-background sessions, the picker explains that the existing provider owns wallpaper changes. When CEDAR owns the background, the picker lists its bundled backgrounds, `~/.config/cedar/wallpapers`, `~/.local/share/cedar/wallpapers` and the folder named by the `wallpaperFolder` preference (searched with its subfolders, hidden entries skipped, bounded to 1000 images); choosing an image writes only `~/.config/cedar/desktop.json`.
 
 ## Noctalia adapter
 

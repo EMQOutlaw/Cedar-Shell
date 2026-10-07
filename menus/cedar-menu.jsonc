@@ -86,5 +86,15 @@
   "cedar.canopy.trails": {
     "label": "Recent Trails",
     "action": "cedar:canopy trails"
+  },
+  "cedar.canopy.startup": {
+    "label": "Startup Apps",
+    "description": "What starts with the session: apps and commands",
+    "action": "cedar:canopy startup",
+    "aliases": [
+      "autostart",
+      "login",
+      "boot"
+    ]
   }
 }

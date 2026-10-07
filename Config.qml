@@ -2,7 +2,10 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
+import Quickshell.Services.UPower
 import "components/SettingsSchema.js" as SettingsSchema
+import "components/Compass.js" as Compass
 
 // Defaults plus the settings panel's saved overrides. Saved values live in
 // ~/.config/cedar/settings.json (XDG_CONFIG_HOME respected); the file is
@@ -42,6 +45,8 @@ Singleton {
     readonly property var browser: appArgv("browser", saved.browser, ["xdg-open", "https://duckduckgo.com"])
     readonly property var editor: appArgv("editor", saved.editor, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "editor"])
     readonly property var files: appArgv("files", saved.files, ["xdg-open", home])
+    // The launchers' web search; unknown ids fall back to Compass's first engine.
+    readonly property string searchEngine: Compass.engine(saved.searchEngine).id
     // Saved coordinates override the optional automatic weather location service.
     readonly property string latitude: saved.latitude.trim()
     readonly property string longitude: saved.longitude.trim()
@@ -131,7 +136,7 @@ Singleton {
         try { document = JSON.parse(store.text() || "{}"); }
         catch (error) { persistenceMessage = "Preferences contain invalid JSON. Repair the file before saving."; return; }
         if (!document || typeof document !== "object" || Array.isArray(document)) return;
-        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "desktopSignature", "notificationsEnabled", "notificationSeconds", "hiddenBarModules", "goFavorites", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
+        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
         keys.forEach(key => document[key] = saved[key]);
         store.setText(JSON.stringify(document, null, 2) + "\n");
     }
@@ -181,11 +186,14 @@ Singleton {
             property int panelRadius: 16
             property real ambientIntensity: .45
             property string wallpaperMode: "crop"
+            property string wallpaperFolder: ""
             property bool desktopSignature: true
             property bool notificationsEnabled: true
             property int notificationSeconds: 7
             property var hiddenBarModules: []
             property var goFavorites: []
+            property string searchEngine: "brave"
+            property string performanceMode: "auto"
             property bool canopyEnabled:true
             property bool canopyPeek:true
             property bool forestPulse:true
@@ -229,5 +237,24 @@ Singleton {
     Binding { target: Theme; property: "labelFont"; value: Theme.resolveFont(saved.interfaceFont || "Rajdhani", "sans-serif") }
     Binding { target: Theme; property: "dataFont"; value: Theme.resolveFont(saved.dataFont || "JetBrainsMono Nerd Font", "monospace") }
     Binding { target: Theme; property: "fontScale"; value: Math.max(.85,Math.min(1.3,saved.fontScale)) }
-    Binding { target: Theme; property: "reducedMotion"; value: saved.reducedMotion }
+    // Performance mode: the basics only. "auto" follows the power-saver profile
+    // and a fullscreen focused window (how games run); "on" and "off" override.
+    // It rides on Reduced Motion for every decorative loop and entrance, and
+    // SystemStats drops its ambient pulse while it is active.
+    readonly property string performanceMode: ["auto", "on", "off"].includes(saved.performanceMode) ? saved.performanceMode : "auto"
+    readonly property bool powerSaving: PowerProfiles.profile === PowerProfile.PowerSaver
+    property bool fullscreenFocused: false
+    function readFullscreen() {
+        const window = Hyprland.activeToplevel?.lastIpcObject;
+        fullscreenFocused = !!window && Number(window.fullscreen) > 0;
+    }
+    Connections {
+        target: Hyprland
+        function onActiveToplevelChanged() { root.readFullscreen(); }
+        function onRawEvent(event) { if (event.name === "fullscreen") Hyprland.refreshToplevels(); }
+    }
+    Connections { target: Hyprland.activeToplevel; function onLastIpcObjectChanged() { root.readFullscreen(); } }
+    readonly property bool performanceActive: performanceMode === "on" || (performanceMode === "auto" && (powerSaving || fullscreenFocused))
+    readonly property string performanceReason: performanceMode === "on" ? "always on" : powerSaving ? "power-saver profile" : fullscreenFocused ? "fullscreen window" : ""
+    Binding { target: Theme; property: "reducedMotion"; value: saved.reducedMotion || root.performanceActive }
 }

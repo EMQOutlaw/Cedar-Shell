@@ -59,6 +59,25 @@ def temperatures():
     return dict(temperature=max(values) if values else None)
 
 
+def sensors(base=Path('/sys/class/hwmon')):
+    """Every hwmon temperature input with its chip name and label, for the shell
+    to read in-process afterwards. One call per shell lifetime, no `sensors`."""
+    rows = []
+    for chip in sorted(base.glob('hwmon*')):
+        try:
+            name = (chip / 'name').read_text().strip()
+        except OSError:
+            continue
+        for inp in sorted(chip.glob('temp*_input')):
+            label = inp.with_name(inp.name.replace('_input', '_label'))
+            try:
+                text = label.read_text().strip() if label.exists() else ''
+            except OSError:
+                text = ''
+            rows.append(dict(chip=name, label=text, path=str(inp)))
+    return rows
+
+
 def network():
     devices = run(['nmcli', '-t', '-f', 'TYPE,STATE', 'device', 'status'])
     active = [line.split(':')[0] for line in devices.splitlines() if line.endswith(':connected')]
@@ -130,6 +149,7 @@ def main(args):
             try:result[topic]=fast_stats() if topic=='fast' else slow_stats(args[1]) if topic=='slow' else temperatures()
             except (OSError,ValueError,subprocess.SubprocessError):result[topic]={'error':'Unavailable'}
         return result
+    if kind == 'sensors': return sensors()
     if kind == 'stats': return stats(args[1])
     if kind == 'temperature': return temperatures()
     if kind == 'network': return network()

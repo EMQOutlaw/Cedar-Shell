@@ -5,11 +5,13 @@ import Quickshell
 import ".."
 import "../components"
 import "../services"
+import "../components/Compass.js" as Compass
 
 // Applications, as a bar drop: a search filament, favourites pinned above the
 // rest, the apps you launched last, and an icon grid that answers the
-// keyboard. Launching goes through DefaultApps like the Go menu does; the Go
-// menu itself is unchanged.
+// keyboard. Arithmetic typed into the search answers above the grid and a web
+// search (or a bare address) waits below it, so every query has somewhere to
+// go. Launching goes through DefaultApps like the Go menu does.
 ColumnLayout {
     id: root
     property bool active: false
@@ -45,9 +47,26 @@ ColumnLayout {
         scored.sort((x, y) => x.tier - y.tier || String(x.app.label).localeCompare(String(y.app.label)));
         return scored.map(s => s.app);
     }
-    // One flat list for the keyboard: favourites first while there is no query.
+    // Compass answers: arithmetic leads, a web search or address trails. Each
+    // answers the keyboard like a tile; apps carry no `kind`.
+    readonly property var calc: root.query.trim() ? Compass.evaluate(root.query) : null
+    readonly property string address: Compass.urlFor(root.query)
+    readonly property var answers: root.calc ? [{ kind: "calc", id: "compass.calc", label: "= " + root.calc.display, detail: root.calc.expression, value: root.calc.display }] : []
+    readonly property var trailing: {
+        const q = root.query.trim();
+        if (!q)
+            return [];
+        const out = [];
+        if (root.address)
+            out.push({ kind: "url", id: "compass.url", label: "Open " + root.address.replace(/^https?:\/\//i, ""), detail: root.address, url: root.address });
+        out.push({ kind: "web", id: "compass.web", label: "Search " + Compass.engine(Config.searchEngine).label + " for \u201c" + q + "\u201d",
+                   detail: "Opens in your default browser", url: Compass.searchUrl(Config.searchEngine, q) });
+        return out;
+    }
+    // One flat list for the keyboard: answers, favourites (while there is no
+    // query), matches, then the web search.
     readonly property var pinned: root.query ? [] : root.favourites
-    readonly property var shown: root.pinned.concat(root.matches)
+    readonly property var shown: root.answers.concat(root.pinned, root.matches, root.trailing)
     // The last four apps launched from Go.
     readonly property var recents: {
         const seen = {}, out = [];
@@ -64,9 +83,9 @@ ColumnLayout {
         }
         return out;
     }
-    function isFavourite(app) { return !!app && root.favouriteIds.includes(app.id); }
+    function isFavourite(app) { return !!app && !app.kind && root.favouriteIds.includes(app.id); }
     function toggleFavourite(app) {
-        if (!app)
+        if (!app || app.kind)
             return;
         const ids = root.favouriteIds.slice();
         Config.set("goFavorites", ids.includes(app.id) ? ids.filter(id => id !== app.id) : ids.concat([app.id]));
@@ -79,11 +98,40 @@ ColumnLayout {
         DefaultApps.launch(app.id);
         Canopy.close();
     }
+    // Answers stack one per row above and below the grid, so a vertical step
+    // (±columns) moves one answer at a time and crosses into the grid's edge.
     function move(delta) {
         root.browsing = true;
         if (!root.shown.length)
             return;
-        root.selected = Math.max(0, Math.min(root.shown.length - 1, root.selected + delta));
+        const head = root.answers.length, grid = root.pinned.length + root.matches.length, i = root.selected;
+        let next = i + delta;
+        if (Math.abs(delta) === root.columns && root.columns > 1) {
+            if (i < head || i >= head + grid)
+                next = i + (delta > 0 ? 1 : -1);
+            else if (next >= head + grid)
+                next = root.trailing.length ? head + grid : i;
+            else if (next < head)
+                next = head ? head - 1 : i;
+        }
+        root.selected = Math.max(0, Math.min(root.shown.length - 1, next));
+    }
+    function activate(item) {
+        if (!item)
+            return;
+        if (item.kind === "calc") {
+            Quickshell.execDetached(["wl-copy", "--", String(item.value)]);
+            Canopy.close();
+        } else if (item.kind === "web" || item.kind === "url") {
+            root.openUrl(item.url);
+            Canopy.close();
+        } else
+            root.launch(item);
+    }
+    // The default browser gets the URL in its own scope so it outlives the shell.
+    function openUrl(url) {
+        if (/^https?:\/\//i.test(String(url)))
+            Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--", "xdg-open", String(url)]);
     }
     onActiveChanged: {
         if (active) {
@@ -97,8 +145,10 @@ ColumnLayout {
     onQueryChanged: { root.selected = 0; flick.contentY = 0; }
     // Keep the selected tile in view when the keyboard moves it through the grid.
     onSelectedChanged: {
-        const inGrid = root.selected - root.pinned.length;
+        const inGrid = root.selected - root.answers.length - root.pinned.length;
         if (inGrid < 0) { flick.contentY = 0; return; }
+        if (inGrid >= root.matches.length)
+            return;
         const row = Math.floor(inGrid / root.columns), step = root.tileHeight + root.tileGap;
         const top = row * step, bottom = top + root.tileHeight;
         if (top < flick.contentY)
@@ -182,6 +232,78 @@ ColumnLayout {
         }
     }
 
+    // One answer: a glyph, the answer, what it came from, and what Enter does.
+    component AnswerRow: Item {
+        id: answer
+        property var item: null
+        property int flat: 0
+        property real order: 0
+        readonly property bool current: flat === root.selected
+        readonly property bool isCalc: item?.kind === "calc"
+        readonly property real sweep: root.beat(order, .35)
+        Layout.fillWidth: true
+        implicitHeight: 46
+        opacity: sweep
+        transform: Translate { y: 6 * (1 - answer.sweep) }
+        Accessible.role: Accessible.Button
+        Accessible.name: item?.label || ""
+        ChamferFrame {
+            anchors.fill: parent
+            cut: 7
+            fill: answer.current ? Qt.alpha(Theme.green, .07) : answerHover.containsMouse ? Qt.alpha(Theme.teal, .05) : Qt.alpha(Theme.background, .5)
+            stroke: answer.current ? Qt.alpha(Theme.green, .55) : answerHover.containsMouse ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .13)
+            line: answer.current; lineColor: Theme.green; lineFraction: .55
+        }
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 14; anchors.rightMargin: 14
+            spacing: 12
+            Text {
+                text: answer.isCalc ? "\udb80\udcec" : answer.item?.kind === "url" ? "\udb80\udf37" : "\udb81\udd9f"
+                textFormat: Text.PlainText
+                font.family: Theme.dataFont; font.pixelSize: 18
+                color: answer.current ? Theme.green : Theme.teal
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+                Text {
+                    Layout.fillWidth: true
+                    text: answer.item?.label || ""
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                    font.family: answer.isCalc ? Theme.dataFont : Theme.labelFont
+                    font.pixelSize: answer.isCalc ? 17 : 14
+                    font.weight: Font.DemiBold
+                    color: answer.current ? Theme.white : Theme.text
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: answer.item?.detail || ""
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                    font.family: Theme.dataFont; font.pixelSize: 10
+                    color: Theme.muted
+                }
+            }
+            Text {
+                visible: answer.current
+                text: answer.isCalc ? "ENTER COPIES" : "ENTER OPENS"
+                textFormat: Text.PlainText
+                font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1
+                color: Theme.muted
+            }
+        }
+        MouseArea {
+            id: answerHover
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onPositionChanged: root.selected = answer.flat
+            onClicked: root.activate(answer.item)
+        }
+    }
+
     RowLayout {
         Layout.fillWidth: true
         opacity: root.beat(0)
@@ -203,7 +325,7 @@ ColumnLayout {
             id: field
             objectName: "goSearch"
             Layout.fillWidth: true
-            placeholderText: "Type to find an app"
+            placeholderText: "Type an app, a sum, an address or a web search"
             Accessible.name: "Search applications"
             onTextChanged: { root.query = text; root.browsing = false; }
             Keys.onPressed: event => {
@@ -214,7 +336,7 @@ ColumnLayout {
                 case Qt.Key_Left: root.move(-1); break;
                 case Qt.Key_Tab: root.move(1); break;
                 case Qt.Key_Backtab: root.move(-1); break;
-                case Qt.Key_Return: case Qt.Key_Enter: root.launch(root.shown[root.selected]); break;
+                case Qt.Key_Return: case Qt.Key_Enter: root.activate(root.shown[root.selected]); break;
                 case Qt.Key_Escape: if (text) text = ""; else Canopy.close(); break;
                 case Qt.Key_F:
                     if (!root.browsing || event.modifiers & (Qt.ControlModifier | Qt.AltModifier))
@@ -233,11 +355,45 @@ ColumnLayout {
             Rectangle {
                 width: parent.width * (root.query ? 1 : .55 * root.beat(1, .6))
                 height: root.query ? 2 : 1
-                color: root.query ? (root.matches.length ? Theme.green : Theme.amber) : Theme.teal
+                color: root.query ? (root.matches.length || root.answers.length ? Theme.green : Theme.amber) : Theme.teal
                 opacity: root.query ? .85 : .5
                 Behavior on width { enabled: !Theme.reducedMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                 Rectangle { anchors.right: parent.right; width: 24; height: parent.height; color: Theme.green; opacity: root.query ? 0 : .8 * (1 - root.beat(.5, .4)) }
             }
+        }
+        // What the field answers, shown until something is typed so nobody has
+        // to find the calculator or the web search by accident.
+        Flow {
+            Layout.fillWidth: true
+            visible: !root.query
+            spacing: 18
+            opacity: root.beat(1.6, .4) * .9
+            Repeater {
+                model: [
+                    { glyph: "\udb80\udcec", example: "2+2", does: "answers, ENTER copies" },
+                    { glyph: "\udb80\udf37", example: "docs.rs", does: "opens the address" },
+                    { glyph: "\udb81\udd9f", example: "anything else", does: "searches " + Compass.engine(Config.searchEngine).label }
+                ]
+                Row {
+                    required property var modelData
+                    spacing: 6
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.glyph; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 12; color: Theme.teal }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.example; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.text }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.does; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.muted }
+                }
+            }
+        }
+    }
+
+    // The arithmetic answer, when the query is a sum.
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 8
+        visible: root.answers.length > 0
+        SectionMark { text: "ANSWER"; size: 9; tone: Theme.green }
+        Repeater {
+            model: root.answers
+            AnswerRow { required property var modelData; required property int index; item: modelData; flat: index; order: 1.5 }
         }
     }
 
@@ -261,7 +417,7 @@ ColumnLayout {
             uniformCellWidths: true
             Repeater {
                 model: root.pinned
-                AppTile { required property var modelData; required property int index; app: modelData; flat: index; order: index }
+                AppTile { required property var modelData; required property int index; app: modelData; flat: root.answers.length + index; order: index }
             }
         }
     }
@@ -325,13 +481,13 @@ ColumnLayout {
             uniformCellWidths: true
             Repeater {
                 model: root.matches
-                AppTile { required property var modelData; required property int index; app: modelData; flat: root.pinned.length + index; order: root.pinned.length + index }
+                AppTile { required property var modelData; required property int index; app: modelData; flat: root.answers.length + root.pinned.length + index; order: root.pinned.length + index }
             }
         }
     }
     Column {
         Layout.fillWidth: true
-        visible: root.shown.length === 0
+        visible: root.pinned.length + root.matches.length === 0
         spacing: 6
         GlowText { anchors.horizontalCenter: parent.horizontalCenter; text: "󰈉"; color: Theme.teal; font.pixelSize: 28 }
         GlowText {
@@ -340,9 +496,23 @@ ColumnLayout {
             color: Theme.muted
         }
     }
+    // The web search (and a bare address) under everything the query found.
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 8
+        visible: root.trailing.length > 0
+        SectionMark { text: "ELSEWHERE"; size: 9; tone: Theme.muted }
+        Repeater {
+            model: root.trailing
+            AnswerRow { required property var modelData; required property int index; item: modelData; flat: root.answers.length + root.pinned.length + root.matches.length + index; order: 4 }
+        }
+    }
     GlowText {
         Layout.fillWidth: true
+        readonly property string selectedKind: root.shown[root.selected]?.kind || ""
         text: DefaultApps.launchError ? DefaultApps.launchError
+            : selectedKind === "calc" ? "ENTER copy the answer   /   arrows move   /   ESC clear"
+            : selectedKind ? "ENTER open in browser   /   arrows move   /   ESC clear"
             : root.browsing ? "ENTER launch   /   F favourite   /   arrows move   /   ESC " + (root.query ? "clear" : "close")
             : "ENTER launch   /   arrows move   /   ESC " + (root.query ? "clear" : "close")
         color: DefaultApps.launchError ? Theme.amber : Theme.muted

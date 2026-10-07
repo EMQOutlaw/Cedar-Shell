@@ -122,7 +122,8 @@ Rectangle {
                             quick: "Quick",
                             trails: "Trails",
                             station: "Station",
-                            go: "Apps"
+                            go: "Apps",
+                            startup: "Startup"
                         })[modelData]
                     background: ChamferFrame {
                         cut: 5
@@ -169,7 +170,8 @@ Rectangle {
                         quick: quick,
                         trails: trails,
                         station: station,
-                        go: go
+                        go: go,
+                        startup: startup
                     })[root.topic]
             }
         }
@@ -258,6 +260,12 @@ Rectangle {
     Component {
         id: go
         GoCanopy {
+            active: root.active
+        }
+    }
+    Component {
+        id: startup
+        StartupCanopy {
             active: root.active
         }
     }

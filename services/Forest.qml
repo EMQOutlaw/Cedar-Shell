@@ -85,5 +85,18 @@ Singleton {
             } catch (_) {}
         }
     }
-    Timer { interval:1000; running:(Config.saved.coreEnabled || Canopy.shown) && !ShellState.locked; repeat:true; triggeredOnStart:true; onTriggered:root.update() }
+    // Every input of update() is a property, so `signature` changes exactly when
+    // one of them does and the state is recomputed on events instead of once a
+    // second for the life of the shell. The clock runs only while something is
+    // time-bound: a state settling, an echo or whisper fading, or an announced
+    // signal whose attention window will pass.
+    readonly property bool awake: (Config.saved.coreEnabled || Canopy.shown) && !ShellState.locked
+    readonly property string signature: [urgent, watching, resting.isIdle, idle.isIdle, quietLong.isIdle, PowerProfiles.profile, meaningful,
+        SystemStats.networkRate > 262144, SystemStats.cpu, CoreService.foreground?.id || "", CoreService.model.heldId, ShellState.panel,
+        Config.saved.forestWhispers, Config.saved.forestEchoes, Config.saved.doNotDisturb, UPower.onBattery,
+        Math.round((UPower.displayDevice?.percentage || 0) * 100), Audio.sink?.name || ""].join("|")
+    onSignatureChanged: if (awake) Qt.callLater(root.update)
+    onAwakeChanged: if (awake) Qt.callLater(root.update)
+    Component.onCompleted: Qt.callLater(root.update)
+    Timer { interval:1000; running:root.awake && (root.pendingState !== root.state || root.echoes.length > 0 || root.whisper !== "" || root.lastSignal !== null); repeat:true; onTriggered:root.update() }
 }

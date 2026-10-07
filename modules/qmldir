@@ -57,3 +57,4 @@ HotspotSettings 1.0 HotspotSettings.qml
 ConnectionsPage 1.0 ConnectionsPage.qml
 NotificationSettings 1.0 NotificationSettings.qml
 GoCanopy 1.0 GoCanopy.qml
+StartupCanopy 1.0 StartupCanopy.qml

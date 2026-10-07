@@ -25,7 +25,7 @@ with the existing threaded renderer settings and Reduced Motion respected.
   browser content, commands, and user-entered Go text are not collected. Lock or
   disabling Trails clears them. CEDAR navigation entries can be reopened.
 - Canopy: audio, network, Bluetooth, system, weather, time/calendar, clipboard,
-  notifications, quick controls and Trails. Only one can be pinned. Pinning
+  notifications, quick controls, Trails and Startup. Only one can be pinned. Pinning
   releases exclusive keyboard focus so desktop work continues; unpin to type.
 - Audio reuses native MPRIS and PipeWire controls. Native PwNodePeakMonitor is
   explicit opt-in and opens the selected microphone only while its instrument
@@ -37,6 +37,14 @@ with the existing threaded renderer settings and Reduced Motion respected.
   are reported rather than claimed as success. Scene files are private (0600).
 - CAVA spectrum uses real PipeWire samples and 24 bounded bars. It is off by
   default, stopped on close/Reduced Motion, and never synthesizes a waveform.
+- Startup lists the session's autostart entries (`~/.config/autostart` over the
+  system `autostart` directories) with the state of the `app-*@autostart`
+  unit the systemd generator ran for each, a switch, run/stop now and remove.
+  Typing adds an installed app by copying its desktop entry, or any command as
+  a `cedar-*.desktop` entry marked `X-CEDAR-Startup`. System entries are turned
+  off with a `Hidden=true` override, never deleted. Hyprland `autostart.lua`
+  lines show read-only. `scripts/startup_apps.py` does the file work; nothing
+  is launched or stopped except by an explicit Run/Stop.
 - System Instrument reads real CPU/memory/storage/temperature and available
   NVIDIA or DRM GPU telemetry. GPU queries run only while visible, every 5 sec.
 - Sky Watch extends the existing Open-Meteo request with hourly temperature/rain

@@ -14,5 +14,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-core-ui-') as tmp:
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: Canopy pages' not in output or re.search(r'Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign|FAIL:',output):
         print(output);raise SystemExit(1)
-    print('PASS: eleven Canopies at 960/480px, pinning, history and lock privacy')
-    if len(list(shots.glob('canopy-*.png')))!=22: raise SystemExit('Missing Canopy renders')
+    topics=re.search(r'readonly property var topics: \[(.*?)\]',(ROOT/'services/Canopy.qml').read_text()).group(1).count('"')//2
+    print('PASS: '+str(topics)+' Canopies at 960/480px, pinning, history and lock privacy')
+    renders=len(list(shots.glob('canopy-*.png')))
+    if renders!=topics*2: raise SystemExit('Missing Canopy renders: '+str(renders)+' of '+str(topics*2))

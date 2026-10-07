@@ -28,12 +28,14 @@ PanelWindow {
     color: Theme.transparent
     WlrLayershell.namespace: "cedar-bar"
     WlrLayershell.layer: WlrLayer.Top
-    mask: Config.barIslands ? islands.inputRegion : null
-    BarIslands {
+    mask: Config.barIslands && islands.item ? islands.item.inputRegion : null
+    // Only the selected bar style exists: the other tree is never built, per
+    // output, so its bindings, animations and tray models cost nothing.
+    Loader {
         id: islands
         anchors.fill: parent
-        output: root.output
-        visible: Config.barIslands
+        active: Config.barIslands
+        sourceComponent: BarIslands { output: root.output }
     }
     readonly property bool coreHost: CoreService.enabled && CoreService.hostName === output.name
     readonly property var monitor: Hyprland.monitorFor(screen)
@@ -52,10 +54,10 @@ PanelWindow {
         border.width: Config.barStyle === "floating" ? 1 : 0
         border.color: Theme.border
     }
-    BarContents {
-        visible: !Config.barIslands
+    Loader {
         anchors.fill: parent
         anchors.margins: 6
-        output: root.output
+        active: !Config.barIslands
+        sourceComponent: BarContents { output: root.output }
     }
 }

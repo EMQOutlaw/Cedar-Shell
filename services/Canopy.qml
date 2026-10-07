@@ -5,7 +5,7 @@ import ".."
 
 Singleton {
     id: root
-    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go"]
+    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup"]
     // One route per destination: a topic with a visible bar button gets no tab.
     // The bar's center control always opens Quick Controls.
     function barRoute(value) {
@@ -90,7 +90,8 @@ Singleton {
             quick: "Quick Controls",
             trails: "Recent Trail",
             station: "Field Station",
-            go: "Applications"
+            go: "Applications",
+            startup: "Startup"
         })[value] || "Canopy";
     }
     readonly property string title: ({
@@ -106,7 +107,8 @@ Singleton {
             quick: "Quick Controls",
             trails: "Recent Trail",
             station: "Field Station",
-            go: "Applications"
+            go: "Applications",
+            startup: "Startup"
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
         if (!topics.includes(value) || ShellState.locked || !Config.saved.canopyEnabled)
