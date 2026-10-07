@@ -18,5 +18,17 @@ def package(root,destination):
     print('Private development candidate: '+destination.name+'; '+str(len(entries))+' files; SHA-256 '+checksum)
     return inventory
 
+def release_assets(root,directory):
+    """The two files a GitHub release carries for the bootstrap: cedar-<version>-x86_64.tar.gz and its .sha256."""
+    version=(root/'VERSION').read_text().strip()
+    destination=directory/('cedar-'+version+'-x86_64.tar.gz')
+    package(root,destination)
+    return destination
+
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('output',type=Path);p.add_argument('--source',type=Path,default=ROOT);a=p.parse_args();package(a.source.resolve(),a.output.resolve())
+    p=argparse.ArgumentParser();p.add_argument('output',type=Path,nargs='?');p.add_argument('--source',type=Path,default=ROOT)
+    p.add_argument('--release-assets',type=Path,help='write cedar-<version>-x86_64.tar.gz and .sha256 into this directory')
+    a=p.parse_args()
+    if a.release_assets:release_assets(a.source.resolve(),a.release_assets.resolve())
+    elif a.output:package(a.source.resolve(),a.output.resolve())
+    else:p.error('give an output archive or --release-assets DIR')

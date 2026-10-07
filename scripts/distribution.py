@@ -564,7 +564,7 @@ def uninstall(approved=False):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','installer'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
@@ -606,6 +606,7 @@ def main(argv=None):
         else: raise Refused('Use the existing Omarchy controls for this session.')
     elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
     elif args.action=='shield':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call','shield','open'])
+    elif args.action=='installer':os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*args.arguments])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()
         if args.action=='preview':preview(root)

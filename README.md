@@ -10,7 +10,15 @@ CEDAR is an existing Qt Quick/Quickshell shell, previously Foxfire. It includes 
 
 ## Installation and preview
 
-With Git installed, copy and paste this command into your terminal:
+One command opens the CEDAR Installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/distribution-hardening/installer/bootstrap/install.sh | sh
+```
+
+The bootstrap is a short shell script you can read first. It verifies the release download by SHA-256, then opens a window that scans your system, recognizes an existing Hyprland environment (Omarchy, HyDE, Caelestia, Noctalia, Ryoku, end-4, ML4W, JaKooLit, a Waybar setup or plain Hyprland), shows what it keeps and what it replaces, backs up what it may touch, and installs only after you approve the plan. Interrupted runs resume; `--dry-run`, `--restore` and `--uninstall` exist. Until the first published release carries its assets, add `CEDAR_CHANNEL=development` before `sh` to use the current source branch. See [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
+With Git installed, a checkout works the same way:
 
 ```bash
 git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh

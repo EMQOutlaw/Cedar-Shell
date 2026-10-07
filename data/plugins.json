@@ -1022,6 +1022,84 @@
         "tests/check_session_ui.py",
         "tests/test_portable_lifecycle.py"
       ]
+    },
+    {
+      "id": "cedar.installer",
+      "name": "CEDAR Installer",
+      "version": "0.1.0-dev.15",
+      "cedarCompatibility": "0.1.0-dev.15",
+      "kind": "built-in first-party application; standalone Quickshell program and Python engine",
+      "status": "Implemented",
+      "entryPoint": "installer.qml",
+      "files": [
+        "installer.qml",
+        "installer/__init__.py",
+        "installer/cedar_install.py",
+        "installer/bootstrap/install.sh",
+        "installer/engine/__init__.py",
+        "installer/engine/backup.py",
+        "installer/engine/facts.py",
+        "installer/engine/host.py",
+        "installer/engine/log.py",
+        "installer/engine/operations.py",
+        "installer/engine/plan.py",
+        "installer/engine/server.py",
+        "installer/engine/steps.py",
+        "installer/migration/__init__.py",
+        "installer/migration/base.py",
+        "installer/migration/intent.py",
+        "installer/migration/providers.py",
+        "installer/providers/__init__.py",
+        "installer/providers/packages.py",
+        "installer/providers/privilege.py",
+        "installer/ui/Frame.qml",
+        "installer/ui/InstallerModel.qml",
+        "installer/ui/StagePane.qml",
+        "installer/ui/SystemVisual.qml"
+      ],
+      "dependencies": [
+        "python3",
+        "qs"
+      ],
+      "startup": "Started by the bootstrap or install.sh as the user; never part of the shell",
+      "capabilities": [
+        "local UI",
+        "one privileged package transaction through pkexec or sudo"
+      ],
+      "external": false,
+      "settings": "None persisted; plan options per run",
+      "dataSources": "One scan of the host; state and logs under ~/.local/state/cedar/installer",
+      "lifecycle": "Exits when the window closes or the terminal flow ends",
+      "tests": [
+        "tests/test_installer.py",
+        "tests/check_installer_ui.py"
+      ],
+      "releaseArtifacts": [
+        "installer.qml",
+        "installer/__init__.py",
+        "installer/cedar_install.py",
+        "installer/bootstrap/install.sh",
+        "installer/engine/__init__.py",
+        "installer/engine/backup.py",
+        "installer/engine/facts.py",
+        "installer/engine/host.py",
+        "installer/engine/log.py",
+        "installer/engine/operations.py",
+        "installer/engine/plan.py",
+        "installer/engine/server.py",
+        "installer/engine/steps.py",
+        "installer/migration/__init__.py",
+        "installer/migration/base.py",
+        "installer/migration/intent.py",
+        "installer/migration/providers.py",
+        "installer/providers/__init__.py",
+        "installer/providers/packages.py",
+        "installer/providers/privilege.py",
+        "installer/ui/Frame.qml",
+        "installer/ui/InstallerModel.qml",
+        "installer/ui/StagePane.qml",
+        "installer/ui/SystemVisual.qml"
+      ]
     }
   ],
   "planned": [

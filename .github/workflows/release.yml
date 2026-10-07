@@ -1,0 +1,30 @@
+name: Release assets
+# On a version tag, build the exact release archive the bootstrap downloads
+# (cedar-<version>-x86_64.tar.gz + .sha256) from the reviewed source
+# inventory, test the archive contents, and attach both to the GitHub
+# release. Nothing here installs, signs with a private key or auto-updates.
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  assets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Verify the inventory and build the assets
+        run: |
+          python3 scripts/update_source_inventory.py --check
+          python3 scripts/audit_public.py
+          python3 -m unittest discover -s tests -p test_installer.py
+          python3 -m unittest discover -s tests -p test_distribution.py
+          python3 scripts/package_release.py --release-assets dist
+          python3 tests/check_artifact.py dist/cedar-*-x86_64.tar.gz
+          sh -n installer/bootstrap/install.sh
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" dist/cedar-*-x86_64.tar.gz dist/cedar-*-x86_64.tar.gz.sha256 --clobber --repo "${GITHUB_REPOSITORY}"
