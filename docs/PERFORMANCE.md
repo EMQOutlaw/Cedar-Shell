@@ -156,7 +156,10 @@ capability registry is one helper run at startup, Shield reads only while its
 page is open (on open, refresh, an action, and a debounced network change) and
 Gaming Mode's inhibitor and GameMode watcher run only while applicable, the
 watcher only when GameMode is installed. Entering or leaving Gaming Mode costs
-two `hyprctl` helper runs and one power-profile call, all user-triggered. The
+two `hyprctl` helper runs and one power-profile call, all user-triggered, and
+one preparation panel that is created for the transaction, binds to the
+service's step states (no timers of its own) and is released 1.4 s after it
+settles. The
 shield mark animates only on a transition and is static afterwards. The
 process-tree watch on this machine after loading them showed no new recurring
 spawn and no new persistent helper; a clean resting window could not be

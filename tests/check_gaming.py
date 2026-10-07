@@ -27,6 +27,8 @@ ShellRoot {
             switch (window.step++) {
             case 0:
                 window.check(!Gaming.active && !Gaming.busy && VisualQuality.normal && !Theme.reducedMotion, "Starts off and normal");
+                window.check(!Gaming.hudShown && Gaming.progress === 0, "No panel and no progress before a transaction");
+                Gaming.hudForTests = true;
                 Config.set("doNotDisturb", false);
                 Gaming.activate("manual");
                 break;
@@ -37,6 +39,8 @@ ShellRoot {
                 window.check(window.state("idle") === "unavailable" && window.state("power") === "unavailable" && window.state("compositor") === "unavailable" && window.state("gamemode") === "unavailable", "Steps without a provider report unavailable, not failed");
                 window.check(Gaming.activeCount === 2 && Gaming.totalCount === 2 && Gaming.summary === "2 / 2 optimizations active", "Summary counts only what could be attempted (" + Gaming.summary + ")");
                 window.check(Gaming.captured.dnd === false, "Previous DND captured for restore");
+                window.check(Gaming.hudShown && Gaming.hudMode === "enter" && Gaming.hudSettled && !Gaming.hudClosing, "Panel shown in enter mode and settled (" + Gaming.hudShown + "," + Gaming.hudMode + "," + Gaming.hudSettled + ")");
+                window.check(Gaming.readyCount === 2 && Gaming.plannedCount === 2 && Gaming.progress === 1, "Progress counts attempted rows only (" + Gaming.readyCount + "/" + Gaming.plannedCount + ")");
                 const row = CoreService.rows.find(r => r.id === "gaming");
                 window.check(!!row && row.persistent && row.actions.length === 1 && row.actions[0].id === "leave", "Core pill carries a persistent Gaming row with a Leave action (" + JSON.stringify(row && row.actions) + ")");
                 CoreService.invoke(row, "leave");
@@ -45,6 +49,8 @@ ShellRoot {
                 window.check(!Gaming.active && !Gaming.busy && VisualQuality.normal && !Theme.reducedMotion, "Leave restores normal quality");
                 window.check(Config.saved.doNotDisturb === false, "DND restored to its captured value");
                 window.check(!CoreService.rows.some(r => r.id === "gaming"), "Gaming row removed from the pill");
+                window.check(Gaming.hudShown && Gaming.hudMode === "leave" && Gaming.hudSettled, "Panel switched to leave mode for the restore (" + Gaming.hudMode + ")");
+                window.check(window.state("quiet") === "restored" && window.state("dnd") === "restored" && Gaming.steps.every(s => s.id !== "gamemode" && s.state === "restored"), "Restore rows cover what was changed and verify as restored (" + JSON.stringify(Gaming.steps) + ")");
                 Config.set("gamingDnd", false);
                 Config.set("doNotDisturb", true);
                 Gaming.activate("manual");
@@ -56,8 +62,21 @@ ShellRoot {
                 break;
             case 4:
                 window.check(!Gaming.active, "Locking the session leaves Gaming Mode");
+                window.check(!Gaming.hudShown, "Locking hides the panel");
                 ShellState.locked = false;
                 Config.set("gamingDnd", true); Config.set("doNotDisturb", false);
+                Gaming.activate("manual");
+                break;
+            case 5:
+                window.check(Gaming.hudShown, "Panel shown again for a new transaction");
+                break;
+            case 6:
+            case 7:
+                break;
+            case 8:
+                // settled at ~case 5 (3.0 s) + 1.2 s hold + 0.2 s exit → hidden by 4.8 s; case 8 is 5.4 s
+                window.check(!Gaming.hudShown && !Gaming.hudClosing && Gaming.active, "Panel released after the hold while Gaming Mode stays on (" + Gaming.hudShown + "," + Gaming.hudClosing + ")");
+                Gaming.deactivate();
                 console.log("PASS: Gaming Mode transaction, registry, rollback and visual quality");
                 Qt.quit();
             }

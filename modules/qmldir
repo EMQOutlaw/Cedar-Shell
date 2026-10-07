@@ -61,3 +61,5 @@ StartupCanopy 1.0 StartupCanopy.qml
 ShieldApp 1.0 ShieldApp.qml
 ShieldPages 1.0 ShieldPages.qml
 PermissionPrompt 1.0 PermissionPrompt.qml
+GamingHud 1.0 GamingHud.qml
+GamingHudCard 1.0 GamingHudCard.qml

@@ -633,6 +633,8 @@
         "services/Capabilities.qml",
         "services/VisualQuality.qml",
         "services/Gaming.qml",
+        "modules/GamingHud.qml",
+        "modules/GamingHudCard.qml",
         "scripts/capabilities.py",
         "scripts/gaming.py",
         "scripts/gamemode_watch.py"
@@ -662,6 +664,8 @@
         "services/Capabilities.qml",
         "services/VisualQuality.qml",
         "services/Gaming.qml",
+        "modules/GamingHud.qml",
+        "modules/GamingHudCard.qml",
         "scripts/capabilities.py",
         "scripts/gaming.py",
         "scripts/gamemode_watch.py"

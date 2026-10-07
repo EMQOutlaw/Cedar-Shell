@@ -12,6 +12,14 @@ leave. It is a transaction over an explicit registry, not a switch.
     VERIFY   read each provider back; a step is active only when it reports the new state
     ACTIVE   the pill says "N / M optimizations active" and names what failed
 
+Steps that do not depend on each other run at the same time: the power
+profile and the compositor are asked together, the inhibitor is checked
+while they answer, and the transaction settles when the last provider has
+replied. Nothing waits for show; on this machine the whole entry takes about
+half a second, most of it the inhibitor check. Each row moves
+`pending → applying → active | failed | unavailable`, and `restored` on the
+way out.
+
 The captured values are written to `~/.local/state/cedar/gaming.json` before
 anything is applied. A shell that stops mid-game reads that file on its next
 start and restores the desktop first.
@@ -39,14 +47,56 @@ Leave from the pill's action, the tile, Super+G, or by locking the session.
 Restore runs in reverse: compositor values, power profile and do-not-disturb
 go back to what was captured; the inhibitor stops; visual quality returns.
 
+## The preparation panel
+
+Super+G shows a small CEDAR GAMING card a little above the centre of the
+monitor that had focus, on the overlay layer, with no input (clicks pass
+through to the game) and no keyboard focus. It is a live view of the
+transaction, not a notification:
+
+    CEDAR GAMING
+    Preparing system…
+    ✓ CEDAR effects            ○ waiting   ◌ applying   ✓ ready   ! could not apply
+    ✓ Notifications
+    ◌ Sleep inhibited
+    ○ Performance profile
+    ○ Compositor effects
+    –  GameMode   Not installed
+    3 / 5 ready
+
+A row is marked ready only when its provider has verified the change. A
+step whose provider is missing (GameMode not installed, no performance
+profile) is shown quietly with the reason; a step turned off in Settings is
+omitted. When the last provider answers the heading becomes "Gaming Mode
+Ready", the count becomes "Gaming Mode Active" (or "4 / 5 optimizations" in
+amber when an optional step failed), a line sweeps once along the top edge,
+and after 1.2 s the card fades out and the window is released; Gaming Mode
+stays on. Leaving shows the same card as "Restoring system…" with each row
+verified as restored, then "Gaming Mode Ended · System restored".
+
+When a GameMode-registered game started the transaction, the heading reads
+"Preparing for" and names the game from the executable GameMode reports;
+without a usable name it says "Preparing for game".
+
+The card is `modules/GamingHudCard.qml` inside `modules/GamingHud.qml`,
+created by `shell.qml` only while `Gaming.hudShown` is true. It binds to
+`Gaming.steps`, `hudMode`, `hudSettled` and `hudClosing`; it has no timers,
+no polling and no loops. The entrance (opacity 0 → 1, scale .96 → 1, 200 ms)
+and exit (→ 0, → .98, 200 ms) follow the user's Reduced Motion preference,
+not the gaming quality level the card is announcing; the emblem pulses once
+on entry and nothing animates after the completion sweep.
+
 ## Feedback
 
-The Core pill is the overlay: a persistent "Gaming Mode" row with the
+The Core pill is the record: a persistent "Gaming Mode" row with the
 summary, announced for 3 s on entry, static afterwards. The Power page shows
-every step's result and a perimeter line that completes once on entry.
+every step's result from the last entry or exit and a perimeter line that
+completes once on entry.
 
 ## Cost
 
 Idle: nothing. Entry and exit: two `hyprctl` helper runs and one
-power-profile change, user-triggered. The GameMode watcher is a single
-event-driven process and only exists when GameMode is installed.
+power-profile change, user-triggered, plus one small overlay window that
+exists for about two seconds. The GameMode watcher is a single event-driven
+process and only exists when GameMode is installed; it lists the registered
+games' executables when the count changes, never on a timer.

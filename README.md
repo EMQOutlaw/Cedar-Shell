@@ -118,7 +118,7 @@ Updates are manual: `cedar update ARCHIVE --signature SIGNATURE --trusted-key PU
 
 ## Privacy and compatibility
 
-CEDAR Shield, a first-party application (`cedar shield` or Go › Shield), shows the firewall, encrypted DNS, network discovery, private Wi-Fi and IPv6 addresses and what listens on your network as the services that own them report it, and changes them only through those services with verification and rollback (`docs/SHIELD.md`). Gaming Mode (Super+G) is a reversible transaction over an explicit registry that quiets the desktop around a game and restores it afterwards, with crash recovery (`docs/GAMING.md`).
+CEDAR Shield, a first-party application (`cedar shield` or Go › Shield), shows the firewall, encrypted DNS, network discovery, private Wi-Fi and IPv6 addresses and what listens on your network as the services that own them report it, and changes them only through those services with verification and rollback (`docs/SHIELD.md`). Gaming Mode (Super+G) is a reversible transaction over an explicit registry that quiets the desktop around a game and restores it afterwards, with crash recovery; a small CEDAR GAMING card shows each step as it is verified and gets out of the way (`docs/GAMING.md`).
 
 Local-only mode is on by default. Weather and remote artwork require opt-in; once weather is on, its location comes from your public IP unless you choose a city. Clipboard history and window-title Trails remain opt-in. See [privacy](docs/PRIVACY.md), the [dependency manifest](data/dependencies.json), [component inventory](data/plugins.json), and [compatibility evidence](data/compatibility.json).
 

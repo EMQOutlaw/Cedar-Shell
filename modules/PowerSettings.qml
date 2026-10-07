@@ -66,7 +66,7 @@ ColumnLayout {
     }
 
     // Gaming Mode: a transaction over an explicit registry. The list is what
-    // really happened on the last activation, step by step.
+    // really happened the last time it was entered or left, step by step.
     SettingsSection {
         id:gamingSection
         objectName:"gamingMode"
@@ -74,8 +74,8 @@ ColumnLayout {
         caption:"Super+G, or the Gaming tile in Quick Controls. The desktop quiets itself around the game and restores everything when you leave; a shell that stops mid-game restores it on its next start."
         badge:Gaming.busy ? "Working" : Gaming.active ? Gaming.summary : "Off"
         badgeColor:Gaming.busy ? Theme.amber : Gaming.active ? (Gaming.failures.length ? Theme.amber : Theme.green) : Theme.teal
-        function tone(state) { return state==="active" ? Theme.green : state==="failed" ? Theme.ember : state==="observing" ? Theme.teal : Theme.muted; }
-        function word(state) { return ({active:"Active",failed:"Failed",unavailable:"Unavailable",off:"Off",pending:"Working",observing:"Observing"})[state] || state; }
+        function tone(state) { return state==="active"||state==="restored" ? Theme.green : state==="failed" ? Theme.ember : state==="observing"||state==="applying" ? Theme.teal : Theme.muted; }
+        function word(state) { return ({active:"Active",restored:"Restored",failed:"Failed",unavailable:"Unavailable",off:"Off",pending:"Waiting",applying:"Applying",observing:"Observing"})[state] || state; }
         RowLayout {
             Layout.fillWidth:true; spacing:8
             StationButton { text:Gaming.busy ? "Working…" : Gaming.active ? "Leave Gaming Mode" : "Enter Gaming Mode"; accent:Gaming.active ? Theme.amber : Theme.green; enabled:!Gaming.busy; onClicked:Gaming.toggle() }

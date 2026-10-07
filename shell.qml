@@ -57,6 +57,13 @@ ShellRoot {
         active: Permission.enabled && Permission.active
         PermissionPrompt {}
     }
+    // Gaming Mode's preparation panel: created when a transaction starts on
+    // Super+G (or a detected game), released after the completed state has
+    // been held. Nothing of it exists while Gaming Mode is simply on.
+    LazyLoader {
+        active: Config.stage >= 3 && !Config.testMode && Gaming.hudShown
+        GamingHud {}
+    }
     // CEDAR Shield: a first-party application window over the Shield service,
     // created when opened and released when closed.
     LazyLoader {
@@ -144,7 +151,7 @@ ShellRoot {
         function toggle(): void { if (Config.stage >= 3) Gaming.toggle(); }
         function activate(): void { if (Config.stage >= 3) Gaming.activate("manual"); }
         function deactivate(): void { if (Config.stage >= 3) Gaming.deactivate(); }
-        function status(): string { return JSON.stringify({ active: Gaming.active, busy: Gaming.busy, summary: Gaming.summary, steps: Gaming.steps, trigger: Gaming.trigger }); }
+        function status(): string { return JSON.stringify({ active: Gaming.active, busy: Gaming.busy, summary: Gaming.summary, steps: Gaming.steps, trigger: Gaming.trigger, game: Gaming.gameName, progress: Gaming.progress, hud: Gaming.hudShown ? Gaming.hudMode : "hidden" }); }
     }
     IpcHandler {
         target: "settings"
