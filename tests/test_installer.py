@@ -321,6 +321,19 @@ class Keybinds(unittest.TestCase):
         self.assertIn('source = ', desktop.render_conf({'input': {}, 'monitors': [], 'bindings': [], 'keybinds': True}))
 
 
+class CedarCommand(unittest.TestCase):
+    def test_installer_subcommand_passes_options_through_untouched(self):
+        from unittest.mock import patch
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import distribution as d
+        calls = []
+        def fake_exec(exe, argv):
+            calls.append(argv); raise SystemExit(0)   # a real exec never returns
+        with patch.object(d, 'installed', return_value=Path('/installed/release')), patch.object(d.os, 'execv', side_effect=fake_exec), patch.object(d.os, 'getuid', return_value=1000):
+            with self.assertRaises(SystemExit): d.main(['installer', '--update', '--no-gui', '--yes'])
+        self.assertEqual(calls[0][1:], ['/installed/release/installer/cedar_install.py', '--update', '--no-gui', '--yes'])
+
+
 class LoginBlock(unittest.TestCase):
     def test_a_stale_block_is_replaced_not_refused(self):
         sys.path.insert(0, str(ROOT / 'scripts'))

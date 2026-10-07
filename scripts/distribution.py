@@ -563,6 +563,12 @@ def uninstall(approved=False):
         print('Program entry points restored. Release files/recovery retained for safe manual storage review; no purge performed.')
 
 def main(argv=None):
+    argv=list(sys.argv[1:] if argv is None else argv)
+    # `cedar installer …` hands every argument to the installed copy's installer untouched;
+    # its own options (--update, --uninstall, --dry-run, …) are not this parser's business.
+    if argv and argv[0]=='installer':
+        if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
+        os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*argv[1:]])
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
     parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','installer'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
@@ -606,7 +612,6 @@ def main(argv=None):
         else: raise Refused('Use the existing Omarchy controls for this session.')
     elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
     elif args.action=='shield':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call','shield','open'])
-    elif args.action=='installer':os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*args.arguments])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()
         if args.action=='preview':preview(root)
