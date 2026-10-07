@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = {
     "firewall": {"available": True, "provider": "ufw", "owner": "ufw", "active": True, "unit": "ufw.service", "competing": False,
                  "providers": [{"provider": "ufw", "active": True, "enabled": True, "unit": "ufw.service", "configured": True}]},
-    "dns": {"resolver": "systemd-resolved", "supported": True, "mode": "off", "provider": "custom", "providerLabel": "Custom", "servers": ["192.168.50.1"], "link": "eno1",
+    "dns": {"resolver": "systemd-resolved", "supported": True, "mode": "off", "provider": "custom", "providerLabel": "Custom", "servers": ["192.0.2.1"], "link": "eno1",
             "connection": {"name": "Wired connection 1", "uuid": "x", "dnsOverTls": "-1", "dns": "", "ignoreAutoDns": "no"}, "reason": ""},
     "wifi": {"available": True, "device": "wlp8s0", "connected": False, "connection": "Home", "policy": "stable", "raw": "stable"},
     "exposure": {"listeners": [{"proto": "udp", "port": 5353, "bind": "0.0.0.0", "scope": "all", "process": "avahi"}, {"proto": "tcp", "port": 22, "bind": "0.0.0.0", "scope": "all", "process": ""},
