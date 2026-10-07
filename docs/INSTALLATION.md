@@ -3,7 +3,7 @@
 One command, one window, one plan you approve before anything changes.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/distribution-hardening/installer/bootstrap/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/main/installer/bootstrap/install.sh | sh
 ```
 
 ```text
@@ -11,11 +11,12 @@ GitHub → bootstrap → CEDAR Installer opens → machine scan → plan → you
        → CEDAR installs → the result is verified → start CEDAR
 ```
 
-Until the first published release carries its assets, the bootstrap needs the
-development channel, which downloads the current source branch over TLS:
+Releases carry `cedar-<version>-x86_64.tar.gz` and its `.sha256`; the
+bootstrap verifies them. Contributors can use the development channel, which
+downloads the current source branch over TLS without a checksum:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/distribution-hardening/installer/bootstrap/install.sh | CEDAR_CHANNEL=development sh
+curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/main/installer/bootstrap/install.sh | CEDAR_CHANNEL=development sh
 ```
 
 From a checkout, `bash ./install.sh` opens the same installer from that tree.

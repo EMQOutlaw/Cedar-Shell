@@ -15,7 +15,7 @@ set -eu
 
 REPO="${CEDAR_REPO:-EMQOutlaw/Cedar-Shell}"
 CHANNEL="${CEDAR_CHANNEL:-stable}"
-BRANCH="${CEDAR_BRANCH:-distribution-hardening}"
+BRANCH="${CEDAR_BRANCH:-main}"
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/cedar/installer"
 
 say() { printf '%s\n' "$*"; }

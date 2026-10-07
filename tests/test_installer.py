@@ -79,6 +79,8 @@ class Intent(unittest.TestCase):
         monitors, notes = intent.to_cedar_monitors(rows, LIVE)
         self.assertEqual([m['name'] for m in monitors], ['DP-1', 'DP-2'])
         self.assertEqual(monitors[1], {'name': 'DP-2', 'mode': '2560x1440@144.00', 'x': 3440, 'y': 0, 'scale': 1.0, 'transform': 1, 'vrrPolicy': 1})
+        self.assertTrue(any('wildcard' in n for n in notes))
+        self.assertEqual(intent.parse_keyboard(HYPR_LUA, 'lua'), {'kb_layout': 'us', 'kb_variant': 'colemak', 'kb_options': 'caps:escape'})
 
     def test_modes_are_spelled_like_the_compositor_lists_them(self):
         live = {'width': 3440, 'height': 1440, 'refreshRate': 143.97, 'availableModes': ['3440x1440@143.97Hz', '3440x1440@60.00Hz', '2560x1440@60.00Hz']}
@@ -88,8 +90,6 @@ class Intent(unittest.TestCase):
         self.assertEqual(intent.normalize_mode('preferred', live), '3440x1440@143.97')
         self.assertEqual(intent.normalize_mode('1920x1080@60', live), '1920x1080@60.00')
         self.assertEqual(intent.normalize_mode('2560x1440@144', {}), '2560x1440@144.00')
-        self.assertTrue(any('wildcard' in n for n in notes))
-        self.assertEqual(intent.parse_keyboard(HYPR_LUA, 'lua'), {'kb_layout': 'us', 'kb_variant': 'colemak', 'kb_options': 'caps:escape'})
 
     def test_conf_monitors_follow_includes_without_executing(self):
         host = FakeHost(home=HOME, files={HOME + '/.config/hypr/hyprland.conf': HYPR_CONF, HOME + '/.config/hypr/monitors.conf': MONITORS_CONF})

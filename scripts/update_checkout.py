@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import distribution as d
 
 GIT_PULL = ['git', 'pull', '--ff-only']
-CLONE_HINT = 'git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell'
+CLONE_HINT = 'git clone --branch main https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell'
 
 
 def say(message=''):

@@ -24,7 +24,13 @@ jobs:
           python3 scripts/package_release.py --release-assets dist
           python3 tests/check_artifact.py dist/cedar-*-x86_64.tar.gz
           sh -n installer/bootstrap/install.sh
-      - name: Attach to the release
+      - name: Create the release if the tag has none, then attach the assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${GITHUB_REF_NAME}" dist/cedar-*-x86_64.tar.gz dist/cedar-*-x86_64.tar.gz.sha256 --clobber --repo "${GITHUB_REPOSITORY}"
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            awk 'NR==1{next} /^# /{exit} {print}' CHANGELOG.md > notes.md
+            gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "CEDAR ${version}" --notes-file notes.md
+          fi
+          gh release upload "${GITHUB_REF_NAME}" dist/cedar-*-x86_64.tar.gz dist/cedar-*-x86_64.tar.gz.sha256 --clobber --repo "${GITHUB_REPOSITORY}"

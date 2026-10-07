@@ -1026,8 +1026,8 @@
     {
       "id": "cedar.installer",
       "name": "CEDAR Installer",
-      "version": "0.1.0-dev.15",
-      "cedarCompatibility": "0.1.0-dev.15",
+      "version": "0.1.0",
+      "cedarCompatibility": "0.1.0",
       "kind": "built-in first-party application; standalone Quickshell program and Python engine",
       "status": "Implemented",
       "entryPoint": "installer.qml",

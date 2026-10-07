@@ -4,7 +4,7 @@
 
 CEDAR is a complete desktop shell for the Hyprland compositor: a bar in six styles, a central Core pill, Quick Controls, Field Station, searchable Settings, the Go launcher, notifications, on-screen displays, real system instruments, the Trailwatch lock screen, CEDAR Shield for network privacy, and a Gaming Mode. It is quiet, works offline, and keeps your existing applications, displays and settings.
 
-> **Status: development candidate.** CEDAR is not yet a certified public release and the first-party source is unlicensed by the owner's decision. Please do not redistribute the artwork or code under an invented license. Upstream notices are in [credits](docs/LICENSES.md).
+> **Release 0.1.0.** This is CEDAR's first release. The first-party source and artwork remain unlicensed by the owner's decision: please do not redistribute them under an invented license. Upstream notices are in [credits](docs/LICENSES.md).
 
 ## Before you start
 
@@ -19,19 +19,15 @@ Your current desktop stays in place. CEDAR backs up what it may touch, shows you
 Run one command. It downloads a short, readable script that verifies the release and opens the **CEDAR Installer**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/distribution-hardening/installer/bootstrap/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/main/installer/bootstrap/install.sh | sh
 ```
 
-Until the first published release is available, add `CEDAR_CHANNEL=development` to use the current source branch:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/distribution-hardening/installer/bootstrap/install.sh | CEDAR_CHANNEL=development sh
-```
+The command installs the latest published release and verifies its checksum. Contributors who want the current source branch instead can add `CEDAR_CHANNEL=development` before `sh`.
 
 Prefer Git? Clone the repository and run the installer from it:
 
 ```bash
-git clone --branch distribution-hardening https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh
+git clone --branch main https://github.com/EMQOutlaw/Cedar-Shell.git cedar-shell && cd cedar-shell && bash ./install.sh
 ```
 
 To update an existing checkout later:

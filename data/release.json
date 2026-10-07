@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.0-dev.12",
-  "channel": "development",
+  "version": "0.1.0",
+  "channel": "stable",
   "repository": "https://github.com/EMQOutlaw/Cedar-Shell",
   "visibility": "public",
   "license": "Unlicensed first-party source; no public redistribution grant",

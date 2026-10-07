@@ -56,4 +56,4 @@ No comparable native before/after runs were performed. Running the collector on 
 - Native GIO terminal/D-Bus launch variants, default changes under external concurrent editors, live Wi-Fi/hotspot/pairing permissions and hardware hotplug need further acceptance tests.
 - Full clean-machine bootstrap, external network-traffic measurement, publisher signing identity, first-party license selection and public release acceptance gates remain outstanding.
 
-Publication to the existing public distribution-hardening branch was explicitly approved after review. Source publication does not certify a stable release or native desktop compatibility. No history rewrite, tagged release or visibility change was performed.
+Publication to the existing public main branch was explicitly approved after review. Source publication does not certify a stable release or native desktop compatibility. No history rewrite, tagged release or visibility change was performed.
