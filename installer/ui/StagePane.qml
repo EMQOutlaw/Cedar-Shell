@@ -320,7 +320,7 @@ Item {
                     Repeater { model: root.model.result.imports || []; Row_ { required property string modelData; text: modelData } }
                 }
                 Repeater {
-                    model: root.model.operations.filter(o => o.state === "warning" && o.id !== "session")
+                    model: root.model.operations.filter(o => o.state === "warning" && o.id !== "session" && (o.detail || "") !== "")
                     Row_ { required property var modelData; Layout.topMargin: 8; text: modelData.detail; glyph: "!"; glyphColor: Theme.amber }
                 }
                 Lead { Layout.topMargin: 16; horizontalAlignment: Text.AlignHCenter; text: "Your previous environment was backed up" + (root.model.result.backup ? " to " + root.model.result.backup : "") + "." ; font.pixelSize: Theme.small }

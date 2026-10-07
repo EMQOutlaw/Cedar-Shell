@@ -16,6 +16,7 @@ Item {
     readonly property string stage: model.stage
     readonly property bool installing: stage === "install"
     readonly property bool finished: stage === "finish"
+    readonly property bool notStarted: finished && !model.cedarRunning && (model.operations.find(o => o.id === "session") || ({})).state === "warning"
     readonly property bool motion: model.motion
     function state(id) { const op = (model.operations || []).find(o => o.id === id); return op ? op.state : "pending"; }
     function done(id) { return ["complete", "warning", "skipped"].includes(state(id)); }
@@ -102,7 +103,7 @@ Item {
             }
             Text {
                 Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 10
-                text: root.finished ? "CEDAR READY" : root.installing ? "INSTALLING" : root.stage === "scan" ? "SCANNING" : root.stage === "error" ? "STOPPED" : root.stage === "restored" ? "RESTORED" : root.stage === "interrupted" ? "INTERRUPTED" : root.stage === "attention" ? "NEEDS ATTENTION" : "CEDAR READY TO INSTALL"
+                text: root.finished ? (root.notStarted ? "CEDAR INSTALLED" : "CEDAR READY") : root.installing ? "INSTALLING" : root.stage === "scan" ? "SCANNING" : root.stage === "error" ? "STOPPED" : root.stage === "restored" ? "RESTORED" : root.stage === "interrupted" ? "INTERRUPTED" : root.stage === "attention" ? "NEEDS ATTENTION" : "CEDAR READY TO INSTALL"
                 textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; font.letterSpacing: 2.2
                 color: root.finished ? Theme.green : root.stage === "error" || root.stage === "attention" ? Theme.amber : Theme.muted
             }
