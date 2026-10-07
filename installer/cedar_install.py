@@ -110,6 +110,8 @@ def main(argv=None):
     parser.add_argument('--cedar-launcher', action='store_true', help='also point the application-launcher shortcut at CEDAR Go')
     parser.add_argument('--trailwatch', action='store_true', help='also select CEDAR Trailwatch as the locker, with its password and lock tests')
     parser.add_argument('--fonts', action='store_true', help='also install the recommended fonts')
+    parser.add_argument('--keybinds', dest='keybinds', action='store_true', default=None, help='install CEDAR’s keybinds (Caelestia layout) into the Hyprland configuration')
+    parser.add_argument('--no-keybinds', dest='keybinds', action='store_false', help='leave the Hyprland keybinds untouched')
     parser.add_argument('--source', type=Path, default=SOURCE, help=argparse.SUPPRESS)
     parser.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--version', action='store_true', help='print the installer version')
@@ -160,6 +162,8 @@ def main(argv=None):
             return 3
         args.resume = True
     options = {'launcher': args.cedar_launcher, 'trailwatch': args.trailwatch, 'fonts': args.fonts}
+    if args.keybinds is not None:
+        options['keybinds'] = args.keybinds
     if args.no_session:
         options['session'] = False
     plan = engine.build_plan(options)

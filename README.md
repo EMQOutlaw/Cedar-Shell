@@ -60,7 +60,7 @@ Where the installer did not start CEDAR itself, the `cedar` command does it in s
 "$HOME/.local/bin/cedar" restore    # go back to your previous desktop
 ```
 
-`cedar preview` opens CEDAR in an ordinary window with sample data, without touching your desktop. `cedar status` explains a pending or failed trial and `cedar doctor` runs local checks.
+The installer can also give you CEDAR's keybinds in the Caelestia layout, Super+T for the terminal, Super+Q to close, Super+1…0 for workspaces, Super+N for Quick Controls, loaded through CEDAR's journaled Hyprland loader so your other bindings stay (see [docs/KEYBINDS.md](docs/KEYBINDS.md)). `cedar preview` opens CEDAR in an ordinary window with sample data, without touching your desktop. `cedar status` explains a pending or failed trial and `cedar doctor` runs local checks.
 
 **On stock Hyprland**, CEDAR pauses Waybar, Mako or Dunst while it runs and leaves your compositor, portals, authentication agent, audio, network, displays and default apps alone. **With Noctalia** (4.7.7 or native 5.2.1), CEDAR supplies the bar, Canopy, notifications and OSD while Noctalia keeps its locker, idle handling, authentication and wallpaper. **On Omarchy**, CEDAR replaces the Omarchy shell and keeps its lock, idle and polkit services. For other environments CEDAR installs beside the existing shell and opens as a preview until a reviewed handoff exists.
 

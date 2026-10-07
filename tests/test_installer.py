@@ -251,6 +251,55 @@ class Planning(unittest.TestCase):
         self.assertFalse(next(op for op in plan['operations'] if op['id'] == 'session')['enabled'])
 
 
+class Keybinds(unittest.TestCase):
+    def test_default_follows_the_environment(self):
+        host = arch_host()
+        plan_module.set_check_host(host)
+        self.assertFalse(plan_module.build(facts_module.scan(host, ROOT))['options']['keybinds'])   # Omarchy ships its own
+        plain = arch_host(files={HOME + '/.config/hypr/hyprland.conf': HYPR_CONF, ROOT / 'VERSION': '1', ROOT / 'data/dependencies.json': (ROOT / 'data/dependencies.json').read_text()},
+                          dirs=['/sys/module/nvidia'], processes=[{'pid': 1, 'exe': '/usr/bin/Hyprland', 'argv': ['Hyprland']}],
+                          commands={'hyprctl -j monitors': '[]', 'qs list --all -j': 'No running instances.'}, packages={}, release={'ID': 'arch', 'PRETTY_NAME': 'Arch Linux'},
+                          which=[w for w in arch_host().available if w != 'omarchy'])
+        plan_module.set_check_host(plain)
+        plan = plan_module.build(facts_module.scan(plain, ROOT))
+        self.assertTrue(plan['options']['keybinds'])
+        self.assertTrue(any('keybinds' in r for r in plan['cedar']))
+        self.assertNotEqual(plan['digest'], plan_module.build(facts_module.scan(plain, ROOT), {'keybinds': False})['digest'])
+
+    def test_both_syntaxes_bind_the_same_keys(self):
+        import re
+        lua = (ROOT / 'themes/keybinds.lua').read_text()
+        conf = (ROOT / 'themes/keybinds.conf').read_text()
+        def norm(mods, key):
+            mods = sorted(m.upper() for m in mods if m)
+            key = key.strip()
+            aliases = {'backslash': 'BACKSLASH', 'comma': 'COMMA', 'minus': 'MINUS', 'equal': 'EQUAL', 'backspace': 'BACKSPACE', 'space': 'SPACE', 'tab': 'TAB', 'left': 'LEFT', 'right': 'RIGHT', 'up': 'UP', 'down': 'DOWN'}
+            key = aliases.get(key.lower(), key)
+            return ' '.join(mods + [key.upper() if len(key) == 1 else key])
+        conf_keys = set()
+        for m in re.finditer(r'^bind[a-z]*\s*=\s*([^,]*),\s*([^,]+),', conf, re.M):
+            conf_keys.add(norm(m.group(1).split(), m.group(2)))
+        lua_keys = set()
+        for m in re.finditer(r'"((?:[A-Z_]+ \+ )+[A-Za-z0-9_:]+|XF86[A-Za-z]+|Print)"', lua):
+            parts = [p.strip() for p in m.group(1).split('+')]
+            lua_keys.add(norm(parts[:-1], parts[-1]))
+        for i in range(1, 11):
+            key = str(i % 10)
+            lua_keys.update({norm(['SUPER'], key), norm(['SUPER', 'ALT'], key), norm(['CTRL', 'SUPER'], key), norm(['CTRL', 'SUPER', 'ALT'], key)})
+        for d in ('left', 'right', 'up', 'down'):
+            lua_keys.update({norm(['SUPER'], d), norm(['SUPER', 'SHIFT'], d)})
+        missing_in_conf = sorted(k for k in lua_keys if k not in conf_keys)
+        missing_in_lua = sorted(k for k in conf_keys if k not in lua_keys)
+        self.assertEqual(missing_in_conf, [], 'in lua only'); self.assertEqual(missing_in_lua, [], 'in conf only')
+
+    def test_desktop_loader_includes_the_copy_when_asked(self):
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import desktop
+        self.assertIn('keybinds.lua', desktop.render_lua({'input': {}, 'monitors': [], 'bindings': [], 'keybinds': True}))
+        self.assertNotIn('keybinds.lua', desktop.render_lua({'input': {}, 'monitors': [], 'bindings': []}))
+        self.assertIn('source = ', desktop.render_conf({'input': {}, 'monitors': [], 'bindings': [], 'keybinds': True}))
+
+
 class BackupAndRestore(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='cedar installer 雨 ')

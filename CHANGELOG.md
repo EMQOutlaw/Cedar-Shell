@@ -1,3 +1,7 @@
+# 0.1.2 — Keybinds in the Caelestia layout
+
+- CEDAR ships a Hyprland binding set in the Caelestia layout for both configuration syntaxes (`themes/keybinds.lua`, `themes/keybinds.conf`): Super+T/W/C/E for the terminal, browser, editor and files chosen in Settings, Super+Q close, Super+F fullscreen, Super+1…0 workspaces, Super+arrows focus, Super+Z/X drag and resize, groups, special workspaces, media and volume keys, and the shell actions on CEDAR surfaces (tap Super for applications, Super+N Quick Controls, Super+K Field Station, Super+L lock, Ctrl+Alt+Delete power, Super+V clipboard, Super+G Gaming Mode, Super+Shift+Space Go menu). The installer offers "Use CEDAR's keybinds", on by default for plain Hyprland and Waybar setups; the copy lands in `~/.config/cedar/hypr/` and loads through CEDAR's journaled Hyprland loader, so your other bindings stay. See docs/KEYBINDS.md.
+
 # 0.1.1 — Installer fixes from the first real installations
 
 - The session handoff no longer mistakes the CEDAR Installer's own window for an existing Quickshell desktop, which stopped every plain-Hyprland installation at the Session step with "An existing Quickshell desktop is running".

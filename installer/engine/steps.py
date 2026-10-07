@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import sys
 import time
 
@@ -236,8 +237,11 @@ def shell_run(ctx, op):
 def migrate_run(ctx, op):
     if not ctx.options.get('migrate'):
         raise ops.Skip('Migration turned off; existing configuration untouched')
-    desktop = ctx.module('desktop')
     facts = ctx.facts
+    # desktop.py resolves the main Hyprland config when it is imported.
+    if facts['hyprland'].get('config'):
+        os.environ['CEDAR_HYPR_CONFIG'] = facts['hyprland']['config']
+    desktop = ctx.module('desktop')
     config = ctx.config_dir()
     config.mkdir(parents=True, exist_ok=True, mode=0o700)
     backup = reopen_backup(ctx)
@@ -264,8 +268,36 @@ def migrate_run(ctx, op):
             imported.append('keyboard layout')
         except ValueError as error:
             notes.append('Keyboard settings were not imported: ' + str(error))
+    if ctx.options.get('keybinds'):
+        ctx.progress(op, 0.6, 'Installing CEDAR’s keybinds')
+        syntax = facts['hyprland'].get('syntax') or 'lua'
+        target = config / 'hypr' / ('keybinds.' + syntax)
+        target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if backup: backup.add(target, 'CEDAR keybinds copy')
+        if not target.is_file():
+            shutil.copy2(ctx.source / 'themes' / ('keybinds.' + syntax), target); os.chmod(target, 0o600)
+            if backup: backup.changed(target)
+            imported.append('keybinds')
+        else:
+            notes.append('Your existing keybinds copy was kept.')
+        state['keybinds'] = True
     write_private_json(desktop_path, state)
     if backup: backup.changed(desktop_path)
+    if ctx.options.get('keybinds') and facts['compositor']['running'] and facts['hyprland'].get('config') and not facts['hyprland'].get('ambiguous'):
+        # Apply now through CEDAR's loader (journaled marker block in the main
+        # config, generated.* beside the copy, hyprctl reload + configerrors;
+        # desktop.install restores every file it touched if Hyprland refuses).
+        ctx.progress(op, 0.7, 'Loading the keybinds into Hyprland')
+        main = Path(facts['hyprland']['config'])
+        if backup: backup.add(main, 'Hyprland main configuration (CEDAR loader block)')
+        try:
+            desktop.install(state)
+            if backup: backup.changed(main); backup.changed(config / 'hypr' / ('generated.' + syntax))
+            imported.append('keybinds loaded')
+        except (RuntimeError, OSError, ValueError) as error:
+            notes.append('Keybinds were recorded but not loaded into Hyprland: ' + str(error) + ' Apply them from Settings › Displays, or run "cedar ipc settings show keybinds".')
+    elif ctx.options.get('keybinds'):
+        notes.append('Keybinds are recorded; they load the next time CEDAR applies its Hyprland settings (Settings › Displays › Apply) because the compositor was not running or its main configuration was ambiguous.')
     ctx.progress(op, 0.75, 'Seeding preferred applications')
     settings_path = config / 'settings.json'
     settings = read_json(settings_path, {})

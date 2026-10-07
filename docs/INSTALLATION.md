@@ -72,7 +72,7 @@ output to guess progress.
 | `--uninstall` | undo CEDAR-owned changes; keep packages and your data |
 | `--repair` | verify the installed copy and reinstall what does not match |
 | `--last-log` | print the most recent installer log |
-| `--no-session`, `--cedar-launcher`, `--trailwatch`, `--fonts` | plan options |
+| `--no-session`, `--cedar-launcher`, `--trailwatch`, `--fonts`, `--keybinds` / `--no-keybinds` | plan options |
 
 After installation the same tool is available as `cedar installer …`.
 
@@ -114,7 +114,7 @@ After installation the same tool is available as `cedar installer …`.
 | Dependencies | `pacman -Syu --needed` for the missing manifest packages, through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer | each package's command present afterwards |
 | CEDAR runtime | `scripts/distribution.py install`: the versioned copy under `~/.local/share/cedar/releases/`, the `cedar` command, offline recovery, launcher entries, all journaled | release tree checksums |
 | CEDAR shell | loads the required QML imports and renders five offscreen checks with the installed Quickshell and Qt | the checks pass |
-| Configuration | translates monitor rules (`monitor`, `monitorv2`, `hl.monitor`), keyboard layout, preferred applications and the wallpaper library into `~/.config/cedar/hypr/settings.json` and `settings.json`; existing CEDAR settings win | CEDAR's own validators |
+| Configuration | translates monitor rules (`monitor`, `monitorv2`, `hl.monitor`), keyboard layout, preferred applications and the wallpaper library into `~/.config/cedar/hypr/settings.json` and `settings.json`; existing CEDAR settings win; with the keybinds option, copies CEDAR's keybinds (Caelestia layout, `docs/KEYBINDS.md`) beside them and loads them through CEDAR's journaled Hyprland loader | CEDAR's own validators; `hyprctl configerrors` |
 | Session | the existing adapters: trial, health check, keep, enable at login (`cedar restore` undoes it) | the session record reads kept with login |
 | Verification | release tree, shell imports, command, launcher entry, session; writes `~/.config/cedar/installation.json` | — |
 

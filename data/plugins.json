@@ -978,7 +978,9 @@
         "scripts/portable_session.py",
         "scripts/setup.py",
         "scripts/startup_graph.py",
-        "services/SessionIntegration.qml"
+        "services/SessionIntegration.qml",
+        "themes/keybinds.lua",
+        "themes/keybinds.conf"
       ],
       "releaseArtifacts": [
         "auth-test.qml",
@@ -993,7 +995,9 @@
         "scripts/portable_session.py",
         "scripts/setup.py",
         "scripts/startup_graph.py",
-        "services/SessionIntegration.qml"
+        "services/SessionIntegration.qml",
+        "themes/keybinds.lua",
+        "themes/keybinds.conf"
       ],
       "dependencies": [
         "qs",

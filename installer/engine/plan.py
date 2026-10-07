@@ -21,7 +21,9 @@ def default_options(facts):
     env = facts['environment']
     can_handoff = bool(env.get('adapter')) and facts['compositor']['name'] == 'hyprland' and facts['compositor']['running'] \
         and facts['existingCedar']['session'] == 'not active'
-    return {'session': can_handoff, 'launcher': False, 'trailwatch': False, 'fonts': False, 'wallpapers': bool(facts['wallpapers']), 'migrate': True}
+    # CEDAR's keybinds (Caelestia layout) by default where no shell binding set exists; environments with their own keep theirs unless asked.
+    keybinds = env.get('id') in ('plain-hyprland', 'waybar', 'generic-quickshell') and facts['compositor']['name'] == 'hyprland'
+    return {'session': can_handoff, 'launcher': False, 'trailwatch': False, 'fonts': False, 'wallpapers': bool(facts['wallpapers']), 'migrate': True, 'keybinds': keybinds}
 
 
 def attention(facts, options):
@@ -106,6 +108,8 @@ def build(facts, options=None):
     cedar.append('Install CEDAR application entries (Shield)')
     if options.get('migrate'):
         cedar.append('Write CEDAR’s display and input settings from what was imported')
+    if options.get('keybinds'):
+        cedar.append('Install CEDAR’s keybinds (Caelestia layout) through CEDAR’s journaled Hyprland loader; your other bindings stay')
     if options.get('session'):
         cedar.append('Start CEDAR in this session, keep it after a health check, and enable it at login (' + env['name'] + ' providers paused, restorable with cedar restore)')
     elif env.get('adapter'):

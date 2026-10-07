@@ -170,6 +170,9 @@ def render_lua(state):
         if 'vrrPolicy' in m: monitor['vrr']=m['vrrPolicy']
         if m.get('mirror'): monitor['mirror']=m['mirror']
         lines.append('hl.monitor('+lua(monitor)+')')
+    if state.get('keybinds'):
+        # CEDAR's keybind set (Caelestia layout), copied to the owned folder so it is the user's to edit.
+        lines.append('do local f = io.open('+lua(str(OWN/'keybinds.lua'))+', "r") if f then f:close(); dofile('+lua(str(OWN/'keybinds.lua'))+') end end')
     for b in state.get('bindings',[]):
         for original in b.get('originals', [b['original']] if b.get('original') else []):
             lines.append('hl.unbind('+lua(original)+')')
@@ -215,6 +218,8 @@ def render_conf(state):
         if 'vrrPolicy' in m: values += ['vrr', m['vrrPolicy']]
         if m.get('mirror'): values += ['mirror', m['mirror']]
         lines.append('monitor = ' + ', '.join(conf_value(v) for v in values))
+    if state.get('keybinds'):
+        lines.append('source = ' + conf_value(str(OWN/'keybinds.conf')))
     for binding in state.get('bindings', []):
         for key in binding.get('originals', [binding['original']] if binding.get('original') else []):
             lines.append('unbind = ' + conf_combo(key))
