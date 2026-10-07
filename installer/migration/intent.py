@@ -120,6 +120,31 @@ def parse_keyboard(text, syntax):
     return found
 
 
+def normalize_mode(mode, live_row):
+    """Spell a mode the way the compositor lists it, so CEDAR's validator accepts it.
+
+    A rule may say 2560x1440@144 while Hyprland reports 2560x1440@143.97Hz;
+    the closest available mode with the same resolution wins. Without an
+    available-modes list the current mode is used."""
+    available = [str(m).removesuffix('Hz') for m in live_row.get('availableModes', []) or []]
+    current = ''
+    if live_row.get('width') and live_row.get('height'):
+        current = str(live_row['width']) + 'x' + str(live_row['height']) + '@' + format(float(live_row.get('refreshRate') or 60), '.2f')
+    match = re.fullmatch(r'(\d+)x(\d+)(?:@(\d+(?:\.\d+)?))?(?:Hz)?', str(mode))
+    if not match:
+        return current or str(mode)
+    width, height, rate = match.group(1), match.group(2), match.group(3)
+    same = [m for m in available if m.startswith(width + 'x' + height + '@')]
+    if not same:
+        if current.startswith(width + 'x' + height + '@'):
+            return current
+        return width + 'x' + height + '@' + (format(float(rate), '.2f') if rate else (current.split('@')[1] if current else '60.00'))
+    if rate is None:
+        return current if current in same else same[0]
+    wanted = float(rate)
+    return min(same, key=lambda m: abs(float(m.split('@')[1]) - wanted))
+
+
 def to_cedar_monitors(rows, live):
     """Translate Hyprland rows into CEDAR's desktop.json monitor rows.
 
@@ -147,8 +172,10 @@ def to_cedar_monitors(rows, live):
             except ValueError:
                 x, y = 0, 0
         mode = row['mode']
-        if mode in ('preferred', 'highres', 'highrr') and live_row.get('width'):
-            mode = str(live_row['width']) + 'x' + str(live_row['height']) + '@' + str(round(float(live_row.get('refreshRate', 60)), 3)).rstrip('0').rstrip('.')
+        if mode in ('preferred', 'highres', 'highrr', 'auto') and live_row.get('width'):
+            mode = normalize_mode('preferred', live_row)
+        elif live_row:
+            mode = normalize_mode(mode, live_row)
         try:
             scale = float(row['scale']) if row['scale'] not in ('auto', '') else float(live_row.get('scale', 1) or 1)
         except ValueError:
@@ -220,8 +247,8 @@ def inspect_hyprland(host, main):
                        'x': m.get('x'), 'y': m.get('y'), 'scale': m.get('scale'), 'transform': m.get('transform')} for m in live if isinstance(m, dict)]
     if not result['monitors'] and result['live']:
         # No explicit rules: carry the live arrangement so CEDAR starts where the compositor is.
-        result['monitors'] = [{'name': m['name'], 'mode': str(m['width']) + 'x' + str(m['height']) + '@' + str(round(float(m.get('refreshRate') or 60), 3)).rstrip('0').rstrip('.'),
-                               'x': int(m.get('x') or 0), 'y': int(m.get('y') or 0), 'scale': float(m.get('scale') or 1), 'transform': int(m.get('transform') or 0)} for m in result['live']]
+        result['monitors'] = [{'name': m['name'], 'mode': normalize_mode('preferred', m),
+                               'x': int(m.get('x') or 0), 'y': int(m.get('y') or 0), 'scale': float(m.get('scale') or 1), 'transform': int(m.get('transform') or 0)} for m in result['liveFull']]
         result['notes'].append('No explicit monitor rules were found; the live arrangement was recorded instead.')
     result['keyboard'] = keyboard or (live_keyboard(host) if host.which('hyprctl') else {})
     return result

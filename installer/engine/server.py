@@ -17,6 +17,7 @@ The window never parses terminal output to guess progress; it renders the
 operation records the engine sends.
 """
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -33,6 +34,20 @@ from .backup import Backup
 from .host import Host
 
 
+def private_tree(root, children=()):
+    """~/.local/state/cedar and the installer's folders under it, private to the user.
+
+    The existing engine refuses a recovery directory that is not 0700 and
+    user-owned, and Path.mkdir(parents=True) would create the parent with
+    the default mode. Existing directories keep their permissions."""
+    root = Path(root)
+    for path in (root, *[root / child for child in children]):
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.mkdir(mode=0o700)
+            os.chmod(path, 0o700)
+
+
 class Engine:
     def __init__(self, source, host=None, emit=None):
         self.source = Path(source).resolve()
@@ -42,6 +57,7 @@ class Engine:
         self.plan = None
         self.state_dir = self.host.state_home() / 'cedar/installer'
         self.state_path = self.state_dir / 'state.json'
+        private_tree(self.host.state_home() / 'cedar', ('installer', 'installer/logs', 'installations'))
         self.log = None
         self.runner = None
         self.busy = False
@@ -249,11 +265,18 @@ class Engine:
 
 # ------------------------------------------------------------------ server
 def serve(source):
-    """stdin → commands, stdout → events; long operations run on a worker thread."""
+    """stdin → commands, stdout → events; long operations run on a worker thread.
+
+    Events go to the console stream captured here, never to whatever
+    sys.stdout is at the moment: a step that redirects stdout into the log
+    (the runtime step wraps the existing engine's print output) must not
+    swallow the events, or feed them back into the log as output lines.
+    """
     lock = threading.Lock()
+    console = sys.stdout
     def emit(event, data):
         with lock:
-            sys.stdout.write(json.dumps({'event': event, 'data': data}, ensure_ascii=False) + '\n'); sys.stdout.flush()
+            console.write(json.dumps({'event': event, 'data': data}, ensure_ascii=False) + '\n'); console.flush()
     engine = Engine(source, emit=emit)
     worker = None
 

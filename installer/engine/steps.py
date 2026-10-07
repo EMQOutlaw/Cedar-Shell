@@ -46,13 +46,20 @@ class Context:
     def capture(self, op):
         """Route the existing engine's print() output into the structured log."""
         class Stream(io.TextIOBase):
-            def __init__(stream, ctx): stream.ctx = ctx; stream.buffer_ = ''
+            def __init__(stream, ctx): stream.ctx = ctx; stream.buffer_ = ''; stream.inside = False
             def write(stream, text):
+                # A listener that prints while handling a line must not come back here.
+                if stream.inside:
+                    return len(text)
                 stream.buffer_ += text
-                while '\n' in stream.buffer_:
-                    line, stream.buffer_ = stream.buffer_.split('\n', 1)
-                    if line.strip():
-                        stream.ctx.output(op, line)
+                stream.inside = True
+                try:
+                    while '\n' in stream.buffer_:
+                        line, stream.buffer_ = stream.buffer_.split('\n', 1)
+                        if line.strip():
+                            stream.ctx.output(op, line)
+                finally:
+                    stream.inside = False
                 return len(text)
             def flush(stream): pass
         stream = Stream(self)
@@ -181,8 +188,10 @@ def dependencies_verify(ctx, op):
 # --------------------------------------------------------------- runtime
 def runtime_run(ctx, op):
     d = ctx.module('distribution')
-    ctx.progress(op, 0.1, 'Checking the release and free space')
+    ctx.progress(op, 0.1, 'Checking the release, free space and the shell (about half a minute)')
     before = {name: Path(name).exists() for name in (str(ctx.host.home / '.local/bin/cedar'), str(ctx.host.data_home() / 'cedar/current'))}
+    # distribution.install validates the shell offscreen (imports plus five
+    # rendering checks) before it copies anything, then journals every file.
     with ctx.capture(op):
         d.install(ctx.source, approved=True)
     ctx.installed = d.installed()
@@ -205,17 +214,22 @@ def runtime_verify(ctx, op):
 
 # ----------------------------------------------------------------- shell
 def shell_run(ctx, op):
+    """The installed copy, not the source, loads with this Quickshell and Qt.
+
+    The runtime step already rendered the five offscreen checks on the
+    source before copying; here the installed tree proves its imports and
+    one rendering check, so a copy that lost a file is caught without
+    repeating the whole minute of checks."""
     if not ctx.host.which('qs'):
         raise ops.Skip('Quickshell is not installed, so the shell cannot be loaded here')
     d = ctx.module('distribution')
     root = ctx.installed or d.installed()
-    ctx.progress(op, 0.1, 'Loading the required QML imports offscreen')
+    ctx.progress(op, 0.2, 'Loading the required QML imports from the installed copy')
     d.validate_imports(root)
-    for index, test in enumerate(SHELL_CHECKS):
-        ctx.progress(op, 0.2 + 0.75 * index / len(SHELL_CHECKS), 'Rendering ' + test.replace('check_', '').replace('.py', '').replace('_', ' '))
-        with ctx.capture(op):
-            d.command([sys.executable, str(root / 'tests' / test)], timeout=120)
-    op.detail = 'The shell loads with Quickshell ' + (ctx.facts['quickshellVersion'] or facts_module.version_of(ctx.host, ['qs', '--version']))
+    ctx.progress(op, 0.6, 'Rendering the navigation check from the installed copy')
+    with ctx.capture(op):
+        d.command([sys.executable, str(root / 'tests' / SHELL_CHECKS[0])], timeout=120)
+    op.detail = 'The installed shell loads with Quickshell ' + (ctx.facts['quickshellVersion'] or facts_module.version_of(ctx.host, ['qs', '--version']))
 
 
 # --------------------------------------------------------------- migrate

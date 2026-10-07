@@ -33,8 +33,13 @@ from installer.engine import plan as plan_module  # noqa: E402
 from installer.engine.server import Engine, serve  # noqa: E402
 
 
+# The console as it was at startup: a step that redirects stdout into the
+# log must not take the installer's own progress lines with it.
+CONSOLE = sys.stdout
+
+
 def say(text=''):
-    print(text, flush=True)
+    print(text, file=CONSOLE, flush=True)
 
 
 def ask(question, default=False):
