@@ -321,6 +321,21 @@ class Keybinds(unittest.TestCase):
         self.assertIn('source = ', desktop.render_conf({'input': {}, 'monitors': [], 'bindings': [], 'keybinds': True}))
 
 
+class LoginBlock(unittest.TestCase):
+    def test_a_stale_block_is_replaced_not_refused(self):
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import distribution as d
+        import portable_session as ps
+        stale = 'monitor = , preferred, auto, 1\n\n# CEDAR LOGIN START\nexec-once = /old/portable_session.py login\n# CEDAR LOGIN END\nbind = SUPER, Q, exec, kitty\n'
+        cleaned = ps.without_login_block(stale)
+        self.assertNotIn('CEDAR LOGIN', cleaned); self.assertIn('bind = SUPER, Q, exec, kitty', cleaned); self.assertTrue(cleaned.startswith('monitor'))
+        lua = 'hl.monitor({})\n-- CEDAR LOGIN START\nhl.on("hyprland.start", function() end)\n-- CEDAR LOGIN END\n'
+        self.assertEqual(ps.without_login_block(lua), 'hl.monitor({})\n')
+        self.assertEqual(ps.without_login_block('plain\n'), 'plain\n')
+        with self.assertRaises(d.Refused): ps.without_login_block('# CEDAR LOGIN START\nexec-once = x\n')
+        with self.assertRaises(d.Refused): ps.without_login_block(stale + stale)
+
+
 class BackupAndRestore(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='cedar installer 雨 ')

@@ -228,10 +228,43 @@ class Engine:
                 d.recover_latest('install'); report['program'] = 'program entry points restored'
             except Exception as error:  # noqa: BLE001
                 report['program'] = 'not restored: ' + str(error)
+        report['loginBlock'] = self.scrub_login_block(dry_run)
         if self.state_path.is_file() and not dry_run:
             self.state_path.rename(self.state_path.with_name('state-restored-' + time.strftime('%Y%m%dT%H%M%S') + '.json'))
         self.emit('restored', report)
         return report
+
+    def scrub_login_block(self, dry_run=False):
+        """Remove a CEDAR login block that an earlier installation left in the Hyprland startup file.
+
+        Only when no CEDAR session is active (an active one owns its block).
+        Journaled through the recovery engine's transaction, so it can be
+        put back like any other CEDAR write."""
+        sys.path.insert(0, str(self.source / 'scripts'))
+        import distribution as d
+        import portable_session
+        if d.session_active():
+            return 'session active; block left in place'
+        config = self.host.config_home() / 'hypr'
+        for name in ('hyprland.lua', 'hyprland.conf'):
+            path = config / name
+            if not path.is_file() or path.is_symlink():
+                continue
+            text = path.read_text()
+            if 'CEDAR LOGIN START' not in text:
+                continue
+            try:
+                cleaned = portable_session.without_login_block(text)
+            except Exception as error:  # noqa: BLE001
+                return 'left in place: ' + str(error)
+            if dry_run:
+                return 'would remove the stale login block from ' + str(path)
+            tx = d.Transaction('login-scrub')
+            entry = tx.backup(path)
+            tx.apply_file(entry, cleaned.encode(), entry['before'].get('mode', 0o600))
+            tx.commit()
+            return 'removed the stale login block from ' + str(path)
+        return 'none'
 
     def uninstall(self, dry_run=False):
         """Undo CEDAR-owned changes: session, program entry points, copied configuration; keep packages and your data."""
@@ -255,6 +288,7 @@ class Engine:
             backup = Backup.load(latest); backup.home = self.host.home
             outcome = backup.restore(dry_run=dry_run)
             report['files'], report['conflicts'], report['backup'] = outcome['restored'], outcome['conflicts'], str(latest)
+        report['loginBlock'] = self.scrub_login_block(dry_run)
         marker = self.host.config_home() / 'cedar/installation.json'
         if marker.is_file() and not dry_run:
             marker.unlink()

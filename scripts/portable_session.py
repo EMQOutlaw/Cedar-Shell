@@ -7,6 +7,7 @@ All provider/configuration transitions require a positively unlocked compositor.
 import contextlib
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import shutil
@@ -421,6 +422,27 @@ def supervise(identity, generation):
         time.sleep(1)
 
 
+LOGIN_BLOCK = re.compile(r'\n?(?:--|#) CEDAR LOGIN START\n.*?(?:--|#) CEDAR LOGIN END\n?', re.S)
+
+
+def without_login_block(text):
+    """The startup file without CEDAR's own login block.
+
+    The block is CEDAR-owned and delimited by its markers; one left behind by
+    an earlier installation (a restore that could not run, a manual removal
+    of CEDAR files) is replaced rather than refused, so re-enabling login is
+    always possible. A block with a start marker and no end marker is not
+    CEDAR's writing any more and is refused."""
+    if 'CEDAR LOGIN START' not in text:
+        return text
+    if 'CEDAR LOGIN END' not in text:
+        raise d.Refused('A CEDAR startup block in the Hyprland configuration is incomplete; review it before enabling login.')
+    cleaned = LOGIN_BLOCK.sub('\n', text)
+    if 'CEDAR LOGIN START' in cleaned:
+        raise d.Refused('More than one CEDAR startup block exists; review the Hyprland configuration before enabling login.')
+    return cleaned.rstrip('\n') + '\n'
+
+
 def startup_entry(row):
     path = Path(row['controls']['loginFile']) if row.get('controls') else providers.main_config()
     providers.safe_target(path)
@@ -429,9 +451,7 @@ def startup_entry(row):
     graph=startup_graph.inspect(path,d.xdg('CONFIG','.config'),Path.home())
     if path.suffix=='.conf' and not graph['complete']:
         raise d.Refused('Startup includes could not be fully reviewed. Existing login configuration is preserved: '+', '.join(graph['unresolved']))
-    original = path.read_text()
-    if 'CEDAR LOGIN START' in original:
-        raise d.Refused('An existing CEDAR startup block needs recovery first.')
+    original = without_login_block(path.read_text())
     helper = d.paths()['data'] / 'recovery/portable_session.py'
     command = shlex.join([sys.executable, str(helper), 'login'])
     if any(c in command for c in ('\n', '\r', '$', '`', '#')):
