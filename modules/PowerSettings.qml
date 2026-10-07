@@ -65,6 +65,43 @@ ColumnLayout {
         }
     }
 
+    // Gaming Mode: a transaction over an explicit registry. The list is what
+    // really happened on the last activation, step by step.
+    SettingsSection {
+        id:gamingSection
+        objectName:"gamingMode"
+        heading:"Gaming Mode"
+        caption:"Super+G, or the Gaming tile in Quick Controls. The desktop quiets itself around the game and restores everything when you leave; a shell that stops mid-game restores it on its next start."
+        badge:Gaming.busy ? "Working" : Gaming.active ? Gaming.summary : "Off"
+        badgeColor:Gaming.busy ? Theme.amber : Gaming.active ? (Gaming.failures.length ? Theme.amber : Theme.green) : Theme.teal
+        function tone(state) { return state==="active" ? Theme.green : state==="failed" ? Theme.ember : state==="observing" ? Theme.teal : Theme.muted; }
+        function word(state) { return ({active:"Active",failed:"Failed",unavailable:"Unavailable",off:"Off",pending:"Working",observing:"Observing"})[state] || state; }
+        RowLayout {
+            Layout.fillWidth:true; spacing:8
+            StationButton { text:Gaming.busy ? "Working…" : Gaming.active ? "Leave Gaming Mode" : "Enter Gaming Mode"; accent:Gaming.active ? Theme.amber : Theme.green; enabled:!Gaming.busy; onClicked:Gaming.toggle() }
+            Item { Layout.fillWidth:true }
+            StatusPill { visible:Capabilities.ready; text:Capabilities.gaming.gameModeAvailable ? (Gaming.gameModeActive ? "GameMode · "+Gaming.gameModeClients+" game" : "GameMode installed") : "GameMode not installed"; tone:Gaming.gameModeActive ? Theme.green : Theme.muted }
+        }
+        // One perimeter line completes once when the mode turns on, then everything is static.
+        Rectangle {
+            Layout.fillWidth:true; implicitHeight:2; color:Qt.alpha(Theme.teal,.12); radius:1
+            Rectangle { id:perimeter; height:parent.height; radius:1; color:Theme.green; width:0; opacity:.9 }
+            Connections { target:Gaming; function onActiveChanged() { if (Gaming.active) { perimeter.width=0; sweep.restart(); } else perimeter.width=0; } }
+            NumberAnimation { id:sweep; target:perimeter; property:"width"; from:0; to:parent.width; duration:Config.saved.reducedMotion ? 0 : 420; easing.type:Easing.OutCubic }
+        }
+        Repeater {
+            model:Gaming.steps
+            SettingRow {
+                required property var modelData
+                Layout.fillWidth:true; title:modelData.label; description:modelData.detail
+                StatusPill { text:gamingSection.word(modelData.state); tone:gamingSection.tone(modelData.state) }
+            }
+        }
+        GlowText { visible:!Gaming.steps.length; text:"Nothing applied yet. The registry below decides what Gaming Mode changes."; color:Theme.muted; font.pixelSize:Theme.small; Layout.fillWidth:true; wrapMode:Text.WordWrap }
+        GlowText { visible:Gaming.error!==""; text:Gaming.error; color:Theme.amber; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
+        SettingsFields { page:"power"; groups:["Gaming Mode"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+    }
+
     // Performance mode: the basics only. The pill says whether it is on right
     // now and why, since Automatic follows the power profile and fullscreen focus.
     SettingsSection {
@@ -78,7 +115,7 @@ ColumnLayout {
 
     SettingsFields {
         page:"power"; Layout.fillWidth:true; highlightKey:root.highlightKey
-        exclude:["Session lock","Performance mode"]
+        exclude:["Session lock","Performance mode","Gaming Mode"]
         captions:({"Trailwatch privacy":"What the lock screen may reveal. Notification contents never appear there.","Trailwatch controls":"What may be done without unlocking."})
     }
     GlowText { visible:Controls.error!==""; text:Controls.error; color:Theme.amber; Layout.fillWidth:true; wrapMode:Text.WordWrap }

@@ -13,7 +13,8 @@ Process {
     property int maximumResponse: 4194304
     signal result(var data)
     signal failed(string message)
-    command: ["python3", Quickshell.shellPath(script)].concat(arguments)
+    // root.arguments: inside a binding, bare `arguments` is the function's own arguments object.
+    command: ["python3", Quickshell.shellPath(script)].concat(root.arguments)
     stdinEnabled: true
     function send(value) {
         if (running) return false;

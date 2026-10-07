@@ -87,6 +87,18 @@
     "label": "Recent Trails",
     "action": "cedar:canopy trails"
   },
+  "cedar.shield": {
+    "label": "Shield",
+    "description": "Firewall, encrypted DNS, private Wi-Fi address, local exposure",
+    "action": "cedar:settings shield",
+    "aliases": [
+      "firewall",
+      "dns",
+      "privacy",
+      "security",
+      "protection"
+    ]
+  },
   "cedar.canopy.startup": {
     "label": "Startup Apps",
     "description": "What starts with the session: apps and commands",

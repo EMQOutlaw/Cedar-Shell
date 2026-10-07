@@ -113,6 +113,20 @@ ShellRoot {
                 ShellState.toggle("hud");
         }
     }
+    // Shield: `shield refresh|status`; the page itself is `settings show shield`.
+    IpcHandler {
+        target: "shield"
+        function refresh(): void { if (Config.stage >= 3) Shield.refresh(); }
+        function status(): string { return JSON.stringify({ ready: Shield.ready, headline: Shield.headline, busy: Shield.busy, error: Shield.error, protections: Shield.protections.map(p => ({ id: p.id, state: p.state, value: p.value, detail: p.detail })) }); }
+    }
+    // Gaming Mode: `gaming toggle|activate|deactivate|status` (Super+G).
+    IpcHandler {
+        target: "gaming"
+        function toggle(): void { if (Config.stage >= 3) Gaming.toggle(); }
+        function activate(): void { if (Config.stage >= 3) Gaming.activate("manual"); }
+        function deactivate(): void { if (Config.stage >= 3) Gaming.deactivate(); }
+        function status(): string { return JSON.stringify({ active: Gaming.active, busy: Gaming.busy, summary: Gaming.summary, steps: Gaming.steps, trigger: Gaming.trigger }); }
+    }
     IpcHandler {
         target: "settings"
         function toggle(): void {
@@ -127,6 +141,13 @@ ShellRoot {
         }
         function get(key: string): string {
             return Config.ipcGet(key);
+        }
+        // `settings show shield`: open Settings on a page (ids from SettingsSchema.pages).
+        function show(page: string): void {
+            if (Config.stage < 3 || ShellState.locked) return;
+            ShellState.settingsPage = page;
+            if (ShellState.panel === "settings") ShellState.close();
+            ShellState.open("settings");
         }
     }
     // Go menu: `menu toggle <route>` opens a menu id or alias (root, apps, system,

@@ -29,3 +29,7 @@ SessionIntegration 1.0 SessionIntegration.qml
 
 singleton SetupFlow 1.0 SetupFlow.qml
 singleton Motion 1.0 Motion.qml
+singleton Capabilities 1.0 Capabilities.qml
+singleton VisualQuality 1.0 VisualQuality.qml
+singleton Gaming 1.0 Gaming.qml
+singleton Shield 1.0 Shield.qml

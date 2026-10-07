@@ -21,6 +21,7 @@ bind("SUPER + CTRL + O", "CEDAR toggle menu", "qs -c cedar ipc call menu toggle 
 bind("SUPER + CTRL + H", "CEDAR hardware menu", "qs -c cedar ipc call menu toggle hardware")
 bind("SUPER + CTRL + S", "CEDAR share menu", "qs -c cedar ipc call menu toggle share")
 bind("SUPER + ALT + P", "CEDAR settings", "qs -c cedar ipc call settings toggle")
+bind("SUPER + G", "CEDAR Gaming Mode", "qs -c cedar ipc call gaming toggle")
 -- Omarchy helpers that prompt through the shell menu run with CEDAR's stand-in on PATH.
 local with_shim = '"${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/cedar/scripts/with-shim" '
 bind("SUPER + K", "Keybindings", with_shim .. "omarchy-menu-keybindings")

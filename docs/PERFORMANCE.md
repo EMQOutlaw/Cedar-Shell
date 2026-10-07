@@ -149,6 +149,19 @@ the Health › Shell cost card say when it is on and why. The fullscreen rule
 is event-driven: Hyprland's `fullscreen` event refreshes the toplevel and the
 focused window's `lastIpcObject.fullscreen` is read, so no polling.
 
+### Shield and Gaming Mode
+
+Added after the audit, built to its rules. Idle, neither exists: the
+capability registry is one helper run at startup, Shield reads only while its
+page is open (on open, refresh, an action, and a debounced network change) and
+Gaming Mode's inhibitor and GameMode watcher run only while applicable, the
+watcher only when GameMode is installed. Entering or leaving Gaming Mode costs
+two `hyprctl` helper runs and one power-profile call, all user-triggered. The
+shield mark animates only on a transition and is static afterwards. The
+process-tree watch on this machine after loading them showed no new recurring
+spawn and no new persistent helper; a clean resting window could not be
+repeated at the time because the desktop was in use.
+
 ### Left alone, and why
 
 - **GPU and driver memory.** The backgrounds are two full-resolution layer

@@ -20,6 +20,9 @@ POLICIES = {
     'services/CoreTimer.qml': ('Persistent user timer', 'User-started countdown', 'Persists across hidden views until canceled/completed', 'One activity'),
     'services/Brightness.qml': ('Quick Controls, Power settings, Core brightness, OSD', '10 s only while a brightness control is visible; key presses read on demand', 'Hidden controls stop the timer; one process in flight', 'One JSON value'),
     'services/Forest.qml': ('Core pill, Canopy panels, Field Station', 'Event-driven: recomputed when any input property changes; 1 s clock only while a state settles, an echo or whisper fades or a signal is announced', 'Core disabled with no Canopy shown stops the clock; lock clears private state', 'State string, bounded echoes and trails'),
+    'services/Capabilities.qml': ('Shield, Gaming, Health', 'One scripts/capabilities.py run at startup; again only on refresh() (Shield opening, a privileged action finishing)', 'Nothing recurring', 'One JSON snapshot'),
+    'services/Gaming.qml': ('Quick Controls tile, Power page, Core pill, Super+G', 'Event-driven transaction on activate()/deactivate(); the logind inhibitor and the GameMode D-Bus watcher run only while applicable', 'deactivate() or lock restores and stops the inhibitor; the watcher exits with the shell', 'Six registry steps; one JSON state file'),
+    'services/Shield.qml': ('Settings › Shield', 'scripts/shield.py on page open, refresh, an action, and a debounced network-state change while the page is open', 'Closing the page stops every read; pkexec actions wait on the user', 'One snapshot; listeners capped at 200'),
     'services/Motion.qml': ('Every ambient loop', 'Idle monitor only; no polling', 'Pauses ambience after 120 s without input or under Reduced Motion', 'One boolean'),
 }
 

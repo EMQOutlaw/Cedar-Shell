@@ -35,3 +35,6 @@ StatusPill 1.0 StatusPill.qml
 Readout 1.0 Readout.qml
 ChamferFrame 1.0 ChamferFrame.qml
 SectionMark 1.0 SectionMark.qml
+ExpandableDetails 1.0 ExpandableDetails.qml
+ProtectionCard 1.0 ProtectionCard.qml
+ShieldMark 1.0 ShieldMark.qml

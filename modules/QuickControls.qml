@@ -172,11 +172,22 @@ ColumnLayout {
             label: "Do not disturb"; value: Config.saved.doNotDisturb ? "Quiet" : "Off"; on: Config.saved.doNotDisturb
             onClicked: Config.set("doNotDisturb", !Config.saved.doNotDisturb)
         }
+        // Gaming Mode: the desktop quiets itself around the game. The value is
+        // the transaction's real result, never an optimistic ON.
+        Tile {
+            order: 6
+            label: "Gaming"
+            value: Gaming.busy ? "…" : Gaming.active ? Gaming.activeCount + "/" + Gaming.totalCount + " active" : "Off"
+            on: Gaming.active
+            enabled: !Gaming.busy
+            hint: Gaming.active ? Gaming.summary + (Gaming.detail ? " · " + Gaming.detail : "") : "Super+G · pauses the flair, holds notifications and sleep, performance profile, compositor blur"
+            onClicked: Gaming.toggle()
+        }
         // Performance mode: the basics only. A tap while it is on turns it off
         // (back to Automatic if it was switched on by hand, Off if a game or
         // battery saver turned it on); a tap while off switches it on.
         Tile {
-            order: 6
+            order: 7
             label: "Performance"
             value: Config.performanceActive ? (Config.performanceMode === "on" ? "On" : "Auto · " + (Config.powerSaving ? "battery saver" : "game"))
                  : (Config.performanceMode === "off" ? "Off" : "Auto")

@@ -118,6 +118,8 @@ Updates are manual: `cedar update ARCHIVE --signature SIGNATURE --trusted-key PU
 
 ## Privacy and compatibility
 
+Shield (Settings › Shield) shows the firewall, encrypted DNS, private Wi-Fi address and what listens on your network as the services that own them report it, and changes them only through those services with verification and rollback (`docs/SHIELD.md`). Gaming Mode (Super+G) is a reversible transaction over an explicit registry that quiets the desktop around a game and restores it afterwards, with crash recovery (`docs/GAMING.md`).
+
 Local-only mode is on by default. Weather and remote artwork require opt-in; once weather is on, its location comes from your public IP unless you choose a city. Clipboard history and window-title Trails remain opt-in. See [privacy](docs/PRIVACY.md), the [dependency manifest](data/dependencies.json), [component inventory](data/plugins.json), and [compatibility evidence](data/compatibility.json).
 
 Arch/CachyOS package preparation is experimental: distribution detection and package failure/consent behavior have fixture tests; no clean CachyOS installation or live package upgrade has been tested here. The observed development environment is Arch with Hyprland 0.56.2, Quickshell 0.3.1 and Qt 6.11.2 on x86_64. Offscreen tests do not certify those versions for every host. Stock Hyprland and Noctalia adapters do not imply support for other compositors or untested hardware. [Release readiness](docs/RELEASE-READINESS.md) lists the incomplete and untested gates.

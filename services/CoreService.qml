@@ -135,6 +135,11 @@ Singleton {
             }
             return;
         }
+        if (row.id === "gaming" && action === "leave") {
+            Gaming.deactivate();
+            collapse();
+            return;
+        }
         if (action === "timer-pause")
             timer.toggle();
         else if (action === "timer-cancel")

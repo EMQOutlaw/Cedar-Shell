@@ -29,7 +29,7 @@ ShellRoot {
         }
         property int step:0
         property string shot:""
-        readonly property var sections:["overview","appearance","apps","desktop","bar","core","displays","input","keybinds","connections","audio","notifications","power","time","system","about"]
+        readonly property var sections:["overview","appearance","apps","desktop","bar","core","displays","input","keybinds","connections","shield","audio","notifications","power","time","system","about"]
         function check(ok,label){if(!ok){console.error("FAIL: "+label);Qt.exit(1);}}
         Timer {
             id:capture; interval:180

@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Services.Pam
 import ".."
 import "../components"
+import "../services"
 
 Scope {
     id: root
@@ -46,7 +47,7 @@ Scope {
         }
     }
     IdleMonitor {
-        enabled: !Config.testMode && !Config.authOnly && !Config.externalIdle && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest
+        enabled: !Config.testMode && !Config.authOnly && !Config.externalIdle && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest && !Gaming.inhibitIdle
         timeout: Config.idleLockSeconds
         respectInhibitors: true
         onIsIdleChanged: if (isIdle) ShellState.lock(false)

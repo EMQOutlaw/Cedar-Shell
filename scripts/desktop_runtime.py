@@ -210,6 +210,8 @@ def main(args):
                 'themes': ('themes', 'toggle'), 'signals': ('core', 'toggle')}
     if name in surfaces:
         ipc(*surfaces[name])
+    elif name == 'settings' and len(args) == 2:
+        ipc('settings', 'show', args[1])
     elif name == 'canopy' and len(args) == 2:
         ipc('canopy', 'show', args[1])
     elif name == 'launch' and len(args) >= 2:

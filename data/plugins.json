@@ -267,7 +267,13 @@
         "scripts/default_apps.py",
         "scripts/desktop.py",
         "scripts/settings_info.py",
-        "services/SetupFlow.qml"
+        "services/SetupFlow.qml",
+        "modules/ShieldSettings.qml",
+        "components/ProtectionCard.qml",
+        "components/ExpandableDetails.qml",
+        "components/ShieldMark.qml",
+        "services/Shield.qml",
+        "scripts/shield.py"
       ],
       "dependencies": [
         "qs",
@@ -334,7 +340,13 @@
         "scripts/default_apps.py",
         "scripts/desktop.py",
         "scripts/settings_info.py",
-        "services/SetupFlow.qml"
+        "services/SetupFlow.qml",
+        "modules/ShieldSettings.qml",
+        "components/ProtectionCard.qml",
+        "components/ExpandableDetails.qml",
+        "components/ShieldMark.qml",
+        "services/Shield.qml",
+        "scripts/shield.py"
       ]
     },
     {
@@ -607,7 +619,13 @@
         "scripts/telemetry.py",
         "services/Brightness.qml",
         "services/Controls.qml",
-        "services/SystemStats.qml"
+        "services/SystemStats.qml",
+        "services/Capabilities.qml",
+        "services/VisualQuality.qml",
+        "services/Gaming.qml",
+        "scripts/capabilities.py",
+        "scripts/gaming.py",
+        "scripts/gamemode_watch.py"
       ],
       "dependencies": [
         "python3"
@@ -630,7 +648,13 @@
         "scripts/telemetry.py",
         "services/Brightness.qml",
         "services/Controls.qml",
-        "services/SystemStats.qml"
+        "services/SystemStats.qml",
+        "services/Capabilities.qml",
+        "services/VisualQuality.qml",
+        "services/Gaming.qml",
+        "scripts/capabilities.py",
+        "scripts/gaming.py",
+        "scripts/gamemode_watch.py"
       ]
     },
     {

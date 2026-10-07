@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import "components/SettingsSchema.js" as SettingsSchema
 import "components/Compass.js" as Compass
+import "services"
 
 // Defaults plus the settings panel's saved overrides. Saved values live in
 // ~/.config/cedar/settings.json (XDG_CONFIG_HOME respected); the file is
@@ -136,7 +137,7 @@ Singleton {
         try { document = JSON.parse(store.text() || "{}"); }
         catch (error) { persistenceMessage = "Preferences contain invalid JSON. Repair the file before saving."; return; }
         if (!document || typeof document !== "object" || Array.isArray(document)) return;
-        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
+        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
         keys.forEach(key => document[key] = saved[key]);
         store.setText(JSON.stringify(document, null, 2) + "\n");
     }
@@ -194,6 +195,13 @@ Singleton {
             property var goFavorites: []
             property string searchEngine: "brave"
             property string performanceMode: "auto"
+            // Gaming Mode optimizations (the registry): which temporary changes activate() applies.
+            property bool gamingDnd: true
+            property bool gamingIdle: true
+            property bool gamingPower: true
+            property bool gamingBlur: true
+            property bool gamingAnimations: false
+            property bool gamingAutoGameMode: true
             property bool canopyEnabled:true
             property bool canopyPeek:true
             property bool forestPulse:true
@@ -256,5 +264,7 @@ Singleton {
     Connections { target: Hyprland.activeToplevel; function onLastIpcObjectChanged() { root.readFullscreen(); } }
     readonly property bool performanceActive: performanceMode === "on" || (performanceMode === "auto" && (powerSaving || fullscreenFocused))
     readonly property string performanceReason: performanceMode === "on" ? "always on" : powerSaving ? "power-saver profile" : fullscreenFocused ? "fullscreen window" : ""
-    Binding { target: Theme; property: "reducedMotion"; value: saved.reducedMotion || root.performanceActive }
+    // Reduced Motion follows the user's choice and the visual-quality policy
+    // (Performance mode, Gaming Mode), so one gate reaches every decorative loop.
+    Binding { target: Theme; property: "reducedMotion"; value: saved.reducedMotion || !VisualQuality.normal }
 }

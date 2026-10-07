@@ -30,8 +30,8 @@ Singleton {
     property real previousIdle: 0
     property bool available: false
     readonly property bool instrument: !ShellState.locked && (ShellState.panel === "hud" || (ShellState.panel === "settings" && ["overview","system"].includes(ShellState.settingsSection)) || (Canopy.shown && ["system", "quick", "station"].includes(Canopy.topic)))
-    // Performance mode drops the ambient pulse; instruments and warnings keep their cadence.
-    readonly property bool ambient: Config.saved.forestPulse && Config.saved.coreEnabled && !ShellState.locked && !Config.performanceActive
+    // Below normal visual quality (Performance or Gaming Mode) the ambient pulse stops; instruments and warnings keep their cadence.
+    readonly property bool ambient: Config.saved.forestPulse && Config.saved.coreEnabled && !ShellState.locked && VisualQuality.normal
     readonly property bool warnings: Config.saved.coreWarnings
     readonly property int fastCadence: instrument ? 2000 : ambient ? 20000 : 0
     readonly property int temperatureCadence: instrument ? 5000 : warnings ? 30000 : 0
