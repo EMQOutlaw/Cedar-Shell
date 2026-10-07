@@ -242,6 +242,8 @@ Singleton {
     }
 
     // ------------------------------------------------------------- feedback
+    // The preparation panel announces the entry; the pill's row is a quiet
+    // record unless a step failed, so the pill can step aside for the game.
     // The preparation panel. hudShown is explicit state: on while a transaction
     // runs, held for a moment once it settles, then closed. The window itself
     // is created by shell.qml only while hudShown is true.
@@ -263,7 +265,7 @@ Singleton {
     function announce() {
         if (!CoreService.enabled) return;
         CoreService.publish({ id: "gaming", type: "integration", title: "Gaming Mode", subtitle: summary + (detail ? " · " + detail : ""),
-                              persistent: true, sticky: false, priority: failures.length ? "high" : "normal", announce: true, timeout: 3000,
+                              persistent: true, sticky: false, priority: failures.length ? "high" : "normal", announce: failures.length > 0, timeout: 3000,
                               actions: [{ id: "leave", label: "Leave Gaming Mode" }] });
     }
     onSummaryChanged: if (active && !busy) announce()

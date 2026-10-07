@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
 import Quickshell.Io
+import Quickshell.Hyprland
 import "modules"
 import "services"
 
@@ -31,6 +32,11 @@ ShellRoot {
         target: "core"
         function toggle(): void {
             CoreService.toggle();
+        }
+        // What the pill knows about fullscreen cover, per screen: used to check
+        // that it steps aside for a fullscreen game.
+        function covered(): string {
+            return JSON.stringify({ fullscreenFocused: Config.fullscreenFocused, screens: Quickshell.screens.map(s => ({ name: s.name, workspace: Hyprland.monitorFor(s)?.activeWorkspace?.id ?? null, hasFullscreen: Hyprland.monitorFor(s)?.activeWorkspace?.hasFullscreen ?? null })) });
         }
         function show(): void {
             CoreService.expand();

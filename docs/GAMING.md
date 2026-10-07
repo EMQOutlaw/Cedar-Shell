@@ -94,6 +94,11 @@ on entry and nothing animates after the completion sweep.
 
 ## Feedback
 
+While Gaming Mode is on, or whenever a fullscreen or output-sized window has
+focus, the Core pill steps aside on that output; an alert, the hub or a
+Canopy still bring it back, and recording or microphone use keeps a single
+ember dot at the top edge (see docs/CORE.md).
+
 The Core pill is the record: a persistent "Gaming Mode" row with the
 summary, announced for 3 s on entry, static afterwards. The Power page shows
 every step's result from the last entry or exit and a perimeter line that

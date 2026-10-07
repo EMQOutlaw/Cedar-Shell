@@ -254,10 +254,21 @@ Singleton {
     // SystemStats drops its ambient pulse while it is active.
     readonly property string performanceMode: ["auto", "on", "off"].includes(saved.performanceMode) ? saved.performanceMode : "auto"
     readonly property bool powerSaving: PowerProfiles.profile === PowerProfile.PowerSaver
+    // The focused window covers its monitor: Hyprland fullscreen in any mode,
+    // or a window whose geometry is the whole output (a borderless game is not
+    // "fullscreen" to the compositor). fullscreenScreen names that output.
     property bool fullscreenFocused: false
+    property string fullscreenScreen: ""
     function readFullscreen() {
-        const window = Hyprland.activeToplevel?.lastIpcObject;
-        fullscreenFocused = !!window && Number(window.fullscreen) > 0;
+        const top = Hyprland.activeToplevel, window = top?.lastIpcObject, monitor = top?.monitor;
+        let covering = !!window && Number(window.fullscreen) > 0;
+        if (!covering && window && monitor) {
+            const scale = monitor.scale || 1, at = window.at || [], size = window.size || [];
+            covering = at.length === 2 && size.length === 2 && Math.abs(at[0] - monitor.x) <= 2 && Math.abs(at[1] - monitor.y) <= 2
+                && Math.abs(size[0] - monitor.width / scale) <= 2 && Math.abs(size[1] - monitor.height / scale) <= 2;
+        }
+        fullscreenFocused = covering;
+        fullscreenScreen = covering ? (monitor?.name || "") : "";
     }
     Connections {
         target: Hyprland
