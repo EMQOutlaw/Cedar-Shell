@@ -363,6 +363,14 @@ def session_run(ctx, op):
     backend = d.session_backend('omarchy' if env['adapter'] == 'omarchy' else 'auto')
     installed = ctx.installed or d.installed()
     ctx.progress(op, 0.1, 'Starting CEDAR beside your applications')
+    if backend.__name__ == 'portable_session':
+        try:
+            row, _ = backend.inspect_plan(installed, bool(ctx.options.get('launcher')), bool(ctx.options.get('trailwatch')))
+            if row.get('locker') == 'trailwatch':
+                ctx.emit('password', {'method': 'pam', 'text': 'A CEDAR password-check window opens now. Enter your login password there: it goes to the system’s own login service and enables CEDAR’s lock screen. Nothing is stored. CEDAR starts once the check passes.'})
+                ctx.progress(op, 0.15, 'Waiting for the password check in its own window')
+        except Exception:  # noqa: BLE001 - the trial reports its own refusal below
+            pass
     try:
         with ctx.capture(op):
             if backend.__name__ == 'portable_session':
@@ -381,7 +389,7 @@ def session_run(ctx, op):
         # the person starts it when the desktop is ready for it.
         if ctx.log: ctx.log.warn('session handoff refused: ' + str(error), op.id)
         session_rollback(ctx, op)
-        raise ops.Warn('CEDAR is installed but was not started in this session: ' + str(error).rstrip('.') + '. Start it when ready with "cedar try", then "cedar keep".') from error
+        raise ops.Warn('CEDAR is installed but was not started: ' + str(error).rstrip('.') + '.') from error
     backup = reopen_backup(ctx)
     record = backend.read_record() or {}
     if backup:

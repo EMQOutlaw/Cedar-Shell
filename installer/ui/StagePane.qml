@@ -308,22 +308,25 @@ Item {
         Item {
             ColumnLayout {
                 anchors.centerIn: parent; width: Math.min(520, parent.width); spacing: 10
-                Text { Layout.alignment: Qt.AlignHCenter; text: "✓"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 44; color: Theme.green }
-                Text { Layout.alignment: Qt.AlignHCenter; text: "CEDAR IS READY"; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(28 * Theme.fontScale); font.weight: Font.DemiBold; font.letterSpacing: 4; color: Theme.text }
-                Lead { Layout.topMargin: 6; horizontalAlignment: Text.AlignHCenter; text: root.model.cedarRunning ? "Your desktop has been installed, verified and is running now." : "Your desktop has been installed and verified." }
+                readonly property var sessionOp: root.model.operations.find(o => o.id === "session") || ({})
+                readonly property bool notStarted: !root.model.cedarRunning && sessionOp.state === "warning"
+                Text { Layout.alignment: Qt.AlignHCenter; text: parent.notStarted ? "!" : "✓"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 44; color: parent.notStarted ? Theme.amber : Theme.green }
+                Text { Layout.alignment: Qt.AlignHCenter; text: parent.notStarted ? "CEDAR IS INSTALLED" : "CEDAR IS READY"; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(28 * Theme.fontScale); font.weight: Font.DemiBold; font.letterSpacing: 4; color: Theme.text }
+                Lead { Layout.topMargin: 6; horizontalAlignment: Text.AlignHCenter; text: root.model.cedarRunning ? "Your desktop has been installed, verified and is running now." : parent.notStarted ? "Installed and verified, but not started." : "Your desktop has been installed and verified." }
+                GlowText { visible: parent.notStarted; Layout.fillWidth: true; Layout.topMargin: 6; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: (parent.sessionOp.detail || "").replace("CEDAR is installed but was not started: ", ""); color: Theme.amber; font.pixelSize: Theme.normal }
                 ColumnLayout {
                     visible: (root.model.result.imports || []).length > 0; Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 18; spacing: 5
                     SectionMark { text: "IMPORTED"; tone: Theme.green }
                     Repeater { model: root.model.result.imports || []; Row_ { required property string modelData; text: modelData } }
                 }
                 Repeater {
-                    model: root.model.operations.filter(o => o.state === "warning")
+                    model: root.model.operations.filter(o => o.state === "warning" && o.id !== "session")
                     Row_ { required property var modelData; Layout.topMargin: 8; text: modelData.detail; glyph: "!"; glyphColor: Theme.amber }
                 }
                 Lead { Layout.topMargin: 16; horizontalAlignment: Text.AlignHCenter; text: "Your previous environment was backed up" + (root.model.result.backup ? " to " + root.model.result.backup : "") + "." ; font.pixelSize: Theme.small }
                 ColumnLayout {
                     Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 26; spacing: 8
-                    Primary { Layout.alignment: Qt.AlignHCenter; text: root.model.cedarRunning ? "Close" : (root.env.adapter ? "Start CEDAR" : "Close"); onClicked: root.model.cedarRunning || !root.env.adapter ? root.model.quit() : root.model.startCedar() }
+                    Primary { Layout.alignment: Qt.AlignHCenter; text: root.model.cedarRunning ? "Close" : !root.env.adapter ? "Close" : parent.parent.notStarted ? "Try starting CEDAR again" : "Start CEDAR"; onClicked: root.model.cedarRunning || !root.env.adapter ? root.model.quit() : root.model.startCedar() }
                     Quiet { visible: !root.model.cedarRunning && !!root.env.adapter; Layout.alignment: Qt.AlignHCenter; text: "Start Later"; onClicked: root.model.quit() }
                 }
                 Lead { visible: !root.model.cedarRunning && !root.env.adapter; Layout.topMargin: 10; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Theme.small; text: "Open the isolated preview with \"cedar preview\". Session handoff for " + (root.env.name || "this environment") + " is not validated yet." }

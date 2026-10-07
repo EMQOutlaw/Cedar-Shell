@@ -75,10 +75,11 @@ ShellRoot {
                 case 16: model.showDetails = false; model.error = { operation: "runtime", title: "CEDAR runtime", message: "Insufficient space for staging and recovery.", changedBefore: ["System backup", "Dependencies"], rolledBack: true, resumable: true, log: "~/.local/state/cedar/installer/logs/run.jsonl", preserved: "Your original configuration is still backed up. No existing desktop files were deleted." }; model.stage = "error"; break;
                 case 17: window.shot("error"); break;
                 case 18: model.operations = window.done; model.result = { ok: true, imports: window.plan.imports, backup: "~/.local/state/cedar/installations/2026-10-07T120000", sessionState: "kept" }; model.stage = "finish"; break;
-                case 19: window.check(model.cedarRunning && model.progress === 1, "Finish with a kept session"); window.shot("finish"); break;
-                case 20: model.restoreReport = { session: "restored", program: "program entry points restored", files: ["/users/station/.config/hypr/hyprland.conf"], conflicts: [] }; model.stage = "restored"; break;
-                case 21: window.shot("restored"); break;
-                case 22: console.log("PASS: CEDAR Installer stages"); Qt.quit();
+                case 19: window.check(model.cedarRunning && model.progress === 1, "Finish with a kept session"); window.shot("finish"); model.operations = window.done.map(o => o.id === "session" ? Object.assign({}, o, { state: "warning", detail: "CEDAR is installed but was not started: Authentication test did not succeed. Existing desktop preserved; no session lock was requested." }) : o); model.result = Object.assign({}, model.result, { sessionState: "not active" }); break;
+                case 20: window.check(!model.cedarRunning, "Not-started finish"); window.shot("finish-not-started"); break;
+                case 21: model.restoreReport = { session: "restored", program: "program entry points restored", files: ["/users/station/.config/hypr/hyprland.conf"], conflicts: [] }; model.stage = "restored"; break;
+                case 22: window.shot("restored"); break;
+                case 23: console.log("PASS: CEDAR Installer stages"); Qt.quit();
                 }
             }
         }
