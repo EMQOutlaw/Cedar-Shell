@@ -3,7 +3,10 @@
 from pathlib import Path
 import os,re,socket,sys
 ROOT=Path(__file__).resolve().parents[1]
-identities=[str(Path.home()),os.environ.get('USER',''),socket.gethostname()]
+# The current account and host are personal identities to keep out of a
+# release; generic account names (CI runners, containers) are not.
+GENERIC_ACCOUNTS={'runner','root','user','ubuntu','github','build','builder','test','admin','ci','vagrant','docker','debian','arch','fedora'}
+identities=[value for value in (str(Path.home()),os.environ.get('USER',''),socket.gethostname()) if value.lower() not in GENERIC_ACCOUNTS]
 patterns=[('personal home path',re.compile(rb'/home/[A-Za-z0-9_.-]+/')),
           ('private IPv4 endpoint',re.compile(rb'\b(?:192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)\b')),
           ('credential signature',re.compile(rb'(?:gh[pousr]_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9]{24,}|BEGIN (?:RSA |OPENSSH )?PRIVATE KEY)'))]
