@@ -151,6 +151,21 @@ class Detection(unittest.TestCase):
             self.assertEqual(facts['environment']['id'], expected, expected)
             self.assertEqual(facts['environment']['handoff'] in ('validated', 'experimental'), expected in ('noctalia', 'waybar'), expected)
 
+    def test_the_installer_window_is_not_an_existing_quickshell_desktop(self):
+        from unittest.mock import patch
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import portable_providers as pp
+        host = arch_host(processes=[{'pid': 1, 'exe': '/usr/bin/Hyprland', 'argv': ['Hyprland']}, {'pid': 9, 'exe': '/usr/bin/qs', 'argv': ['qs', '-p', '/users/station/.cache/cedar/installer/0.1.0/cedar-shell/installer.qml']}],
+                         commands={**arch_host().commands, 'qs list --all -j': json.dumps([{'pid': 9, 'config_path': '/users/station/.cache/cedar/installer/0.1.0/cedar-shell/installer.qml'}])},
+                         dirs=['/sys/module/nvidia', HOME + '/.config/quickshell'], packages={}, release={'ID': 'arch', 'PRETTY_NAME': 'Arch Linux'},
+                         which=[w for w in arch_host().available if w != 'omarchy'],
+                         files={k: v for k, v in arch_host().files.items() if 'omarchy' not in k})
+        facts = facts_module.scan(host, ROOT)
+        self.assertEqual(facts['quickshellInstances'], []); self.assertEqual(facts['environment']['id'], 'plain-hyprland')
+        with patch.object(pp, 'compositor_locked', return_value=False), patch.object(pp, 'qs_instances', return_value=[{'pid': 9, 'config_path': '/users/station/.cache/cedar/installer/0.1.0/cedar-shell/installer.qml'}]), \
+             patch.object(pp, 'processes', return_value=[]), patch.object(pp, 'notification_owner', return_value=None):
+            self.assertEqual(pp.inspect(ROOT)['adapter'], 'hyprland')
+
     def test_soft_conflicts_are_paused_not_removed(self):
         host = arch_host(processes=[{'pid': 1, 'exe': '/usr/bin/Hyprland', 'argv': ['Hyprland']}, {'pid': 2, 'exe': '/usr/bin/waybar', 'argv': ['waybar']},
                                     {'pid': 3, 'exe': '/usr/bin/hypridle', 'argv': ['hypridle']}, {'pid': 4, 'exe': '/usr/bin/swww-daemon', 'argv': ['swww-daemon']}],

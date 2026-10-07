@@ -1,3 +1,13 @@
+# 0.1.1 — Installer fixes from the first real installations
+
+- The session handoff no longer mistakes the CEDAR Installer's own window for an existing Quickshell desktop, which stopped every plain-Hyprland installation at the Session step with "An existing Quickshell desktop is running".
+- A refused session handoff is a warning, not a failed installation: CEDAR stays installed, verification still runs, the finish screen shows the reason, and `cedar try` then `cedar keep` start it later.
+- The installer tightens its own store folders (`~/.local/state/cedar`, `~/.local/share/cedar`) when an earlier interrupted run left them readable, instead of refusing with "needs a private, user-owned recovery directory".
+- The installer no longer hangs at the CEDAR runtime step in window mode; the engine's events and the terminal's progress lines go to the console stream saved at startup.
+- Imported monitor modes are spelled the way the compositor lists them, so they pass CEDAR's validator instead of being dropped.
+- A copy of the run's log is placed beside the backup manifest under `~/.local/state/cedar/installations/<timestamp>/`.
+- The privacy scan ignores generic account names such as the CI runner's, so the validation and release workflows run again.
+
 # 0.1.0 — First release: the CEDAR Installer, Shield, Gaming Mode and the Settings remaster
 
 The first non-development release. `main` is now the default branch; the previous `Main` history is kept as `legacy-main`. Everything below was developed as 0.1.0-dev.15.

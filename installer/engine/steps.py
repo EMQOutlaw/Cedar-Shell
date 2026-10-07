@@ -304,17 +304,25 @@ def session_run(ctx, op):
     backend = d.session_backend('omarchy' if env['adapter'] == 'omarchy' else 'auto')
     installed = ctx.installed or d.installed()
     ctx.progress(op, 0.1, 'Starting CEDAR beside your applications')
-    with ctx.capture(op):
-        if backend.__name__ == 'portable_session':
-            backend.trial(installed, approved=True, cedar_launcher=bool(ctx.options.get('launcher')), trailwatch=bool(ctx.options.get('trailwatch')))
-        else:
-            backend.trial(installed, approved=True, trailwatch=bool(ctx.options.get('trailwatch')))
-    ctx.progress(op, 0.5, 'CEDAR is on screen; checking its health')
-    with ctx.capture(op):
-        backend.keep()
-    ctx.progress(op, 0.8, 'Enabling CEDAR at login')
-    with ctx.capture(op):
-        backend.keep(login=True, approved=True)
+    try:
+        with ctx.capture(op):
+            if backend.__name__ == 'portable_session':
+                backend.trial(installed, approved=True, cedar_launcher=bool(ctx.options.get('launcher')), trailwatch=bool(ctx.options.get('trailwatch')))
+            else:
+                backend.trial(installed, approved=True, trailwatch=bool(ctx.options.get('trailwatch')))
+        ctx.progress(op, 0.5, 'CEDAR is on screen; checking its health')
+        with ctx.capture(op):
+            backend.keep()
+        ctx.progress(op, 0.8, 'Enabling CEDAR at login')
+        with ctx.capture(op):
+            backend.keep(login=True, approved=True)
+    except (RuntimeError, OSError, ValueError) as error:
+        # The adapters refuse rather than guess (an unidentified shell, a
+        # locker, an unknown idle daemon). CEDAR is installed either way;
+        # the person starts it when the desktop is ready for it.
+        if ctx.log: ctx.log.warn('session handoff refused: ' + str(error), op.id)
+        session_rollback(ctx, op)
+        raise ops.Warn('CEDAR is installed but was not started in this session: ' + str(error).rstrip('.') + '. Start it when ready with "cedar try", then "cedar keep".') from error
     backup = reopen_backup(ctx)
     record = backend.read_record() or {}
     if backup:

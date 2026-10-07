@@ -209,10 +209,13 @@ def scan(host, source, state_dir=None):
     facts['kernel'] = host.kernel()
     facts['python'] = list(host.python_version())
     facts['packageManager'] = next((name for name in ('pacman', 'apt-get', 'dnf', 'zypper') if host.which(name)), '')
+    # The installer's own window is a Quickshell program; it is not a desktop.
+    own = ('installer.qml', 'installer-preview.qml', 'preview.qml', 'auth-test.qml')
+    processes = [p for p in processes if not (Path(p['exe']).name in ('qs', 'quickshell') and any(Path(a).name in own for a in p['argv']))]
     facts['processes'] = processes
     facts['userUnits'] = host.user_units()
     facts['packages'] = host.packages()
-    facts['quickshellInstances'] = quickshell_instances(host)
+    facts['quickshellInstances'] = [row for row in quickshell_instances(host) if Path(str(row.get('config_path', ''))).name not in own]
     facts['compositor'] = compositor(host, processes)
     facts['hyprlandInstalled'] = bool(host.which('hyprctl') or host.which('Hyprland'))
     facts['hyprlandVersion'] = version_of(host, ['hyprctl', 'version']) if host.which('hyprctl') else ''

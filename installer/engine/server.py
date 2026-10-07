@@ -147,6 +147,16 @@ class Engine:
             return result
         finally:
             self.busy = False
+            self.copy_log_to_backup()
+
+    def copy_log_to_backup(self):
+        """A copy of this run's log beside the backup manifest, so one folder tells the whole story."""
+        if self.runner and self.runner.backup and self.log and self.log.path.is_file():
+            try:
+                target = Path(self.runner.backup) / self.log.path.name
+                shutil.copy2(self.log.path, target); os.chmod(target, 0o600)
+            except OSError:
+                pass
 
     def failure(self, failure, runner):
         op = failure.operation

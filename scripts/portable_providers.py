@@ -422,7 +422,8 @@ def inspect(root):
     instances = qs_instances()
     for entry in instances:
         source = Path(entry.get('config_path', '/unavailable'))
-        if source.name in ('preview.qml', 'auth-test.qml'):
+        # CEDAR's own windows: the isolated preview, the password test and the installer.
+        if source.name in ('preview.qml', 'auth-test.qml', 'installer.qml', 'installer-preview.qml'):
             continue
         if source.name == 'shell.qml' and (source.parent / 'Commons/Settings.qml').is_file() and (source.parent / 'Services/Control/IPCService.qml').is_file():
             proc = next((p for p in all_processes if p['pid'] == entry.get('pid')), None)
