@@ -350,6 +350,9 @@ def install(root,approved=False,plan_only=False):
         session_recovery=paths()['data']/'recovery/omarchy_session.py'
         provider_recovery=paths()['data']/'recovery/omarchy_providers.py'
         portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py','portable_controls.py','adoption_plan.py','startup_graph.py')]
+        # First-party application entries: a launcher entry and icon for CEDAR Shield, journaled like every other installed file.
+        share=paths()['data'].parent
+        launcher_files={share/'applications/cedar-shield.desktop':(root/'data/applications/cedar-shield.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-shield.svg':(root/'data/icons/cedar-shield.svg',0o644)}
         if binary.exists() or binary.is_symlink():
             if not binary.is_file() or b'# CEDAR distribution launcher' not in binary.read_bytes():raise Refused('The cedar command is already owned elsewhere. Existing installation preserved.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
@@ -368,7 +371,7 @@ def install(root,approved=False,plan_only=False):
         validation=validate(root)
         tx=Transaction('install')
         try:
-            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery,session_recovery,provider_recovery,*portable_recovery]}
+            tx.stage('plan');entries={str(p):tx.backup(p) for p in [current,binary,recovery,session_recovery,provider_recovery,*portable_recovery,*launcher_files]}
             for p in (recovery,session_recovery,provider_recovery,*portable_recovery):entries[str(p)]['retainOnRestore']=True
             tx.save();tx.stage('back-up')
             destination.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
@@ -393,6 +396,8 @@ def install(root,approved=False,plan_only=False):
             tx.apply_file(entries[str(recovery)],(root/'scripts/distribution.py').read_bytes(),0o700)
             launcher='#!/bin/sh\n# CEDAR distribution launcher\nexec python3 '+__import__('shlex').quote(str(recovery))+' "$@"\n'
             tx.apply_file(entries[str(binary)],launcher.encode(),0o700)
+            for target,(source,mode) in launcher_files.items():
+                if source.is_file(): tx.apply_file(entries[str(target)],source.read_bytes(),mode)
             tx.apply_link(entries[str(current)],destination)
             tx.stage('confirm');tx.commit()
             print('Files installed and verified. '+validation+' Desktop activation: not performed.')
@@ -559,7 +564,7 @@ def uninstall(approved=False):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
@@ -600,6 +605,7 @@ def main(argv=None):
         elif args.action=='lock': backend.request_lock(args.suspend)
         else: raise Refused('Use the existing Omarchy controls for this session.')
     elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
+    elif args.action=='shield':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call','shield','open'])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()
         if args.action=='preview':preview(root)

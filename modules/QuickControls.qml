@@ -172,10 +172,19 @@ ColumnLayout {
             label: "Do not disturb"; value: Config.saved.doNotDisturb ? "Quiet" : "Off"; on: Config.saved.doNotDisturb
             onClicked: Config.set("doNotDisturb", !Config.saved.doNotDisturb)
         }
+        // Shield: status and a way in; the full management lives in its own window.
+        Tile {
+            order: 6
+            label: "Shield"
+            value: Shield.ready ? Shield.headline : "Shield"
+            on: Shield.posture === "protected"
+            hint: Shield.ready ? Shield.subline + " · opens CEDAR Shield" : "Opens CEDAR Shield"
+            onClicked: { Shield.openApp(); Canopy.close(); }
+        }
         // Gaming Mode: the desktop quiets itself around the game. The value is
         // the transaction's real result, never an optimistic ON.
         Tile {
-            order: 6
+            order: 7
             label: "Gaming"
             value: Gaming.busy ? "…" : Gaming.active ? Gaming.activeCount + "/" + Gaming.totalCount + " active" : "Off"
             on: Gaming.active
@@ -187,7 +196,7 @@ ColumnLayout {
         // (back to Automatic if it was switched on by hand, Off if a game or
         // battery saver turned it on); a tap while off switches it on.
         Tile {
-            order: 7
+            order: 8
             label: "Performance"
             value: Config.performanceActive ? (Config.performanceMode === "on" ? "On" : "Auto · " + (Config.powerSaving ? "battery saver" : "game"))
                  : (Config.performanceMode === "off" ? "Off" : "Auto")

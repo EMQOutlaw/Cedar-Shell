@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- CEDAR Shield: a geometric shield holding a cedar's branching structure. -->
+  <path d="M32 3 L56 11 V33 C56 46 45 56 32 61 C19 56 8 46 8 33 V11 Z" fill="#101E19" stroke="#3FE0C5" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M32 54 V13" stroke="#9DFFB0" stroke-width="2.4" stroke-linecap="round"/>
+  <g stroke="#9DFFB0" stroke-width="2" stroke-linecap="round" fill="none">
+    <path d="M32 46 Q25 45 18 40"/><path d="M32 46 Q39 45 46 40"/>
+    <path d="M32 38 Q26 37 20 32"/><path d="M32 38 Q38 37 44 32"/>
+    <path d="M32 30 Q27 29 23 25"/><path d="M32 30 Q37 29 41 25"/>
+    <path d="M32 22 Q29 21 26 18"/><path d="M32 22 Q35 21 38 18"/>
+  </g>
+</svg>

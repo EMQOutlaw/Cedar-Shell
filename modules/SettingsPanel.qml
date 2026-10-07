@@ -170,7 +170,7 @@ Rectangle {
                             id:loader; Layout.fillWidth:true
                             asynchronous:true
                             active:root.active || !!item?.dirty
-                            sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,shield:shield,audio:audio,notifications:notifications,power:power,time:time,system:system,about:about})[root.section] || overview
+                            sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,system:system,about:about})[root.section] || overview
                             onLoaded:Qt.callLater(reveal.restart)
                         }
                         Flow {
@@ -201,6 +201,5 @@ Rectangle {
     Component { id:power; PowerSettings { highlightKey:root.highlightKey } }
     Component { id:time; TimeSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:system; SystemSettings {} }
-    Component { id:shield; ShieldSettings { active:root.active && root.section==="shield"; highlightKey:root.highlightKey } }
     Component { id:about; AboutSettings {} }
 }

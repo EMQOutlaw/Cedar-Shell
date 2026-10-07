@@ -8,6 +8,9 @@ One JSON request on stdin, one reply on stdout. Actions:
   dns {mode, provider}           DNS-over-TLS on the active NetworkManager connection,
                                  served by systemd-resolved; captured, applied, verified
   wifi {policy}                  the Wi-Fi profile's MAC address policy (NetworkManager)
+  ipv6 {enable}                  IPv6 privacy extensions on the active connection (NetworkManager)
+  discovery {enable}             mDNS/LLMNR answering on the active connection (NetworkManager →
+                                 systemd-resolved) and the Avahi daemon (pkexec)
   exposure                       a fresh listener scan from /proc/net
 
 Nothing is polled: the shell asks when Shield opens, when the user refreshes,
@@ -134,6 +137,8 @@ def parse_resolvectl(text):
         if key == 'Protocols':
             blocks[current]['dot'] = '+DNSOverTLS' in value
             blocks[current]['dnssec'] = 'DNSSEC=yes' in value
+            blocks[current]['mdns'] = '+mDNS' in value
+            blocks[current]['llmnr'] = '+LLMNR' in value
         elif key == 'DNS Servers':
             blocks[current]['servers'] = value.split()
         elif key == 'Current DNS Server':
@@ -288,6 +293,84 @@ def apply_wifi(request):
     return after
 
 
+# -------------------------------------------------------------- ipv6 privacy
+def ipv6_privacy(connection):
+    """NetworkManager's ipv6.ip6-privacy on the connection: 2 prefers temporary
+    addresses, 1 generates them but prefers public, 0 off, -1 the system
+    default (then the kernel's use_tempaddr decides)."""
+    if not connection:
+        return dict(available=False, reason='No active connection.')
+    value = nm_fields(connection['uuid'], ['ipv6.ip6-privacy']).get('ipv6.ip6-privacy', '-1')
+    device = connection.get('device', '')
+    kernel = ''
+    try:
+        kernel = Path('/proc/sys/net/ipv6/conf/' + device + '/use_tempaddr').read_text().strip() if device else ''
+    except OSError:
+        kernel = ''
+    effective = value if value in ('0', '1', '2') else kernel or '0'
+    return dict(available=True, setting=value, kernel=kernel, effective=effective, active=effective == '2', partial=effective == '1')
+
+
+def apply_ipv6(request):
+    enable = bool(request.get('enable'))
+    connection = active_connection(default_device())
+    if not connection:
+        raise RuntimeError('No active NetworkManager connection to configure.')
+    before = nm_fields(connection['uuid'], ['ipv6.ip6-privacy']).get('ipv6.ip6-privacy', '-1')
+    run(['nmcli', 'connection', 'modify', connection['uuid'], 'ipv6.ip6-privacy', '2' if enable else '0'])
+    run(['nmcli', 'device', 'reapply', connection['device']], check=False)
+    after = ipv6_privacy(connection)
+    if after['active'] != enable:
+        run(['nmcli', 'connection', 'modify', connection['uuid'], 'ipv6.ip6-privacy', before], check=False)
+        raise RuntimeError('IPv6 privacy did not verify; the previous setting was restored.')
+    return after
+
+
+# ------------------------------------------------------------------ discovery
+def discovery(connection, link_block):
+    """Whether this computer answers multicast name queries: resolved's mDNS and
+    LLMNR responders on the link (NetworkManager's connection.mdns/llmnr) and
+    the Avahi daemon. Answering is convenient at home and chatty elsewhere."""
+    avahi = unit_state_pair('avahi-daemon.service')
+    info = dict(available=True, avahi=avahi == 'active', mdns=None, llmnr=None, setting=dict(mdns='-1', llmnr='-1'))
+    if link_block:
+        info['mdns'] = bool(link_block.get('mdns')); info['llmnr'] = bool(link_block.get('llmnr'))
+    if connection:
+        fields = nm_fields(connection['uuid'], ['connection.mdns', 'connection.llmnr'])
+        info['setting'] = dict(mdns=fields.get('connection.mdns', '-1'), llmnr=fields.get('connection.llmnr', '-1'))
+    info['answering'] = bool(info['avahi'] or info['mdns'] or info['llmnr'])
+    return info
+
+
+def unit_state_pair(unit):
+    return capabilities.unit_state(unit)[0]
+
+
+def apply_discovery(request):
+    enable = bool(request.get('enable'))   # enable = answer queries; disable = quiet
+    connection = active_connection(default_device())
+    if not connection:
+        raise RuntimeError('No active NetworkManager connection to configure.')
+    before = nm_fields(connection['uuid'], ['connection.mdns', 'connection.llmnr'])
+    value = '2' if enable else '0'   # 2 resolve+answer, 0 off, per NetworkManager
+    run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', value, 'connection.llmnr', value])
+    run(['nmcli', 'device', 'reapply', connection['device']], check=False)
+    if not enable and unit_state_pair('avahi-daemon.service') == 'active':
+        priv = capabilities.privilege()
+        if priv['helper'] == 'pkexec' and priv['agent']:
+            try:
+                run(['pkexec', 'systemctl', 'disable', '--now', 'avahi-daemon.socket', 'avahi-daemon.service'], timeout=120)
+            except RuntimeError as error:
+                run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
+                raise RuntimeError('Avahi could not be stopped (' + str(error) + '); the resolver settings were restored.')
+    status = parse_resolvectl(run(['resolvectl', 'status'], check=False))
+    after = discovery(connection, status.get(connection['device']) or {})
+    if after['answering'] == enable:
+        return after
+    run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
+    raise RuntimeError('Network discovery did not verify; the previous settings were restored.')
+
+
 # ------------------------------------------------------------------ firewall
 def firewall_commands(provider, enable):
     if provider == 'ufw':
@@ -327,8 +410,21 @@ def apply_firewall(request):
 
 # ------------------------------------------------------------------ snapshot
 def snapshot(exposure_scan=True):
+    import time
     caps = capabilities.snapshot()
-    data = dict(firewall=caps['firewall'], dns=dns(caps['dns']), privilege=caps['privilege'])
+    data = dict(firewall=caps['firewall'], dns=dns(caps['dns']), privilege=caps['privilege'], verifiedAt=time.time())
+    device = default_device()
+    connection = active_connection(device) if caps['network']['nmcli'] else None
+    data['connection'] = connection
+    try:
+        data['ipv6'] = ipv6_privacy(connection) if connection else dict(available=False, reason='No active connection.')
+    except RuntimeError as error:
+        data['ipv6'] = dict(available=False, reason=str(error))
+    try:
+        link = parse_resolvectl(run(['resolvectl', 'status'], check=False)).get(device) if caps['dns'].get('resolvectl') else None
+        data['discovery'] = discovery(connection, link or {})
+    except RuntimeError as error:
+        data['discovery'] = dict(available=False, reason=str(error))
     try:
         data['wifi'] = wifi_profile() if caps['network']['nmcli'] else dict(available=False, reason='NetworkManager is not running.')
     except RuntimeError as error:
@@ -352,6 +448,10 @@ def main():
             apply_dns(request, capabilities.dns()); data = snapshot(exposure_scan=False)
         elif action == 'wifi':
             apply_wifi(request); data = snapshot(exposure_scan=False)
+        elif action == 'ipv6':
+            apply_ipv6(request); data = snapshot(exposure_scan=False)
+        elif action == 'discovery':
+            apply_discovery(request); data = snapshot(exposure_scan=False)
         else:
             raise ValueError('Unknown Shield action.')
         print(json.dumps(dict(ok=True, data=data)))

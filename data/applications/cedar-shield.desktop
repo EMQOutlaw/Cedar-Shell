@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Shield
+GenericName=Protection
+Comment=CEDAR Shield: your firewall, encrypted DNS, private Wi-Fi address and what listens on your network
+Exec=cedar shield
+TryExec=qs
+Icon=cedar-shield
+Terminal=false
+Categories=System;Security;Settings;
+Keywords=security;privacy;firewall;dns;vpn;protection;cedar;
+StartupNotify=false
+X-CEDAR-App=shield

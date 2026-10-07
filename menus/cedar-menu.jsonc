@@ -90,7 +90,7 @@
   "cedar.shield": {
     "label": "Shield",
     "description": "Firewall, encrypted DNS, private Wi-Fi address, local exposure",
-    "action": "cedar:settings shield",
+    "action": "cedar:shield",
     "aliases": [
       "firewall",
       "dns",

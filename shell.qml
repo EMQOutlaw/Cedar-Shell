@@ -51,6 +51,12 @@ ShellRoot {
         }
     }
     CedarCore {}
+    // CEDAR Shield: a first-party application window over the Shield service,
+    // created when opened and released when closed.
+    LazyLoader {
+        active: Config.stage >= 3 && Shield.windowOpen
+        ShieldApp {}
+    }
     // One Canopy on its chosen output. Output changes replace the host safely.
     Variants {
         reloadableId: "cedar-canopy-host"
@@ -116,8 +122,11 @@ ShellRoot {
     // Shield: `shield refresh|status`; the page itself is `settings show shield`.
     IpcHandler {
         target: "shield"
+        function open(): void { if (Config.stage >= 3) Shield.openApp(); }
+        function close(): void { Shield.closeApp(); }
+        function toggle(): void { if (Config.stage >= 3) Shield.toggleApp(); }
         function refresh(): void { if (Config.stage >= 3) Shield.refresh(); }
-        function status(): string { return JSON.stringify({ ready: Shield.ready, headline: Shield.headline, busy: Shield.busy, error: Shield.error, protections: Shield.protections.map(p => ({ id: p.id, state: p.state, value: p.value, detail: p.detail })) }); }
+        function status(): string { return JSON.stringify({ ready: Shield.ready, posture: Shield.posture, headline: Shield.headline, subline: Shield.subline, windowOpen: Shield.windowOpen, busy: Shield.busy, error: Shield.error, protections: Shield.protections.map(p => ({ id: p.id, state: p.state, value: p.value, detail: p.detail })) }); }
     }
     // Gaming Mode: `gaming toggle|activate|deactivate|status` (Super+G).
     IpcHandler {

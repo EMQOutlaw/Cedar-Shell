@@ -13,7 +13,6 @@ var pages = [
  {id:"input",label:"Input",icon:"⌨",group:"",description:"Keyboard layout, pointer feel, touchpad behavior, and key repeat."},
  {id:"keybinds",label:"Keybinds",icon:"⌘",group:"",description:"Every shortcut, read live from your Hyprland config, plus your own custom binds."},
  {id:"connections",label:"Connections",icon:"⌁",group:"",description:"Wi-Fi networks, Bluetooth devices, and your hotspot, in one place."},
- {id:"shield",label:"Shield",icon:"⬡",group:"",description:"Firewall, encrypted DNS, private Wi-Fi address and what listens on your network, read from the services that own them."},
  {id:"audio",label:"Audio",icon:"♫",group:"Daily use",description:"Output devices, microphones, and application volume."},
  {id:"notifications",label:"Notifications",icon:"◌",group:"",description:"Choose when CEDAR asks for your attention."},
  {id:"power",label:"Power & Lock",icon:"⏻",group:"",description:"Energy, brightness, and session security."},

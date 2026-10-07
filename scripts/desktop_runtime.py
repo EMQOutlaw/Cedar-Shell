@@ -212,6 +212,8 @@ def main(args):
         ipc(*surfaces[name])
     elif name == 'settings' and len(args) == 2:
         ipc('settings', 'show', args[1])
+    elif name == 'shield':
+        ipc('shield', 'open')
     elif name == 'canopy' and len(args) == 2:
         ipc('canopy', 'show', args[1])
     elif name == 'launch' and len(args) >= 2:

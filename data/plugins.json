@@ -268,12 +268,15 @@
         "scripts/desktop.py",
         "scripts/settings_info.py",
         "services/SetupFlow.qml",
-        "modules/ShieldSettings.qml",
         "components/ProtectionCard.qml",
         "components/ExpandableDetails.qml",
         "components/ShieldMark.qml",
         "services/Shield.qml",
-        "scripts/shield.py"
+        "scripts/shield.py",
+        "modules/ShieldApp.qml",
+        "modules/ShieldPages.qml",
+        "data/applications/cedar-shield.desktop",
+        "data/icons/cedar-shield.svg"
       ],
       "dependencies": [
         "qs",
@@ -341,12 +344,15 @@
         "scripts/desktop.py",
         "scripts/settings_info.py",
         "services/SetupFlow.qml",
-        "modules/ShieldSettings.qml",
         "components/ProtectionCard.qml",
         "components/ExpandableDetails.qml",
         "components/ShieldMark.qml",
         "services/Shield.qml",
-        "scripts/shield.py"
+        "scripts/shield.py",
+        "modules/ShieldApp.qml",
+        "modules/ShieldPages.qml",
+        "data/applications/cedar-shield.desktop",
+        "data/icons/cedar-shield.svg"
       ]
     },
     {

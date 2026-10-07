@@ -37,6 +37,14 @@ Singleton {
     readonly property color brightTeal: "#9AF4E1"
     readonly property color white: "#F4FFF8"
     readonly property color transparent: Qt.alpha(background, 0)
+    // State tokens: what a thing is doing, not which hue it is. Shield, Gaming
+    // and any future first-party surface read these, so a theme change reaches
+    // them without a literal colour anywhere else.
+    readonly property color success: green
+    readonly property color warning: amber
+    readonly property color danger: ember
+    readonly property color inactive: muted
+    readonly property color glow: Qt.alpha(green, 0.18)
     readonly property color glass: Qt.alpha(background, 0.94)
     readonly property color veil: Qt.alpha(background, 0.88)
     readonly property color grid: Qt.alpha(teal, 0.045)
