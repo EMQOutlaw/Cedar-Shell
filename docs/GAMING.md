@@ -54,15 +54,21 @@ monitor that had focus, on the overlay layer, with no input (clicks pass
 through to the game) and no keyboard focus. It is a live view of the
 transaction, not a notification:
 
-    CEDAR GAMING
-    Preparing system…
-    ✓ CEDAR effects            ○ waiting   ◌ applying   ✓ ready   ! could not apply
-    ✓ Notifications
-    ◌ Sleep inhibited
-    ○ Performance profile
-    ○ Compositor effects
-    –  GameMode   Not installed
-    3 / 5 ready
+    ── ◈ CEDAR GAMING ──
+       Preparing system…
+    ━━━━━━━━━━━━●───────────          a filament lit to the verified fraction
+    ◆ CEDAR effects          READY
+    ◆ Notifications          READY
+    ◇ Sleep inhibited        APPLYING
+    ◇ Performance profile    WAITING
+    ◇ Compositor effects     WAITING
+    ◇ GameMode               NOT INSTALLED
+           2 / 5  READY
+
+Each row is a diamond marker that fills when its provider verifies the
+change, the name in the display face, and a spaced-capital state word in
+the data face (WAITING, APPLYING, READY, COULD NOT APPLY in amber, NOT
+INSTALLED quiet). The card is 480 px wide and scales with the font scale.
 
 A row is marked ready only when its provider has verified the change. A
 step whose provider is missing (GameMode not installed, no performance

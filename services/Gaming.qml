@@ -86,8 +86,26 @@ Singleton {
         if (active || busy || ShellState.locked) return;
         busy = true; error = ""; phase = "capture"; trigger = reason || "manual";
         steps = registry.map(r => ({ id: r.id, label: r.label, hud: r.hud, restored: r.restored, state: r.enabled ? "pending" : "off", detail: r.enabled ? "" : "Turned off in Settings" }));
-        captured = { dnd: Config.saved.doNotDisturb, profile: Controls.data.profile || "", compositor: null };
+        captured = ({}); controlsAsked = false;
         showHud("enter");
+        prepare();
+    }
+    // Prerequisites before anything is captured: the capability registry
+    // must have answered (right after login it may still be discovering) and
+    // the power snapshot must be current, since Controls only reads it when a
+    // panel opens. Without this, Super+G seconds after login reported steps
+    // as unavailable and captured no profile to restore.
+    property bool controlsAsked: false
+    function prepare() {
+        if (phase !== "capture") return;
+        if (Config.testMode) return capture();
+        if (!Capabilities.ready) return;                              // onReadyChanged → prepare()
+        if (!controlsAsked && !(Controls.data.profiles || []).length) { controlsAsked = true; waitingFor = "snapshot"; Controls.refresh(); if (Controls.busy) return; waitingFor = ""; }
+        capture();
+    }
+    Connections { target: Capabilities; function onReadyChanged() { if (Capabilities.ready) root.prepare(); } }
+    function capture() {
+        captured = { dnd: Config.saved.doNotDisturb, profile: Controls.data.profile || "", compositor: null };
         if (wantsCompositor() && Capabilities.gaming.hyprctl && !Config.testMode) { setStep("compositor", "applying", "Reading the current values"); ask({ action: "compositor", mode: "capture" }); }
         else apply();
     }
@@ -141,6 +159,7 @@ Singleton {
         function onBusyChanged() {
             if (Controls.busy || !root.waitingFor) return;
             const what = root.waitingFor; root.waitingFor = "";
+            if (what === "snapshot") return root.prepare();
             if (what === "power") root.setStep("power", Controls.data.profile === "performance" ? "active" : "failed", Controls.data.profile === "performance" ? "Switched from " + (root.captured.profile || "unknown") : (Controls.error || "Profile did not change"));
             else { const previous = root.captured.profile || ""; root.setStep("power", Controls.data.profile === previous ? "restored" : "failed", Controls.data.profile === previous ? "Back on " + previous : (Controls.error || "Profile did not return to " + previous)); }
             root.finish();

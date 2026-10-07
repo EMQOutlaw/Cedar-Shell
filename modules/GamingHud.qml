@@ -25,5 +25,5 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     visible: Gaming.hudShown
-    GamingHudCard { id: card; anchors.centerIn: parent; width: 400 }
+    GamingHudCard { id: card; anchors.centerIn: parent; width: 480 }
 }

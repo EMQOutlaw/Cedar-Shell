@@ -22,12 +22,12 @@ import "modules"
 ShellRoot {
     FloatingWindow {
         id: window
-        visible: true; implicitWidth: 520; implicitHeight: 420; color: Theme.background
+        visible: true; implicitWidth: 600; implicitHeight: 560; color: Theme.background
         function check(ok, msg) { if (!ok) { console.error("FAIL: " + msg); Qt.exit(1); } }
         function shot(name) { card.grabToImage(r => r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/" + name + ".png")); }
         function row(id, hud, state, detail) { return { id: id, label: id, hud: hud, restored: id === "idle" ? "Idle policy restored" : hud + " restored", state: state, detail: detail || "" }; }
         property int step: 0
-        GamingHudCard { id: card; anchors.centerIn: parent; width: 400 }
+        GamingHudCard { id: card; anchors.centerIn: parent; width: 480 }
         Timer {
             interval: 450; running: true; repeat: true
             onTriggered: {
@@ -39,7 +39,7 @@ ShellRoot {
                     break;
                 case 1:
                     window.check(card.heading === "Preparing system…" && card.footer === "2 / 5 ready", "Preparing heading and count (" + card.heading + " / " + card.footer + ")");
-                    window.check(card.rows.length === 6 && card.aside(card.rows[5]) === "Not installed" && card.glyph("applying") === "◌", "Unavailable GameMode shown quietly as Not installed");
+                    window.check(card.rows.length === 6 && card.aside(card.rows[5]) === "Not installed" && card.word(card.rows[5]) === "NOT INSTALLED" && card.word(card.rows[2]) === "APPLYING", "Unavailable GameMode shown quietly as Not installed");
                     window.shot("gaming-hud-preparing");
                     break;
                 case 2:
@@ -72,7 +72,7 @@ ShellRoot {
                     Gaming.steps = [window.row("quiet", "CEDAR effects", "restored"), window.row("dnd", "Notifications", "restored"), window.row("idle", "Sleep inhibited", "applying"), window.row("power", "Performance profile", "pending"), window.row("compositor", "Compositor effects", "pending")];
                     break;
                 case 8:
-                    window.check(card.heading === "Restoring system…" && card.footer === "2 / 5 restored" && card.label(card.rows[0]) === "CEDAR effects restored", "Restore rows read as restored (" + card.footer + ")");
+                    window.check(card.heading === "Restoring system…" && card.footer === "2 / 5 restored" && card.word(card.rows[0]) === "RESTORED" && card.word(card.rows[2]) === "RESTORING", "Restore rows read as restored (" + card.footer + ")");
                     window.shot("gaming-hud-restoring");
                     Gaming.steps = Gaming.steps.map(s => Object.assign({}, s, { state: "restored" })); Gaming.busy = false;
                     break;
