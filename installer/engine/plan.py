@@ -41,8 +41,20 @@ def attention(facts, options):
         add('compositor', 'Another compositor is running: ' + facts['compositor']['name'], 'CEDAR is a Hyprland desktop. It can be installed now and started from a Hyprland session later; no session handoff will be attempted here.', 'warn')
     if not facts['hyprlandInstalled']:
         add('hyprland', 'Hyprland is not installed', 'CEDAR runs on Hyprland. Install and start Hyprland first; the installer does not replace your compositor or login manager.')
+    if facts['existingCedar'].get('commandOwner') == 'other':
+        add('command', 'Another program owns the cedar command', '~/.local/bin/cedar exists and is not CEDAR’s, so the installer will not replace it. Move it aside (mv ~/.local/bin/cedar ~/.local/bin/cedar.other), then check again.')
     if facts['locked']:
         add('locked', 'The session is locked', 'Unlock the desktop normally, then continue. The installer never interrupts a locker.')
+    # The Omarchy handoff pauses the stock Omarchy shell and refuses when it is not running, or
+    # when another CEDAR (a checkout selected as the Omarchy theme) already has the display.
+    if facts['environment'].get('id') == 'omarchy' and options.get('session') and facts['existingCedar']['session'] == 'not active':
+        paths = [str(row.get('config_path', '')) for row in facts.get('quickshellInstances', [])]
+        omarchy_shells = [p for p in paths if p.endswith('/omarchy/shell/shell.qml')]
+        other_cedar = [p for p in paths if p.endswith('shell.qml') and ('cedar' in p.lower() or 'foxfire' in p.lower())]
+        if other_cedar:
+            add('session', 'Another CEDAR is already running as the desktop', 'A CEDAR shell is running from ' + other_cedar[0] + ', so the session step cannot hand this release the display; CEDAR installs and the session step is skipped with a note. To run the installed release instead, select another Omarchy theme first (that returns the stock shell), then run cedar try and cedar keep.', 'warn')
+        elif len(omarchy_shells) != 1:
+            add('session', 'The Omarchy shell is not running', 'The session step pauses Omarchy’s own shell and starts CEDAR in its place; with ' + ('no' if not omarchy_shells else str(len(omarchy_shells))) + ' Omarchy shell running it is refused and CEDAR is installed without starting. Start the Omarchy shell (omarchy-restart-shell), or install now and run cedar try later.', 'warn')
     if facts['defaultQuickshellProfile']:
         add('qsdefault', 'A default Quickshell profile masks named shells', '~/.config/quickshell/shell.qml would hide CEDAR’s named profile. Move it aside before installing; the installer will not replace it.')
     disk = facts.get('disk') or {}
@@ -103,6 +115,8 @@ def build(facts, options=None):
         cedar.append('Dependencies already present')
     if facts['existingCedar']['session'] != 'not active':
         cedar.append('Hand the desktop back to the previous shell while CEDAR ' + facts['cedarVersion'] + ' installs, then start it again')
+    if facts['existingCedar'].get('commandOwner') == 'source':
+        cedar.append('Replace the cedar command from the earlier local-source registration (restorable from the journal)')
     cedar.append('Install CEDAR ' + facts['cedarVersion'] + ' as a versioned copy with the cedar command and offline recovery')
     cedar.append('Check that the CEDAR shell loads with this Quickshell and Qt')
     cedar.append('Install CEDAR application entries (Shield)')

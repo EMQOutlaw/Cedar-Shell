@@ -202,8 +202,21 @@ class Planning(unittest.TestCase):
         plan = plan_module.build(facts)
         self.assertIn('quickshell', plan['packages']); self.assertEqual(plan['packageProvider'], 'pacman')
         self.assertEqual(plan['privilege'], 'pkexec')
-        self.assertTrue(any('pacman -Syu' in n for n in plan['packageNotes']))
+        # The fixture host is Omarchy: packages are added the way omarchy pkg add does, never a direct -Syu.
+        self.assertEqual(facts['environment']['id'], 'omarchy')
+        self.assertTrue(any('omarchy pkg add' in n for n in plan['packageNotes'])); self.assertFalse(any('full system upgrade' in n for n in plan['packageNotes']))
         self.assertTrue(any('Install dependencies' in r for r in plan['cedar']))
+        from installer.providers import packages
+        self.assertEqual(packages.select(facts).argv(['hypridle']), ['pacman', '-S', '--needed', '--noconfirm', 'hypridle'])
+        plain = packages.select({**facts, 'environment': {'id': 'hyprland'}})
+        self.assertEqual(plain.argv(['hypridle']), ['pacman', '-Syu', '--needed', '--noconfirm', 'hypridle'])
+        self.assertTrue(any('pacman -Syu' in n for n in plain.check(host, ['hypridle'])))
+        guard = ['(1/2) Checking Omarchy update entrypoint...', 'Woah partner...', 'This looks like a direct pacman system upgrade. Omarchy updates should normally', 'run through:', '  omarchy update', 'error: failed to commit transaction (failed to run transaction hooks)']
+        self.assertIn('omarchy update', packages.explain(guard, omarchy=True))
+        self.assertIn('omarchy update', packages.explain(['error: failed retrieving file \'hypridle-0.1.8-2-x86_64.pkg.tar.zst\' from mirror : The requested URL returned error: 404'], omarchy=True))
+        self.assertIn('pacman -Syu', packages.explain(['error: failed retrieving file x: error 404'], omarchy=False))
+        self.assertIn('lock', packages.explain(['error: failed to init transaction (unable to lock database)']))
+        self.assertEqual(packages.explain(['something new']), '')
 
     def test_unsupported_distribution_with_missing_dependencies_needs_attention(self):
         host = arch_host(which=[w for w in arch_host().available if w not in ('qs', 'pacman')], release={'ID': 'fedora', 'PRETTY_NAME': 'Fedora 42'}, packages={})
@@ -245,6 +258,37 @@ class Planning(unittest.TestCase):
         quiet = plan_module.build(facts_module.scan(arch_host(), ROOT))
         self.assertFalse(next(op for op in quiet['operations'] if op['id'] == 'leave')['enabled'])
 
+    def test_omarchy_handoff_preconditions_are_warned_in_the_plan(self):
+        def rows(*paths): return [{'config_path': p, 'pid': 100 + i} for i, p in enumerate(paths)]
+        base = arch_host()
+        stock = facts_module.scan(base, ROOT)
+        stock['quickshellInstances'] = rows('/usr/share/omarchy/shell/shell.qml')
+        plan_module.set_check_host(base)
+        self.assertNotIn('session', [a['id'] for a in plan_module.build(stock)['attention']])
+        none = facts_module.scan(base, ROOT); none['quickshellInstances'] = []
+        warn = next(a for a in plan_module.build(none)['attention'] if a['id'] == 'session')
+        self.assertEqual(warn['severity'], 'warn'); self.assertIn('not running', warn['title']); self.assertFalse(plan_module.build(none)['blocked'])
+        dev = facts_module.scan(base, ROOT); dev['quickshellInstances'] = rows('/users/station/.config/quickshell/cedar/shell.qml')
+        warn = next(a for a in plan_module.build(dev)['attention'] if a['id'] == 'session')
+        self.assertIn('Another CEDAR', warn['title']); self.assertIn('cedar try', warn['detail'])
+        self.assertNotIn('session', [a['id'] for a in plan_module.build(dev, {'session': False})['attention']])
+
+    def test_cedar_command_ownership_is_known_before_the_install(self):
+        base = arch_host()
+        self.assertEqual(facts_module.scan(base, ROOT)['existingCedar']['commandOwner'], 'none')
+        source = arch_host(files={**base.files, HOME + '/.local/bin/cedar': '#!/bin/sh\n# CEDAR-owned command entry point.\nexec python3 x\n'})
+        plan_module.set_check_host(source); facts = facts_module.scan(source, ROOT)
+        self.assertEqual(facts['existingCedar']['commandOwner'], 'source')
+        plan = plan_module.build(facts)
+        self.assertFalse(plan['blocked']); self.assertTrue(any('local-source registration' in r for r in plan['cedar']))
+        release = arch_host(files={**base.files, HOME + '/.local/bin/cedar': '#!/bin/sh\n# CEDAR distribution launcher\nexec python3 y\n'})
+        self.assertEqual(facts_module.scan(release, ROOT)['existingCedar']['commandOwner'], 'release')
+        other = arch_host(files={**base.files, HOME + '/.local/bin/cedar': '#!/bin/sh\necho not cedar\n'})
+        plan_module.set_check_host(other); facts = facts_module.scan(other, ROOT)
+        self.assertEqual(facts['existingCedar']['commandOwner'], 'other')
+        plan = plan_module.build(facts)
+        self.assertTrue(plan['blocked']); self.assertIn('command', [a['id'] for a in plan['attention']])
+
     def test_update_prefers_a_checkout_and_falls_back_to_the_bootstrap(self):
         sys.path.insert(0, str(ROOT / 'installer'))
         import cedar_install
@@ -260,6 +304,102 @@ class Planning(unittest.TestCase):
             (checkout / 'installer/cedar_install.py').write_text('')
             kind, target = cedar_install.update_plan(release_copy, {'HOME': str(home)})
             self.assertEqual((kind, target), ('checkout', checkout.resolve()))
+
+    def test_update_stage_fast_forwards_hands_off_and_guides_every_stop(self):
+        import subprocess
+        from installer.engine import update as update_module
+        def git(cwd, *args):
+            env = {**os.environ, 'GIT_AUTHOR_NAME': 't', 'GIT_AUTHOR_EMAIL': 't@example.invalid', 'GIT_COMMITTER_NAME': 't', 'GIT_COMMITTER_EMAIL': 't@example.invalid', 'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
+            return subprocess.run(['git', '-C', str(cwd), *args], check=True, text=True, capture_output=True, env=env).stdout.strip()
+        with tempfile.TemporaryDirectory(prefix='cedar update 雨 ') as temp:
+            root = Path(temp); origin = root / 'origin.git'; git(root, 'init', '-q', '--bare', '-b', 'main', str(origin))
+            seed = root / 'seed'; seed.mkdir(); git(seed, 'init', '-q', '-b', 'main')
+            (seed / 'installer').mkdir(); (seed / 'installer/cedar_install.py').write_text('# installer\n'); (seed / 'VERSION').write_text('1\n')
+            git(seed, 'add', '.'); git(seed, 'commit', '-q', '-m', 'one'); git(seed, 'remote', 'add', 'origin', str(origin)); git(seed, 'push', '-q', '-u', 'origin', 'main')
+            checkout = root / 'cedar-shell'; git(root, 'clone', '-q', str(origin), str(checkout))
+            home = root / 'home'; (home / '.local/share/cedar/current').mkdir(parents=True); (home / '.local/share/cedar/current/VERSION').write_text('1\n')
+            environ = {**os.environ, 'HOME': str(home), 'XDG_STATE_HOME': str(home / '.local/state'), 'XDG_DATA_HOME': str(home / '.local/share'), 'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
+            events = []
+            def emit(event, data): events.append((event, data))
+            def updater(): return update_module.Updater(checkout, emit=emit, environ=environ, state_dir=home / '.local/state/cedar/installer')
+            def upstream(version):
+                (seed / 'VERSION').write_text(version + '\n'); git(seed, 'commit', '-q', '-am', 'v' + version); git(seed, 'push', '-q')
+            # Already current and installed: the stage says so instead of reinstalling blindly.
+            result = updater().run()
+            self.assertEqual(result['kind'], 'checkout'); self.assertTrue(result['current']); self.assertFalse(result['changed'])
+            states = {d['id']: d['state'] for e, d in events if e == 'operation'}
+            self.assertEqual(states['apply'], 'skipped'); self.assertEqual(states['handoff'], 'complete')
+            self.assertEqual([e for e, _ in events].count('updated'), 1)
+            # A newer upstream fast-forwards; local edits to other files are kept and reported.
+            upstream('2'); note = checkout / 'notes.local'; note.write_text('mine'); (checkout / 'installer/cedar_install.py').write_text('# installer\n# mine\n')
+            events.clear(); up = updater(); result = up.run()
+            self.assertTrue(result['changed']); self.assertEqual(result['version'], '2'); self.assertEqual(result['previousVersion'], '1'); self.assertFalse(result['current'])
+            self.assertEqual((checkout / 'VERSION').read_text(), '2\n'); self.assertEqual(note.read_text(), 'mine')
+            states = {d['id']: d['state'] for e, d in events if e == 'operation'}
+            self.assertEqual(states['inspect'], 'warning'); self.assertEqual(states['apply'], 'complete')
+            record = up.proceed(['--yes']); self.assertTrue(up.handoff_path.is_file())
+            taken = update_module.take_handoff(home / '.local/state/cedar/installer')
+            self.assertEqual(taken['source'], str(checkout.resolve())); self.assertEqual(taken['argv'], ['--yes']); self.assertFalse(up.handoff_path.is_file())
+            self.assertIsNone(update_module.take_handoff(home / '.local/state/cedar/installer'))
+            # Edits that the update would overwrite stop with guidance and a reversible fix; the fix stashes, then the update applies.
+            upstream('3'); (checkout / 'VERSION').write_text('edited\n')
+            events.clear(); up = updater()
+            with self.assertRaises(update_module.Guidance) as stop: up.run()
+            self.assertEqual(stop.exception.code, 'edits'); self.assertEqual(stop.exception.fix, 'stash')
+            self.assertEqual((checkout / 'VERSION').read_text(), 'edited\n')
+            sent = next(d for e, d in events if e == 'update-error'); self.assertEqual(sent['fixLabel'], 'Set my edits aside and update'); self.assertTrue(sent['steps'])
+            up.fix('stash'); result = up.run()
+            self.assertEqual((checkout / 'VERSION').read_text(), '3\n'); self.assertTrue(result['changed'])
+            self.assertIn('CEDAR update', git(checkout, 'stash', 'list')); self.assertTrue(any('stash pop' in n for n in result['notes']))
+            # Commits of its own: guidance, no fix, nothing rewritten.
+            upstream('4'); (checkout / 'VERSION').write_text('local\n'); git(checkout, 'commit', '-q', '-am', 'local work')
+            with self.assertRaises(update_module.Guidance) as stop: updater().run()
+            self.assertEqual(stop.exception.code, 'diverged'); self.assertEqual(stop.exception.fix, '')
+            self.assertEqual((checkout / 'VERSION').read_text(), 'local\n'); self.assertEqual(git(checkout, 'log', '--oneline').count('\n'), 3)
+            git(checkout, 'reset', '-q', '--hard', 'origin/main')
+            # No upstream: guidance with the tracking fix, which then updates.
+            upstream('5'); git(checkout, 'branch', '--unset-upstream')
+            up = updater()
+            with self.assertRaises(update_module.Guidance) as stop: up.run()
+            self.assertEqual(stop.exception.code, 'upstream'); self.assertEqual(stop.exception.fix, 'upstream')
+            up.fix('upstream'); result = up.run(); self.assertEqual(result['version'], '5')
+            # A detached checkout and a broken scratch ref.
+            upstream('6'); git(checkout, 'checkout', '-q', '--detach')
+            with self.assertRaises(update_module.Guidance) as stop: updater().run()
+            self.assertEqual(stop.exception.code, 'detached')
+            git(checkout, 'switch', '-q', 'main'); (checkout / '.git/ORIG_HEAD').write_bytes(b'\x00garbage\n')
+            result = updater().run(); self.assertEqual(result['version'], '6'); self.assertTrue(any('ORIG_HEAD' in n for n in result['notes']))
+
+    def test_update_guidance_classifies_git_and_bootstrap_refusals(self):
+        from installer.engine import update as update_module
+        cases = {'fatal: unable to access \'https://github.com/x\': Could not resolve host: github.com': ('network', ''),
+                 'error: Your local changes to the following files would be overwritten by merge:\n\tVERSION\nPlease commit your changes or stash them before you merge.': ('edits', 'stash'),
+                 'error: The following untracked working tree files would be overwritten by merge:\n\tnew.txt': ('untracked', ''),
+                 'fatal: Not possible to fast-forward, aborting.': ('diverged', ''),
+                 'fatal: no upstream configured for branch \'main\'': ('upstream', 'upstream'),
+                 'fatal: detected dubious ownership in repository at \'/x\'': ('ownership', 'safe-directory'),
+                 'git@github.com: Permission denied (publickey).': ('auth', ''),
+                 'something else entirely': ('git', '')}
+        for stderr, (code, fix) in cases.items():
+            guidance = update_module.classify(stderr, '/x', 'main')
+            self.assertEqual((guidance.code, guidance.fix), (code, fix), stderr)
+            self.assertTrue(guidance.steps and guidance.message and guidance.title)
+            self.assertEqual(guidance.to_dict()['fixLabel'], update_module.FIX_LABELS.get(fix, ''))
+        self.assertEqual(update_module.classify_bootstrap('No published CEDAR release was found for x yet.').code, 'no-release')
+        self.assertFalse(update_module.classify_bootstrap('No published CEDAR release was found for x yet.').retry)
+        self.assertEqual(update_module.classify_bootstrap('CEDAR: Download verification failed. ...').code, 'checksum')
+        self.assertEqual(update_module.classify_bootstrap('CEDAR: curl or wget is needed to download the installer.').code, 'tools')
+        self.assertEqual(update_module.classify_bootstrap('curl: (6) Could not resolve host: github.com').code, 'network')
+
+    def test_bootstrap_fetch_only_reports_the_source_instead_of_installing(self):
+        import subprocess
+        script = (ROOT / 'installer/bootstrap/install.sh').read_text()
+        self.assertIn('CEDAR_FETCH_ONLY', script)
+        self.assertIn('say "CEDAR_SOURCE=$SOURCE"', script)
+        # The flag check sits before the exec and after the installer check.
+        self.assertLess(script.index('CEDAR_SOURCE=$SOURCE'), script.index('exec python3 "$SOURCE/installer/cedar_install.py"'))
+        self.assertGreater(script.index('CEDAR_SOURCE=$SOURCE'), script.index('has no installer'))
+        self.assertEqual(subprocess.run(['sh', '-n', str(ROOT / 'installer/bootstrap/install.sh')]).returncode, 0)
 
     def test_preview_only_environment_skips_session_honestly(self):
         host = arch_host(dirs=[HOME + '/.config/caelestia', '/sys/module/nvidia'], files={HOME + '/.local/state/caelestia/dots-state.json': '{}', HOME + '/.config/hypr/hyprland.conf': HYPR_CONF, ROOT / 'VERSION': '1', ROOT / 'data/dependencies.json': (ROOT / 'data/dependencies.json').read_text()},
@@ -486,8 +626,10 @@ class RunnerResume(unittest.TestCase):
 class DryRunAndCli(unittest.TestCase):
     def test_dry_run_uses_the_same_plan_builder(self):
         import subprocess
-        result = subprocess.run([sys.executable, str(ROOT / 'installer/cedar_install.py'), '--dry-run', '--no-gui', '--json'], capture_output=True, text=True, timeout=120,
-                                env={**os.environ, 'HOME': tempfile.mkdtemp(prefix='cedar-dry-')})
+        home = tempfile.mkdtemp(prefix='cedar-dry-')
+        # A private home and XDG tree: the developer's own interrupted installation must not steer this test.
+        env = {**os.environ, 'HOME': home, **{'XDG_' + key + '_HOME': home + '/' + key.lower() for key in ('CONFIG', 'DATA', 'STATE', 'CACHE')}}
+        result = subprocess.run([sys.executable, str(ROOT / 'installer/cedar_install.py'), '--dry-run', '--no-gui', '--json'], capture_output=True, text=True, timeout=120, env=env)
         self.assertIn('Dry run: nothing was changed.', result.stdout)
         start = result.stdout.index('{\n  "facts"')
         payload = json.loads(result.stdout[start:result.stdout.rindex('}') + 1])

@@ -30,6 +30,8 @@ sys.path.insert(0, str(SOURCE))
 
 from installer.engine import operations as ops  # noqa: E402
 from installer.engine import plan as plan_module  # noqa: E402
+from installer.engine import update as update_module  # noqa: E402
+from installer.engine.host import Host  # noqa: E402
 from installer.engine.server import Engine, serve  # noqa: E402
 
 
@@ -63,32 +65,45 @@ def update_plan(source, environ=None):
     A checkout wins when one exists (CEDAR_CHECKOUT, ~/cedar-shell, or the
     source itself when it is a checkout); otherwise the bootstrap downloads
     and verifies the latest release."""
-    environ = os.environ if environ is None else environ
-    candidates = [Path(source)]
-    if environ.get('CEDAR_CHECKOUT'):
-        candidates.append(Path(environ['CEDAR_CHECKOUT']).expanduser())
-    candidates.append(Path(environ.get('HOME') or Path.home()) / 'cedar-shell')
-    for candidate in candidates:
-        if (candidate / '.git').exists() and (candidate / 'installer/cedar_install.py').is_file():
-            return 'checkout', candidate.resolve()
-    return 'bootstrap', (Path(source) / 'installer/bootstrap/install.sh').resolve()
+    return update_module.locate(source, environ)
 
 
-def update(source, argv):
-    """Pull or download the newest CEDAR, then run that copy's installer with the same arguments."""
+def start_updated(record, passthrough):
+    """Replace this process with the fetched CEDAR's installer, which continues as an update."""
+    installer = Path(record['source']) / 'installer/cedar_install.py'
+    os.execv(sys.executable, [sys.executable, str(installer), '--source', record['source'], *passthrough])
+
+
+def update(source, args, argv):
+    """The update stage, then the fetched copy's installer with the same arguments.
+
+    With a display the CEDAR Installer window opens at once and runs the
+    update as its first stage: find, inspect, fetch, apply, hand off, with
+    guidance instead of a traceback when something stops. When the window
+    closes with a handoff recorded, this process starts the updated
+    installer. In a terminal the same engine prints the same steps."""
     passthrough = [a for a in argv if a != '--update'] + ['--updated']
-    kind, target = update_plan(source)
-    if kind == 'checkout':
-        sys.path.insert(0, str(target / 'scripts'))
-        import update_checkout as u  # the checkout's own updater: ff-only pull, broken scratch ref cleared, nothing reset
-        say('Updating the CEDAR checkout at ' + str(target))
-        u.describe(target)
-        u.pull(target)
-        installer = target / 'installer/cedar_install.py'
-        say('Starting the updated installer…'); sys.stdout.flush()
-        os.execv(sys.executable, [sys.executable, str(installer), '--source', str(target), *passthrough])
-    say('Downloading the latest CEDAR release…'); sys.stdout.flush()
-    os.execv('/bin/sh', ['sh', str(target), *passthrough])
+    state_dir = Host().state_home() / 'cedar/installer'
+    if wants_window(args, None):
+        code = launch_window(source, args, start='update')
+        record = update_module.take_handoff(state_dir)
+        if record is None:
+            return code
+        start_updated(record, passthrough)
+    state = {'verbose': args.verbose}
+    say('CEDAR update — fetching the newest CEDAR')
+    say()
+    updater = update_module.Updater(source, emit=terminal_listener(state), state_dir=state_dir)
+    try:
+        result = updater.run()
+    except update_module.Guidance:
+        say(); say('Nothing on your desktop was changed. The installed CEDAR keeps running.')
+        return 1
+    say()
+    if result['current']:
+        say('CEDAR ' + result['version'] + ' is already installed and is the newest version. The installer runs again to verify the copy.')
+    say('Starting the updated installer…'); sys.stdout.flush()
+    start_updated(result, passthrough)
 
 
 def wants_window(args, engine):
@@ -100,12 +115,13 @@ def wants_window(args, engine):
     return display and bool(shutil.which('qs'))
 
 
-def launch_window(source, args):
+def launch_window(source, args, start=None):
     env = {**os.environ, 'CEDAR_INSTALLER_SOURCE': str(source), 'CEDAR_INSTALLER_PYTHON': sys.executable,
            'QS_DISABLE_FILE_WATCHER': '1', 'CEDAR_INSTALLER': '1'}
+    if args.updated: env['CEDAR_INSTALLER_UPDATE'] = '1'; env['CEDAR_INSTALLER_START'] = 'updated'
     if args.resume: env['CEDAR_INSTALLER_START'] = 'resume'
-    if args.updated: env['CEDAR_INSTALLER_UPDATE'] = '1'
     if args.start_over: env['CEDAR_INSTALLER_START'] = 'start-over'
+    if start: env['CEDAR_INSTALLER_START'] = start
     result = subprocess.run(['qs', '-p', str(source / 'installer.qml')], env=env)
     return result.returncode
 
@@ -124,6 +140,15 @@ def terminal_listener(state):
             say('  ' + data['text'])
         elif event == 'log' and state.get('verbose'):
             say('      ' + data['line'])
+        elif event == 'update-error':
+            say()
+            say('Update stopped: ' + data.get('title', ''))
+            say('  ' + data.get('message', ''))
+            for number, step in enumerate(data.get('steps', []), 1):
+                say('  ' + str(number) + '. ' + step)
+            for note in data.get('notes', []):
+                say('  · ' + note)
+            if data.get('log'): say('  Log: ' + data['log'])
     return emit
 
 
@@ -163,7 +188,7 @@ def main(argv=None):
     if args.serve:
         serve(source); return 0
     if args.update:
-        return update(source, argv if argv is not None else sys.argv[1:])
+        return update(source, args, argv if argv is not None else sys.argv[1:])
 
     engine = Engine(source)
     if args.last_log:

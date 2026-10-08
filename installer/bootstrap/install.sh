@@ -9,6 +9,8 @@
 #   5. extracts it under ~/.cache/cedar/installer and runs the CEDAR Installer as you
 #
 # Every argument is passed to the installer: --dry-run, --no-gui, --yes, …
+# CEDAR_FETCH_ONLY=1 stops after the verified download and prints
+# CEDAR_SOURCE=<dir>; the installer's update stage uses that.
 # Overrides: CEDAR_REPO (owner/name), CEDAR_VERSION (tag), CEDAR_CHANNEL=development
 # (the current source branch, over TLS only, with no checksum: for contributors).
 set -eu
@@ -83,5 +85,9 @@ else
 fi
 
 [ -f "$SOURCE/installer/cedar_install.py" ] || fail "The downloaded CEDAR source has no installer."
+if [ "${CEDAR_FETCH_ONLY:-}" = "1" ]; then
+    say "CEDAR_SOURCE=$SOURCE"
+    exit 0
+fi
 say "Opening the CEDAR Installer…"
 exec python3 "$SOURCE/installer/cedar_install.py" "$@"

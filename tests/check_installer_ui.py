@@ -46,6 +46,7 @@ ShellRoot {
         property var plan: ''' + json.dumps(PLAN) + '''
         property var running: ''' + json.dumps(ops({'backup': 'complete', 'dependencies': 'running'})) + '''
         property var done: ''' + json.dumps(ops({'backup': 'complete', 'dependencies': 'complete', 'runtime': 'complete', 'shell': 'complete', 'migrate': 'warning', 'session': 'complete', 'verify': 'complete'})) + '''
+        property var updating: ''' + json.dumps([{'id': i, 'title': t, 'description': '', 'state': s, 'progress': 1 if s == 'complete' else 0, 'detail': d, 'error': ''} for i, t, s, d in [('locate', 'Source', 'complete', 'Git checkout at /users/station/cedar-shell'), ('inspect', 'Checkout', 'warning', 'Branch main → origin/main · 1 local edit kept'), ('fetch', 'Fetch', 'running', 'Asking GitHub for the newest CEDAR'), ('apply', 'Apply', 'pending', ''), ('handoff', 'Installer', 'pending', '')]]) + '''
         Item {
             id: body; anchors.fill: parent
             Rectangle { anchors.fill: parent; color: Theme.background }
@@ -79,7 +80,15 @@ ShellRoot {
                 case 20: window.check(!model.cedarRunning, "Not-started finish"); window.shot("finish-not-started"); break;
                 case 21: model.restoreReport = { session: "restored", program: "program entry points restored", files: ["/users/station/.config/hypr/hyprland.conf"], conflicts: [] }; model.stage = "restored"; break;
                 case 22: window.shot("restored"); break;
-                case 23: console.log("PASS: CEDAR Installer stages"); Qt.quit();
+                case 23: model.operations = window.updating; model.log = []; model.append("fetch", "From https://github.com/EMQOutlaw/Cedar-Shell"); model.stage = "update"; model.busy = true; break;
+                case 24: window.check(model.current && model.current.id === "fetch", "Update stage shows the running step"); window.shot("update"); break;
+                case 25: model.guidance = { title: "You have edits in the checkout", message: "Files you changed in ~/cedar-shell would be replaced by the update: VERSION. CEDAR never discards edits.", steps: ["Set my edits aside: this runs git stash in the checkout, which keeps every edit; git stash pop brings them back afterwards.", "Or commit them yourself, then press Try again."], fix: "stash", fixLabel: "Set my edits aside and update", retry: true, notes: ["Removed an unreadable scratch pointer (.git/ORIG_HEAD); nothing else was touched."], code: "edits" }; model.busy = false; model.stage = "update-error"; break;
+                case 26: window.shot("update-error"); break;
+                case 27: model.guidance = { title: "No connection to GitHub", message: "CEDAR could not reach the repository to look for a newer version. Nothing was changed.", steps: ["Check that this computer is online.", "If you use a VPN or proxy, make sure it allows github.com.", "Press Try again."], fix: "", fixLabel: "", retry: true, notes: [], code: "network" }; break;
+                case 28: window.shot("update-error-retry"); break;
+                case 29: model.update = { kind: "checkout", source: "/users/station/cedar-shell", version: "0.1.2", previousVersion: "0.1.2", current: true, changed: false, notes: [] }; model.stage = "update-current"; break;
+                case 30: window.shot("update-current"); break;
+                case 31: console.log("PASS: CEDAR Installer stages"); Qt.quit();
                 }
             }
         }

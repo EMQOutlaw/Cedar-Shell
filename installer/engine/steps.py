@@ -182,9 +182,11 @@ def dependencies_run(ctx, op):
     if ctx.log: ctx.log.info('run ' + ' '.join(argv[1:] if method == 'pkexec' else argv[3:]), op.id)
     ctx.progress(op, 0.02, privilege.describe(method))
     seen = 0
+    tail = []
     def on_line(line):
         nonlocal seen
         ctx.output(op, line)
+        tail.append(line.rstrip()); del tail[:-60]
         if re.match(r'(?i)^\s*(installing|upgrading|reinstalling|downloading)\b', line):
             seen += 1
             ctx.progress(op, min(0.95, 0.05 + seen / (len(missing) + 4)), line.strip()[:120])
@@ -192,7 +194,8 @@ def dependencies_run(ctx, op):
             ctx.progress(op, None, line.strip()[:120])
     code = ctx.host.stream(argv, on_line, timeout=3600)
     if code != 0:
-        raise RuntimeError('Package installation did not complete (exit ' + str(code) + '). Nothing on your desktop was changed; your configuration backup is kept.')
+        reason = package_providers.explain(tail, omarchy=ctx.facts['environment'].get('id') == 'omarchy')
+        raise RuntimeError((reason + ' ' if reason else 'Package installation did not complete (exit ' + str(code) + '). ') + 'Nothing on your desktop was changed; your configuration backup is kept.')
     backup = reopen_backup(ctx)
     if backup:
         for package in missing:

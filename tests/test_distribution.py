@@ -120,11 +120,24 @@ class Distribution(unittest.TestCase):
         self.assertEqual(d.read_json(second.path)['stage'],'commit')
     def test_install_conflict_and_full_disk(self):
         binary=d.paths()['bin'];binary.parent.mkdir(parents=True);binary.write_text('unrelated program')
-        with self.assertRaises(d.Refused):d.install(d.ROOT,approved=True)
+        self.assertEqual(d.command_owner(binary),'other')
+        with self.assertRaises(d.Refused) as refused:d.install(d.ROOT,approved=True)
+        self.assertIn('Move it aside',str(refused.exception))
         self.assertEqual(binary.read_text(),'unrelated program');binary.unlink()
         with patch.object(d.shutil,'disk_usage',return_value=type('Space',(),{'free':0})()):
             with self.assertRaises(d.Refused):d.install(d.ROOT,approved=True)
         self.assertFalse((d.paths()['data']/'current').exists())
+    def test_install_replaces_a_local_source_registration_and_uninstall_restores_it(self):
+        # ~/.local/bin/cedar -> <checkout>/scripts/cedar, as `cedar activate` of a checkout left it.
+        binary=d.paths()['bin'];binary.parent.mkdir(parents=True);binary.symlink_to(d.ROOT/'scripts/cedar')
+        self.assertEqual(d.command_owner(binary),'source');self.assertEqual(d.command_owner(binary.with_name('missing')),'none')
+        with patch.object(d,'validate',return_value='Fixture validation'),patch.object(d,'ensure_unlocked'),patch.object(d,'release_in_use',return_value=False):
+            d.install(d.ROOT,approved=True)
+        self.assertFalse(binary.is_symlink());self.assertEqual(d.command_owner(binary),'release')
+        # The host's own lock and running-release state must not reach the fixture.
+        with patch.object(d,'ensure_unlocked'),patch.object(d,'release_in_use',return_value=False):
+            d.uninstall(approved=True)
+        self.assertTrue(binary.is_symlink());self.assertEqual(os.readlink(binary),str(d.ROOT/'scripts/cedar'))
     def test_redaction_synthetic_secrets(self):
         from redaction import redact
         value=redact('token=syntheticsecret password=example 192.0.2.9 person@example.invalid')

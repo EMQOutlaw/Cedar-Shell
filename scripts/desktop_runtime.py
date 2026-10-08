@@ -155,10 +155,29 @@ def set_theme(name):
     atomic(config() / 'theme.json', (json.dumps({'name': name, 'colors': colors}, indent=2) + '\n').encode())
 
 
+def shell_sources():
+    # Quickshell registers an instance under the path it was launched with. A
+    # profile reached through ~/.config/quickshell/<name>, a symlink to the
+    # checkout, answers at that unresolved path and not at the resolved one, so
+    # the unresolved location is tried first and the checkout root second.
+    override = os.environ.get('CEDAR_SHELL_PATH')
+    if override:
+        return [override]
+    literal = Path(__file__).absolute().parents[1] / 'shell.qml'
+    return list(dict.fromkeys([str(literal), str(ROOT / 'shell.qml')]))
+
+
 def ipc(*args):
     # Explicit source path also works beside a top-level Quickshell shell.qml.
-    source = os.environ.get('CEDAR_SHELL_PATH', str(ROOT / 'shell.qml'))
-    return run(['qs', 'ipc', '-p', source, 'call', *args])
+    failure = None
+    for source in shell_sources():
+        try:
+            return run(['qs', 'ipc', '-p', source, 'call', *args])
+        except RuntimeError as error:
+            if 'No running instances' not in str(error):
+                raise
+            failure = error
+    raise failure
 
 
 TERMINAL_FLAGS = {'alacritty': ['-e'], 'ghostty': ['-e'], 'xterm': ['-e'], 'wezterm': ['start', '--']}
@@ -214,8 +233,14 @@ def main(args):
         ipc('settings', 'show', args[1])
     elif name == 'shield':
         ipc('shield', 'open')
+    elif name == 'station':
+        ipc('station', 'page', args[1]) if len(args) == 2 else ipc('station', 'open')
+    elif name == 'focus':
+        ipc('focus', 'start', args[1]) if len(args) == 2 else ipc('focus', 'open')
+    elif name == 'profiles':
+        ipc('profiles', 'activate', args[1]) if len(args) == 2 else ipc('profiles', 'open')
     elif name == 'canopy' and len(args) == 2:
-        ipc('canopy', 'show', args[1])
+        ipc('canopy', 'open', args[1])
     elif name == 'launch' and len(args) >= 2:
         # `launch terminal CMD ARGS...` opens the terminal running CMD.
         launch(args[1], args[2:])

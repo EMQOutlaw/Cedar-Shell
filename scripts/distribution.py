@@ -204,6 +204,14 @@ def release_in_use():
     return any(Path(row.get('config_path', '/unavailable')).resolve().is_relative_to(base)
                for row in qs_instances())
 
+def shell_selector():
+    # Quickshell matches a running instance by config path. The live shell is
+    # whatever owns the `cedar` profile (the installed release, or a checkout the
+    # owner linked there), so address it by profile and fall back to the release
+    # path only when no profile exists.
+    if (xdg('CONFIG','.config')/'quickshell/cedar/shell.qml').exists():return ['-c','cedar']
+    return ['-p',str(installed()/'shell.qml')]
+
 def installed():
     current=paths()['data']/'current'
     if not current.is_symlink():raise Refused('No versioned CEDAR installation is selected.')
@@ -339,6 +347,21 @@ def installation_next_steps():
     print('  '+launcher+' try')
     print('The preview is a separate window; your existing desktop remains running.')
 
+COMMAND_RELEASE=b'# CEDAR distribution launcher'
+COMMAND_SOURCE=b'# CEDAR-owned command entry point'
+
+def command_owner(binary):
+    """Who owns the cedar command: 'none', 'release' (an installed release's launcher),
+    'source' (the local-source registration: a link to a checkout's scripts/cedar) or 'other'."""
+    binary=Path(binary)
+    if not (binary.exists() or binary.is_symlink()):return 'none'
+    if not binary.is_file():return 'other'
+    try:head=binary.read_bytes()[:4096]
+    except OSError:return 'other'
+    if COMMAND_RELEASE in head:return 'release'
+    if COMMAND_SOURCE in head:return 'source'
+    return 'other'
+
 def install(root,approved=False,plan_only=False):
     plan=plan_install(root)
     if plan_only:print(json.dumps(plan,indent=2));return
@@ -353,8 +376,9 @@ def install(root,approved=False,plan_only=False):
         # First-party application entries: a launcher entry and icon for CEDAR Shield, journaled like every other installed file.
         share=paths()['data'].parent
         launcher_files={share/'applications/cedar-shield.desktop':(root/'data/applications/cedar-shield.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-shield.svg':(root/'data/icons/cedar-shield.svg',0o644)}
-        if binary.exists() or binary.is_symlink():
-            if not binary.is_file() or b'# CEDAR distribution launcher' not in binary.read_bytes():raise Refused('The cedar command is already owned elsewhere. Existing installation preserved.')
+        owner=command_owner(binary)
+        if owner=='other':raise Refused('The cedar command at '+str(binary)+' belongs to something other than CEDAR, so it is left alone. Move it aside (for example: mv '+__import__('shlex').quote(str(binary))+' '+__import__('shlex').quote(str(binary)+'.other')+'), then run the installer again.')
+        if owner=='source':print('Replacing the cedar command from the local-source registration ('+(os.readlink(binary) if binary.is_symlink() else str(binary))+'); the journal puts it back on uninstall.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
         if current.is_symlink() and current.resolve().parent!=destination.parent:raise Refused('Unmanaged current-release link exists.')
         if current.is_symlink() and current.resolve()==destination and binary.is_file() and recovery.is_file():
@@ -570,7 +594,7 @@ def main(argv=None):
         if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
         os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*argv[1:]])
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','installer'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','installer'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
@@ -610,8 +634,11 @@ def main(argv=None):
         if backend.__name__ == 'portable_session': backend.main([args.action, *(['--suspend'] if args.suspend else [])])
         elif args.action=='lock': backend.request_lock(args.suspend)
         else: raise Refused('Use the existing Omarchy controls for this session.')
-    elif args.action=='ipc':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call',*args.arguments])
-    elif args.action=='shield':os.execvp('qs',['qs','-p',str(installed()/'shell.qml'),'ipc','call','shield','open'])
+    elif args.action=='ipc':os.execvp('qs',['qs',*shell_selector(),'ipc','call',*args.arguments])
+    elif args.action=='shield':os.execvp('qs',['qs',*shell_selector(),'ipc','call','shield',*(['page',args.arguments[0]] if args.arguments else ['open'])])
+    elif args.action=='station':os.execvp('qs',['qs',*shell_selector(),'ipc','call','station',*(['page',args.arguments[0]] if args.arguments else ['open'])])
+    elif args.action=='focus':os.execvp('qs',['qs',*shell_selector(),'ipc','call','focus',*(['start',args.arguments[0]] if args.arguments else ['open'])])
+    elif args.action=='profiles':os.execvp('qs',['qs',*shell_selector(),'ipc','call','profiles',*(['activate',args.arguments[0]] if args.arguments else ['open'])])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()
         if args.action=='preview':preview(root)

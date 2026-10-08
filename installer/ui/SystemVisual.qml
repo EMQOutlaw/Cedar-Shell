@@ -103,9 +103,9 @@ Item {
             }
             Text {
                 Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 10
-                text: root.finished ? (root.notStarted ? "CEDAR INSTALLED" : "CEDAR READY") : root.installing ? "INSTALLING" : root.stage === "scan" ? "SCANNING" : root.stage === "error" ? "STOPPED" : root.stage === "restored" ? "RESTORED" : root.stage === "interrupted" ? "INTERRUPTED" : root.stage === "attention" ? "NEEDS ATTENTION" : "CEDAR READY TO INSTALL"
+                text: root.finished ? (root.notStarted ? "CEDAR INSTALLED" : "CEDAR READY") : root.installing ? "INSTALLING" : root.stage === "scan" ? "SCANNING" : root.stage === "error" ? "STOPPED" : root.stage === "restored" ? "RESTORED" : root.stage === "interrupted" ? "INTERRUPTED" : root.stage === "attention" ? "NEEDS ATTENTION" : root.stage === "update" ? "UPDATING" : root.stage === "update-error" ? "UPDATE STOPPED" : root.stage === "update-current" ? "UP TO DATE" : root.model.updating ? "CEDAR READY TO UPDATE" : "CEDAR READY TO INSTALL"
                 textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; font.letterSpacing: 2.2
-                color: root.finished ? Theme.green : root.stage === "error" || root.stage === "attention" ? Theme.amber : Theme.muted
+                color: root.finished || root.stage === "update-current" ? Theme.green : root.stage === "error" || root.stage === "attention" || root.stage === "update-error" ? Theme.amber : Theme.muted
             }
         }
     }

@@ -414,6 +414,28 @@ sys.stdin.buffer.read(1)
             runtime.launch('editor')
             self.assertEqual(spawn.call_args.args[0], ['gtk-launch', 'chosen.desktop'])
 
+    def test_ipc_reaches_a_shell_launched_through_a_profile_symlink(self):
+        # The live profile is ~/.config/quickshell/cedar -> checkout; qs knows the
+        # instance by the unresolved path, so that one is tried before the root.
+        literal = str(Path(runtime.__file__).absolute().parents[1] / 'shell.qml')
+        resolved = str(runtime.ROOT / 'shell.qml')
+        self.assertEqual(runtime.shell_sources()[-1], resolved)
+        self.assertEqual(runtime.shell_sources()[0], literal)
+        with patch.dict(os.environ, {'CEDAR_SHELL_PATH': '/elsewhere/shell.qml'}):
+            self.assertEqual(runtime.shell_sources(), ['/elsewhere/shell.qml'])
+        with patch.object(runtime, 'shell_sources', return_value=['/a/shell.qml', '/b/shell.qml']):
+            def answer(argv):
+                if argv[3] == '/a/shell.qml': raise RuntimeError('No running instances for "/a/shell.qml"')
+                return 'false'
+            with patch.object(runtime, 'run', side_effect=answer) as call:
+                self.assertEqual(runtime.ipc('shell', 'isLocked'), 'false')
+                self.assertEqual([c.args[0][3] for c in call.call_args_list], ['/a/shell.qml', '/b/shell.qml'])
+            with patch.object(runtime, 'run', side_effect=RuntimeError('No running instances for "x"')):
+                with self.assertRaises(RuntimeError): runtime.ipc('lock', 'lock')
+            with patch.object(runtime, 'run', side_effect=RuntimeError('Target not found.')) as call:
+                with self.assertRaises(RuntimeError): runtime.ipc('lock', 'lock')
+                self.assertEqual(call.call_count, 1)
+
     def test_menu_routes_every_action_to_real_ipc(self):
         menu = d.read_json(d.ROOT / 'menus/cedar-menu.jsonc')
         with patch.object(runtime, 'ipc') as call:

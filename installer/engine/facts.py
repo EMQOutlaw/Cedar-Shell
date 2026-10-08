@@ -188,6 +188,12 @@ def existing_cedar(host):
     result['releases'] = host.listdir(data / 'releases')
     launcher = host.read(host.home / '.local/bin/cedar')
     result['command'] = bool(launcher and 'CEDAR distribution launcher' in launcher)
+    # Who owns ~/.local/bin/cedar: an installed release, a local-source registration
+    # (a link to a checkout's scripts/cedar, which the release replaces and the journal
+    # restores), something else (the installer stops before touching it), or nobody.
+    exists = host.exists(host.home / '.local/bin/cedar') or host.is_symlink(host.home / '.local/bin/cedar')
+    result['commandOwner'] = ('release' if result['command'] else 'source' if launcher and 'CEDAR-owned command entry point' in launcher
+                              else 'other' if exists else 'none')
     for name in ('portable-session.json', 'session.json'):
         row = read_json(host, state / name)
         if isinstance(row, dict) and row.get('stage') not in (None, 'restored'):

@@ -12,6 +12,12 @@ window talks to it over stdin/stdout, one JSON object per line:
                                                ← {"event": "password", "data": {"method": "sudo", "text": "..."}}
                                                ← {"event": "done", "data": {...}} | {"event": "error", "data": {...}}
     → {"cmd": "resume"} | {"cmd": "start-over"} | {"cmd": "restore"} | {"cmd": "session"} | {"cmd": "quit"}
+    → {"cmd": "update"}                        ← {"event": "operations"} … {"event": "updated", "data": {...}}
+                                               | {"event": "update-error", "data": {title, message, steps, fix, retry}}
+    → {"cmd": "update-fix", "fix": "stash"}    ← the fix's notes as log lines, then the update runs again
+    → {"cmd": "update-proceed"}                ← {"event": "handoff", "data": {"source": ...}}; the window closes and
+                                                 the process that owns it starts the updated installer
+    → {"cmd": "update-cancel"}
 
 The window never parses terminal output to guess progress; it renders the
 operation records the engine sends.
@@ -33,6 +39,7 @@ from . import plan as plan_module
 from . import steps
 from .backup import Backup
 from .host import Host
+from .update import Guidance, Updater
 
 
 def private_tree(root, children=(), log=None):
@@ -78,6 +85,7 @@ class Engine:
         self.log = None
         self.runner = None
         self.busy = False
+        self._updater = None
 
     # -- discovery -------------------------------------------------------
     def scan(self):
@@ -201,6 +209,33 @@ class Engine:
             return record.get('stage', 'not active')
         except Exception:  # noqa: BLE001
             return 'unknown'
+
+    # -- update ------------------------------------------------------------
+    def updater(self):
+        if self._updater is None:
+            self._updater = Updater(self.source, emit=self.emit, environ=self.host.environ, state_dir=self.state_dir, log=self.open_log())
+        return self._updater
+
+    def update(self):
+        """The update stage: find, inspect, fetch, apply, hand off. Raises Guidance after emitting it."""
+        if self.busy:
+            raise RuntimeError('An operation is already running')
+        self.busy = True
+        try:
+            return self.updater().run()
+        finally:
+            self.busy = False
+
+    def update_fix(self, name):
+        """Apply the safe repair the person chose by its button, then run the update again."""
+        self.updater().fix(name)
+        return self.update()
+
+    def update_proceed(self, argv=()):
+        return self.updater().proceed(argv)
+
+    def update_cancel(self):
+        self.updater().cancel()
 
     # -- recovery --------------------------------------------------------
     def restore(self, dry_run=False):
@@ -354,6 +389,13 @@ def serve(source):
             return
         worker = threading.Thread(target=run, daemon=True); worker.start()
 
+    def guided(fn, *args):
+        # The updater has already sent its guidance as an update-error event.
+        try:
+            fn(*args)
+        except Guidance:
+            pass
+
     emit('ready', {'source': str(engine.source), 'version': (engine.source / 'VERSION').read_text().strip() if (engine.source / 'VERSION').is_file() else ''})
     for line in sys.stdin:
         line = line.strip()
@@ -373,6 +415,10 @@ def serve(source):
             elif cmd == 'retry': background(engine.retry)
             elif cmd == 'restore': background(engine.restore)
             elif cmd == 'session': background(engine.session_now)
+            elif cmd == 'update': background(guided, engine.update)
+            elif cmd == 'update-fix': background(guided, engine.update_fix, request.get('fix', ''))
+            elif cmd == 'update-proceed': engine.update_proceed(request.get('argv') or [])
+            elif cmd == 'update-cancel': engine.update_cancel()
             elif cmd == 'log': emit('logpath', {'path': str(engine.log.path) if engine.log else str(engine.last_log() or '')})
             elif cmd == 'quit': break
             else: emit('error', {'message': 'Unknown command ' + str(cmd), 'operation': '', 'title': 'Installer', 'changedBefore': [], 'rolledBack': False, 'resumable': False, 'backup': '', 'log': ''})

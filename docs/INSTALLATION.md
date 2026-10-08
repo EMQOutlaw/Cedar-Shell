@@ -72,7 +72,7 @@ output to guess progress.
 | `--uninstall` | undo CEDAR-owned changes; keep packages and your data |
 | `--repair` | verify the installed copy and reinstall what does not match |
 | `--last-log` | print the most recent installer log |
-| `--update` | fetch the newest CEDAR (ff-only pull of the checkout when one exists, else the latest verified release) and run its installer; an active CEDAR session is handed back and re-entered by the plan itself |
+| `--update` | the Update stage in the installer window (or terminal with `--no-gui`): find the newest CEDAR (fast-forward of the checkout when one exists, else the latest verified release), fetch it with visible steps, explain any stop with what to do, then run its installer; an active CEDAR session is handed back and re-entered by the plan itself. See Updating below |
 | `--no-session`, `--cedar-launcher`, `--trailwatch`, `--fonts`, `--keybinds` / `--no-keybinds` | plan options |
 
 After installation the same tool is available as `cedar installer …`.
@@ -107,13 +107,44 @@ After installation the same tool is available as `cedar installer …`.
 7. **Finish.** What was imported, where the backup is, Start CEDAR or
    Start Later.
 
+## Updating
+
+**Field Station → Update CEDAR** and `cedar installer --update` open the
+CEDAR Installer window on an **Update** stage (`installer/engine/update.py`)
+before anything else. It runs the same operation list the install stage
+renders, one visible step at a time:
+
+| Step | What it does |
+| --- | --- |
+| Source | a Git checkout when one exists (this source, `$CEDAR_CHECKOUT`, `~/cedar-shell`), else the published release |
+| Checkout | branch and upstream; your local edits are counted and kept, never discarded; an unreadable `ORIG_HEAD` left by an interrupted git operation is removed |
+| Fetch | `git fetch` from GitHub, or the bootstrap with `CEDAR_FETCH_ONLY=1` (download, SHA-256 check, unpack) |
+| Apply | `git merge --ff-only` of the upstream branch: the only way the checkout moves |
+| Installer | the fetched copy's version; the window closes and the process that owns it starts that copy's installer, which continues as an update: scan, then straight to the plan, then install |
+
+When CEDAR is already the newest version and that version is installed,
+the stage says **CEDAR is up to date** with Close and Reinstall anyway.
+
+A stop is never a traceback. The engine classifies what happened and the
+window shows a title, one sentence, the numbered steps that put it right
+and, when a fix is safe and reversible, a button that runs it and updates
+again: edits that the update would overwrite → **Set my edits aside and
+update** (`git stash`, with `git stash pop` shown to bring them back); a
+branch that follows nothing → **Track the main branch and update**; a
+checkout Git does not trust → **Trust this checkout and update**. Commits of
+your own (diverged history), untracked files in the way, no connection,
+credentials, a detached HEAD, a missing tool, no published release and a
+failed checksum get steps and Try again; nothing resets, rewrites or deletes
+the checkout. In a terminal (`--no-gui`) the same steps and the same
+guidance print as text.
+
 ### Operations
 
 | Operation | What it does | Verified by |
 | --- | --- | --- |
 | System backup | copies the configuration the plan may touch into `~/.local/state/cedar/installations/<timestamp>/` with `manifest.json`, `restore.sh`, `config/`, `services.json`, `packages.json` | manifest and restore script present |
 | Hand back the desktop | only when a CEDAR session is running: `cedar restore` returns the previous desktop (applications stay open) so the release can change; the session step starts CEDAR again at the end | the session record reads restored |
-| Dependencies | `pacman -Syu --needed` for the missing manifest packages, through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer | each package's command present afterwards |
+| Dependencies | `pacman -Syu --needed` for the missing manifest packages (on Omarchy `pacman -S --needed`, the way `omarchy pkg add` does, because Omarchy's pacman guard refuses a direct system upgrade and keeps those for `omarchy update`), through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer; a failed transaction is explained (guard, stale databases, lock, file conflict, mirror, dismissed prompt, signature) | each package's command present afterwards |
 | CEDAR runtime | `scripts/distribution.py install`: the versioned copy under `~/.local/share/cedar/releases/`, the `cedar` command, offline recovery, launcher entries, all journaled | release tree checksums |
 | CEDAR shell | loads the required QML imports and renders five offscreen checks with the installed Quickshell and Qt | the checks pass |
 | Configuration | translates monitor rules (`monitor`, `monitorv2`, `hl.monitor`), keyboard layout, preferred applications and the wallpaper library into `~/.config/cedar/hypr/settings.json` and `settings.json`; existing CEDAR settings win; with the keybinds option, copies CEDAR's keybinds (Caelestia layout, `docs/KEYBINDS.md`) beside them and loads them through CEDAR's journaled Hyprland loader | CEDAR's own validators; `hyprctl configerrors` |
