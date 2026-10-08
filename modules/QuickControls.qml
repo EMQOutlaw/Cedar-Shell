@@ -93,7 +93,7 @@ ColumnLayout {
         contentItem: ColumnLayout {
             spacing: 1
             Text { text: tile.label.toUpperCase(); textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1.3; color: Theme.muted }
-            Text { Layout.fillWidth: true; text: tile.value; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(17 * Theme.fontScale); color: tile.on ? Theme.green : Theme.text; elide: Text.ElideRight }
+            KineticLabel { Layout.fillWidth: true; height: implicitHeight; text: tile.value; transitionStyle: "resolve"; font.family: Theme.labelFont; font.pixelSize: Math.round(17 * Theme.fontScale); color: tile.on ? Theme.green : Theme.text; elide: Text.ElideRight }
         }
     }
 
@@ -181,10 +181,19 @@ ColumnLayout {
             hint: Shield.ready ? Shield.subline + " · opens CEDAR Shield" : "Opens CEDAR Shield"
             onClicked: { Shield.openApp(); Canopy.close(); }
         }
+        // Desktop Profiles: the current stance and a way in.
+        Tile {
+            order: 7
+            label: "Profile"
+            value: Profiles.anyBusy ? "…" : Profiles.current ? Profiles.currentLabel : "None"
+            on: !!Profiles.current
+            hint: (Profiles.current ? Profiles.summary + " · " : "") + "opens CEDAR Profiles"
+            onClicked: { Profiles.openApp(); Canopy.close(); }
+        }
         // Gaming Mode: the desktop quiets itself around the game. The value is
         // the transaction's real result, never an optimistic ON.
         Tile {
-            order: 7
+            order: 8
             label: "Gaming"
             value: Gaming.busy ? "…" : Gaming.active ? Gaming.activeCount + "/" + Gaming.totalCount + " active" : "Off"
             on: Gaming.active
@@ -195,8 +204,17 @@ ColumnLayout {
         // Performance mode: the basics only. A tap while it is on turns it off
         // (back to Automatic if it was switched on by hand, Off if a game or
         // battery saver turned it on); a tap while off switches it on.
+        // Focus: a timed quiet session; the tile shows the time left and opens the window.
         Tile {
-            order: 8
+            order: 9
+            label: "Focus"
+            value: Focus.busy ? "…" : Focus.active ? (Focus.paused ? "Paused" : Focus.minutes(Focus.remaining) + " left") : "Off"
+            on: Focus.active
+            hint: (Focus.active ? Focus.summary + " · " : "") + "opens CEDAR Focus"
+            onClicked: { Focus.openApp(); Canopy.close(); }
+        }
+        Tile {
+            order: 10
             label: "Performance"
             value: Config.performanceActive ? (Config.performanceMode === "on" ? "On" : "Auto · " + (Config.powerSaving ? "battery saver" : "game"))
                  : (Config.performanceMode === "off" ? "Off" : "Auto")

@@ -11,6 +11,7 @@ import "../services"
 // outward in sequence and the mark holds still (about 800 ms, once). When a
 // protection turns on, one short light travels from the trunk's base up to
 // its branch and stops. Nothing here runs while nothing changes.
+// `reveal` may be bound from outside so a page's entrance clock drives it.
 Item {
     id: root
     property var protections: Shield.protections
@@ -18,6 +19,7 @@ Item {
     property bool interactive: true
     property bool revealOnShow: false
     property string highlight: ""       // a protection id drawn alone, for a detail view
+    property color outline: Qt.alpha(Theme.teal, .45)   // the shield's edge; a page may set it to the posture tone
     implicitWidth: compact ? 120 : 220
     implicitHeight: implicitWidth * 1.18
     readonly property real cx: width / 2
@@ -39,7 +41,7 @@ Item {
         preferredRendererType: Shape.CurveRenderer
         opacity: .35 + .65 * Math.min(1, root.reveal * 2)
         ShapePath {
-            strokeColor: Qt.alpha(Theme.teal, .45); strokeWidth: 1.5; fillColor: Qt.alpha(Theme.surface, .7)
+            strokeColor: root.outline; strokeWidth: 1.5; fillColor: Qt.alpha(Theme.surface, .7)
             startX: root.cx; startY: root.crown
             PathLine { x: root.cx + root.halfWidth; y: root.crown + root.height * .12 }
             PathLine { x: root.cx + root.halfWidth; y: root.height * .52 }

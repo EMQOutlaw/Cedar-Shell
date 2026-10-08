@@ -14,6 +14,12 @@ Item {
     property color lineColor: Theme.teal
     property real lineFraction: .7
     property real lineOpacity: .85
+    // The short lit line at the top edge, where a drop meets the bar; a
+    // first-party window's frames use it as their identity mark.
+    property bool topLine: false
+    property color topLineColor: Theme.teal
+    property real topLineFraction: .32
+    property real topLineOpacity: .7
     Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
@@ -31,6 +37,13 @@ Item {
             PathLine { x: 0; y: root.height - root.longCut }
             PathLine { x: 0; y: root.cut }
         }
+    }
+    Rectangle {
+        visible: root.topLine
+        x: root.cut + 2; y: 0
+        width: Math.max(0, (root.width - root.cut - root.longCut - 4) * root.topLineFraction)
+        height: 1
+        color: root.topLineColor; opacity: root.topLineOpacity
     }
     Rectangle {
         visible: root.line

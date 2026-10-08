@@ -17,6 +17,8 @@ AbstractButton {
     property bool anchorsCanopy: true
     // The topic whose panel grows out of this control; defaults to the peek topic.
     property string anchorTopic: canopyTopic
+    // A button in a row that shares one gliding mark draws no mark of its own.
+    property bool glide: false
     readonly property string anchorOutput: canopyOutput || CoreService.hostName
     function anchorRect() {
         const win = root.QsWindow.window;
@@ -52,11 +54,15 @@ AbstractButton {
     activeFocusOnTab: true
     padding: 4
     HoverHandler { cursorShape: Qt.PointingHandCursor }
+    // The control its panel grows from brightens as the surface unfolds, then settles to checked.
+    readonly property bool unfolding: anchorTopic !== "" && Canopy.shown && Canopy.topic === anchorTopic && Canopy.surfaceState === "opening"
     background: Rectangle {
         radius: 5
-        color: root.down ? Qt.alpha(root.accent, 0.18)
+        color: root.unfolding ? Qt.alpha(root.accent, 0.34)
+             : root.down ? Qt.alpha(root.accent, 0.18)
              : root.checked ? Qt.alpha(root.accent, 0.1)
              : Theme.transparent
+        Behavior on color { enabled: VisualQuality.effects; ColorAnimation { duration: VisualQuality.ms(Theme.hover) } }
         Rectangle {
             anchors.fill: parent; anchors.margins: Theme.focusInset
             radius: Math.max(0, parent.radius - Theme.focusInset)
@@ -65,7 +71,7 @@ AbstractButton {
             border.color: root.accent
         }
         Rectangle {
-            visible: root.checked
+            visible: root.checked && !root.glide
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             width: Math.min(14, parent.width - 8); height: 2; radius: 1

@@ -10,7 +10,7 @@ Singleton {
     property var live: []
     signal noticeRecorded(var notice)
     signal noticeForgotten(int id)
-    readonly property var popups: live.filter(n => Config.saved.notificationsEnabled && !(CoreService.available && CoreService.routedNoticeIds.includes(n.id)) && (n.urgency === 2 || !Config.saved.doNotDisturb))
+    readonly property var popups: live.filter(n => Config.saved.notificationsEnabled && !(CoreService.available && CoreService.routedNoticeIds.includes(n.id)) && (n.urgency === 2 || !Config.saved.doNotDisturb || Focus.allows(n.appName)))
     function record(n) {
         const entry = {id: n.id, app: n.appName, summary: n.summary, body: n.body, timestamp: Date.now(), critical: n.urgency === 2};
         history = [entry].concat(history.filter(e => e.id !== n.id)).slice(0, 100);

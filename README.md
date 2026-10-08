@@ -36,7 +36,7 @@ To update later, press **Field Station → Update CEDAR**, or from a terminal:
 "$HOME/.local/bin/cedar" installer --update
 ```
 
-That fetches the newest CEDAR (a fast-forward pull of your checkout when you have one, otherwise the latest verified release), hands the desktop back from a running CEDAR session on its own, installs, and starts CEDAR again.
+Both open the CEDAR Installer on an Update stage: it fetches the newest CEDAR (a fast-forward of your checkout when you have one, otherwise the latest verified release) one visible step at a time, then hands the desktop back from a running CEDAR session on its own, installs, and starts CEDAR again. If something stops it, the window says what happened, lists the steps that put it right and, where the fix is safe, offers a button that applies it. Your edits in a checkout are never discarded.
 
 ### What the installer does
 

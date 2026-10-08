@@ -35,6 +35,7 @@ ShellRoot {
             case 1:
                 window.check(Gaming.active && !Gaming.busy, "Transaction settled (" + Gaming.phase + ", busy " + Gaming.busy + ")");
                 window.check(VisualQuality.gaming && Theme.reducedMotion && !SystemStats.ambient, "Visual quality is gaming: motion reduced, ambient telemetry off");
+                window.check(VisualQuality.motionScale < 1 && VisualQuality.ms(Theme.morphGrow) < Theme.morphGrow, "Morph durations shorten under Gaming Mode (" + VisualQuality.ms(Theme.morphGrow) + " ms)");
                 window.check(window.state("quiet") === "active" && window.state("dnd") === "active" && Config.saved.doNotDisturb, "Quiet and DND applied and verified (" + JSON.stringify(Gaming.steps) + ")");
                 window.check(window.state("idle") === "unavailable" && window.state("power") === "unavailable" && window.state("compositor") === "unavailable" && window.state("gamemode") === "unavailable", "Steps without a provider report unavailable, not failed");
                 window.check(Gaming.activeCount === 2 && Gaming.totalCount === 2 && Gaming.summary === "2 / 2 optimizations active", "Summary counts only what could be attempted (" + Gaming.summary + ")");

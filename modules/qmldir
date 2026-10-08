@@ -63,3 +63,14 @@ ShieldPages 1.0 ShieldPages.qml
 PermissionPrompt 1.0 PermissionPrompt.qml
 GamingHud 1.0 GamingHud.qml
 GamingHudCard 1.0 GamingHudCard.qml
+ProfileHud 1.0 ProfileHud.qml
+ProfileHudCard 1.0 ProfileHudCard.qml
+ProfilesApp 1.0 ProfilesApp.qml
+ProfilesPages 1.0 ProfilesPages.qml
+FocusHud 1.0 FocusHud.qml
+FocusHudCard 1.0 FocusHudCard.qml
+FocusApp 1.0 FocusApp.qml
+FocusPages 1.0 FocusPages.qml
+StationApp 1.0 StationApp.qml
+StationPages 1.0 StationPages.qml
+WorkspaceCanopy 1.0 WorkspaceCanopy.qml

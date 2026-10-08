@@ -5,11 +5,11 @@ import ".."
 
 Singleton {
     id: root
-    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup"]
+    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces"]
     // One route per destination: a topic with a visible bar button gets no tab.
     // The bar's center control always opens Quick Controls.
     function barRoute(value) {
-        return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications")) || (value === "station" && Config.stage >= 2 && Config.moduleEnabled("identity")) || (value === "go" && Config.stage >= 3 && Config.moduleEnabled("go"));
+        return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications")) || (value === "station" && Config.stage >= 2 && Config.moduleEnabled("identity")) || (value === "go" && Config.stage >= 3 && Config.moduleEnabled("go")) || (value === "workspaces" && Config.stage >= 3 && Config.moduleEnabled("workspaces"));
     }
     // Power is its own panel (Super+Esc), never a tab in Quick Controls.
     readonly property var tabs: topics.filter(t => !barRoute(t) && t !== "power")
@@ -24,6 +24,11 @@ Singleton {
         controlWindows = controlWindows.filter(w => w !== window);
     }
     property string topic: "quick"
+    // The surface controller's state, driven by CanopyWindow:
+    //   collapsed | opening | expanded | retargeting | closing
+    property string surfaceState: "collapsed"
+    // The rect the drop last aimed at (panel-local), for status and tests.
+    property var surfaceRect: ({ x: 0, width: 0, height: 0, origin: -1 })
     // Entrance clock for whichever panel is showing: 0→1 over about a second,
     // started by the drop when content begins to show. Panels stagger their
     // instruments through ease(start, span). Reduced Motion and tests snap.
@@ -38,7 +43,7 @@ Singleton {
         reveal = 0;
         entrance.start();
     }
-    property NumberAnimation entrance: NumberAnimation { target: root; property: "reveal"; from: 0; to: 1; duration: 1050 }
+    property NumberAnimation entrance: NumberAnimation { target: root; property: "reveal"; from: 0; to: 1; duration: VisualQuality.ms(Theme.entrance) }
     property Connections motionGuard: Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { root.entrance.stop(); root.reveal = 1; } } }
     property bool pinned: false
     property bool peeking: false
@@ -91,7 +96,8 @@ Singleton {
             trails: "Recent Trail",
             station: "Field Station",
             go: "Applications",
-            startup: "Startup"
+            startup: "Startup",
+            workspaces: "Workspaces"
         })[value] || "Canopy";
     }
     readonly property string title: ({
@@ -108,7 +114,8 @@ Singleton {
             trails: "Recent Trail",
             station: "Field Station",
             go: "Applications",
-            startup: "Startup"
+            startup: "Startup",
+            workspaces: "Workspaces"
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
         if (!topics.includes(value) || ShellState.locked || !Config.saved.canopyEnabled)
@@ -124,6 +131,7 @@ Singleton {
             Forest.record("canopy", title, value);
     }
     // Open a control's topic, or close it when that topic is already open.
+    // (Also the keyboard route for the workspace overview: Super+Tab.)
     function toggleTopic(value, output = "") {
         if (shown && topic === value && !peeking)
             close();

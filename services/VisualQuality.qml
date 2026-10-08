@@ -23,4 +23,25 @@ Singleton {
     readonly property string reason: gaming ? "Gaming Mode" : efficient ? Config.performanceReason : ""
     // Decorative motion and ambient effects stop below normal.
     readonly property bool decorative: normal
+    // How long a functional morph takes, as a fraction of Theme's nominal
+    // durations: the full motion at normal quality, shorter in Performance
+    // mode, near-instant in Gaming Mode. Reduced Motion disables the Behaviors
+    // altogether, so it needs no scale. One number, read by every surface.
+    readonly property real preset: ({ calm: .7, balanced: 1, expressive: 1.25, off: 0 })[Config.saved.motionPreset] ?? 1
+    readonly property bool effects: preset > 0 && !Theme.reducedMotion
+    readonly property real motionScale: (gaming ? .35 : efficient ? .6 : 1) * (preset > 0 ? (preset > 1 ? 1.3 : preset) : 1)
+    // Brightness and reach of decorative effects: the preset times the user's intensity.
+    readonly property real effectIntensity: effects ? Config.saved.effectIntensity * (preset > 1 ? 1.2 : preset) : 0
+    function ms(nominal) { return Math.round(nominal * motionScale); }
+    // The awakening: announced once per shell run, by the first bar whose window
+    // the compositor has mapped, so the drawing-in is seen rather than run
+    // before the bar exists on screen. Never in test mode or with effects off.
+    property bool awakenedOnce: false
+    signal awakened()
+    Timer { interval: 5000; running: !VisualQuality.awakenedOnce && !Config.testMode; onTriggered: VisualQuality.awakenedOnce = true }
+    function awaken() {
+        if (awakenedOnce || Config.testMode || !effects) return;
+        awakenedOnce = true;
+        awakened();
+    }
 }

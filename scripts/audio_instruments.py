@@ -67,6 +67,12 @@ def handle(req):
         if len(rows)>=8: raise ValueError('Eight scenes saved. Delete one before adding another.')
         save([dict(name=name,output=out,microphone=mic,streams=streams)]+rows)
     elif action=='delete-scene': save([s for s in data['scenes'] if s['name']!=req.get('name')])
+    elif action=='output':
+        # The default output alone, for a profile restoring what it found; volume only when given.
+        name=req.get('name','')
+        if name not in {s['name'] for s in data['outputs']}: raise ValueError('That output is disconnected. Nothing was changed.')
+        run('set-default-sink',name)
+        if req.get('volume') is not None: run('set-sink-volume',name,bounded(req['volume']))
     elif action=='apply-scene':
         scene=next((s for s in data['scenes'] if s['name']==req.get('name')),None)
         if not scene: raise ValueError('Scene no longer exists')

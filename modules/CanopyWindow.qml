@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import ".."
 import "../components"
 import "../services"
+import "../components/core/StrataGeometry.js" as Strata
 
 // The one surface that drops from the bar. A full-width transparent window
 // holds a single "drop" whose geometry is assigned, never bound: it grows out
@@ -46,19 +47,21 @@ PanelWindow {
 
     // ---- targets -----------------------------------------------------------
     function topicWidth(topic) {
-        const w = Canopy.peeking ? 360 : topic === "station" ? 760 : topic === "go" ? 480 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "startup" ? 620 : topic === "quick" ? 420 : 520;
+        const w = Canopy.peeking ? 360 : topic === "workspaces" ? 1040 : topic === "station" ? 760 : topic === "go" ? 480 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "startup" ? 620 : topic === "quick" ? 420 : 520;
         return Math.min(width - 24, w);
     }
     function topicHeight(topic) {
-        const cap = Math.min(height - barJoin - 16, Canopy.peeking ? 160 : topic === "station" ? 1200 : topic === "go" ? 760 : topic === "quick" ? 660 : 700);
+        const cap = Math.min(height - barJoin - 16, Canopy.peeking ? 160 : topic === "station" ? 1200 : topic === "workspaces" ? 900 : topic === "go" ? 760 : topic === "quick" ? 660 : 700);
         return Math.max(Canopy.peeking ? 120 : 160, Math.min(cap, panel.preferredHeight));
     }
-    // Where the open panel sits: centred on its control, else centred on the screen.
-    function topicX(w) {
-        const a = Canopy.anchorRect;
-        const centre = a ? a.x + a.width / 2 - sideInset : width / 2;
-        return Math.round(Math.max(12, Math.min(centre - w / 2, width - w - 12)));
+    // Where the open panel sits: centred on its control, else centred on the
+    // screen, decided by the geometry model and then only interpolated.
+    function targetFor(topic) {
+        return Strata.target({ barWidth: width, anchor: Canopy.anchorRect, wantedWidth: topicWidth(topic), wantedHeight: topicHeight(topic),
+                               availableHeight: height - barJoin - 16, sideInset: sideInset, edge: 12, minimumHeight: Canopy.peeking ? 120 : 160 });
     }
+    function topicX(w) { return Strata.panelX(width, Canopy.anchorRect, w, sideInset, 12); }
+    function setState(value) { Canopy.surfaceState = value; }
     function snap(x, w, h) {
         drop.animate = false;
         drop.x = x; drop.width = w; drop.height = h;
@@ -73,13 +76,14 @@ PanelWindow {
     function retarget(force = false) {
         if (!root.requested || (switching && !force))
             return;
-        const w = topicWidth(drop.topic);
-        drop.growing = topicHeight(drop.topic) > drop.height;
-        drop.x = topicX(w); drop.width = w; drop.height = topicHeight(drop.topic);
+        const t = targetFor(drop.topic);
+        Canopy.surfaceRect = t;
+        drop.growing = t.height > drop.height;
+        drop.x = t.x; drop.width = t.width; drop.height = t.height;
     }
     function open() {
         closeDelay.stop();
-        swap.stop();
+        swap.stop(); morph.stop();
         switching = false;
         mapped = true;
         drop.topic = Canopy.topic;
@@ -87,6 +91,7 @@ PanelWindow {
         const w = topicWidth(drop.topic);
         snap(topicX(w), w, 0);
         drop.reveal = 0;
+        setState("opening");
         Qt.callLater(() => { root.retarget(); openReveal.restart(); Canopy.enter(); });
     }
     // Collapse straight back up into the bar.
@@ -97,13 +102,13 @@ PanelWindow {
         drop.height = 0;
     }
     function shut() {
-        swap.stop();
+        swap.stop(); morph.stop();
         switching = false;
+        setState("closing");
         collapse();
         if (morphing)
             closeDelay.restart();
-        else
-            mapped = false;
+        else { mapped = false; setState("collapsed"); }
     }
     onRequestedChanged: requested ? open() : shut()
     Component.onCompleted: if (requested) { mapped = true; drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; drop.reveal = 1; snap(topicX(topicWidth(drop.topic)), topicWidth(drop.topic), topicHeight(drop.topic)); }
@@ -111,10 +116,18 @@ PanelWindow {
     // or a close: deferred so `requested` has settled before it is read.
     function reaim() { Qt.callLater(root.retargetIfOpen); }
     function retargetIfOpen() { if (root.requested && !switching) root.retarget(); }
-    Timer { id: closeDelay; interval: 240; onTriggered: if (!root.requested) root.mapped = false }
+    Timer { id: closeDelay; interval: VisualQuality.ms(Theme.morphShrink) + 40; onTriggered: if (!root.requested) { root.mapped = false; root.setState("collapsed"); } }
+    // A topic change while open: a tab that shares the open drop's origin
+    // morphs in place from wherever the geometry is; a different control
+    // folds the drop back into the bar and grows it again from there.
+    function switchTopic() {
+        if (!root.requested || drop.topic === Canopy.topic) return;
+        const next = targetFor(Canopy.topic);
+        if (Strata.sharesOrigin(Canopy.surfaceRect, next)) morph.restart(); else swap.restart();
+    }
     Connections {
         target: Canopy
-        function onTopicChanged() { if (root.requested && drop.topic !== Canopy.topic) swap.restart(); }
+        function onTopicChanged() { root.switchTopic(); }
         function onPeekingChanged() { root.reaim(); }
         function onAnchorRectChanged() { root.reaim(); }
     }
@@ -132,69 +145,59 @@ PanelWindow {
         readonly property real cut: 12
         readonly property real longCut: Math.round(cut * 16 / 9)
         y: root.barJoin
-        Behavior on x { enabled: root.morphing && drop.animate; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-        Behavior on width { enabled: root.morphing && drop.animate; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+        Behavior on x { enabled: root.morphing && drop.animate; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
+        Behavior on width { enabled: root.morphing && drop.animate; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
         Behavior on height {
             enabled: root.morphing && drop.animate
             NumberAnimation {
-                duration: drop.growing ? 320 : 200
+                duration: VisualQuality.ms(drop.growing ? Theme.morphGrow : Theme.morphShrink)
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: drop.growing ? [0.38, 1.21, 0.22, 1.0, 1, 1] : [0.05, 0.7, 0.1, 1.0, 1, 1]
             }
         }
-        // Silhouette: flat top that flares into the bar with 45° wedges on both
-        // sides, the long cut bottom-left and the short cut bottom-right.
-        Shape {
+        // Silhouette: the bar's lower edge bends down through concave fillets
+        // and becomes the drop's sides (components/DropFrame.qml).
+        DropFrame {
             anchors.fill: parent
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                strokeWidth: 0
-                strokeColor: "transparent"
-                fillColor: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
-                startX: -drop.cut; startY: -1
-                PathLine { x: drop.width + drop.cut; y: -1 }
-                PathLine { x: drop.width; y: drop.cut }
-                PathLine { x: drop.width; y: drop.height - drop.cut }
-                PathLine { x: drop.width - drop.cut; y: drop.height }
-                PathLine { x: drop.longCut; y: drop.height }
-                PathLine { x: 0; y: drop.height - drop.longCut }
-                PathLine { x: 0; y: drop.cut }
-                PathLine { x: -drop.cut; y: -1 }
-            }
-            // The outline leaves the top open, so the surface reads as the bar itself.
-            ShapePath {
-                strokeWidth: 1
-                strokeColor: Qt.alpha(Forest.accent, .25)
-                fillColor: "transparent"
-                startX: -drop.cut; startY: -1
-                PathLine { x: 0; y: drop.cut }
-                PathLine { x: 0; y: drop.height - drop.longCut }
-                PathLine { x: drop.longCut; y: drop.height }
-                PathLine { x: drop.width - drop.cut; y: drop.height }
-                PathLine { x: drop.width; y: drop.height - drop.cut }
-                PathLine { x: drop.width; y: drop.cut }
-                PathLine { x: drop.width + drop.cut; y: -1 }
-            }
+            cut: drop.cut
+            join: drop.cut
+            fill: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
+            stroke: Qt.alpha(Forest.accent, .25)
+            lit: Canopy.surfaceState === "opening" || Canopy.surfaceState === "retargeting"
+            growing: drop.growing && (Canopy.surfaceState === "opening" || Canopy.surfaceState === "retargeting")
         }
         // Content fades in once the shape is on its way, and out ahead of the shrink.
         SequentialAnimation {
             id: openReveal
-            PauseAnimation { duration: root.morphing ? 110 : 0 }
-            NumberAnimation { target: drop; property: "reveal"; to: 1; duration: root.morphing ? 220 : 0; easing.type: Easing.OutCubic }
+            PauseAnimation { duration: root.morphing ? VisualQuality.ms(Theme.revealDelay) : 0 }
+            NumberAnimation { target: drop; property: "reveal"; to: 1; duration: root.morphing ? VisualQuality.ms(Theme.reveal) : 0; easing.type: Easing.OutCubic }
+            ScriptAction { script: if (root.requested) root.setState("expanded") }
+        }
+        // In-place retarget: content leaves, the surface moves to the next
+        // geometry from where it is, the next content arrives.
+        SequentialAnimation {
+            id: morph
+            ScriptAction { script: { root.switching = true; root.setState("retargeting"); } }
+            NumberAnimation { target: drop; property: "reveal"; to: 0; duration: root.morphing ? VisualQuality.ms(Theme.conceal) : 0 }
+            ScriptAction { script: { drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; root.switching = false; root.retarget(); Canopy.enter(); } }
+            PauseAnimation { duration: root.morphing ? VisualQuality.ms(Theme.revealDelay) : 0 }
+            NumberAnimation { target: drop; property: "reveal"; to: 1; duration: root.morphing ? VisualQuality.ms(Theme.reveal) : 0; easing.type: Easing.OutCubic }
+            ScriptAction { script: if (root.requested) root.setState("expanded") }
         }
         // Topic change: every panel is its own. The open one collapses back up
         // into the bar, then the next one drops from its own control.
         SequentialAnimation {
             id: swap
-            ScriptAction { script: { root.switching = true; root.collapse(); } }
-            PauseAnimation { duration: root.morphing ? 210 : 0 }
+            ScriptAction { script: { root.switching = true; root.setState("retargeting"); root.collapse(); } }
+            PauseAnimation { duration: root.morphing ? VisualQuality.ms(Theme.morphShrink) + 10 : 0 }
             ScriptAction { script: { drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; root.aim(); } }
             PauseAnimation { duration: root.morphing ? 40 : 0 }
             ScriptAction { script: { root.switching = false; root.retarget(); Canopy.enter(); } }
-            PauseAnimation { duration: root.morphing ? 110 : 0 }
-            NumberAnimation { target: drop; property: "reveal"; to: 1; duration: root.morphing ? 220 : 0; easing.type: Easing.OutCubic }
+            PauseAnimation { duration: root.morphing ? VisualQuality.ms(Theme.revealDelay) : 0 }
+            NumberAnimation { target: drop; property: "reveal"; to: 1; duration: root.morphing ? VisualQuality.ms(Theme.reveal) : 0; easing.type: Easing.OutCubic }
+            ScriptAction { script: if (root.requested) root.setState("expanded") }
         }
-        Behavior on reveal { enabled: root.morphing && !openReveal.running && !swap.running; NumberAnimation { duration: 90 } }
+        Behavior on reveal { enabled: root.morphing && !openReveal.running && !swap.running && !morph.running; NumberAnimation { duration: VisualQuality.ms(Theme.conceal) } }
         CanopyPanel {
             id: panel
             anchors.fill: parent

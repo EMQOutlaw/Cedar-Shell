@@ -38,3 +38,14 @@ SectionMark 1.0 SectionMark.qml
 ExpandableDetails 1.0 ExpandableDetails.qml
 ProtectionCard 1.0 ProtectionCard.qml
 ShieldMark 1.0 ShieldMark.qml
+Transaction 1.0 Transaction.qml
+TransactionHudCard 1.0 TransactionHudCard.qml
+ProgressArc 1.0 ProgressArc.qml
+DropFrame 1.0 DropFrame.qml
+KineticLabel 1.0 KineticLabel.qml
+KineticStatus 1.0 KineticStatus.qml
+KineticNumber 1.0 KineticNumber.qml
+CedarHeartwood 1.0 CedarHeartwood.qml
+CedarRootlines 1.0 CedarRootlines.qml
+CedarWhispers 1.0 CedarWhispers.qml
+CanopyPulse 1.0 CanopyPulse.qml

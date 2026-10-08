@@ -43,14 +43,20 @@ ColumnLayout {
         ColumnLayout {
             required property var modelData
             Layout.fillWidth: true
+            readonly property bool working: BluetoothService.busy && BluetoothService.activePath === modelData.dbusPath
+            // The state is what BlueZ reports, or the action in flight for this device; never an optimistic "connected".
+            readonly property string state: working ? ({ connect: "Connecting…", disconnect: "Disconnecting…", pair: "Pairing…", trust: "Updating…", forget: "Removing…" })[BluetoothService.activeAction] || "Working…" : modelData.pairing ? "Pairing…" : modelData.connected ? "Connected" : modelData.paired ? "Paired" : "Available"
             RowLayout {
-                Layout.fillWidth: true
+                Layout.fillWidth: true; spacing: 10
+                Rectangle { width: 8; height: 8; radius: 4; color: modelData.connected ? Theme.green : working || modelData.pairing ? Theme.teal : Theme.muted }
                 ColumnLayout {
-                    Layout.fillWidth: true
+                    Layout.fillWidth: true; spacing: 1
                     GlowText { text: modelData.name || modelData.address; Layout.fillWidth: true; elide: Text.ElideRight; color: modelData.connected ? Theme.green : Theme.text }
-                    GlowText { text: (modelData.connected ? "Connected" : modelData.paired ? "Paired" : "Available") + (modelData.batteryAvailable ? " · "+Math.round(modelData.battery*100)+"%" : ""); color: Theme.muted; font.pixelSize: 10 }
+                    GlowText { text: modelData.address + (modelData.trusted ? " · trusted" : "") + (modelData.icon ? " · " + modelData.icon.replace(/-/g, " ") : ""); color: Theme.muted; font.pixelSize: 10; Layout.fillWidth: true; elide: Text.ElideRight }
                 }
-                StationButton { text: modelData.connected ? "Disconnect" : modelData.paired ? "Connect" : "Pair"; enabled: !BluetoothService.busy; onClicked: BluetoothService.run(modelData.connected ? "disconnect" : modelData.paired ? "connect" : "pair",modelData.dbusPath) }
+                StatusPill { visible: modelData.batteryAvailable; text: Math.round(modelData.battery * 100) + "%"; tone: modelData.battery < .2 ? Theme.amber : Theme.teal }
+                StatusPill { text: state; tone: modelData.connected ? Theme.green : working || modelData.pairing ? Theme.teal : Theme.muted }
+                StationButton { text: working ? "Working…" : modelData.connected ? "Disconnect" : modelData.paired ? "Connect" : "Pair"; enabled: !BluetoothService.busy && !modelData.pairing; onClicked: BluetoothService.run(modelData.connected ? "disconnect" : modelData.paired ? "connect" : "pair",modelData.dbusPath) }
             }
             RowLayout {
                 visible: modelData.paired

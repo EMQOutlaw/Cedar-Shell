@@ -28,6 +28,10 @@ from the terminal.
 | Super+L | Lock · Super+Alt+L session locker · Super+Shift+L lock and suspend |
 | Super+Alt+P | CEDAR Settings |
 | Super+G | Gaming Mode |
+| Super+Shift+P | Desktop Profiles |
+| Super+Shift+F | Focus |
+| Super+Shift+H | Station (health) |
+| Super+Tab | Workspace overview |
 | Super+V, Super+Alt+V | Clipboard |
 | Ctrl+Alt+V | Audio |
 | Super+T / W / C / E | Terminal, browser, editor, files (as chosen in Settings) |

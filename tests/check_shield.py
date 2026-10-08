@@ -60,19 +60,27 @@ ShellRoot {
                     window.check(window.state("wifi") === "on" && window.state("ipv6") === "off" && window.state("discovery") === "off", "Wi-Fi stable on; IPv6 and discovery off on a trusted network (" + window.state("discovery") + ")");
                     window.check(window.state("exposure") === "warn" && Shield.protection("exposure").value === "2 services visible to your network", "Exposure in plain words");
                     window.check(Shield.posture === "protected" && Shield.headline === "Protected", "Trusted network with recommended protections on is protected (" + Shield.posture + ": " + Shield.subline + ")");
+                    window.check(pages.nextStep === null, "Nothing to do shows no next step");
                     Shield.setProfile("public");
                     window.check(Shield.publicNetwork && Shield.profile === "public", "Profile stored per connection");
                     window.check(Shield.posture === "attention" && window.state("discovery") === "warn" && Shield.recommendedOff.length >= 2, "Public network recommends more and asks for attention (" + Shield.recommendedOff.map(p => p.id).join(",") + ")");
+                    window.check(!!pages.nextStep && pages.nextStep.id === Shield.recommendedOff[0].id, "The overview names the first recommended protection that is off as the next step");
+                    Shield.openPage("network");
+                    window.check(pages.page === "network" && Shield.requestedPage === "", "A page request from outside navigates and is consumed (" + pages.page + ")");
+                    pages.navigate("overview");
                     Shield.setProfile("trusted");
                     window.shot("shield-app-overview");
                     break;
                 case 2:
                     Shield.data = Object.assign({}, Shield.data, { firewall: Object.assign({}, Shield.data.firewall, { active: false, owner: "ufw" }) });
                     window.check(Shield.posture === "risk" && Shield.headline === "At risk", "Services on every interface with the firewall off is at risk (" + Shield.posture + ")");
+                    const signal = CoreService.rows.find(r => r.id === "shield");
+                    window.check(!!signal && signal.priority === 3 && signal.sticky && signal.actions[0].id === "open", "At risk publishes a sticky critical Shield row on the Core pill with a way in");
                     break;
                 case 3:
                     window.check(Shield.activity.length > 0 && Shield.activity[0].title.indexOf("Firewall") === 0, "A protection change is recorded in the activity log (" + JSON.stringify(Shield.activity[0]) + ")");
                     Shield.data = Object.assign({}, Shield.data, { firewall: Object.assign({}, Shield.data.firewall, { active: true }) });
+                    window.check(!CoreService.rows.some(r => r.id === "shield"), "Protected again removes the Shield row");
                     pages.navigate("protections");
                     window.shot("shield-app-protections");
                     pages.detail = "dns";

@@ -3,10 +3,41 @@
 CEDAR Shield is a first-party application: its own window (a regular
 toplevel that Hyprland tiles or floats), its own launcher entry and icon
 (`cedar shield`, Go › Shield, the Shield tile in Quick Controls, `qs -c cedar
-ipc call shield open`), a sidebar with Overview, Protections, Network,
+ipc call shield open`), a rail with Overview, Protections, Network,
 Activity and Settings, and a detail view per protection. It is a presentation
 over the Shield service: closing the window or restarting the shell changes
 no protection, because the protections live in the services that own them.
+A page can be asked for from outside: `cedar shield network` or `qs -c cedar
+ipc call shield page activity` opens the window on that page.
+
+## The look
+
+Shield is a station, not a settings page. Every level-1 surface is a
+`ChamferFrame` in the Core pill's silhouette with the short lit line at its
+top edge; the hero frame, a protection's detail head and the Next Step card
+tint that line with their state (cedar green, amber, ember). Inside the
+frames the rounded Station family does the work: rows that open, chips,
+toggles, readings. The rail carries the mark, the pages (Protections shows
+its count), and the posture, when it was verified and which network, so the
+state is readable from any page.
+
+Each page enters on one shared clock of about a second (700 ms on a page
+switch): the title's letters settle in from a wider spread, the filament
+lights from the left, the mark's branches light outward, frames and rows
+stagger in and the counts count up. Reduced Motion and test mode show the
+settled view on the first frame. Nothing loops: the atmosphere behind the
+window is drawn once and never moves, because a toplevel that animates
+re-renders every window on every output.
+
+The overview says what to do next. While a protection has failed, or a
+recommended one is off, a Next Step card names it with the reason, offers
+"Turn on" (the same verified, one-step `applyRecommended` path as the Network
+page) and "Open". When there is nothing to do, the card is absent rather
+than filled.
+
+Keyboard: Ctrl+1…5 switch pages, Ctrl+R checks again, Escape goes back from
+a detail view and then closes, Ctrl+W closes, Tab reaches every row, card
+and control with a visible focus ring.
 
 The window is hosted by the shell process (one `LazyLoader`, created on open
 and released on close) so it shares the live service, costs no second
@@ -33,6 +64,14 @@ Posture comes from the recommended set only:
 
 A missing VPN or a hardware Wi-Fi address never turns the shield amber;
 they are informational unless the network profile recommends them.
+
+## On the Core pill
+
+Shield is a signal source. While the posture asks for something, the pill
+carries a row from the real read: "Shield · Attention required" at high
+priority, "Shield · At risk" as a sticky critical row, each with Open
+Shield. Protected removes the row. Nothing is published before the first
+read, and the activity log remains Shield's own record.
 
 ## Twelve protections in four groups
 

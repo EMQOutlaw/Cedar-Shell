@@ -22,6 +22,15 @@ FloatingWindow {
     onHeightChanged: remember.restart()
     Timer { id: remember; interval: 600; onTriggered: Shield.rememberWindow(root.width, root.height) }
 
+    // Quiet filaments at the window's foot, drawn once; the spores never move
+    // here because a toplevel that animates re-renders every window on every
+    // output. Ambient intensity 0 removes it entirely.
+    CedarAtmosphere {
+        anchors.fill: parent
+        active: false
+        visible: Config.saved.ambientIntensity > 0
+        opacity: Config.saved.ambientIntensity * .7
+    }
     ShieldPages {
         anchors.fill: parent
         focus: true

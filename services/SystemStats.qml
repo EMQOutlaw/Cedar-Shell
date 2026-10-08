@@ -29,7 +29,7 @@ Singleton {
     property real previousTotal: 0
     property real previousIdle: 0
     property bool available: false
-    readonly property bool instrument: !ShellState.locked && (ShellState.panel === "hud" || (ShellState.panel === "settings" && ["overview","system"].includes(ShellState.settingsSection)) || (Canopy.shown && ["system", "quick", "station"].includes(Canopy.topic)))
+    readonly property bool instrument: !ShellState.locked && (ShellState.panel === "hud" || Station.open || (ShellState.panel === "settings" && ["overview","system"].includes(ShellState.settingsSection)) || (Canopy.shown && ["system", "quick", "station"].includes(Canopy.topic)))
     // Below normal visual quality (Performance or Gaming Mode) the ambient pulse stops; instruments and warnings keep their cadence.
     readonly property bool ambient: Config.saved.forestPulse && Config.saved.coreEnabled && !ShellState.locked && VisualQuality.normal
     readonly property bool warnings: Config.saved.coreWarnings

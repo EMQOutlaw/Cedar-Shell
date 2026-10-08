@@ -207,9 +207,32 @@ Singleton {
 
     // ------------------------------------------------------------- the app
     function openApp() { if (ShellState.locked) return; windowOpen = true; }
+    // A page asked for from outside (IPC, Go, `cedar shield network`): the
+    // window opens if needed and ShieldPages consumes the request.
+    readonly property var pageIds: ["overview", "protections", "network", "activity", "settings"]
+    property string requestedPage: ""
+    function openPage(page) {
+        if (ShellState.locked) return;
+        const id = String(page || "").toLowerCase();
+        if (!pageIds.includes(id)) return;
+        windowOpen = true; requestedPage = ""; requestedPage = id;
+    }
     function closeApp() { windowOpen = false; }
     function toggleApp() { if (windowOpen) closeApp(); else openApp(); }
     onOpenChanged: if (open) refresh()
+    // Signals: the posture is a row on the Core pill only while it asks for
+    // something (attention: high; at risk: critical, sticky). Protected
+    // removes it. Published from real reads, never from a guess.
+    onPostureChanged: syncSignal()
+    onSublineChanged: if (ready) syncSignal()
+    function syncSignal() {
+        if (!ready || !CoreService.enabled) return;
+        if (posture === "attention" || posture === "risk")
+            CoreService.publish({ id: "shield", type: "warning", priority: posture === "risk" ? "critical" : "high", sticky: posture === "risk", persistent: true,
+                                  title: "Shield · " + headline, subtitle: subline, announce: !CoreService.rows.some(r => r.id === "shield"), remember: true,
+                                  actions: [{ id: "open", label: "Open Shield" }] });
+        else CoreService.remove("shield", false);
+    }
     // A network change moves the DNS path, the listeners and the profile:
     // one fresh read, debounced, whether or not the window is open (a setting).
     property string lastNetwork: ""

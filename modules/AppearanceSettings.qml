@@ -94,4 +94,12 @@ ColumnLayout {
         heading:"Motion & light"; caption:"Ambient light follows real activity. Reduced Motion stops every decorative cycle."
         SettingsFields { page:"appearance"; groups:["Motion & light"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
     }
+    SettingsSection {
+        objectName:"barEffects"
+        heading:"Bar effects"
+        caption:"The bar's animation identity: the Heartwood instrument, Rootlines, Kinetic Type, Whispers and Canopy Pulse. Every effect is state-driven and still while nothing changes; Reduced Motion and the Off preset keep the bar static."
+        badge:Config.saved.motionPreset === "off" ? "Static" : Config.saved.motionPreset.charAt(0).toUpperCase() + Config.saved.motionPreset.slice(1)
+        badgeColor:Config.saved.motionPreset === "off" ? Theme.muted : Theme.green
+        SettingsFields { page:"appearance"; groups:["Bar effects"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+    }
 }

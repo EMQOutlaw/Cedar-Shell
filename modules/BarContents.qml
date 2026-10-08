@@ -65,11 +65,22 @@ Item {
                 }
             }
             Row {
+                id: workspaceRow
                 visible: Config.moduleEnabled("workspaces")
                 spacing: 1
+                // The active mark glides between workspaces instead of jumping.
+                property real markX: 0
+                property real markWidth: 14
+                Rectangle {
+                    id: workspaceMark
+                    x: workspaceRow.markX; y: parent.height - 3; width: workspaceRow.markWidth; height: 2; radius: 1
+                    color: Theme.green; opacity: .95
+                    Behavior on x { enabled: VisualQuality.effects; NumberAnimation { duration: VisualQuality.ms(Theme.morphGrow); easing.type: Easing.OutBack } }
+                }
                 Repeater {
                     model: Hyprland.workspaces
                     BarButton {
+                        id: wsButton
                         required property var modelData
                         visible: modelData.monitor?.name === root.output.name && modelData.id > 0
                         width: visible ? 32 : 0
@@ -77,18 +88,35 @@ Item {
                         text: modelData.name
                         hint: "Workspace " + modelData.name
                         checked: root.monitor?.activeWorkspace?.id === modelData.id
+                        glide: true
                         accent: modelData.urgent ? Theme.amber : Theme.green
                         onClicked: modelData.activate()
+                        function place() { if (checked && visible) { workspaceRow.markX = x + (width - workspaceRow.markWidth) / 2; } }
+                        onCheckedChanged: place()
+                        onXChanged: place()
+                        Component.onCompleted: place()
                     }
                 }
+                // The overview grows out of the workspace region: this is its origin.
+                BarButton {
+                    visible: Config.stage >= 3 && Config.saved.canopyEnabled
+                    text: "▣"
+                    iconOnly: true
+                    hint: "Workspace overview (Super+Tab)"
+                    accent: Theme.teal
+                    anchorTopic: "workspaces"
+                    canopyOutput: root.output.name
+                    checked: Canopy.shown && Canopy.topic === "workspaces" && !Canopy.peeking
+                    onClicked: Canopy.toggleTopic("workspaces", root.output.name)
+                }
             }
-            GlowText {
+            // Whispers: the window title, a contextual line as things happen, a curated line otherwise.
+            CedarWhispers {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                text: Config.moduleEnabled("activeWindow") ? (Hyprland.activeToplevel?.title || "A cold, living light in the dark woods.") : ""
-                elide: Text.ElideRight
-                color: Theme.muted
-                font.pixelSize: Theme.small
+                height: implicitHeight
+                windowTitle: Config.moduleEnabled("activeWindow") ? (Hyprland.activeToplevel?.title || "") : ""
+                fontSize: Theme.small
             }
         }
         RowLayout {
@@ -103,6 +131,12 @@ Item {
             Item {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
+            }
+            // Canopy Pulse: real audio levels while something plays, opt-in.
+            CanopyPulse {
+                visible: Config.saved.barPulse && VisualQuality.effects && Motion.active && !!(Media.player && Media.player.isPlaying)
+                Layout.alignment: Qt.AlignVCenter
+                tone: Theme.teal
             }
             Row {
                 visible: root.width > 650 && implicitWidth > 0 && Config.moduleEnabled("tray")

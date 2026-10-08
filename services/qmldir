@@ -34,3 +34,8 @@ singleton VisualQuality 1.0 VisualQuality.qml
 singleton Gaming 1.0 Gaming.qml
 singleton Shield 1.0 Shield.qml
 singleton Permission 1.0 Permission.qml
+singleton Overrides 1.0 Overrides.qml
+singleton Profiles 1.0 Profiles.qml
+singleton Focus 1.0 Focus.qml
+singleton Station 1.0 Station.qml
+singleton Pulse 1.0 Pulse.qml

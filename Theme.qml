@@ -80,5 +80,16 @@ Singleton {
     readonly property int sweep: 650
     readonly property int pulse: 4200
     readonly property int osdDuration: 1800
+    // The morph vocabulary (nominal, at full quality). Surfaces multiply these
+    // by VisualQuality.motionScale: Performance mode shortens them, Gaming
+    // Mode nearly removes them, Reduced Motion snaps (the Behaviors are off).
+    readonly property int hover: 120          // hover emphasis
+    readonly property int expand: 220         // a small expansion: a chip, a row, the pill's width
+    readonly property int morphGrow: 320      // a surface growing out of the bar
+    readonly property int morphShrink: 200    // the same surface going back
+    readonly property int revealDelay: 110    // content waits until the surface is on its way
+    readonly property int reveal: 220         // then settles in
+    readonly property int conceal: 90         // and leaves ahead of the shrink
+    readonly property int entrance: 1050      // a panel's staggered instruments
     property bool reducedMotion: false
 }

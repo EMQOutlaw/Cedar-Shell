@@ -64,7 +64,7 @@ Rectangle {
                 spacing: 2
                 GlowText {
                     // Hidden when a standalone panel's content carries its own heading.
-                    visible: !(root.standalone && ["network", "go"].includes(root.topic))
+                    visible: !(root.standalone && ["network", "go", "workspaces"].includes(root.topic))
                     text: Canopy.titleFor(root.topic).toUpperCase()
                     color: Forest.accent
                     font.family: Theme.labelFont
@@ -123,7 +123,8 @@ Rectangle {
                             trails: "Trails",
                             station: "Station",
                             go: "Apps",
-                            startup: "Startup"
+                            startup: "Startup",
+                            workspaces: "Spaces"
                         })[modelData]
                     background: ChamferFrame {
                         cut: 5
@@ -171,7 +172,8 @@ Rectangle {
                         trails: trails,
                         station: station,
                         go: go,
-                        startup: startup
+                        startup: startup,
+                        workspaces: workspaces
                     })[root.topic]
             }
         }
@@ -202,6 +204,10 @@ Rectangle {
                 }
             }
         }
+    }
+    Component {
+        id: workspaces
+        WorkspaceCanopy { active: root.active }
     }
     Component {
         id: audio

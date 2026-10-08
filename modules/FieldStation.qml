@@ -370,17 +370,16 @@ Rectangle {
                     }
                 }
             }
-            // Update opens a terminal (packages may need a password there) and
-            // runs the installer's own update: pull the checkout or download the
-            // latest release, then the CEDAR Installer hands the desktop back,
+            // Update opens the CEDAR Installer window directly. Its first stage
+            // fetches the newest CEDAR with visible steps and turns any stop into
+            // what to do next; then the installer hands the desktop back,
             // installs, and starts CEDAR again. Its own scope outlives the shell.
             StationButton {
                 text: "Update CEDAR"
-                hint: "Fetch the newest CEDAR and run its installer"
+                hint: "Fetch the newest CEDAR and install it"
                 accent: Theme.green
                 onClicked: {
                     Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--",
-                        "python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "terminal",
                         "python3", Quickshell.shellPath("installer/cedar_install.py"), "--update"]);
                     Canopy.shown && Canopy.topic === "station" ? Canopy.close() : ShellState.close();
                 }

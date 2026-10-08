@@ -47,7 +47,7 @@ Item {
     // Quick Controls grows out of the pill: register its screen rect.
     readonly property string anchorOutput: CoreService.hostName
     function pillRect() {
-        const win = root.QsWindow.window;
+        const win = root.QsWindow ? root.QsWindow.window : null;
         if (!win || !win.screen)
             return null;
         const p = pill.mapToItem(null, 0, 0);
@@ -91,7 +91,7 @@ Item {
     Behavior on width {
         enabled: root.morphing
         NumberAnimation {
-            duration: 150
+            duration: VisualQuality.ms(Theme.expand * .7)
             easing.type: Easing.OutCubic
         }
     }
@@ -99,7 +99,7 @@ Item {
         enabled: root.morphing
         NumberAnimation {
             id: heightAnimation
-            duration: root.growing ? 320 : 200
+            duration: VisualQuality.ms(root.growing ? Theme.morphGrow : Theme.morphShrink)
             easing.type: Easing.BezierSpline
             easing.bezierCurve: root.growing ? [0.38, 1.21, 0.22, 1.0, 1, 1] : [0.05, 0.7, 0.1, 1.0, 1, 1]
             onRunningChanged: if (!running)
@@ -112,8 +112,8 @@ Item {
     Behavior on reveal {
         enabled: root.morphing
         SequentialAnimation {
-            PauseAnimation { duration: root.panel ? 110 : 0 }
-            NumberAnimation { duration: root.panel ? 220 : 90; easing.type: Easing.OutCubic }
+            PauseAnimation { duration: root.panel ? VisualQuality.ms(Theme.revealDelay) : 0 }
+            NumberAnimation { duration: VisualQuality.ms(root.panel ? Theme.reveal : Theme.conceal); easing.type: Easing.OutCubic }
         }
     }
     // The hub has its own reveal so its scroll view never sits over a hover peek.
@@ -121,15 +121,15 @@ Item {
     Behavior on hubReveal {
         enabled: root.morphing
         SequentialAnimation {
-            PauseAnimation { duration: root.detailed ? 110 : 0 }
-            NumberAnimation { duration: root.detailed ? 220 : 90; easing.type: Easing.OutCubic }
+            PauseAnimation { duration: root.detailed ? VisualQuality.ms(Theme.revealDelay) : 0 }
+            NumberAnimation { duration: VisualQuality.ms(root.detailed ? Theme.reveal : Theme.conceal); easing.type: Easing.OutCubic }
         }
     }
     // The chamfers open up a little with the panel, so the silhouette flows rather than stretches.
     property real chamfer: panel ? 1.35 : 1
     Behavior on chamfer {
         enabled: root.morphing
-        NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: VisualQuality.ms(Theme.morphGrow); easing.type: Easing.OutCubic }
     }
     // Keep the native surface and its controls mapped; geometry grows from the center.
     Item {
@@ -142,7 +142,9 @@ Item {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 strokeWidth: 1
-                strokeColor: Qt.alpha(root.lineColor, root.alert ? .36 : .15)
+                // Seated in the bar at rest: the outline nearly disappears and the shape
+                // and ember line carry the identity; it lights with a signal or a panel.
+                strokeColor: Qt.alpha(root.lineColor, root.alert ? .36 : root.panel || root.signalling || hover.hovered ? .22 : .09)
                 fillColor: Qt.alpha(Theme.background, Math.max(.94, Config.barOpacity))
                 startX: 0; startY: 9 * root.chamfer
                 PathLine { x: 9 * root.chamfer; y: 0 }
@@ -244,7 +246,7 @@ Item {
         hint: "Quick Controls"
         enabled: !ShellState.locked
         checked: Canopy.shown && Canopy.topic === "quick"
-        onClicked: Canopy.toggleQuick()
+        onClicked: { heartwood.pulse(); Canopy.toggleQuick(); }
         Keys.onReturnPressed: event => {
             Canopy.toggleQuick();
             event.accepted = true;
@@ -259,14 +261,41 @@ Item {
             border.color: Theme.teal
         }
         contentItem: Item {
-            GlowText {
-                // Centered in the space left of the dots.
-                x: 12 + Math.max(0, (parent.width - 24 - (root.dots.length ? dotRow.width + 8 : 0) - width) / 2)
+            // The Heartwood: CEDAR's instrument, seated at the pill's left. It
+            // reads the desktop (Gaming Mode, Focus, Shield's posture, a panel
+            // unfolding) and answers the pointer; still otherwise.
+            CedarHeartwood {
+                id: heartwood
+                visible: Config.saved.barHeartwood
+                x: 8
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, parent.width - 24 - (root.dots.length ? dotRow.width + 8 : 0))
+                size: root.detailed ? 44 : Math.min(30, root.restingHeight - 4)
+                hovered: header.hovered
+                unfolding: Canopy.surfaceState === "opening" && root.canopyHere
+                mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle"
+                warning: Shield.ready && Shield.posture !== "protected"
+                accent: root.alert ? root.accent : Theme.green
+                intensity: VisualQuality.effectIntensity
+                Behavior on size { enabled: root.morphing; NumberAnimation { duration: VisualQuality.ms(Theme.morphGrow); easing.type: Easing.OutCubic } }
+                Connections { target: VisualQuality; function onAwakened() { heartwood.awaken(); } }
+                // A signal arriving ripples outward from the heart.
+                Connections { target: root; function onAlertChanged() { if (root.alert) heartwood.ripple(); } }
+            }
+            KineticLabel {
+                // Centered in the space left of the Heartwood and the dots. The
+                // clock's minute tick is rate-limited to a static update; a
+                // panel's name or a signal's title resolves in.
+                readonly property real leftInset: heartwood.visible ? heartwood.x + heartwood.width + 6 : 12
+                x: leftInset + Math.max(0, (parent.width - leftInset - 12 - (root.dots.length ? dotRow.width + 8 : 0) - width) / 2)
+                anchors.verticalCenter: parent.verticalCenter
+                height: implicitHeight
+                width: Math.min(implicitWidth, parent.width - leftInset - 12 - (root.dots.length ? dotRow.width + 8 : 0))
                 visible: !(root.volume && !root.panel && !root.canopyHere)
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
+                transitionStyle: "resolve"
+                minimumInterval: 900
+                maximumAnimatedLength: 24
                 text: root.detailed ? "CEDAR CORE" : root.canopyHere ? Canopy.title.toUpperCase() : root.alert ? (root.activity?.title || "") : CoreService.recording ? "REC  " + Media.elapsed((CoreService.now - CoreService.recordings[0].started) / 1000) : CoreService.timer.active ? "TIMER  " + Media.elapsed(CoreService.timer.remaining) : Forest.whisper || (Config.moduleEnabled("clock") ? Config.formatTime(clock.date) : "◈")
                 font.family: root.detailed ? Theme.labelFont : Theme.dataFont
                 font.pixelSize: root.detailed ? 19 : Theme.small

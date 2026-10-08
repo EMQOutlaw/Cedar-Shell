@@ -140,6 +140,15 @@ Singleton {
             collapse();
             return;
         }
+        if (row.id === "profile" && action === "leave") {
+            Profiles.deactivate();
+            collapse();
+            return;
+        }
+        if (row.id === "focus" && action === "focus-pause") { Focus.toggle(); return; }
+        if (row.id === "focus" && action === "focus-end") { Focus.end(); collapse(); return; }
+        if (row.id === "focus-complete" && action === "dismiss") { remove(row.id); return; }
+        if (row.id === "shield" && action === "open") { Shield.openApp(); collapse(); return; }
         if (action === "timer-pause")
             timer.toggle();
         else if (action === "timer-cancel")

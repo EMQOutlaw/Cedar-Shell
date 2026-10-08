@@ -225,8 +225,70 @@ ColumnLayout {
         visible: root.hotspot && root.showHotspot
         Layout.fillWidth: true
     }
+    // VPN: the tunnels NetworkManager knows, whoever created them. A profile a
+    // VPN application manages is still controllable here; the app may reconnect.
+    RowLayout {
+        Layout.fillWidth: true; Layout.topMargin: 8; spacing: 8
+        opacity: root.beat(5)
+        SectionMark { text: "VPN"; tone: Network.vpnActive ? Theme.green : Theme.teal }
+        Item { Layout.fillWidth: true }
+        GlowText { text: Network.vpns.count ? Network.vpns.count + (Network.vpns.count === 1 ? " PROFILE" : " PROFILES") : "NO PROFILES"; font.pixelSize: 9; font.letterSpacing: 1.2; color: Theme.muted }
+    }
+    GlowText {
+        visible: Network.vpns.count === 0
+        text: Network.data.available ? "No VPN or WireGuard profile is saved in NetworkManager. Import one (a WireGuard file from your provider works with `nmcli connection import type wireguard file …`) and it appears here." : "NetworkManager is not reachable."
+        font.pixelSize: Theme.small; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap
+        opacity: root.beat(6)
+    }
+    Repeater {
+        model: Network.vpns
+        ColumnLayout {
+            id: vpn
+            required property var model
+            required property int index
+            readonly property var modelData: model
+            readonly property bool pending: Network.pendingPath === modelData.path && Network.busy
+            readonly property string state: pending ? (Network.pendingAction === "deactivate" ? "Disconnecting…" : "Connecting…") : modelData.active ? "Connected" : "Saved"
+            readonly property bool managed: /^ProtonVPN|^pvpn-|^Mullvad|^NordVPN|^ExpressVPN/i.test(modelData.name)
+            readonly property real sweep: root.beat(6 + Math.min(index, 6), .4)
+            Layout.fillWidth: true; spacing: 2
+            opacity: sweep
+            transform: Translate { x: 10 * (1 - vpn.sweep) }
+            // Name and state on one line, the kind and the controls on the next: the drop is narrow.
+            RowLayout {
+                Layout.fillWidth: true; spacing: 10
+                Rectangle { width: 8; height: 8; radius: 4; color: vpn.modelData.active ? Theme.green : vpn.pending ? Theme.teal : Theme.muted }
+                GlowText { text: vpn.modelData.name; Layout.fillWidth: true; elide: Text.ElideRight; color: vpn.modelData.active ? Theme.green : Theme.text }
+                StatusPill { text: vpn.state; tone: vpn.modelData.active ? Theme.green : vpn.pending ? Theme.teal : Theme.muted }
+            }
+            RowLayout {
+                Layout.fillWidth: true; Layout.leftMargin: 18; spacing: 8
+                GlowText { text: (vpn.modelData.type === "wireguard" ? "WireGuard" : "VPN plugin") + (vpn.managed ? " · kept by its own app, which may reconnect" : "") + (vpn.modelData.autoconnect ? " · automatic" : ""); font.pixelSize: 10; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                StationButton { text: vpn.pending ? "Working…" : vpn.modelData.active ? "Disconnect" : "Connect"; implicitHeight: 28; enabled: !Network.busy; onClicked: Network.run({ action: vpn.modelData.active ? "deactivate" : "activate", path: vpn.modelData.path }) }
+                StationButton { text: "Forget"; implicitHeight: 28; enabled: !Network.busy; onClicked: root.confirmForget = vpn.modelData.path }
+            }
+            RowLayout {
+                visible: root.confirmForget === vpn.modelData.path
+                GlowText { text: "Remove this VPN profile from NetworkManager?"; color: Theme.amber; font.pixelSize: Theme.small }
+                StationButton { text: "Forget profile"; accent: Theme.amber; onClicked: { Network.run({ action: "forget", path: vpn.modelData.path }); root.confirmForget = ""; } }
+                StationButton { text: "Cancel"; onClicked: root.confirmForget = "" }
+            }
+        }
+    }
+    GlowText {
+        visible: Network.killSwitch !== null
+        text: "A kill-switch connection (" + (Network.killSwitch ? Network.killSwitch.name : "") + ") is active. It belongs to the VPN application; CEDAR reports it and does not enforce one of its own."
+        font.pixelSize: 10; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap
+        opacity: root.beat(7)
+    }
+    GlowText {
+        visible: Network.vpns.count > 0
+        text: "Advanced settings (servers, keys, DNS) are the profile's own: edit them with “Advanced networks (terminal)” above or your provider's application."
+        font.pixelSize: 10; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap
+        opacity: root.beat(7)
+    }
     SectionMark {
-        text: "SAVED NETWORKS & VPN"
+        text: "SAVED NETWORKS"
         Layout.topMargin: 8
         opacity: root.beat(6)
     }
@@ -238,19 +300,21 @@ ColumnLayout {
             required property int index
             readonly property var modelData: model
             readonly property real sweep: root.beat(7 + Math.min(index, 8), .4)
+            readonly property bool pending: Network.pendingPath === modelData.path && Network.busy
             Layout.fillWidth: true
             opacity: sweep
             transform: Translate { x: 10 * (1 - saved.sweep) }
             RowLayout {
                 Layout.fillWidth: true
                 GlowText {
-                    text: modelData.name + " · " + modelData.type
+                    text: modelData.name + " · " + modelData.type.replace("802-11-wireless", "Wi-Fi").replace("802-3-ethernet", "wired")
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     color: modelData.active ? Theme.green : Theme.text
                 }
+                StatusPill { visible: modelData.active || saved.pending; text: saved.pending ? (Network.pendingAction === "deactivate" ? "Disconnecting…" : "Connecting…") : "Connected"; tone: saved.pending ? Theme.teal : Theme.green }
                 StationButton {
-                    text: modelData.active ? "Disconnect" : "Connect"
+                    text: saved.pending ? "Working…" : modelData.active ? "Disconnect" : "Connect"
                     enabled: !Network.busy
                     onClicked: Network.run({
                         action: modelData.active ? "deactivate" : "activate",
@@ -265,7 +329,6 @@ ColumnLayout {
             }
             StationToggle {
                 Layout.fillWidth: true
-                visible: modelData.type !== "vpn"
                 label: "Connect automatically"
                 checked: modelData.autoconnect === true
                 busy: Network.busy

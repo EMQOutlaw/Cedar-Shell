@@ -14,6 +14,6 @@ Rectangle {
         id: row
         anchors.centerIn: parent; spacing: 6
         Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 6; height: 6; radius: 3; color: root.tone }
-        Text { anchors.verticalCenter: parent.verticalCenter; text: root.text.toUpperCase(); textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1.2; color: root.tone }
+        KineticStatus { anchors.verticalCenter: parent.verticalCenter; width: implicitWidth; height: implicitHeight; text: root.text.toUpperCase(); color: root.tone }
     }
 }

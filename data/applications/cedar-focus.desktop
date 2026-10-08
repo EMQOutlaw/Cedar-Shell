@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Focus
+GenericName=Focus session
+Comment=CEDAR Focus: a timed session in which the desktop quiets itself, with held notifications and interruptions counted from what really happened
+Exec=cedar focus
+TryExec=qs
+Icon=cedar-focus
+Terminal=false
+Categories=Utility;Office;
+Keywords=focus;pomodoro;timer;quiet;concentrate;cedar;
+StartupNotify=false
+X-CEDAR-App=focus

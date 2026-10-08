@@ -6,10 +6,14 @@ are kept because people on older checkouts still hit them.
 ## Updating a checkout
 
 **Field Station → Update CEDAR** and `cedar installer --update` now do the whole
-update: a fast-forward pull of the checkout (or the latest release when there
-is no checkout), an unreadable `ORIG_HEAD` cleared, the desktop handed back
-from a running CEDAR session, the install, and CEDAR started again. The notes
-below describe the manual steps that still work.
+update in the CEDAR Installer window: an Update stage fetches the newest
+CEDAR with visible steps (fast-forward of the checkout, or the latest
+verified release when there is no checkout; an unreadable `ORIG_HEAD` is
+cleared), explains any stop with what to do and, where a fix is safe, a
+button that applies it; then the installer hands the desktop back from a
+running CEDAR session, installs, and starts CEDAR again. See "Updating" in
+docs/INSTALLATION.md. The notes below describe the manual steps that still
+work.
 
 `git pull` updates the checkout; a successful installation updates the
 installed `cedar` command. If setup was canceled or failed, the previous
@@ -26,12 +30,10 @@ before updating the installed release:
 "$HOME/.local/bin/cedar" restore && cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
 ```
 
-From the desktop, **Field Station → Update CEDAR** opens a terminal that runs
-these same steps: `git pull --ff-only` in `~/cedar-shell` (or
-`$CEDAR_CHECKOUT`), `cedar restore` only if a CEDAR session is active, then
-`bash ./install.sh`. A refused pull leaves the checkout and the desktop as
-they were. After a restore, start the new candidate with `cedar try`, then
-`cedar keep`.
+From the desktop, **Field Station → Update CEDAR** runs these same steps in
+the installer window; `cedar installer --update --no-gui` prints them in a
+terminal. A refused fast-forward leaves the checkout and the desktop as they
+were, and the window says what to do next.
 
 ## Messages from older candidates
 

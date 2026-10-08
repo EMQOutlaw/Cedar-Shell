@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Station
+GenericName=System health
+Comment=CEDAR Station: service health, failed units, live readings, the shell log, actionable issues and a redacted diagnostic report
+Exec=cedar station
+TryExec=qs
+Icon=cedar-station
+Terminal=false
+Categories=System;Monitor;
+Keywords=health;diagnostics;services;system;logs;cedar;
+StartupNotify=false
+X-CEDAR-App=station

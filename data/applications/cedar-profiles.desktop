@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Profiles
+GenericName=Desktop profiles
+Comment=CEDAR Profiles: Balanced, Work, Battery, Night, Gaming and Custom stances for the desktop, applied through each setting's own provider and restored on leave
+Exec=cedar profiles
+TryExec=qs
+Icon=cedar-profiles
+Terminal=false
+Categories=System;Settings;
+Keywords=profile;work;battery;night;gaming;focus;cedar;
+StartupNotify=false
+X-CEDAR-App=profiles

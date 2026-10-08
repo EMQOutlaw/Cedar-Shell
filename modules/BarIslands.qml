@@ -122,6 +122,17 @@ Item {
                         onClicked: modelData.activate()
                     }
                 }
+                BarButton {
+                    visible: Config.stage >= 3 && Config.saved.canopyEnabled
+                    text: "▣"
+                    iconOnly: true
+                    hint: "Workspace overview (Super+Tab)"
+                    accent: Theme.teal
+                    anchorTopic: "workspaces"
+                    canopyOutput: root.output.name
+                    checked: Canopy.shown && Canopy.topic === "workspaces" && !Canopy.peeking
+                    onClicked: Canopy.toggleTopic("workspaces", root.output.name)
+                }
             }
         }
     }

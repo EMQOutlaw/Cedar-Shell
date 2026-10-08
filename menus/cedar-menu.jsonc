@@ -87,6 +87,51 @@
     "label": "Recent Trails",
     "action": "cedar:canopy trails"
   },
+  "cedar.canopy.workspaces": {
+    "label": "Workspaces",
+    "description": "Every workspace on every monitor, with its windows; switch or move a window",
+    "action": "cedar:canopy workspaces",
+    "aliases": [
+      "overview",
+      "desktops",
+      "expose"
+    ]
+  },
+  "cedar.station": {
+    "label": "Station",
+    "description": "Health: services, failed units, live readings, the shell log and a diagnostic report",
+    "action": "cedar:station",
+    "aliases": [
+      "health",
+      "diagnostics",
+      "services",
+      "system status",
+      "logs"
+    ]
+  },
+  "cedar.focus": {
+    "label": "Focus",
+    "description": "A timed session in which the desktop quiets itself",
+    "action": "cedar:focus",
+    "aliases": [
+      "pomodoro",
+      "concentrate",
+      "quiet",
+      "deep work"
+    ]
+  },
+  "cedar.profiles": {
+    "label": "Profiles",
+    "description": "Balanced, Work, Battery, Night, Gaming and Custom desktop profiles",
+    "action": "cedar:profiles",
+    "aliases": [
+      "profile",
+      "work mode",
+      "battery mode",
+      "night mode",
+      "focus"
+    ]
+  },
   "cedar.shield": {
     "label": "Shield",
     "description": "Firewall, encrypted DNS, private Wi-Fi address, local exposure",

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- CEDAR Profiles: the pill's chamfered frame holding three stances, one lit. -->
+  <path d="M14 6 H50 L58 14 V50 L50 58 H14 L6 50 V14 Z" fill="#101E19" stroke="#3FE0C5" stroke-width="2" stroke-linejoin="round"/>
+  <g stroke-linecap="round" stroke-width="3" fill="none">
+    <path d="M18 24 H46" stroke="#315C4D"/>
+    <path d="M18 32 H46" stroke="#9DFFB0"/>
+    <path d="M18 40 H46" stroke="#315C4D"/>
+  </g>
+  <circle cx="46" cy="32" r="4" fill="#9DFFB0"/>
+  <path d="M22 52 H42" stroke="#E58B73" stroke-width="2" stroke-linecap="round"/>
+</svg>

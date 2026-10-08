@@ -29,6 +29,11 @@ Item {
             }
             c.strokeStyle = root.highlighted ? root.accent : Theme.border;
             c.lineWidth = 1; c.stroke();
+            // Grain: a lighter contour two pixels inside the Foundation.
+            c.beginPath(); c.moveTo(m + k + 1, m + 2); c.lineTo(w - 2, m + 2);
+            c.lineTo(w - 2, h - k - 1); c.lineTo(w - k - 1, h - 2); c.lineTo(m + 2, h - 2);
+            c.lineTo(m + 2, m + k + 1); c.closePath();
+            c.strokeStyle = Qt.alpha(Theme.border, 0.35); c.lineWidth = 1; c.stroke();
             c.strokeStyle = root.accent;
             c.beginPath(); c.moveTo(m + k, m); c.lineTo(m + k + 36, m); c.stroke();
             c.strokeStyle = Theme.grid;

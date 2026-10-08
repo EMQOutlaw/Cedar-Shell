@@ -19,12 +19,24 @@ Singleton {
         })
     readonly property alias networks: networkRows
     readonly property alias savedNetworks: savedRows
+    readonly property alias vpns: vpnRows
     ListModel {id:networkRows}
     ListModel {id:savedRows}
+    ListModel {id:vpnRows}
+    // Tunnels NetworkManager knows: VPN plugins and WireGuard profiles, whoever created them.
+    readonly property var tunnelTypes: ["vpn", "wireguard"]
+    // Connections that are nobody's business in a list: the loopback, bridges, tunnels of other kinds, a VPN app's kill-switch dummy.
+    readonly property var hiddenTypes: ["loopback", "bridge", "tun", "dummy", "veth", "bond", "team"]
     onDataChanged: {
         StableRows.reconcile(networkRows,data.networks || [],"path");
-        StableRows.reconcile(savedRows,(data.saved || []).filter(row=>row.type!=="loopback"),"path");
+        StableRows.reconcile(savedRows,(data.saved || []).filter(row=>!hiddenTypes.includes(row.type) && !tunnelTypes.includes(row.type)),"path");
+        StableRows.reconcile(vpnRows,(data.saved || []).filter(row=>tunnelTypes.includes(row.type)),"path");
     }
+    // A VPN application's own kill switch, observed as the connection it keeps active; CEDAR reports it, never enforces one.
+    readonly property var killSwitch: (data.saved || []).find(row => /killswitch|kill-switch/i.test(row.name) && row.active) || null
+    // Which saved connection the running action is for, so a row can say "Connecting…" or "Disconnecting…" rather than guess.
+    property string pendingPath: ""
+    property string pendingAction: ""
     readonly property string label: data.available ? (data.status?.label || data.label) : "Network unavailable"
     readonly property string state: data.available ? (data.status?.state || "unknown") : "unavailable"
     readonly property string kind: data.status?.kind || "unknown"
@@ -66,6 +78,7 @@ Singleton {
         if (ShellState.locked || Config.testMode || action.running)
             return;
         error = "";
+        pendingPath = request.path || ""; pendingAction = request.action || "";
         action.send(request);
     }
     Process {
@@ -97,10 +110,12 @@ Singleton {
             // The subscribed stream owns snapshots; an older action result
             // must not replace a newer hotplug or connection revision.
             root.error = "";
+            root.pendingPath = ""; root.pendingAction = "";
             recheck.restart();
         }
         onFailed: message => {
             root.error = message;
+            root.pendingPath = ""; root.pendingAction = "";
             recheck.restart();
         }
     }

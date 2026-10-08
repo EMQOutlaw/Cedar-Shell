@@ -76,6 +76,31 @@ ShellRoot {
         active: Config.stage >= 3 && Shield.windowOpen
         ShieldApp {}
     }
+    // Desktop Profiles: the preparation panel while a profile applies or
+    // restores, and the Profiles window while it is open.
+    LazyLoader {
+        active: Config.stage >= 3 && !Config.testMode && Profiles.hudShown
+        ProfileHud {}
+    }
+    LazyLoader {
+        active: Config.stage >= 3 && Profiles.windowOpen
+        ProfilesApp {}
+    }
+    // CEDAR Focus: the preparation panel while a session starts or ends, and
+    // the Focus window while it is open.
+    LazyLoader {
+        active: Config.stage >= 3 && !Config.testMode && Focus.hudShown
+        FocusHud {}
+    }
+    LazyLoader {
+        active: Config.stage >= 3 && Focus.windowOpen
+        FocusApp {}
+    }
+    // CEDAR Station: the health application, created when opened and released when closed.
+    LazyLoader {
+        active: Config.stage >= 3 && Station.windowOpen
+        StationApp {}
+    }
     // One Canopy on its chosen output. Output changes replace the host safely.
     Variants {
         reloadableId: "cedar-canopy-host"
@@ -94,6 +119,13 @@ ShellRoot {
         }
         function hide(): void {
             Canopy.close();
+        }
+        // Open a topic, or close it when it is the one showing (Super+Tab for the workspace overview).
+        function flip(topic: string): void {
+            Canopy.toggleTopic(topic);
+        }
+        function status(): string {
+            return JSON.stringify({ shown: Canopy.shown, topic: Canopy.topic, state: Canopy.surfaceState, rect: Canopy.surfaceRect, anchor: Canopy.anchorRect, standalone: Canopy.standalone, pinned: Canopy.pinned, screen: Canopy.screen ? Canopy.screen.name : "" });
         }
         function toggle(): void {
             if (Canopy.shown)
@@ -146,10 +178,42 @@ ShellRoot {
     IpcHandler {
         target: "shield"
         function open(): void { if (Config.stage >= 3) Shield.openApp(); }
+        function page(name: string): void { if (Config.stage >= 3) Shield.openPage(name); }
         function close(): void { Shield.closeApp(); }
         function toggle(): void { if (Config.stage >= 3) Shield.toggleApp(); }
         function refresh(): void { if (Config.stage >= 3) Shield.refresh(); }
         function status(): string { return JSON.stringify({ ready: Shield.ready, posture: Shield.posture, headline: Shield.headline, subline: Shield.subline, windowOpen: Shield.windowOpen, busy: Shield.busy, error: Shield.error, protections: Shield.protections.map(p => ({ id: p.id, state: p.state, value: p.value, detail: p.detail })) }); }
+    }
+    // Station: `station open|page <name>|close|refresh|status`.
+    IpcHandler {
+        target: "station"
+        function open(): void { if (Config.stage >= 3) Station.openApp(); }
+        function page(name: string): void { if (Config.stage >= 3) Station.openPage(name); }
+        function close(): void { Station.closeApp(); }
+        function refresh(): void { if (Config.stage >= 3) Station.refresh(); }
+        function status(): string { return JSON.stringify({ ready: Station.ready, status: Station.status, headline: Station.headline, subline: Station.subline, issues: Station.issues.map(i => ({ id: i.id, severity: i.severity, title: i.title, privileged: i.privileged })), services: Station.services.map(s => s.name + ":" + s.status), failedUnits: Station.data.failedUnits.length, gpu: Station.data.gpu, windowOpen: Station.windowOpen }); }
+    }
+    // Focus: `focus start <minutes>|begin|pause|end|toggle|open|close|status`.
+    IpcHandler {
+        target: "focus"
+        function start(minutes: string): void { if (Config.stage >= 3) Focus.start(Number(minutes) || 0); }
+        function begin(): void { if (Config.stage >= 3) Focus.start(0); }
+        function pause(): void { Focus.toggle(); }
+        function end(): void { Focus.end(); }
+        function toggle(): void { if (Config.stage >= 3) { if (Focus.active) Focus.end(); else Focus.start(0); } }
+        function open(): void { if (Config.stage >= 3) Focus.openApp(); }
+        function close(): void { Focus.closeApp(); }
+        function status(): string { return JSON.stringify({ active: Focus.active, paused: Focus.paused, remaining: Math.round(Focus.remaining), planned: Focus.planned, held: Focus.held, interruptions: Focus.interruptions, busy: Focus.busy, summary: Focus.summary, steps: Focus.steps, heldKeys: Overrides.keysHeldBy("focus"), sessions: Focus.history.length }); }
+    }
+    // Desktop Profiles: `profiles activate <id>|deactivate|toggle <id>|open|close|status`.
+    IpcHandler {
+        target: "profiles"
+        function activate(id: string): void { if (Config.stage >= 3) Profiles.activate(id); }
+        function deactivate(): void { if (Config.stage >= 3) { if (Profiles.current === "gaming") Gaming.deactivate(); else Profiles.deactivate(); } }
+        function toggle(id: string): void { if (Config.stage >= 3) Profiles.toggle(id); }
+        function open(): void { if (Config.stage >= 3) Profiles.openApp(); }
+        function close(): void { Profiles.closeApp(); }
+        function status(): string { return JSON.stringify({ current: Profiles.current, active: Profiles.active, busy: Profiles.anyBusy, summary: Profiles.summary, steps: Profiles.steps, held: Overrides.keysHeldBy("profile"), profiles: Profiles.definitions.map(d => d.id) }); }
     }
     // Gaming Mode: `gaming toggle|activate|deactivate|status` (Super+G).
     IpcHandler {
@@ -176,6 +240,13 @@ ShellRoot {
         }
         // `settings show shield`: open Settings on a page (ids from SettingsSchema.pages).
         function show(page: string): void {
+            if (Config.stage < 3 || ShellState.locked) return;
+            ShellState.settingsPage = page;
+            if (ShellState.panel === "settings") ShellState.close();
+            ShellState.open("settings");
+        }
+        // `qs ipc call settings show …` is swallowed by the CLI, like canopy show; `open` reaches the shell.
+        function open(page: string): void {
             if (Config.stage < 3 || ShellState.locked) return;
             ShellState.settingsPage = page;
             if (ShellState.panel === "settings") ShellState.close();

@@ -137,7 +137,7 @@ Singleton {
         try { document = JSON.parse(store.text() || "{}"); }
         catch (error) { persistenceMessage = "Preferences contain invalid JSON. Repair the file before saving."; return; }
         if (!document || typeof document !== "object" || Array.isArray(document)) return;
-        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
+        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "focusDnd", "focusWhispers", "focusTrails", "focusQuiet", "focusAllowedApps", "focusMinutes", "barHeartwood", "barRootlines", "barKinetic", "barWhispers", "barPulse", "effectIntensity", "motionPreset", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
         keys.forEach(key => document[key] = saved[key]);
         store.setText(JSON.stringify(document, null, 2) + "\n");
     }
@@ -191,6 +191,21 @@ Singleton {
             property bool desktopSignature: true
             property bool notificationsEnabled: true
             property int notificationSeconds: 7
+            // Focus sessions: what a session quiets, who may still interrupt, the default length.
+            property bool focusDnd: true
+            property bool focusWhispers: true
+            property bool focusTrails: false
+            property bool focusQuiet: true
+            property string focusAllowedApps: ""
+            property int focusMinutes: 25
+            // Bar effects: the Heartwood instrument, Rootlines, Kinetic Type, Whispers, Canopy Pulse, their intensity and the motion preset.
+            property bool barHeartwood: true
+            property bool barRootlines: true
+            property bool barKinetic: true
+            property bool barWhispers: true
+            property bool barPulse: false
+            property real effectIntensity: 1
+            property string motionPreset: "balanced"
             property var hiddenBarModules: []
             property var goFavorites: []
             property string searchEngine: "brave"
