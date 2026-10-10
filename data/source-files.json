@@ -444,6 +444,7 @@
   "tests/test_trailwatch.py",
   "tests/test_update_channels.py",
   "tests/test_update_checkout.py",
+  "tests/test_validation_checks.py",
   "tests/test_weather_location.py",
   "themes/backgrounds/01-cedar-woods.png",
   "themes/backgrounds/02-field-station-grid.png",

@@ -10,7 +10,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-trailwatch-') as tmp:
     shots=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else base/'shots';shots.mkdir(parents=True,exist_ok=True)
     harness=(ROOT/'tests/qml/TrailwatchHarness.qml').read_text().replace('../../modules','modules').replace('../../services','services').replace('../../components','components').replace('import "../.."','import "."')
     (source/'preview.qml').write_text(harness)
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software','XDG_RUNTIME_DIR':str(base/'runtime'),'XDG_CONFIG_HOME':str(base/'config'),'CEDAR_SCREENSHOT_DIR':str(shots)}
+    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QT_QUICK_BACKEND':'software','XDG_RUNTIME_DIR':str(base/'runtime'),'XDG_CONFIG_HOME':str(base/'config'),'CEDAR_SCREENSHOT_DIR':str(shots)}
     result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=25)
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: Trailwatch' not in output or re.search(r'FAIL:|Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|Unable to assign|recursive rearrange|is not defined',output):

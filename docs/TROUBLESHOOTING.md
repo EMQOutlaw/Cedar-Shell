@@ -3,6 +3,33 @@
 These notes moved out of the README so the front page can stay short. They
 are kept because people on older checkouts still hit them.
 
+## Installation stops at `check_controls.py`
+
+Older installers can stop with `check_controls.py timed out after 60 seconds`.
+Their offscreen checks set `QSG_RHI_BACKEND=software`, which does not select
+Qt Quick's software renderer. The controls fixture and installer also shared
+the same deadline, so the installer could hide the fixture's diagnostic output.
+
+Use a source revision containing the installer-validation fix, close the old
+installer, and open the corrected installer. If changing source revisions,
+choose **Start over** and review the new plan; an interrupted managed update
+must not resume completed steps against different source contents. Existing
+recovery backups remain available. Repeatedly pressing Retry in the old
+installer still uses its already loaded code.
+
+The fixed validation path uses `QT_QUICK_BACKEND=software` only for its test
+processes, keeps the complete controls lifecycle test, gives its own timeout
+time to report, and stops leftover children. It does not change the desktop's
+renderer. See [Qt's backend selection documentation](https://doc.qt.io/qt-6/qtquick-visualcanvas-adaptations.html).
+
+If a corrected check still fails, open **View log** and keep the diagnostic
+output. From the corrected checkout, this also runs the isolated controls
+fixture without installing or changing the desktop:
+
+```sh
+python3 tests/check_controls.py
+```
+
 ## Updating a checkout
 
 **Field Station → Update CEDAR** and `cedar installer --update` use the

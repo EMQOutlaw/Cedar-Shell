@@ -47,7 +47,7 @@ ShellRoot {
 ''')
     env = {**os.environ, 'CEDAR_TEST': '1', 'CEDAR_ADAPTER': 'hyprland', 'CEDAR_OMARCHY_SESSION': '',
            'CEDAR_PAM_SERVICE': 'login', 'CEDAR_LOCAL_ONLY': '1', 'OMARCHY_PATH': str(base/'absent'),
-           'QT_QPA_PLATFORM': 'offscreen', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QT_QPA_PLATFORMTHEME': 'basic',
+           'QT_QPA_PLATFORM': 'offscreen', 'QT_QUICK_BACKEND': 'software', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QT_QPA_PLATFORMTHEME': 'basic',
            'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(base/'config'),
            'XDG_STATE_HOME': str(base/'state'), 'XDG_DATA_HOME': str(base/'data'), 'HOME': str(base/'home')}
     result = subprocess.run(['qs', '-p', str(source/'portable-check.qml')], env=env, capture_output=True, text=True, timeout=12)

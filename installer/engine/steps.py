@@ -220,7 +220,7 @@ def dependencies_verify(ctx, op):
 # --------------------------------------------------------------- runtime
 def runtime_run(ctx, op):
     d = ctx.module('distribution')
-    ctx.progress(op, 0.1, 'Checking the release, free space and the shell (about half a minute)')
+    ctx.progress(op, 0.1, 'Checking the release, free space and the shell')
     before = {name: Path(name).exists() for name in (str(ctx.host.home / '.local/bin/cedar'), str(ctx.host.data_home() / 'cedar/current'))}
     # distribution.install validates the shell offscreen (imports plus five
     # rendering checks) before it copies anything, then journals every file.
@@ -260,7 +260,7 @@ def shell_run(ctx, op):
     d.validate_imports(root)
     ctx.progress(op, 0.6, 'Rendering the navigation check from the installed copy')
     with ctx.capture(op):
-        d.command([sys.executable, str(root / 'tests' / SHELL_CHECKS[0])], timeout=120)
+        d.validation_command([sys.executable, str(root / 'tests' / SHELL_CHECKS[0])], timeout=45)
     op.detail = 'The installed shell loads with Quickshell ' + (ctx.facts['quickshellVersion'] or facts_module.version_of(ctx.host, ['qs', '--version']))
 
 
