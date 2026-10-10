@@ -4,17 +4,29 @@
 -- CEDAR's generated.lua loads it; that copy is yours to edit. Every bind
 -- here first unbinds the same keys, so it wins over an earlier binding on
 -- the same combination and leaves every other binding alone. The shell
--- actions go to the installed CEDAR release through its IPC; the app
--- bindings open the terminal, browser, editor and file manager chosen in
+-- actions reach the CEDAR that owns the `cedar` Quickshell profile (release
+-- or checkout) over IPC; the app bindings open the terminal, browser, editor and file manager chosen in
 -- CEDAR Settings (imported from your previous setup when it had them).
 
 local home = os.getenv("HOME") or ""
 local data = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share")
-local shell = data .. "/cedar/current/shell.qml"
-local runtime = data .. "/cedar/current/scripts/desktop_runtime.py"
 local cedar = home .. "/.local/bin/cedar"
 
-local function ipc(args) return hl.dsp.exec_cmd("qs ipc -p " .. shell .. " call " .. args) end
+-- Quickshell matches a running instance by its config path. The live shell is
+-- whatever owns the `cedar` profile (the installed release, or a checkout
+-- linked there), so address it by profile, run its scripts, and fall back to
+-- the release only when no profile exists. Mirrors shell_selector in
+-- scripts/distribution.py.
+local config = os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")
+local root = data .. "/cedar/current"
+local qs = "qs -p " .. root .. "/shell.qml"
+do
+  local profile = io.open(config .. "/quickshell/cedar/shell.qml", "r")
+  if profile then profile:close(); qs = "qs -c cedar"; root = config .. "/quickshell/cedar" end
+end
+local runtime = root .. "/scripts/desktop_runtime.py"
+
+local function ipc(args) return hl.dsp.exec_cmd(qs .. " ipc call " .. args) end
 local function launch(kind) return hl.dsp.exec_cmd("python3 " .. runtime .. " launch " .. kind) end
 local function command(args) return hl.dsp.exec_cmd(cedar .. " " .. args) end
 

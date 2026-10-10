@@ -61,9 +61,12 @@ from the terminal.
 
 Not carried over from Caelestia: the emoji picker, paste-latest, the
 picture-in-picture and "normalize" window actions, and the shell
-kill/restart shortcuts. The shell actions use the installed release's IPC
-(`qs ipc -p ~/.local/share/cedar/current/shell.qml`), so they apply to an
-installed CEDAR, not to a checkout run with `qs -c cedar`.
+kill/restart shortcuts. The shell actions address the CEDAR that owns the
+`cedar` Quickshell profile (`qs -c cedar`), which is the installed release or
+a checkout linked at `~/.config/quickshell/cedar`, and fall back to the
+release path (`qs ipc -p ~/.local/share/cedar/current/shell.qml`) only when
+no profile exists. The `.conf` variant goes through `cedar ipc`, which makes
+the same choice.
 
 The binding set is CEDAR's own writing against Hyprland's documented
 dispatchers; it borrows Caelestia's key layout, not its files.

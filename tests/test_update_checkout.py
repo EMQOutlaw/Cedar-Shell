@@ -99,4 +99,27 @@ class Terminal(unittest.TestCase):
         with self.assertRaises(RuntimeError):self.argv(set())
         with self.assertRaises(ValueError):runtime.launch('browser',['x'])
 
+class Launch(unittest.TestCase):
+    """launch() opens what Settings → Applications chose, like the bar's own buttons."""
+    def argv(self,role,saved,default_app=''):
+        with patch.object(runtime,'settings',return_value=saved),patch.object(runtime,'run',return_value=default_app),patch.object(runtime.subprocess,'Popen') as popen:
+            runtime.launch(role)
+            return popen.call_args[0][0]
+    def test_desktop_entry_target_wins(self):
+        saved={'browser':'gtk-launch other.desktop','applicationTargets':{'browser':{'id':'zen.desktop','kind':'desktop-entry'}}}
+        self.assertEqual(self.argv('browser',saved),['gtk-launch','zen.desktop'])
+    def test_legacy_command_is_honoured(self):
+        self.assertEqual(self.argv('browser',{'browser':'gtk-launch zen.desktop'}),['gtk-launch','zen.desktop'])
+        self.assertEqual(self.argv('files',{'files':'nautilus --new-window'}),['nautilus','--new-window'])
+    def test_browser_falls_back_to_the_default_browser_without_a_page(self):
+        self.assertEqual(self.argv('browser',{},default_app='zen.desktop'),['gtk-launch','zen.desktop'])
+        self.assertEqual(self.argv('browser',{'browser':'  '}),['xdg-open','about:blank'])
+    def test_terminal_with_a_command_ignores_the_browser_setting(self):
+        with patch.object(runtime,'settings',return_value={'applicationTargets':{'terminal':{'id':'kitty.desktop','kind':'desktop-entry'}}}),patch.object(runtime.shutil,'which',side_effect=lambda n:'/usr/bin/'+n if n=='foot' else None),patch.dict(os.environ,{'TERMINAL':''}),patch.object(runtime.subprocess,'Popen') as popen:
+            runtime.launch('terminal',['python3','x.py'])
+            self.assertEqual(popen.call_args[0][0],['foot','python3','x.py'])
+        self.assertEqual(self.argv('terminal',{'applicationTargets':{'terminal':{'id':'kitty.desktop','kind':'desktop-entry'}}}),['gtk-launch','kitty.desktop'])
+    def test_unknown_role(self):
+        with self.assertRaises(ValueError):runtime.launch('mail')
+
 if __name__=='__main__':unittest.main()

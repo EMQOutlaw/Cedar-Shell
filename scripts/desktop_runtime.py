@@ -202,11 +202,42 @@ def terminal_argv(command=()):
     return argv
 
 
+def configured_argv(role):
+    """The launch argv Settings → Applications chose for a role, or None.
+
+    Mirrors Config.appArgv in the shell: a desktop-entry target first, then the
+    legacy free-text command, so the keybinds open the same application as the
+    bar's buttons.
+    """
+    saved = settings()
+    targets = saved.get('applicationTargets')
+    target = targets.get(role) if isinstance(targets, dict) else None
+    if isinstance(target, dict) and target.get('kind') == 'desktop-entry' and isinstance(target.get('id'), str) and target['id']:
+        return ['gtk-launch', target['id']]
+    legacy = saved.get(role)
+    if isinstance(legacy, str) and legacy.strip():
+        return shlex.split(legacy)
+    return None
+
+
+def default_browser_argv():
+    """The system's default browser with no page, falling back to a blank tab."""
+    app = run(['xdg-mime', 'query', 'default', 'x-scheme-handler/https']) or run(['xdg-settings', 'get', 'default-web-browser'])
+    if app:
+        return ['gtk-launch', app]
+    return ['xdg-open', 'about:blank']
+
+
 def launch(role, command=()):
     if command and role != 'terminal':
         raise ValueError('Only the terminal role runs a command.')
-    if role == 'browser':
-        argv = ['xdg-open', 'https://duckduckgo.com']
+    if role not in ('browser', 'files', 'editor', 'terminal'):
+        raise ValueError('Unknown application role.')
+    configured = None if command else configured_argv(role)
+    if configured:
+        argv = configured
+    elif role == 'browser':
+        argv = default_browser_argv()
     elif role == 'files':
         argv = ['xdg-open', str(Path.home())]
     elif role == 'editor':
@@ -214,10 +245,8 @@ def launch(role, command=()):
         if not app:
             raise RuntimeError('Choose an editor in Settings → Default Applications.')
         argv = ['gtk-launch', app]
-    elif role == 'terminal':
-        argv = terminal_argv(command)
     else:
-        raise ValueError('Unknown application role.')
+        argv = terminal_argv(command)
     subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
