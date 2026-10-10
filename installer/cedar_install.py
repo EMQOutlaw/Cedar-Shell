@@ -23,6 +23,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import uuid
 
 HERE = Path(__file__).resolve().parent
 SOURCE = HERE.parent
@@ -68,10 +69,37 @@ def update_plan(source, environ=None):
     return update_module.locate(source, environ)
 
 
+def update_arguments(argv):
+    """Keep install options, never a stale source/channel or a second update loop."""
+    clean = []
+    values = iter(argv)
+    for value in values:
+        if value in ('--source', '--channel'):
+            next(values, None)
+        elif value in ('--update', '--updated', '--serve') or value.startswith(('--source=', '--channel=')):
+            continue
+        else:
+            clean.append(value)
+    return clean + ['--updated']
+
+
 def start_updated(record, passthrough):
-    """Replace this process with the fetched CEDAR's installer, which continues as an update."""
+    """Execute the exact prepared source, with channel context understood by new installers.
+
+    Context is passed in the environment so returning to an older main revision
+    does not fail argument parsing. The selector itself requires the updater
+    changes on that revision, as documented in the branch rollout notes.
+    """
     installer = Path(record['source']) / 'installer/cedar_install.py'
-    os.execv(sys.executable, [sys.executable, str(installer), '--source', record['source'], *passthrough])
+    env = dict(os.environ)
+    for key in ('CEDAR_INSTALLER_CHANNEL', 'CEDAR_INSTALLER_COMMIT', 'CEDAR_INSTALLER_SOURCE_DIGEST', 'CEDAR_INSTALLER_UPDATE_ID'):
+        env.pop(key, None)
+    if record.get('channel'):
+        update_module.channel_branch(record['channel'])
+        env.update({'CEDAR_INSTALLER_CHANNEL': record['channel'], 'CEDAR_INSTALLER_COMMIT': record['commit'],
+                    'CEDAR_INSTALLER_SOURCE_DIGEST': record['sourceDigest']})
+        update_module.verify_update_source(record['source'], env)
+    os.execve(sys.executable, [sys.executable, str(installer), '--source', record['source'], *update_arguments(passthrough)], env)
 
 
 def update(source, args, argv):
@@ -82,18 +110,20 @@ def update(source, args, argv):
     guidance instead of a traceback when something stops. When the window
     closes with a handoff recorded, this process starts the updated
     installer. In a terminal the same engine prints the same steps."""
-    passthrough = [a for a in argv if a != '--update'] + ['--updated']
+    passthrough = update_arguments(argv)
     state_dir = Host().state_home() / 'cedar/installer'
     if wants_window(args, None):
-        code = launch_window(source, args, start='update')
-        record = update_module.take_handoff(state_dir)
+        session_id = uuid.uuid4().hex
+        code = launch_window(source, args, start='update', update_id=session_id)
+        record = update_module.take_handoff(state_dir, session_id=session_id)
         if record is None:
             return code
         start_updated(record, passthrough)
     state = {'verbose': args.verbose}
     say('CEDAR update — fetching the newest CEDAR')
     say()
-    updater = update_module.Updater(source, emit=terminal_listener(state), state_dir=state_dir)
+    channel = args.channel or os.environ.get('CEDAR_INSTALLER_CHANNEL') or update_module.installed_channel() or 'stable'
+    updater = update_module.Updater(source, emit=terminal_listener(state), state_dir=state_dir, channel=channel)
     try:
         result = updater.run()
     except update_module.Guidance:
@@ -101,7 +131,8 @@ def update(source, args, argv):
         return 1
     say()
     if result['current']:
-        say('CEDAR ' + result['version'] + ' is already installed and is the newest version. The installer runs again to verify the copy.')
+        say('CEDAR is up to date on ' + result['branch'] + ' (' + result['commit'][:12] + ').')
+        return 0
     say('Starting the updated installer…'); sys.stdout.flush()
     start_updated(result, passthrough)
 
@@ -115,9 +146,11 @@ def wants_window(args, engine):
     return display and bool(shutil.which('qs'))
 
 
-def launch_window(source, args, start=None):
+def launch_window(source, args, start=None, update_id=None):
     env = {**os.environ, 'CEDAR_INSTALLER_SOURCE': str(source), 'CEDAR_INSTALLER_PYTHON': sys.executable,
            'QS_DISABLE_FILE_WATCHER': '1', 'CEDAR_INSTALLER': '1'}
+    if args.channel: env['CEDAR_INSTALLER_CHANNEL'] = args.channel
+    if update_id: env['CEDAR_INSTALLER_UPDATE_ID'] = update_id
     if args.updated: env['CEDAR_INSTALLER_UPDATE'] = '1'; env['CEDAR_INSTALLER_START'] = 'updated'
     if args.resume: env['CEDAR_INSTALLER_START'] = 'resume'
     if args.start_over: env['CEDAR_INSTALLER_START'] = 'start-over'
@@ -164,7 +197,8 @@ def main(argv=None):
     parser.add_argument('--uninstall', action='store_true', help='undo CEDAR-owned changes; keep packages and your data')
     parser.add_argument('--repair', action='store_true', help='verify the installed copy and reinstall what does not match')
     parser.add_argument('--last-log', action='store_true', help='print the path of the most recent installer log')
-    parser.add_argument('--update', action='store_true', help='fetch the newest CEDAR (git pull in the checkout, or the latest release) and run its installer')
+    parser.add_argument('--update', action='store_true', help='check the selected branch in an isolated cache and run its installer')
+    parser.add_argument('--channel', choices=tuple(update_module.CHANNELS), help='update from stable (main) or development (dev)')
     parser.add_argument('--updated', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--json', action='store_true', help='print facts and plan as JSON (with --dry-run)')
     parser.add_argument('--verbose', '-v', action='store_true', help='print the technical log while installing')
@@ -179,6 +213,10 @@ def main(argv=None):
     parser.add_argument('--version', action='store_true', help='print the installer version')
     args = parser.parse_args(argv)
     source = args.source.resolve()
+    if args.channel and not args.update:
+        parser.error('--channel must be used with --update')
+    if args.channel:
+        os.environ['CEDAR_INSTALLER_CHANNEL'] = args.channel
     if args.version:
         say('cedar-install ' + ((source / 'VERSION').read_text().strip() if (source / 'VERSION').is_file() else 'unknown')); return 0
     if os.getuid() == 0:

@@ -31,15 +31,30 @@ with tempfile.TemporaryDirectory(prefix='cedar-installer-ui-') as tmp:
     shots = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else p / 'shots'; shots.mkdir(parents=True, exist_ok=True)
     (source / 'installer-preview.qml').write_text('''
 import QtQuick
+import QtTest
 import Quickshell
 import "installer/ui"
 ShellRoot {
     settings.watchFiles: false
-    InstallerModel { id: model }
+    InstallerModel { id: model; onCommandSent: request => window.lastCommand = request }
     FloatingWindow {
         id: window
         visible: true; implicitWidth: 1120; implicitHeight: 720; color: Theme.background
+        TestCase { id: keyboard; name: "Installer branch controls"; when: false }
+        property var lastCommand: ({})
         function check(ok, msg) { if (!ok) { console.error("FAIL: " + msg); Qt.exit(1); } }
+        function named(item, name) {
+            if (item.objectName === name && item.visible) return item;
+            for (const child of item.children || []) { const found = named(child, name); if (found) return found; }
+            return null;
+        }
+        function channelButton(label) {
+            const button = named(pane, "updateChannelSwitch");
+            check(button !== null && button.text === label && button.enabled && button.activeFocusOnTab, label + " is available to pointer and keyboard");
+            const point = button.mapToItem(body, 0, 0);
+            check(point.x >= 0 && point.y >= 0 && point.x + button.width <= body.width && point.y + button.height <= body.height, label + " stays inside the window");
+            return button;
+        }
         function shot(name) { body.grabToImage(r => r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/installer-" + name + ".png")); }
         property int step: 0
         property var facts: ''' + json.dumps(FACTS) + '''
@@ -48,7 +63,7 @@ ShellRoot {
         property var done: ''' + json.dumps(ops({'backup': 'complete', 'dependencies': 'complete', 'runtime': 'complete', 'shell': 'complete', 'migrate': 'warning', 'session': 'complete', 'verify': 'complete'})) + '''
         property var updating: ''' + json.dumps([{'id': i, 'title': t, 'description': '', 'state': s, 'progress': 1 if s == 'complete' else 0, 'detail': d, 'error': ''} for i, t, s, d in [('locate', 'Source', 'complete', 'Git checkout at /users/station/cedar-shell'), ('inspect', 'Checkout', 'warning', 'Branch main → origin/main · 1 local edit kept'), ('fetch', 'Fetch', 'running', 'Asking GitHub for the newest CEDAR'), ('apply', 'Apply', 'pending', ''), ('handoff', 'Installer', 'pending', '')]]) + '''
         Item {
-            id: body; anchors.fill: parent
+            id: body; width: parent.width; height: parent.height
             Rectangle { anchors.fill: parent; color: Theme.background }
             SystemVisual { id: visual; model: model; visible: model.stage !== "welcome"; width: Math.round(parent.width * .44); anchors { left: parent.left; top: parent.top; bottom: parent.bottom } }
             StagePane { id: pane; model: model; anchors { left: visual.visible ? visual.right : parent.left; right: parent.right; top: parent.top; bottom: parent.bottom } }
@@ -57,7 +72,7 @@ ShellRoot {
             interval: 500; running: true; repeat: true
             onTriggered: {
                 switch (window.step++) {
-                case 0: window.check(model.fixture && model.stage === "welcome", "Fixture model starts at welcome"); model.version = "0.1.0-dev.15"; break;
+                case 0: window.check(model.fixture && model.stage === "welcome", "Fixture model starts at welcome"); model.receive(JSON.stringify({ event: "ready", data: { version: "0.1.0-dev.15", channel: "stable", branch: "main", installedChannel: "stable" } })); break;
                 case 1: window.shot("welcome"); break;
                 case 2: model.stage = "scan"; model.busy = true; break;
                 case 3: window.shot("scan"); break;
@@ -86,9 +101,50 @@ ShellRoot {
                 case 26: window.shot("update-error"); break;
                 case 27: model.guidance = { title: "No connection to GitHub", message: "CEDAR could not reach the repository to look for a newer version. Nothing was changed.", steps: ["Check that this computer is online.", "If you use a VPN or proxy, make sure it allows github.com.", "Press Try again."], fix: "", fixLabel: "", retry: true, notes: [], code: "network" }; break;
                 case 28: window.shot("update-error-retry"); break;
-                case 29: model.update = { kind: "checkout", source: "/users/station/cedar-shell", version: "0.1.2", previousVersion: "0.1.2", current: true, changed: false, notes: [] }; model.stage = "update-current"; break;
-                case 30: window.shot("update-current"); break;
-                case 31: console.log("PASS: CEDAR Installer stages"); Qt.quit();
+                case 29: model.receive(JSON.stringify({ event: "updated", data: { kind: "checkout", source: "/users/station/cedar-shell", version: "0.1.2", previousVersion: "0.1.2", current: true, changed: false, notes: [], channel: "stable", branch: "main", installedChannel: "stable", commit: "123456789abcdef" } })); break;
+                case 30: window.channelButton("Development Branch"); window.shot("update-current"); break;
+                case 31: {
+                    const button = window.channelButton("Development Branch");
+                    model.busy = true; window.check(!button.enabled, "Branch switch is disabled during a request"); model.busy = false;
+                    button.forceActiveFocus(Qt.TabFocusReason); window.check(button.activeFocus, "Branch switch accepts keyboard focus"); keyboard.keyClick(Qt.Key_Space);
+                    window.check(model.stage === "update" && model.busy && window.lastCommand.cmd === "update" && window.lastCommand.channel === "development", "Keyboard switch requests development");
+                    window.check(model.installedChannel === "stable", "Fetching development does not claim it is installed"); break;
+                }
+                case 32: model.receive(JSON.stringify({ event: "update-error", data: { title: "No connection to GitHub", message: "CEDAR could not check dev. Nothing was changed.", steps: ["Check your connection and try again."], retry: true, notes: [], channel: "development", branch: "dev", installedChannel: "stable" } })); break;
+                case 33: window.channelButton("Stable Branch"); window.check(model.stage === "update-error" && !model.busy, "Fetch failure stays an error"); window.shot("update-development-error"); break;
+                case 34:
+                    model.startUpdate(); window.check(window.lastCommand.channel === "development", "Retry keeps the selected development channel");
+                    model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: true, notes: [], channel: "development", branch: "dev", installedChannel: "development", commit: "abcdef0123456789" } })); break;
+                case 35: window.channelButton("Stable Branch"); window.shot("update-current-development"); break;
+                case 36: {
+                    const button = window.channelButton("Stable Branch"); button.forceActiveFocus(Qt.TabFocusReason); keyboard.keyClick(Qt.Key_Space);
+                    window.check(window.lastCommand.cmd === "update" && window.lastCommand.channel === "stable" && model.updateBranch === "main", "Keyboard switch requests main");
+                    window.check(model.installedChannel === "development", "Stable selection leaves the installed channel alone"); break;
+                }
+                case 37: model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: true, notes: [], channel: "stable", branch: "main", installedChannel: "stable", commit: "123456789abcdef" } })); break;
+                case 38: window.channelButton("Development Branch"); window.shot("update-returned-stable"); break;
+                case 39:
+                    model.pendingStartupUpdate = true;
+                    model.receive(JSON.stringify({ event: "ready", data: { version: "0.1.2", channel: "development", branch: "dev", installedChannel: "development" } }));
+                    window.check(!model.pendingStartupUpdate && window.lastCommand.channel === "development", "Startup waits for the remembered channel before requesting an update");
+                    model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: false, channel: "development", branch: "dev", installedChannel: "development" } }));
+                    window.check(window.lastCommand.cmd === "update-proceed" && model.busy && model.stage !== "update-current", "A new revision continues to the install plan");
+                    model.receiveChannel({ installedChannel: "" }); window.check(model.installedChannel === "", "Unknown installed provenance clears an old branch label");
+                    // The offscreen platform does not resize mapped windows. Exercise
+                    // the exact minimum content size directly; pages depend on this item.
+                    body.width = 880; body.height = 600;
+                    model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: true, notes: [], channel: "stable", branch: "main", installedChannel: "stable", commit: "123456789abcdef" } })); break;
+                case 40: window.check(body.width === 880 && body.height === 600, "Minimum installer content dimensions are applied"); window.channelButton("Development Branch"); window.shot("update-current-small"); break;
+                case 41: model.receive(JSON.stringify({ event: "update-error", data: { title: "You have edits in the checkout", message: "Files you changed would be replaced by the update. CEDAR never discards edits.", steps: ["Set my edits aside: this runs git stash in the checkout, which keeps every edit; git stash pop brings them back afterwards.", "Or commit them yourself, then press Try again."], fix: "stash", fixLabel: "Set my edits aside and update", retry: true, notes: [], channel: "development", branch: "dev", installedChannel: "stable" } })); break;
+                case 42: {
+                    window.channelButton("Stable Branch");
+                    const fix = window.named(pane, "updateFix");
+                    const point = fix.mapToItem(body, 0, 0);
+                    window.check(point.x >= 0 && point.y >= 0 && point.x + fix.width <= body.width && point.y + fix.height <= body.height, "Recovery action stays inside the minimum window");
+                    window.shot("update-error-small"); break;
+                }
+                case 43:
+                    console.log("PASS: CEDAR Installer stages"); Qt.quit();
                 }
             }
         }

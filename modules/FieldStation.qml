@@ -376,7 +376,7 @@ Rectangle {
             // installs, and starts CEDAR again. Its own scope outlives the shell.
             StationButton {
                 text: "Update CEDAR"
-                hint: "Fetch the newest CEDAR and install it"
+                hint: "Update CEDAR or switch between Stable and Development"
                 accent: Theme.green
                 onClicked: {
                     Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--",

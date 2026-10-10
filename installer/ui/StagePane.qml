@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../.."
 import "../../components"
@@ -45,6 +46,30 @@ Item {
     component Primary: StationButton { accent: Theme.green; implicitHeight: 42; implicitWidth: contentItem.implicitWidth + 48; font.pixelSize: Math.round(15 * Theme.fontScale)
         background: Rectangle { radius: Theme.controlRadius; color: Qt.alpha(Theme.green, parent.down ? .3 : .16); border.color: Qt.alpha(Theme.green, .6) } }
     component Quiet: StationButton { accent: Theme.teal; opacity: .85 }
+    component UpdateChannel: ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+        Lead {
+            font.pixelSize: Theme.small
+            text: (root.model.installedChannel && root.model.installedChannel !== root.model.updateChannel
+                ? "Installed: " + root.model.channelLabel(root.model.installedChannel) + " · " + root.model.channelBranch(root.model.installedChannel) + "\nSelected: "
+                : "Branch: ") + root.model.channelLabel(root.model.updateChannel) + " · " + root.model.updateBranch
+        }
+        Quiet {
+            objectName: "updateChannelSwitch"
+            background: Rectangle {
+                radius: Theme.controlRadius
+                color: Qt.alpha(Theme.teal, parent.down ? .18 : .08)
+                border.color: Qt.alpha(Theme.teal, parent.visualFocus ? 1 : .35)
+                border.width: parent.visualFocus ? Theme.focusWidth : 1
+            }
+            text: root.model.updateChannel === "development" ? "Stable Branch" : "Development Branch"
+            hint: root.model.updateChannel === "development" ? "Fetch main and review the stable installation plan" : "Fetch dev and review the development installation plan"
+            enabled: !root.model.busy && (root.model.fixture || root.model.ready)
+            onClicked: root.model.startUpdate(root.model.updateChannel === "development" ? "stable" : "development")
+        }
+        Lead { font.pixelSize: Theme.small; text: "Development has the latest work. Stable follows main. You can switch back here at any time." }
+    }
     // The operation list the install and update stages share: mark, title, and the running or final detail.
     component OperationRows: ColumnLayout {
         property var operations: []
@@ -103,6 +128,7 @@ Item {
             spacing: 8
             SectionMark { text: "UPDATE" }
             Heading { text: "Updating CEDAR" }
+            Lead { font.pixelSize: Theme.small; text: "Selected: " + root.model.channelLabel(root.model.updateChannel) + " · " + root.model.updateBranch }
             Lead { text: root.model.current ? (root.model.current.detail || root.model.current.description) : root.model.operations.length ? "Finishing…" : "Looking for the newest CEDAR…" }
             Lead { text: "Nothing on your desktop changes yet. The newest CEDAR is fetched first; its installer then shows the plan before anything is installed."; font.pixelSize: Theme.small }
             OperationRows { operations: root.model.operations }
@@ -116,40 +142,50 @@ Item {
     Component {
         id: updateError
         ColumnLayout {
+            id: updateErrorLayout
             spacing: 10
             readonly property var guidance: root.model.guidance || ({})
             readonly property bool fixable: !!guidance.fix
-            SectionMark { text: "UPDATE STOPPED"; tone: Theme.amber }
-            Heading { text: parent.guidance.title || "The update stopped" }
-            Lead { text: parent.guidance.message || "" }
-            SectionMark { visible: (parent.guidance.steps || []).length > 0; Layout.topMargin: 10; text: parent.fixable ? "WHAT HAPPENS NEXT" : "WHAT TO DO"; tone: Theme.teal }
-            Repeater {
-                model: parent.guidance.steps || []
-                RowLayout {
-                    required property string modelData
-                    required property int index
-                    Layout.fillWidth: true; spacing: 12
-                    Text { text: (index + 1) + "."; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 13; color: Theme.teal; Layout.preferredWidth: 16; Layout.alignment: Qt.AlignTop; horizontalAlignment: Text.AlignRight }
-                    GlowText { text: modelData; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.text; font.pixelSize: Theme.normal }
+            Flickable {
+                Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+                contentHeight: errorColumn.implicitHeight; boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                ColumnLayout {
+                    id: errorColumn
+                    width: parent.width; spacing: 10
+                    SectionMark { text: "UPDATE STOPPED"; tone: Theme.amber }
+                    Heading { text: updateErrorLayout.guidance.title || "The update stopped" }
+                    Lead { text: updateErrorLayout.guidance.message || "" }
+                    SectionMark { visible: (updateErrorLayout.guidance.steps || []).length > 0; Layout.topMargin: 10; text: updateErrorLayout.fixable ? "WHAT HAPPENS NEXT" : "WHAT TO DO"; tone: Theme.teal }
+                    Repeater {
+                        model: updateErrorLayout.guidance.steps || []
+                        RowLayout {
+                            required property string modelData
+                            required property int index
+                            Layout.fillWidth: true; spacing: 12
+                            Text { text: (index + 1) + "."; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 13; color: Theme.teal; Layout.preferredWidth: 16; Layout.alignment: Qt.AlignTop; horizontalAlignment: Text.AlignRight }
+                            GlowText { text: modelData; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.text; font.pixelSize: Theme.normal }
+                        }
+                    }
+                    Repeater {
+                        model: updateErrorLayout.guidance.notes || []
+                        Row_ { required property string modelData; Layout.topMargin: 4; text: modelData; glyph: "·"; glyphColor: Theme.muted; quiet: true }
+                    }
+                    Lead { Layout.topMargin: 8; text: "Nothing on your desktop was changed. The installed CEDAR keeps running."; font.pixelSize: Theme.small }
                 }
             }
-            Repeater {
-                model: parent.guidance.notes || []
-                Row_ { required property string modelData; Layout.topMargin: 4; text: modelData; glyph: "·"; glyphColor: Theme.muted; quiet: true }
-            }
-            Lead { Layout.topMargin: 8; text: "Nothing on your desktop was changed. The installed CEDAR keeps running."; font.pixelSize: Theme.small }
-            Item { Layout.fillHeight: true }
+            UpdateChannel { Layout.topMargin: 6 }
             ExpandableDetails {
                 Layout.fillWidth: true; label: "View log"
                 LogView { implicitHeight: 130 }
             }
+            Primary { objectName: "updateFix"; Layout.fillWidth: true; visible: updateErrorLayout.fixable; text: updateErrorLayout.guidance.fixLabel || "Fix it"; enabled: !root.model.busy; onClicked: root.model.fixUpdate(updateErrorLayout.guidance.fix) }
             RowLayout {
                 Layout.fillWidth: true; spacing: 8
                 Quiet { text: "Close"; onClicked: root.model.quit() }
                 Item { Layout.fillWidth: true }
-                Quiet { visible: parent.parent.fixable && parent.parent.guidance.retry !== false; text: "Try again"; onClicked: root.model.startUpdate() }
-                Primary { visible: parent.parent.fixable; text: parent.parent.guidance.fixLabel || "Fix it"; onClicked: root.model.fixUpdate(parent.parent.guidance.fix) }
-                Primary { visible: !parent.parent.fixable && parent.parent.guidance.retry !== false; text: "Try again"; onClicked: root.model.startUpdate() }
+                Quiet { visible: parent.parent.fixable && parent.parent.guidance.retry !== false; text: "Try again"; enabled: !root.model.busy; onClicked: root.model.startUpdate() }
+                Primary { visible: !parent.parent.fixable && parent.parent.guidance.retry !== false; text: "Try again"; enabled: !root.model.busy; onClicked: root.model.startUpdate() }
             }
         }
     }
@@ -159,15 +195,16 @@ Item {
             ColumnLayout {
                 anchors.centerIn: parent; width: Math.min(520, parent.width); spacing: 10
                 Text { Layout.alignment: Qt.AlignHCenter; text: "✓"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 44; color: Theme.green }
-                Text { Layout.alignment: Qt.AlignHCenter; text: "CEDAR IS UP TO DATE"; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(28 * Theme.fontScale); font.weight: Font.DemiBold; font.letterSpacing: 4; color: Theme.text }
-                Lead { Layout.topMargin: 6; horizontalAlignment: Text.AlignHCenter; text: "CEDAR " + (root.model.update.version || "") + " is the newest version, and it is the one installed." }
+                Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: "CEDAR IS UP TO DATE"; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(28 * Theme.fontScale); font.weight: Font.DemiBold; font.letterSpacing: 4; color: Theme.text }
+                Lead { Layout.topMargin: 6; horizontalAlignment: Text.AlignHCenter; text: "The latest " + root.model.channelLabel(root.model.updateChannel).toLowerCase() + " revision is installed: CEDAR " + (root.model.update.version || "") + (root.model.update.commit ? " · " + root.model.update.commit.slice(0, 7) : "") + "." }
                 Repeater { model: root.model.update.notes || []; Row_ { required property string modelData; Layout.topMargin: 6; text: modelData; glyph: "·"; glyphColor: Theme.muted; quiet: true } }
+                UpdateChannel { Layout.topMargin: 14 }
                 ColumnLayout {
                     Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 26; spacing: 8
-                    Primary { Layout.alignment: Qt.AlignHCenter; text: "Close"; onClicked: root.model.cancelUpdate() }
-                    Quiet { Layout.alignment: Qt.AlignHCenter; text: "Reinstall anyway"; onClicked: root.model.proceedUpdate() }
+                    Primary { Layout.alignment: Qt.AlignHCenter; text: "Close"; enabled: !root.model.busy; onClicked: root.model.cancelUpdate() }
+                    Quiet { Layout.alignment: Qt.AlignHCenter; text: "Reinstall anyway"; enabled: !root.model.busy; onClicked: root.model.proceedUpdate() }
                 }
-                Lead { Layout.topMargin: 10; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Theme.small; text: "Reinstalling runs the installer again on the same version and verifies the installed copy. Your settings stay." }
+                Lead { Layout.topMargin: 10; horizontalAlignment: Text.AlignHCenter; font.pixelSize: Theme.small; text: "Reinstalling runs the installer again on the same revision and verifies the installed copy. Your settings stay." }
             }
         }
     }
@@ -225,6 +262,7 @@ Item {
             spacing: 8
             SectionMark { text: "INSTALLATION PLAN" }
             Heading { text: "CEDAR Installation Plan" }
+            Lead { visible: root.model.updating; font.pixelSize: Theme.small; text: "Selected: " + root.model.channelLabel(root.model.updateChannel) + " · " + root.model.updateBranch }
             Flickable {
                 Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                 contentHeight: planColumn.implicitHeight; boundsBehavior: Flickable.StopAtBounds

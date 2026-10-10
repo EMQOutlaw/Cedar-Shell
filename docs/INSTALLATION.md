@@ -13,7 +13,7 @@ GitHub → bootstrap → CEDAR Installer opens → machine scan → plan → you
 
 Releases carry `cedar-<version>-x86_64.tar.gz` and its `.sha256`; the
 bootstrap verifies them. Contributors can use the development channel, which
-downloads the current source branch over TLS without a checksum:
+downloads the `dev` source branch over TLS without a release checksum:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/main/installer/bootstrap/install.sh | CEDAR_CHANNEL=development sh
@@ -116,27 +116,24 @@ renders, one visible step at a time:
 
 | Step | What it does |
 | --- | --- |
-| Source | a Git checkout when one exists (this source, `$CEDAR_CHECKOUT`, `~/cedar-shell`), else the published release |
-| Checkout | branch and upstream; your local edits are counted and kept, never discarded; an unreadable `ORIG_HEAD` left by an interrupted git operation is removed |
-| Fetch | `git fetch` from GitHub, or the bootstrap with `CEDAR_FETCH_ONLY=1` (download, SHA-256 check, unpack) |
-| Apply | `git merge --ff-only` of the upstream branch: the only way the checkout moves |
-| Installer | the fetched copy's version; the window closes and the process that owns it starts that copy's installer, which continues as an update: scan, then straight to the plan, then install |
+| Source | the selected channel: Stable (`main`) or Development (`dev`) |
+| Checkout | CEDAR's isolated Git store; your own checkout stays untouched |
+| Fetch | retrieve the selected branch from GitHub and resolve its commit |
+| Apply | prepare the exact source snapshot without switching or resetting your checkout |
+| Installer | compare installed content, then hand the candidate to its installer: scan, review the plan, install |
 
-When CEDAR is already the newest version and that version is installed,
-the stage says **CEDAR is up to date** with Close and Reinstall anyway.
+When the selected branch's contents match the installed release, the stage
+says **CEDAR is up to date** with Close, Reinstall anyway, and the other
+branch's button: **Development Branch** or **Stable Branch**. The window
+shows the installed and selected channel; successful installation remembers
+the choice. Identical version numbers alone never establish that a branch
+is current. See [Update channels](UPDATE-CHANNELS.md).
 
-A stop is never a traceback. The engine classifies what happened and the
-window shows a title, one sentence, the numbered steps that put it right
-and, when a fix is safe and reversible, a button that runs it and updates
-again: edits that the update would overwrite → **Set my edits aside and
-update** (`git stash`, with `git stash pop` shown to bring them back); a
-branch that follows nothing → **Track the main branch and update**; a
-checkout Git does not trust → **Trust this checkout and update**. Commits of
-your own (diverged history), untracked files in the way, no connection,
-credentials, a detached HEAD, a missing tool, no published release and a
-failed checksum get steps and Try again; nothing resets, rewrites or deletes
-the checkout. In a terminal (`--no-gui`) the same steps and the same
-guidance print as text.
+A stop shows what happened and the steps to resolve it. **Try again** keeps
+the selected channel; the other channel remains available after a failed
+check. A failed check never appears as “up to date.” In a terminal
+(`--no-gui`) the same guidance prints as text; `--channel stable` and
+`--channel development` select the branch explicitly.
 
 ### Operations
 

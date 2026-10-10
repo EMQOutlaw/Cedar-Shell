@@ -103,7 +103,9 @@ def files(root):
 def verify_tree(root,inventory):
     for name,record in inventory.items():
         p=root/name
-        if not p.is_file() or p.is_symlink() or digest(p)!=record['sha256']:raise Refused('Release file verification failed: '+name)
+        if (not p.is_file() or p.is_symlink() or digest(p)!=record['sha256']
+                or stat.S_IMODE(p.stat().st_mode)&0o111 != record.get('mode', stat.S_IMODE(p.stat().st_mode))&0o111):
+            raise Refused('Release file verification failed: '+name)
     return True
 
 class Transaction:
@@ -325,7 +327,8 @@ def plan_install(root):
     source=list(files(root));size=sum(p.stat().st_size for p,_ in source)
     version=(root/'VERSION').read_text().strip()
     if not __import__('re').fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.]+)?',version):raise Refused('Invalid version identifier.')
-    fingerprint=hashlib.sha256(''.join(str(rel)+digest(p) for p,rel in source).encode()).hexdigest()[:16]
+    # Executable-bit updates are runtime changes even when file bytes and VERSION stay the same.
+    fingerprint=hashlib.sha256(''.join(str(rel)+digest(p)+str(p.stat().st_mode&0o111) for p,rel in source).encode()).hexdigest()[:16]
     release=paths()['data']/'releases'/(version+'-'+fingerprint)
     return {'action':'Install Only','version':version,'release':str(release),'bytes':size,'packages':[],
             'files':'Complete first-party source and assets, recovery tooling and cedar command',
