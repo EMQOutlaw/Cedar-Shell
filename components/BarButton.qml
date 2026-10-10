@@ -9,6 +9,13 @@ AbstractButton {
     id: root
     property color accent: Theme.green
     property bool iconOnly: false
+    // Quiet at rest: muted until hovered, pressed or checked. The bar's
+    // secondary controls and the workspace row use it, so the wordmark, the
+    // pill and the gliding mark carry the eye.
+    property bool quiet: false
+    property string fontFamily: Theme.dataFont
+    property int fontSize: iconOnly ? 16 : Theme.small
+    property real letterSpacing: 0
     property string hint: ""
     property string canopyTopic: ""
     property string canopyOutput: ""
@@ -60,7 +67,8 @@ AbstractButton {
         radius: 5
         color: root.unfolding ? Qt.alpha(root.accent, 0.34)
              : root.down ? Qt.alpha(root.accent, 0.18)
-             : root.checked ? Qt.alpha(root.accent, 0.1)
+             : root.checked && !root.glide ? Qt.alpha(root.accent, 0.1)
+             : root.hovered ? Qt.alpha(root.accent, 0.06)
              : Theme.transparent
         Behavior on color { enabled: VisualQuality.effects; ColorAnimation { duration: VisualQuality.ms(Theme.hover) } }
         Rectangle {
@@ -82,10 +90,13 @@ AbstractButton {
         id: label
         text: root.text
         textFormat: Text.PlainText
-        font.family: Theme.dataFont
-        font.pixelSize: root.iconOnly ? 16 : Theme.small
+        font.family: root.fontFamily
+        font.pixelSize: root.fontSize
+        font.letterSpacing: root.letterSpacing
         font.weight: Font.Medium
-        color: !root.enabled ? Theme.muted : root.checked || root.down ? root.accent : Theme.text
+        // In a gliding row the shared mark carries the accent; the active label stays plain.
+        color: !root.enabled ? Theme.muted : root.checked || root.down ? (root.glide ? Theme.text : root.accent) : root.quiet && !root.hovered ? Theme.muted : Theme.text
+        Behavior on color { enabled: VisualQuality.effects; ColorAnimation { duration: VisualQuality.ms(Theme.hover) } }
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

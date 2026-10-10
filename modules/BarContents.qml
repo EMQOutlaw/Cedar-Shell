@@ -36,7 +36,11 @@ Item {
             clip: true
             BarButton {
                 visible: Config.moduleEnabled("identity")
-                text: "◈ CEDAR"
+                // The wordmark: spaced capitals in the interface face, no glyph.
+                text: "CEDAR"
+                fontFamily: Theme.labelFont
+                fontSize: Theme.small + 2
+                letterSpacing: 3
                 hint: "Open dashboard"
                 anchorTopic: "station"
                 checked: Canopy.shown && Canopy.topic === "station" && !Canopy.peeking
@@ -53,6 +57,7 @@ Item {
                 visible: Config.stage >= 3 && Config.moduleEnabled("go")
                 text: "󰀻"
                 iconOnly: true
+                quiet: true
                 hint: "Applications"
                 accent: Theme.teal
                 anchorTopic: "go"
@@ -63,6 +68,13 @@ Item {
                     else
                         Go.toggle("root");
                 }
+            }
+            // A thin divider sets the workspace row apart from the wordmark.
+            Rectangle {
+                visible: Config.moduleEnabled("workspaces")
+                Layout.alignment: Qt.AlignVCenter
+                width: 1; height: 14
+                color: Qt.alpha(Theme.border, .9)
             }
             Row {
                 id: workspaceRow
@@ -83,12 +95,14 @@ Item {
                         id: wsButton
                         required property var modelData
                         visible: modelData.monitor?.name === root.output.name && modelData.id > 0
-                        width: visible ? 32 : 0
-                        implicitWidth: 32
-                        text: modelData.name
+                        width: visible ? 30 : 0
+                        implicitWidth: 30
+                        // Numbered workspaces read as a count: 01, 02, 03. Named ones keep their names.
+                        text: /^\d+$/.test(modelData.name) ? modelData.name.padStart(2, "0") : modelData.name
                         hint: "Workspace " + modelData.name
                         checked: root.monitor?.activeWorkspace?.id === modelData.id
                         glide: true
+                        quiet: true
                         accent: modelData.urgent ? Theme.amber : Theme.green
                         onClicked: modelData.activate()
                         function place() { if (checked && visible) { workspaceRow.markX = x + (width - workspaceRow.markWidth) / 2; } }
@@ -102,6 +116,7 @@ Item {
                     visible: Config.stage >= 3 && Config.saved.canopyEnabled
                     text: "▣"
                     iconOnly: true
+                    quiet: true
                     hint: "Workspace overview (Super+Tab)"
                     accent: Theme.teal
                     anchorTopic: "workspaces"
@@ -110,6 +125,12 @@ Item {
                     onClicked: Canopy.toggleTopic("workspaces", root.output.name)
                 }
             }
+            Rectangle {
+                visible: Config.moduleEnabled("activeWindow") || Config.saved.barWhispers
+                Layout.alignment: Qt.AlignVCenter
+                width: 1; height: 14
+                color: Qt.alpha(Theme.border, .9)
+            }
             // Whispers: the window title, a contextual line as things happen, a curated line otherwise.
             CedarWhispers {
                 Layout.fillWidth: true
@@ -117,6 +138,7 @@ Item {
                 height: implicitHeight
                 windowTitle: Config.moduleEnabled("activeWindow") ? (Hyprland.activeToplevel?.title || "") : ""
                 fontSize: Theme.small
+                color: Qt.alpha(Theme.muted, .8)
             }
         }
         RowLayout {
@@ -198,6 +220,7 @@ Item {
                 visible: Config.stage >= 3 && Config.moduleEnabled("notifications")
                 text: "󰂚"
                 iconOnly: true
+                quiet: true
                 hint: "Notification history"
                 canopyOutput: root.output.name
                 canopyTopic: "notifications"

@@ -14,7 +14,7 @@ Item {
     readonly property real footY: Math.max(0, height - 2)
     readonly property real third: width / 3
     readonly property real strength: Math.max(0, Math.min(1.5, intensity))
-    readonly property real restAlpha: .22 * strength
+    readonly property real restAlpha: .14 * strength
     readonly property real centre: width / 2
     readonly property real reach: Math.max(0, width / 2 - 12)
 

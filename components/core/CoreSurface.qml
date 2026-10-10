@@ -269,7 +269,8 @@ Item {
                 visible: Config.saved.barHeartwood
                 x: 8
                 anchors.verticalCenter: parent.verticalCenter
-                size: root.detailed ? 44 : Math.min(30, root.restingHeight - 4)
+                // Seated small at rest so the clock leads; it grows with the hub.
+                size: root.detailed ? 44 : Math.min(24, root.restingHeight - 10)
                 hovered: header.hovered
                 unfolding: Canopy.surfaceState === "opening" && root.canopyHere
                 mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle"
@@ -298,7 +299,8 @@ Item {
                 maximumAnimatedLength: 24
                 text: root.detailed ? "CEDAR CORE" : root.canopyHere ? Canopy.title.toUpperCase() : root.alert ? (root.activity?.title || "") : CoreService.recording ? "REC  " + Media.elapsed((CoreService.now - CoreService.recordings[0].started) / 1000) : CoreService.timer.active ? "TIMER  " + Media.elapsed(CoreService.timer.remaining) : Forest.whisper || (Config.moduleEnabled("clock") ? Config.formatTime(clock.date) : "◈")
                 font.family: root.detailed ? Theme.labelFont : Theme.dataFont
-                font.pixelSize: root.detailed ? 19 : Theme.small
+                font.pixelSize: root.detailed ? 19 : Theme.small + 1
+                font.letterSpacing: root.detailed ? 0 : .6
                 color: root.alert && !root.detailed && root.activity?.priority >= 2 ? root.accent : Theme.text
             }
             Row {
@@ -333,8 +335,9 @@ Item {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 strokeWidth: networkStatus.visualFocus ? 2 : 1
-                strokeColor: networkStatus.visualFocus ? Theme.green : Qt.alpha(networkStatus.accent, networkStatus.hovered ? .45 : .15)
-                fillColor: Qt.alpha(Theme.background, Math.max(.94, Config.barOpacity))
+                // A bare glyph beside the pill at rest; the frame appears on hover or focus.
+                strokeColor: networkStatus.visualFocus ? Theme.green : Qt.alpha(networkStatus.accent, networkStatus.hovered ? .45 : 0)
+                fillColor: networkStatus.hovered || networkStatus.visualFocus ? Qt.alpha(Theme.background, Math.max(.94, Config.barOpacity)) : Theme.transparent
                 startX: 0; startY: 6
                 PathLine { x: 6; y: 0 }
                 PathLine { x: networkStatus.width; y: 0 }
