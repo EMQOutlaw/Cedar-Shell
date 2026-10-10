@@ -10,7 +10,13 @@ Item {
     clip: true
     property real intensity: VisualQuality.effectIntensity
     property color tone: Theme.green
+    // Strata shows the root only while it answers an event. A retained path
+    // still carries the full growth / pulse vocabulary, then leaves no idle
+    // contour through the integrated Core.
+    property bool eventOnly: false
     readonly property bool live: visible && VisualQuality.effects && VisualQuality.decorative && Motion.active && intensity > 0
+    readonly property bool animating: growing.running || runner.running || pulseLeft.running || pulseCentre.running || pulseRight.running || (flowing && live)
+    opacity: eventOnly ? Math.max(traceEnvelope, litLeft, litCentre, litRight, growing.running ? Math.sin(Math.PI * growth) : 0) : 1
     readonly property real footY: Math.max(0, height - 2)
     readonly property real third: width / 3
     readonly property real strength: Math.max(0, Math.min(1.5, intensity))

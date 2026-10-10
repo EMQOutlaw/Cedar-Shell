@@ -36,6 +36,17 @@ Singleton {
     readonly property color brightViolet: "#D7C6EF"
     readonly property color brightTeal: "#9AF4E1"
     readonly property color white: "#F4FFF8"
+    // Strata's structural bar materials inherit the user's palette. The
+    // restrained accent is mixed with the readable secondary ink rather than
+    // introducing an unrelated fixed palette when the theme changes.
+    readonly property color strataFoundation: background
+    readonly property color strataSurface: surface
+    readonly property color strataGrain: border
+    readonly property color strataAccent: Qt.tint(muted, Qt.alpha(green, .24))
+    readonly property color strataText: text
+    readonly property color strataMuted: muted
+    readonly property int strataInset: 5
+    readonly property int strataCut: 10
     readonly property color transparent: Qt.alpha(background, 0)
     // State tokens: what a thing is doing, not which hue it is. Shield, Gaming
     // and any future first-party surface read these, so a theme change reaches

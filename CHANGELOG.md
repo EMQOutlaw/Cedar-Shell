@@ -1,5 +1,6 @@
 # Unreleased — Stable and Development updates
 
+- Development keeps the integrated Strata bar layout and restores finite startup, profile, Focus and Shield flourishes. Expressive adds brighter event accents and a Heartwood counter-turn and bloom; hidden, Reduced Motion and Off cancel active effects.
 - Field Station → Update CEDAR offers Development Branch (`dev`) and Stable Branch (`main`), including when CEDAR is up to date. The updater remembers a branch after verified installation and compares actual release contents, so development changes are found even without a version bump.
 - Branch checks prepare an isolated source snapshot without changing a personal checkout. Failed checks and canceled installations retain the last successful branch; interrupted installations resume against the exact prepared revision. See docs/UPDATE-CHANNELS.md.
 
