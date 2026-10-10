@@ -12,12 +12,16 @@
 # CEDAR_FETCH_ONLY=1 stops after the verified download and prints
 # CEDAR_SOURCE=<dir>; the installer's update stage uses that.
 # Overrides: CEDAR_REPO (owner/name), CEDAR_VERSION (tag), CEDAR_CHANNEL=development
-# (the current source branch, over TLS only, with no checksum: for contributors).
+# (the dev source branch, over TLS only, with no release checksum).
 set -eu
 
 REPO="${CEDAR_REPO:-EMQOutlaw/Cedar-Shell}"
 CHANNEL="${CEDAR_CHANNEL:-stable}"
-BRANCH="${CEDAR_BRANCH:-main}"
+case "$CHANNEL" in
+    stable) BRANCH="${CEDAR_BRANCH:-main}" ;;
+    development) BRANCH="${CEDAR_BRANCH:-dev}" ;;
+    *) printf '%s\n' 'CEDAR: CEDAR_CHANNEL must be stable or development.' >&2; exit 1 ;;
+esac
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/cedar/installer"
 
 say() { printf '%s\n' "$*"; }

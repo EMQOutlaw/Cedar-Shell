@@ -1,3 +1,8 @@
+# Unreleased — Stable and Development updates
+
+- Field Station → Update CEDAR offers Development Branch (`dev`) and Stable Branch (`main`), including when CEDAR is up to date. The updater remembers a branch after verified installation and compares actual release contents, so development changes are found even without a version bump.
+- Branch checks prepare an isolated source snapshot without changing a personal checkout. Failed checks and canceled installations retain the last successful branch; interrupted installations resume against the exact prepared revision. See docs/UPDATE-CHANNELS.md.
+
 # 0.1.3 — Desktop Profiles, Focus, Station, the workspace overview, Connections, and the bar's animation identity
 
 - Rootlines redesigned with fine curved cedar roots, centre-out growth, soft currents that illuminate passing branches, tiny sap sparks at their tips, and a subtle light beneath the active panel control. Motion stops when hidden, idle, reduced, or in performance mode.

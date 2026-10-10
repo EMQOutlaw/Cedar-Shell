@@ -1,24 +1,27 @@
-"""Fetch the newest CEDAR as visible steps, then hand over to its installer.
+"""Check CEDAR update channels and hand verified source to its installer.
 
-The update is the first stage of the CEDAR Installer, not a terminal
-prelude to it. Updater runs the same Operation/Runner model the install
-stage renders: find the source (a Git checkout, or the published release),
-look at it, fetch, apply, hand off. Each step reports what it did; a stop
-is a Guidance: what happened in plain words, the numbered steps that put it
-right, and, when the fix is safe and reversible, an action the window can
-run. Nothing here resets, rewrites or deletes a checkout: a fast-forward is
-the only way the branch moves, and edits are set aside with `git stash`
-only when the person asks, with the command that brings them back shown.
+The desktop and CLI choose an allowlisted branch, fetch into CEDAR-owned
+bare caches, and export immutable commit snapshots. They never change the
+user's checkout. Installed channel provenance is written only after final
+installation verification and is tied to the installed release's bytes.
 
-A checkout wins when one exists (the source itself, $CEDAR_CHECKOUT,
-~/cedar-shell); otherwise the bootstrap downloads and verifies the latest
-release with CEDAR_FETCH_ONLY=1 and reports where it put it.
+The channel=None API retains the original checkout/release updater for
+older programmatic callers; all current front ends use managed channels.
 """
+import contextlib
+import fcntl
+import hashlib
+import io
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import tarfile
+import tempfile
+import threading
+import uuid
+import shutil
 import time
 
 from . import operations as ops
@@ -144,16 +147,123 @@ def _listed_files(text):
     return files[:8]
 
 
+# Public channels deliberately do not accept arbitrary refs or repositories.
+CHANNELS = {'stable': 'main', 'development': 'dev'}
+REPOSITORY = 'https://github.com/EMQOutlaw/Cedar-Shell.git'
+
+
+def channel_branch(channel):
+    if not isinstance(channel, str) or channel not in CHANNELS:
+        raise Guidance('Unknown update branch', 'Choose Stable Branch or Development Branch.',
+                       retry=False, code='channel')
+    return CHANNELS[channel]
+
+
+def _home_path(environ, kind, default):
+    home = Path(environ.get('HOME') or Path.home())
+    value = Path(environ.get('XDG_' + kind + '_HOME') or home / default)
+    return value if value.is_absolute() else home / default
+
+
+def content_digest(root):
+    """Hash exactly the source inventory installed by distribution, including executable bits."""
+    from scripts.distribution import files
+    digest = hashlib.sha256()
+    for path, rel in files(Path(root)):
+        digest.update(str(rel).encode() + b'\0')
+        digest.update(hashlib.sha256(path.read_bytes()).digest())
+        digest.update(str(path.stat().st_mode & 0o111).encode() + b'\0')
+    return digest.hexdigest()
+
+
+def installed_channel(environ=None):
+    """Only trust a successful install record that still describes the selected runtime."""
+    environ = os.environ if environ is None else environ
+    marker = _home_path(environ, 'CONFIG', '.config') / 'cedar/installation.json'
+    current = _home_path(environ, 'DATA', '.local/share') / 'cedar/current'
+    try:
+        record = json.loads(marker.read_text())
+        if not isinstance(record, dict):
+            return ''
+        provenance = record.get('update', {})
+        if not isinstance(provenance, dict):
+            return ''
+        channel = provenance.get('channel')
+        if (channel in CHANNELS and current.is_symlink()
+                and str(current.resolve()) == provenance.get('installedRelease')
+                and content_digest(current.resolve()) == provenance.get('sourceDigest')):
+            return channel
+    except (OSError, ValueError, TypeError, RuntimeError):
+        pass
+    return ''
+
+
+@contextlib.contextmanager
+def update_lock(state_dir):
+    """Serialize managed fetches and installations across independent installer windows."""
+    state_dir = Path(state_dir)
+    from scripts.distribution import private_directory
+    try:
+        private_directory(state_dir)
+    except RuntimeError as error:
+        raise Guidance('The update store needs attention', str(error), retry=False, code='cache') from error
+    path = state_dir / 'update.lock'
+    fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise Guidance('Another update is running', 'Wait for the other CEDAR updater to finish, then try again.',
+                           retry=True, code='busy') from None
+        yield
+    finally:
+        os.close(fd)
+
+
+def verify_update_source(source, environ):
+    """A handed-off snapshot must still match the bytes reviewed in the update stage."""
+    expected = environ.get('CEDAR_INSTALLER_SOURCE_DIGEST', '')
+    if expected and content_digest(source) != expected:
+        raise Guidance('The prepared update changed', 'The prepared source no longer matches the checked update. Nothing was installed.',
+                       ['Close this installer and check for updates again.'], retry=False, code='source-changed')
+
+
+def install_provenance(source, installed, environ):
+    """Called by the final verification step, never by fetching or choosing a tab."""
+    channel = environ.get('CEDAR_INSTALLER_CHANNEL')
+    if channel is None:
+        return {}
+    branch = channel_branch(channel)
+    if not environ.get('CEDAR_INSTALLER_SOURCE_DIGEST') or not environ.get('CEDAR_INSTALLER_COMMIT'):
+        raise RuntimeError('A branch selection must come from a checked update.')
+    verify_update_source(source, environ)
+    digest = content_digest(source)
+    if content_digest(installed) != digest:
+        raise RuntimeError('The installed release does not match the prepared source.')
+    commit = environ.get('CEDAR_INSTALLER_COMMIT', '')
+    if commit and not re.fullmatch(r'[0-9a-f]{40,64}', commit):
+        raise RuntimeError('Invalid update commit.')
+    return {'channel': channel, 'branch': branch, 'commit': commit, 'sourceDigest': digest,
+            'installedRelease': str(Path(installed).resolve())}
+
+
 # ------------------------------------------------------------------- updater
 class Updater:
     """Find, inspect, fetch, apply, hand off; emits the same events the install stage renders."""
 
-    def __init__(self, source, emit=None, environ=None, state_dir=None, log=None):
+    def __init__(self, source, emit=None, environ=None, state_dir=None, log=None, channel=None, repository=None):
         self.source = Path(source).resolve()
         self.emit = emit or (lambda event, data: None)
         self.environ = dict(os.environ if environ is None else environ)
         self.state_dir = Path(state_dir) if state_dir else Path(self.environ.get('XDG_STATE_HOME') or Path(self.environ.get('HOME') or Path.home()) / '.local/state') / 'cedar/installer'
         self.log = log
+        self.channel = channel
+        if channel is not None:
+            channel_branch(channel)
+        self.repository = REPOSITORY if repository is None else str(repository)
+        self.cancelled = threading.Event()
+        self.prepared = False
+        self.session_id = self.environ.get('CEDAR_INSTALLER_UPDATE_ID', '')
         self.kind, self.target = locate(self.source, self.environ)
         self.branch = ''
         self.result = {'kind': self.kind, 'source': '', 'version': '', 'previousVersion': '', 'current': False, 'notes': [], 'changed': False}
@@ -180,7 +290,7 @@ class Updater:
 
     @property
     def handoff_path(self):
-        return self.state_dir / 'update-handoff.json'
+        return self.state_dir / handoff_name(self.session_id)
 
     # -- operations --------------------------------------------------------
     def locate_run(self, ctx, op):
@@ -311,10 +421,180 @@ class Updater:
         self.note(op.id, 'Removed an unreadable scratch pointer (.git/ORIG_HEAD) left by an interrupted git operation; nothing else was touched.')
         return True
 
+    # -- managed branch updates --------------------------------------------
+    def check_cancelled(self):
+        if self.cancelled.is_set():
+            raise Guidance('Update cancelled', 'The prepared update was cancelled. Your installed CEDAR was not changed.',
+                           retry=True, code='cancelled')
+
+    def managed_git(self, *args, binary=False, timeout=GIT_TIMEOUT):
+        self.check_cancelled()
+        env = {**self.environ, 'GIT_TERMINAL_PROMPT': '0', 'LC_ALL': 'C'}
+        # Ignore inherited per-command config and worktree overrides. Only this
+        # owned cache and the allowlisted public URL belong to the channel flow.
+        for key in list(env):
+            if key.startswith('GIT_') and key not in ('GIT_TERMINAL_PROMPT',):
+                env.pop(key)
+        env.update({'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull})
+        command = ['git', '--no-replace-objects', '-C', str(self.cache), *args]
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        started = time.monotonic()
+        try:
+            while True:
+                self.check_cancelled()
+                if time.monotonic() - started > timeout:
+                    raise Guidance('The update timed out', 'GitHub did not finish responding. Your installed CEDAR was not changed.',
+                                   ['Check your connection and try again.'], retry=True, code='network')
+                try:
+                    out, err = proc.communicate(timeout=0.2)
+                    break
+                except subprocess.TimeoutExpired:
+                    pass
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.communicate()
+        if proc.returncode:
+            message = (err + out).decode('utf-8', 'replace')
+            if 'couldn\'t find remote ref' in message.lower():
+                raise Guidance('This branch is not available', 'The repository does not publish the ' + self.branch + ' branch yet. Your installed CEDAR was not changed.',
+                               ['Choose the other branch or try again after the branch is published.'], code='branch-missing')
+            raise classify(message, self.cache, self.branch)
+        return out if binary else out.decode('utf-8', 'replace').strip()
+
+    def channel_locate(self, ctx, op):
+        self.check_cancelled()
+        self.result['previousVersion'] = self.installed_version()
+        op.detail = ('Stable Branch' if self.channel == 'stable' else 'Development Branch') + ' · ' + self.branch
+        self.say(op.id, op.detail)
+
+    def channel_inspect(self, ctx, op):
+        self.check_cancelled()
+        if not _which('git'):
+            raise Guidance('Git is not installed', 'Branch updates need Git, including installations downloaded as an archive.',
+                           ['Install it: `sudo pacman -S --needed git`.', 'Press Try again.'], code='tools')
+        from scripts.distribution import private_directory
+        private_directory(self.cache)
+        if not (self.cache / 'HEAD').exists():
+            self.managed_git('init', '--bare', '--quiet')
+        if self.managed_git('rev-parse', '--is-bare-repository') != 'true':
+            raise Guidance('The update cache is not valid', 'The managed update cache must be a bare Git repository.',
+                           ['Move ' + str(self.cache) + ' aside, then try again.'], code='cache')
+        op.detail = 'Isolated update cache; your source checkout stays unchanged'
+
+    def channel_fetch(self, ctx, op):
+        ctx.progress(op, 0.1, 'Checking ' + self.branch + ' on GitHub')
+        self.managed_git('fetch', '--depth=1', '--no-tags', '--no-write-fetch-head', '--force', self.repository,
+                         '+refs/heads/' + self.branch + ':refs/cedar/' + self.branch, timeout=FETCH_TIMEOUT)
+        self.check_cancelled()
+        commit = self.managed_git('rev-parse', '--verify', 'refs/cedar/' + self.branch + '^{commit}')
+        if not re.fullmatch(r'[0-9a-f]{40,64}', commit):
+            raise Guidance('Git returned an invalid revision', 'The branch did not resolve to a commit.', retry=True, code='commit')
+        self.result['commit'] = commit
+        op.detail = self.branch + ' · ' + commit[:12]
+
+    def channel_prepare(self, ctx, op):
+        self.check_cancelled()
+        commit = self.result['commit']
+        parent = self.state_dir / 'update-sources' / self.channel
+        from scripts.distribution import private_directory
+        private_directory(parent)
+        target = parent / commit
+        metadata = parent / (commit + '.json')
+        if target.exists() or target.is_symlink():
+            try:
+                record = json.loads(metadata.read_text())
+                if (target.is_symlink() or record.get('commit') != commit or record.get('channel') != self.channel
+                        or record.get('sourceDigest') != content_digest(target)):
+                    raise ValueError('prepared source changed')
+            except (OSError, ValueError, RuntimeError):
+                raise Guidance('The prepared update changed', 'A cached update no longer matches its verified source. It was not installed.',
+                               ['Move ' + str(target) + ' aside and check for updates again.'], code='source-changed') from None
+        else:
+            raw = self.managed_git('archive', '--format=tar', commit, binary=True)
+            self.check_cancelled()
+            temporary = Path(tempfile.mkdtemp(prefix='.prepare-', dir=parent))
+            try:
+                with tarfile.open(fileobj=io.BytesIO(raw), mode='r:') as archive:
+                    for member in archive:
+                        self.check_cancelled()
+                        rel = Path(member.name)
+                        if (rel.is_absolute() or '..' in rel.parts or '.git' in rel.parts
+                                or not (member.isfile() or member.isdir())):
+                            raise Guidance('The source archive is unsafe', 'The branch contains a link or an unsafe archive path.', retry=False, code='archive')
+                        destination = temporary / rel
+                        if member.isdir():
+                            destination.mkdir(parents=True, exist_ok=True)
+                        else:
+                            destination.parent.mkdir(parents=True, exist_ok=True)
+                            with archive.extractfile(member) as src, destination.open('xb') as dest:
+                                shutil.copyfileobj(src, dest)
+                            os.chmod(destination, member.mode & 0o777)
+                if not (temporary / 'installer/cedar_install.py').is_file():
+                    raise Guidance('The branch has no installer', 'The selected branch does not contain the CEDAR installer.', retry=False, code='handoff')
+                digest = content_digest(temporary)
+                self.check_cancelled()
+                os.replace(temporary, target)
+                record = {'commit': commit, 'channel': self.channel, 'sourceDigest': digest}
+                temp_meta = metadata.with_suffix('.tmp')
+                temp_meta.write_text(json.dumps(record)); os.chmod(temp_meta, 0o600)
+                os.replace(temp_meta, metadata)
+            finally:
+                if temporary.exists():
+                    shutil.rmtree(temporary)
+        self.result.update({'source': str(target), 'sourceDigest': record['sourceDigest'], 'version': self.version_of(target)})
+        op.detail = 'Prepared ' + self.branch + ' at ' + commit[:12] + '; installed copy unchanged'
+
+    def channel_handoff(self, ctx, op):
+        self.check_cancelled()
+        current = _home_path(self.environ, 'DATA', '.local/share') / 'cedar/current'
+        try:
+            same_contents = current.is_symlink() and content_digest(current.resolve()) == self.result['sourceDigest']
+        except (OSError, ValueError, RuntimeError):
+            same_contents = False
+        self.result['installedChannel'] = installed_channel(self.environ)
+        self.result['current'] = same_contents and self.result['installedChannel'] == self.channel
+        self.result['changed'] = not same_contents
+        self.prepared = True
+        op.detail = ('CEDAR is up to date on ' + self.branch if self.result['current'] else
+                     'Ready to install from ' + self.branch + ' · ' + self.result['commit'][:12])
+
+    def run_channel(self):
+        self.cancelled.clear()
+        self.prepared = False
+        self.branch = channel_branch(self.channel)
+        self.cache = self.state_dir / 'update-cache' / (self.channel + '.git')
+        self.result = {'kind': 'channel', 'channel': self.channel, 'branch': self.branch,
+                       'installedChannel': installed_channel(self.environ), 'source': '', 'sourceDigest': '',
+                       'commit': '', 'version': '', 'previousVersion': '', 'current': False, 'notes': [], 'changed': False}
+        rows = [('locate', 'Branch', 'The CEDAR branch you selected', self.channel_locate),
+                ('inspect', 'Prepare', 'Use an isolated update cache', self.channel_inspect),
+                ('fetch', 'Check', 'Fetch the latest branch revision', self.channel_fetch),
+                ('apply', 'Prepare source', 'Verify an immutable copy of the selected revision', self.channel_prepare),
+                ('handoff', 'Installer', 'Compare the prepared source with your installed CEDAR', self.channel_handoff)]
+        runner = ops.Runner([ops.Operation(*row) for row in rows], self.state_dir / 'update-state.json',
+                            self.log, self.emit, version=self.version_of(self.source), run_id='update-' + uuid.uuid4().hex)
+        try:
+            with update_lock(self.state_dir):
+                self.handoff_path.unlink(missing_ok=True)
+                self.emit('operations', [op.to_dict() for op in runner.operations])
+                runner.run(_Context(runner))
+                self.check_cancelled()
+        except (ops.Failed, Guidance) as failure:
+            self.prepared = False
+            cause = failure.__cause__ if isinstance(failure, ops.Failed) else failure
+            guidance = cause if isinstance(cause, Guidance) else Guidance('Update stopped', str(failure), ['Press Try again.'], code='unexpected')
+            self.emit('update-error', {**guidance.to_dict(), 'operation': getattr(getattr(failure, 'operation', None), 'id', ''),
+                                      'channel': self.channel, 'branch': self.branch, 'installedChannel': installed_channel(self.environ),
+                                      'notes': self.result['notes'], 'log': str(self.log.path) if self.log else ''})
+            raise guidance
+        self.emit('updated', dict(self.result))
+        return dict(self.result)
+
     # -- fixes -------------------------------------------------------------
     def fix(self, name):
         """A safe, reversible repair the person asked for by its button."""
-        if self.kind != 'checkout':
+        if self.channel is not None or self.kind != 'checkout':
             raise Guidance('Nothing to fix here', 'This fix applies to a Git checkout only.', retry=True, code='fix')
         if name == 'stash':
             stamp = time.strftime('%Y-%m-%d %H:%M')
@@ -351,6 +631,8 @@ class Updater:
 
     def run(self):
         """Run every step; return the result, or raise Guidance (never a bare git error)."""
+        if self.channel is not None:
+            return self.run_channel()
         self.kind, self.target = locate(self.source, self.environ)
         self.result.update({'kind': self.kind, 'source': '', 'version': '', 'current': False, 'changed': False})
         state_path = self.state_dir / 'update-state.json'
@@ -374,8 +656,14 @@ class Updater:
 
     def proceed(self, argv=()):
         """Record the handoff for the process that owns the window, so it can start the updated installer."""
+        if self.channel is not None:
+            self.check_cancelled()
+            if not self.prepared or content_digest(self.result['source']) != self.result['sourceDigest']:
+                raise Guidance('Check for updates again', 'The prepared update is missing or changed.', retry=True, code='source-changed')
         self.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-        record = {'format': 1, 'source': self.result['source'], 'version': self.result['version'], 'argv': list(argv), 'at': time.time()}
+        record = {'format': 1, 'sessionId': self.session_id, 'source': self.result['source'], 'version': self.result['version'], 'argv': list(argv), 'at': time.time()}
+        if self.channel is not None:
+            record.update({key: self.result[key] for key in ('channel', 'branch', 'commit', 'sourceDigest')})
         temporary = self.handoff_path.with_name(self.handoff_path.name + '.tmp')
         temporary.write_text(json.dumps(record, indent=2)); os.chmod(temporary, 0o600)
         os.replace(temporary, self.handoff_path)
@@ -383,15 +671,23 @@ class Updater:
         return record
 
     def cancel(self):
+        self.cancelled.set()
+        self.prepared = False
         try:
             self.handoff_path.unlink()
         except OSError:
             pass
 
 
-def take_handoff(state_dir, max_age=3600):
+def handoff_name(session_id=''):
+    if session_id and not re.fullmatch(r'[0-9a-f]{32}', session_id):
+        raise ValueError('Invalid update session identifier')
+    return 'update-handoff' + ('-' + session_id if session_id else '') + '.json'
+
+
+def take_handoff(state_dir, max_age=3600, session_id=''):
     """Read and remove the handoff record a window left behind; None when there is none or it is stale."""
-    path = Path(state_dir) / 'update-handoff.json'
+    path = Path(state_dir) / handoff_name(session_id)
     try:
         record = json.loads(path.read_text())
     except (OSError, ValueError):
@@ -402,9 +698,20 @@ def take_handoff(state_dir, max_age=3600):
         pass
     if not isinstance(record, dict) or record.get('format') != 1:
         return None
-    if time.time() - float(record.get('at', 0)) > max_age:
+    try:
+        age = time.time() - float(record.get('at', 0))
+    except (TypeError, ValueError):
         return None
-    if not (Path(record.get('source', '')) / 'installer/cedar_install.py').is_file():
+    if age < 0 or age > max_age or record.get('sessionId', '') != session_id:
+        return None
+    if 'channel' in record:
+        try:
+            if (record.get('branch') != channel_branch(record['channel'])
+                    or content_digest(record['source']) != record.get('sourceDigest')):
+                return None
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError):
+            return None
+    if not isinstance(record.get('source'), str) or not (Path(record['source']) / 'installer/cedar_install.py').is_file():
         return None
     return record
 

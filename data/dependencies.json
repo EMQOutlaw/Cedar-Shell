@@ -8,6 +8,20 @@
   "versionPolicy": "These are observed development versions, not a promise of compatibility with arbitrary versions. Installation verifies QML parsing and required imports through the UI harness.",
   "commands": [
     {
+      "command": "git",
+      "feature": "Stable and Development branch updates",
+      "status": "feature-required",
+      "archPackage": "git",
+      "whenUnavailable": "Branch updates need Git; the installed shell continues running.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": ["x86_64"],
+      "testedRange": "Validated by the local bare-repository channel tests",
+      "verification": ["command-presence", "feature-runtime-test"],
+      "consumers": ["installer/engine/update.py"],
+      "autoInstall": true
+    },
+    {
       "command": "qs",
       "feature": "QML shell and native service imports",
       "status": "required",

@@ -17,6 +17,7 @@ import sys
 import time
 
 from . import operations as ops
+from . import update as update_module
 from .backup import Backup
 from . import facts as facts_module
 from ..migration import providers as migration_providers
@@ -445,6 +446,9 @@ def verify_run(ctx, op):
     record = {'format': 1, 'version': ctx.facts['cedarVersion'], 'installedAt': time.time(), 'runId': ctx.runner.run_id if ctx.runner else '',
               'backup': ctx.runner.backup if ctx.runner else '', 'installer': 'cedar-install ' + ctx.facts['installerVersion'],
               'environment': ctx.facts['environment']['id'], 'session': session, 'log': str(ctx.log.path) if ctx.log else ''}
+    provenance = update_module.install_provenance(ctx.source, root, ctx.host.environ)
+    if provenance:
+        record['update'] = provenance
     write_private_json(ctx.config_dir() / 'installation.json', record)
     backup = reopen_backup(ctx)
     if backup:
