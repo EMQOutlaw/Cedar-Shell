@@ -28,14 +28,21 @@ Item {
     property bool lit: false
     // The leading edge while the surface grows: a band of light along the bottom.
     property bool growing: false
+    readonly property bool live: visible && Motion.active && VisualQuality.effects
+    readonly property bool animating: grainIn.running || trace.running
     property color edge: lit ? Qt.alpha(stroke, Math.min(1, stroke.a * 2.2)) : stroke
-    Behavior on edge { enabled: !Theme.reducedMotion; ColorAnimation { duration: VisualQuality.ms(Theme.morphGrow) } }
+    Behavior on edge { enabled: root.live; ColorAnimation { duration: VisualQuality.ms(Theme.morphGrow) } }
     // Unfolding: the Grain separates from the Foundation a beat later, and a
     // light runs the whole contour once, tracing the boundary as it forms.
     property real grainReveal: 1
     property real runner: -1
     readonly property real contourUnits: (2 * (height + width) + 2 * join) / Math.max(1, strokeWidth)
-    onLitChanged: if (lit && VisualQuality.effects) { grainIn.restart(); trace.restart(); }
+    onLitChanged: if (lit && live) { grainIn.restart(); trace.restart(); }
+    onLiveChanged: {
+        if (live) return;
+        grainIn.stop(); trace.stop();
+        grainReveal = 1; runner = -1;
+    }
     SequentialAnimation { id: grainIn; PropertyAction { target: root; property: "grainReveal"; value: 0 } PauseAnimation { duration: VisualQuality.ms(80) } NumberAnimation { target: root; property: "grainReveal"; to: 1; duration: VisualQuality.ms(Theme.reveal); easing.type: Easing.OutCubic } }
     NumberAnimation { id: trace; target: root; property: "runner"; from: 0; to: 1; duration: VisualQuality.ms(Theme.morphGrow + Theme.reveal); easing.type: Easing.InOutQuad; onFinished: root.runner = -1 }
     Shape {

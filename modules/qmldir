@@ -33,6 +33,7 @@ SystemSettings 1.0 SystemSettings.qml
 CedarCore 1.0 CedarCore.qml
 CoreSettings 1.0 CoreSettings.qml
 BarContents 1.0 BarContents.qml
+StrataBarContents 1.0 StrataBarContents.qml
 CoreWindow 1.0 CoreWindow.qml
 DefaultAppsSettings 1.0 DefaultAppsSettings.qml
 CanopyPanel 1.0 CanopyPanel.qml

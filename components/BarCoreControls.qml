@@ -15,6 +15,7 @@ Row {
     BarButton {
         objectName: "fallbackCoreHeader"
         anchorTopic: "quick"
+        canopyOutput: parent.outputName
         height: parent.height
         implicitWidth: Math.min(220, Math.max(36, contentItem.implicitWidth + 20))
         text: Config.moduleEnabled("clock") ? Config.barClock(clock.date) : "◈"

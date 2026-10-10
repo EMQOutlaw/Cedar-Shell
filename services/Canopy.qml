@@ -7,8 +7,11 @@ Singleton {
     id: root
     readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces"]
     // One route per destination: a topic with a visible bar button gets no tab.
-    // The bar's center control always opens Quick Controls.
+    // Cedar has a dedicated right-side Quick control; its center opens Signals.
     function barRoute(value) {
+        if (Config.barStyle === "cedar" && Config.stage >= 3
+                && ((value === "audio" && Config.moduleEnabled("audio"))
+                    || (value === "calendar" && Config.moduleEnabled("clock")))) return true;
         return value === "quick" || (value === "network" && Config.moduleEnabled("network")) || (value === "notifications" && Config.stage >= 3 && Config.moduleEnabled("notifications")) || (value === "station" && Config.stage >= 2 && Config.moduleEnabled("identity")) || (value === "go" && Config.stage >= 3 && Config.moduleEnabled("go")) || (value === "workspaces" && Config.stage >= 3 && Config.moduleEnabled("workspaces"));
     }
     // Power is its own panel (Super+Esc), never a tab in Quick Controls.

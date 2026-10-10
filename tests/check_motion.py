@@ -14,5 +14,6 @@ with tempfile.TemporaryDirectory(prefix='cedar-core-ui-') as tmp:
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: motion allocation' not in output or re.search(r'Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign|FAIL:',output):
         print(output);raise SystemExit(1)
-    print('PASS: motion allocation, interpolation, vector gauges and reduced motion')
-    if not (shots/'motion.png').exists(): raise SystemExit('Missing gauge render')
+    print('PASS: motion allocation, interpolation, vector gauges, finite Strata effects and reduced motion')
+    for filename in ('motion.png', 'strata-balanced.png', 'strata-expressive.png'):
+        if not (shots/filename).exists(): raise SystemExit('Missing render: ' + filename)

@@ -11,7 +11,9 @@ Singleton {
     property string fallbackOutput: Quickshell.screens[0]?.name || ""
     readonly property var hostScreen: Quickshell.screens.find(s => s.name === (Config.saved.coreMonitor || Config.saved.mainDisplay)) || Quickshell.screens.find(s => s.name === fallbackOutput) || Quickshell.screens[0] || null
     readonly property string hostName: hostScreen?.name || ""
-    readonly property int reserveWidth: Math.min(360, Math.max(240, (hostScreen?.width || 1000) * .30))
+    readonly property int reserveWidth: Config.barStyle === "cedar"
+        ? ((hostScreen?.width || 1000) < 800 ? 164 : (hostScreen?.width || 1000) < 1100 ? 208 : 272)
+        : Math.min(360, Math.max(240, (hostScreen?.width || 1000) * .30))
     readonly property bool available: enabled && !!hostScreen && !ShellState.locked && ["", "core", "canopy"].includes(ShellState.panel)
     readonly property bool expanded: ShellState.panel === "core"
     readonly property bool ownsOsd: available && Config.saved.coreVolume && ["VOLUME", "BRIGHTNESS"].includes(ShellState.osdKind)

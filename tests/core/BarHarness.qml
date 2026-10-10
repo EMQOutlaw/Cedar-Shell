@@ -41,10 +41,11 @@ ShellRoot {
                 x: Config.barDetached ? Config.barMargin : 0
                 width: scene.width - x * 2
                 height: Config.barHeight
-                HudPanel {
+                StrataBarFrame {
                     anchors.fill: parent
                     visible: Config.barStyle === "cedar"
-                    padding: 0
+                    materialOpacity: Config.barOpacity
+                    centerWidth: contents.item ? contents.item.centerWidth : 0
                 }
                 Rectangle {
                     anchors.fill: parent
@@ -52,18 +53,26 @@ ShellRoot {
                     color: Theme.surface
                     radius: Config.barStyle === "floating" ? Config.barRadius : 0
                 }
-                BarContents {
+                Loader {
                     id: contents
-                    visible: !Config.barIslands
+                    active: !Config.barIslands
                     anchors.fill: parent
                     anchors.margins: 6
-                    output: Quickshell.screens[0]
+                    sourceComponent: Config.barStyle === "cedar" ? strataContents : legacyContents
                 }
-                BarIslands {
+                Component {
+                    id: strataContents
+                    StrataBarContents { output: Quickshell.screens[0] }
+                }
+                Component {
+                    id: legacyContents
+                    BarContents { output: Quickshell.screens[0] }
+                }
+                Loader {
                     id: islands
-                    visible: Config.barIslands
+                    active: Config.barIslands
                     anchors.fill: parent
-                    output: Quickshell.screens[0]
+                    sourceComponent: BarIslands { output: Quickshell.screens[0] }
                 }
             }
             CoreSurface {
@@ -86,19 +95,20 @@ ShellRoot {
             id: inspect
             interval: 190
             onTriggered: {
-                if (CoreService.enabled) {
-                    const group = Config.barIslands ? islands : contents;
+                const group = Config.barIslands ? islands.item : contents.item;
+                window.check(group !== null, "Selected bar layout is loaded");
+                if (group.coreHost) {
                     const left = window.named(group, Config.barIslands ? "barLeftPlate" : "barLeftControls"), right = window.named(group, Config.barIslands ? "barRightPlate" : "barRightControls");
+                    window.check(left !== null && right !== null, "Selected bar exposes both side regions");
                     window.check(left.x + left.width <= group.width / 2 - CoreService.reserveWidth / 2, "Left controls must leave room for Core in " + Config.barStyle);
                     window.check(right.x >= group.width / 2 + CoreService.reserveWidth / 2, "Right controls must leave room for Core in " + Config.barStyle);
                 }
-                const group = Config.barIslands ? islands : contents;
                 const fallback = window.named(group, "barCoreControls");
-                window.check(fallback !== null, "Secondary/disabled Core entry exists");
-                if (!CoreService.enabled) {
+                window.check(fallback !== null, "Secondary/disabled Core center exists");
+                if (!group.coreHost) {
                     const center = fallback.mapToItem(scene, fallback.width / 2, 0).x;
                     window.check(Math.abs(center - scene.width / 2) < 1, "Fallback remains centered");
-                    window.check(fallback.width <= 280, "Long clock stays bounded");
+                    window.check(fallback.width <= 280, "Fallback identity or clock stays bounded");
                 }
                 scene.grabToImage(r => r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/bar-" + Config.barStyle + "-" + scene.width + "-" + (CoreService.enabled ? "core" : "plain") + ".png"));
             }
@@ -109,7 +119,7 @@ ShellRoot {
             running: true
             onTriggered: {
                 if (window.step === 36) {
-                    console.log("PASS: six bar layouts reserve Core space at both widths and keep a centered control entry");
+                    console.log("PASS: six bar layouts reserve Core space at three widths and keep a centered fallback");
                     Qt.quit();
                     return;
                 }

@@ -1,6 +1,7 @@
 ActivityTrace 1.0 ActivityTrace.qml
 ArcGauge 1.0 ArcGauge.qml
 BarButton 1.0 BarButton.qml
+StrataBarFrame 1.0 StrataBarFrame.qml
 CedarAtmosphere 1.0 CedarAtmosphere.qml
 GlowText 1.0 GlowText.qml
 HudButton 1.0 HudButton.qml

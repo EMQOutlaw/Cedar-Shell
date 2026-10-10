@@ -20,6 +20,15 @@ ShellRoot {
             maximumWidth: 460
             maximumHeight: 600
         }
+        Loader {
+            id: strata
+            active: Config.barStyle === "cedar"
+            x: 6
+            y: 90
+            width: window.width - 12
+            height: Config.barHeight - 12
+            sourceComponent: StrataBarContents { output: Quickshell.screens[0] }
+        }
         CanopyPanel {
             id: canopy
             y: 240
@@ -49,6 +58,9 @@ ShellRoot {
                 wait(20);
             }
             function test_navigation() {
+                // These established checks exercise the legacy Core that owns
+                // Quick Controls and the neighbouring network entry.
+                Config.set("barStyle", "floating");
                 Config.set("reducedMotion", true);
                 Config.set("coreWarnings", false);
                 Config.set("canopyEnabled", true);
@@ -173,6 +185,55 @@ ShellRoot {
                 click(header);
                 compare(ShellState.panel, "");
                 console.log("PASS: consolidated navigation, real pointer/media events, focus, Escape and lock guards");
+            }
+            function test_strata_navigation() {
+                Config.set("barStyle", "cedar");
+                Config.set("coreEnabled", true);
+                Config.set("canopyEnabled", true);
+                Config.set("reducedMotion", true);
+                ShellState.locked = false;
+                Canopy.close();
+                CoreService.collapse();
+                wait(100);
+                verify(strata.item !== null);
+                verify(core.integrated);
+                verify(!core.showNetwork, "Strata keeps network in the right rail");
+                const header = named(core, "coreHeader");
+                const quick = named(strata.item, "strataQuick");
+                const network = named(strata.item, "strataNetwork");
+                compare(header.hint, "Signals");
+                click(header);
+                verify(CoreService.expanded, "Center header opens Signals");
+                verify(!Canopy.shown, "Signals does not open Quick Controls");
+                click(header);
+                verify(!CoreService.expanded);
+                click(quick);
+                compare(Canopy.topic, "quick");
+                compare(Canopy.outputName, Quickshell.screens[0].name);
+                verify(Canopy.shown, "Right Quick control opens Quick Controls");
+                click(header);
+                verify(CoreService.expanded && !Canopy.shown, "Center header switches Quick Controls to Signals");
+                click(quick);
+                verify(Canopy.shown && !CoreService.expanded, "Right Quick control switches Signals to Quick Controls");
+                click(network);
+                compare(Canopy.topic, "network");
+                compare(Canopy.outputName, Quickshell.screens[0].name);
+                verify(Canopy.shown);
+                Canopy.close();
+                header.forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                wait(20);
+                verify(CoreService.expanded && !Canopy.shown, "Keyboard header activation opens Signals");
+                keyClick(Qt.Key_Escape);
+                wait(20);
+                verify(!CoreService.expanded && !Canopy.shown);
+                ShellState.locked = true;
+                click(header);
+                click(quick);
+                click(network);
+                verify(!CoreService.expanded && !Canopy.shown, "Strata actions respect the lock guard");
+                ShellState.locked = false;
+                console.log("PASS: Strata Signals header and right-side Quick/Network pointer and keyboard routes");
             }
             function cleanupTestCase() {
                 Qt.quit();

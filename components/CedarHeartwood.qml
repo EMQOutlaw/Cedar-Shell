@@ -10,7 +10,7 @@ import "../services"
 // the light that runs the outer ring is a second short dash on the same
 // circle. Every motion is a state or an event:
 //   awaken()     the rings spin and settle into place from a spread (shell start)
-//   hovered      the middle ring turns slowly while the pointer stays, the glow rises
+//   hovered      the middle ring advances one segment, then rests with a faint glow
 //   pulse()      a bloom: the whole instrument swells and springs back while a
 //                light runs the outer ring (click)
 //   ripple()     a ring expands outward and fades (a signal arriving)
@@ -21,13 +21,16 @@ import "../services"
 Item {
     id: root
     property real size: 30
+    property bool active: true
     property bool hovered: false
     property bool unfolding: false
     property string mode: "idle"        // idle | gaming | focus
     property bool warning: false
     property color accent: Theme.green
     property real intensity: 1
-    readonly property bool live: VisualQuality.effects && intensity > 0
+    readonly property bool expressive: VisualQuality.preset > 1
+    readonly property bool live: active && visible && Motion.active && VisualQuality.effects && intensity > 0
+    readonly property bool animating: hoverTurn.running || hoverOuterTurn.running || gamingTurn.running || flaring.running || sweep.running || blooming.running || rippling.running || separating.running || awakening.running
     width: size; height: size
     readonly property real cx: width / 2
     readonly property real cy: height / 2
@@ -54,16 +57,36 @@ Item {
     property real turn1: 0
     property real turn2: 0
     property real turn3: 0
-    // Hover: the middle ring turns slowly for as long as the pointer stays; the glow rises.
-    NumberAnimation on turn2 { running: root.hovered && root.live; loops: Animation.Infinite; from: root.turn2; to: root.turn2 + root.units(root.r2); duration: 3200 }
-    onHoveredChanged: glow = hovered ? .45 : (mode === "gaming" ? .2 : 0)
+    // One segment on entry is enough to acknowledge the pointer. Holding the
+    // pointer still never leaves a permanent animator committing frames.
+    NumberAnimation { id: hoverTurn; target: root; property: "turn2"; duration: VisualQuality.ms(440); easing.type: Easing.OutCubic }
+    NumberAnimation { id: hoverOuterTurn; target: root; property: "turn3"; duration: VisualQuality.ms(560); easing.type: Easing.OutCubic }
+    onHoveredChanged: {
+        if (hovered && live && !awakening.running) {
+            hoverTurn.stop();
+            hoverTurn.from = turn2;
+            hoverTurn.to = turn2 + units(r2) / 9 * (expressive ? 2 : 1);
+            hoverTurn.start();
+            if (expressive && mode !== "gaming") {
+                hoverOuterTurn.stop();
+                hoverOuterTurn.from = turn3;
+                hoverOuterTurn.to = turn3 - units(r3) / 12;
+                hoverOuterTurn.start();
+            }
+        }
+        glow = live && hovered ? .3 : (mode === "gaming" ? .2 : 0);
+    }
     // Gaming: the outer ring completes one slow turn, then locks.
-    onModeChanged: { if (mode === "gaming" && live) gamingTurn.restart(); glow = mode === "gaming" ? .2 : hovered ? .45 : 0; }
+    onModeChanged: {
+        gamingTurn.stop();
+        if (mode === "gaming" && live) { hoverOuterTurn.stop(); gamingTurn.start(); }
+        glow = mode === "gaming" ? .2 : hovered ? .45 : 0;
+    }
     NumberAnimation { id: gamingTurn; target: root; property: "turn3"; from: 0; to: root.units(root.r3); duration: VisualQuality.ms(1400); easing.type: Easing.InOutCubic }
     // Warning: the amber segment flares twice.
     property real flare: 1
     onWarningChanged: if (warning && live) flaring.restart()
-    SequentialAnimation { id: flaring; loops: 2; NumberAnimation { target: root; property: "flare"; to: .2; duration: 220 } NumberAnimation { target: root; property: "flare"; to: 1; duration: 220 } }
+    SequentialAnimation { id: flaring; loops: 2; NumberAnimation { target: root; property: "flare"; to: .2; duration: VisualQuality.ms(220) } NumberAnimation { target: root; property: "flare"; to: 1; duration: VisualQuality.ms(220) } }
 
     // ---- events
     property real runner: -1
@@ -75,7 +98,7 @@ Item {
     SequentialAnimation {
         id: blooming
         ParallelAnimation {
-            NumberAnimation { target: root; property: "bloom"; to: 1.28; duration: VisualQuality.ms(180); easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "bloom"; to: root.expressive ? 1.38 : VisualQuality.preset < 1 ? 1.12 : 1.28; duration: VisualQuality.ms(180); easing.type: Easing.OutCubic }
             NumberAnimation { target: root; property: "glow"; to: .8; duration: VisualQuality.ms(160) }
         }
         ParallelAnimation {
@@ -119,6 +142,17 @@ Item {
         NumberAnimation { target: root; property: "turn2"; to: 0; duration: VisualQuality.ms(1200); easing.type: Easing.OutCubic }
         NumberAnimation { target: root; property: "turn3"; to: 0; duration: VisualQuality.ms(1400); easing.type: Easing.OutCubic }
         SequentialAnimation { PauseAnimation { duration: VisualQuality.ms(900) } NumberAnimation { target: root; property: "glow"; to: 0; duration: VisualQuality.ms(700) } }
+    }
+    // Effects already in flight must rest too: hiding Core, inactivity, a policy
+    // change or disabling the instrument leaves a complete static mark.
+    onLiveChanged: {
+        if (live) return;
+        hoverTurn.stop(); hoverOuterTurn.stop(); gamingTurn.stop(); flaring.stop(); sweep.stop();
+        blooming.stop(); rippling.stop(); separating.stop(); awakening.stop();
+        turn1 = 0; turn2 = 0; turn3 = 0;
+        separation = 0; bloom = 1; runner = -1; rippleAlpha = 0; flare = 1;
+        glow = mode === "gaming" ? .2 : 0;
+        opacity = 1;
     }
 
     // ---- drawing
