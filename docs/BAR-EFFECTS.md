@@ -4,38 +4,43 @@ The bar's animation identity: instruments that move when the desktop
 changes and are still while nothing does. Settings › Appearance › Bar
 effects turns each one on or off, sets the effect intensity and the motion
 preset (Calm, Balanced, Expressive, Off); Reduced Motion and the Off preset
-keep the bar static. `VisualQuality.effects` and
+keep decorative motion static. `VisualQuality.effects` and
 `VisualQuality.effectIntensity` are the single gate every instrument reads,
-so Performance mode and Gaming Mode shorten and dim them together;
-Expressive lengthens every motion by a third and brightens it.
+so Performance mode and Gaming Mode suspend decorative effects;
+Expressive lengthens motion by a third and brightens it. Functional Core and
+Canopy transitions use `VisualQuality.functionalMotion`: Efficient and Gaming
+shorten them, while Reduced Motion and Off disable them.
+
+The continuous cedar layout is described in [Strata bar](STRATA-BAR.md).
+Other layouts retain their own arrangements and effects.
 
 Where each one lives in the running bar, so nothing here is a scaffold:
 
 | Instrument | Component | Instantiated in |
 | --- | --- | --- |
-| Awakening | `modules/Bar.qml` (sweep band, contents settling), `CedarRootlines.grow()`, `CedarHeartwood.awaken()` | `modules/Bar.qml` per output; `components/core/CoreSurface.qml` |
-| Heartwood | `components/CedarHeartwood.qml` | `components/core/CoreSurface.qml`, the Core pill's header (30 px at rest, 44 px in the hub) |
+| Awakening | `modules/Bar.qml` (cedar grain lift; legacy sweep), `CedarRootlines.grow()`, `CedarHeartwood.awaken()` | `modules/Bar.qml` per output; `components/core/CoreSurface.qml` |
+| Heartwood | `components/CedarHeartwood.qml` | `components/core/CoreSurface.qml`, up to 24 px at rest, 44 px in the hub |
 | Rootlines | `components/CedarRootlines.qml` | `modules/Bar.qml`, between the frame and the controls, per output |
-| Strata frame | `components/DropFrame.qml` | `modules/CanopyWindow.qml`, every drop |
-| Workspace glide | `modules/BarContents.qml` (`workspaceMark`) | the workspace row of every bar |
+| Strata frame | `components/StrataBarFrame.qml`, `components/DropFrame.qml` | cedar bar; `modules/CanopyWindow.qml`, every drop |
+| Workspace glide | `modules/StrataBarContents.qml`, `modules/BarContents.qml` | the workspace row |
 | Kinetic Type | `components/KineticLabel.qml`, `KineticStatus.qml`, `KineticNumber.qml` | `components/StatusPill.qml` (every status word), `modules/QuickControls.qml` (tile values), `components/core/CoreSurface.qml` (the pill's title), `components/CedarWhispers.qml` |
-| Whispers | `components/CedarWhispers.qml` | `modules/BarContents.qml`, the bar's text region |
-| Canopy Pulse | `components/CanopyPulse.qml` over `services/Pulse.qml` | `modules/BarContents.qml`, before the tray; `components/AudioSpectrum.qml` shares the feed |
+| Whispers | `components/CedarWhispers.qml` | `modules/StrataBarContents.qml` and `modules/BarContents.qml`, the text region |
+| Canopy Pulse | `components/CanopyPulse.qml` over `services/Pulse.qml` | `modules/StrataBarContents.qml` and `modules/BarContents.qml`, before the tray; `components/AudioSpectrum.qml` shares the feed |
 
 ## The awakening
 
-When the shell starts (not in test mode), each bar draws itself in: the
-Rootlines grow outward from the centre over 1.25 s, a band of green light sweeps the
-bar's top edge once, the controls settle in after a beat, and the Heartwood
-arrives spread and turned, its three rings spinning into place over 1.4 s
-while its glow fades. It starts 220 ms after the compositor has mapped the
+When the shell starts (not in test mode), cedar briefly lifts the light on
+its retained grain edge, then rests. Other layouts grow their Rootlines
+outward and sweep a band of light across the top once. Controls are visible
+and usable immediately in every layout. Heartwood arrives spread and turned,
+its three rings settling into place while the glow fades.
+Awakening starts 220 ms after the compositor has mapped the
 bar's window (`PanelWindow.backingWindowVisible`), not at component
 completion, because the shell finishes loading well before the bar is on
-screen; the Rootlines and Heartwood are absent until then, and
-`VisualQuality.awakened` tells the pill's Heartwood when the first bar is
-up. Fallbacks (4 s for the controls, 5 s for the drawings) mean nothing can
-stay hidden if the window never maps. A Desktop Profile change regrows the
-Rootlines in the profile's accent. Nothing of this repeats on its own.
+screen. `VisualQuality.awakened` tells Heartwood when the first bar is up;
+its five-second fallback prevents it staying hidden if the window never
+maps. Desktop Profile changes ripple Heartwood in cedar; legacy layouts
+regrow Rootlines in the profile's accent. Nothing repeats on its own.
 
 ## Heartwood
 
@@ -47,10 +52,10 @@ animation and the light that runs the outer ring is a second short dash
 travelling the circumference. States, all from real desktop state:
 
 - idle: still
-- hover: the middle ring turns continuously (one turn per 3.2 s) and the glow
-  rises, for as long as the pointer stays
+- hover: the middle ring advances one segment over 440 ms, then rests
 - click: a bloom — the instrument swells to 128 % and springs back while a
-  white light runs the outer ring — then Quick Controls opens
+  white light runs the outer ring — then Signals opens in cedar, or Quick
+  Controls in other layouts
 - a signal arriving (the pill's alert): a ring ripples outward and fades
 - a panel unfolding from the pill: the rings separate radially and settle
 - Gaming Mode: the outer ring brightens and thickens, completes one slow
@@ -67,6 +72,10 @@ A fine root along the bar's foot with curved, tapered forks facing outward
 from the centre. Uneven spacing keeps the silhouette organic. Detail stays
 in the bottom ten pixels below the controls, with feathered ends. Tiny sap sparks bloom at branch tips only when a
 current or growth front reaches them. Paths are retained; animation changes light, opacity and the reveal.
+
+Cedar uses only the single panel-opening trace, fading the underlying root
+back into its grain afterwards. The repeating open-panel currents and the
+other Rootline reactions below apply to the legacy layouts.
 
 - On awakening, the root reveals from the centre over 1.25 s and the branches
   appear as growth reaches them (duration follows the motion preset).
@@ -92,8 +101,9 @@ Foundation extends into the panel on the morph curve with a band of light
 along its leading edge (`DropFrame.growing`); the Grain contour follows
 eighty milliseconds later; a long bright dash traces the Living Edge once
 around the new boundary; the content reveals after the geometry; the
-Rootlines stream toward the control for as long as it stays open; and
-everything else stops. Closing fades the content first and contracts.
+Rootline trace settles (legacy layouts retain a current while open).
+Closing fades the content and contracts. Reopening during a close retains
+the current geometry and reveal instead of restarting from zero.
 
 ## Workspace glide
 
@@ -140,7 +150,9 @@ such.
 
 ## Cost
 
-Idle: nothing runs. The awakening runs once per bar at start; the Rootline
-flow runs only while a panel is open on that output; every other instrument
-animates on its event and returns to retained geometry. Canopy Pulse is the
-one opt-in continuous consumer, and only while audio plays.
+The cedar frame and decorative instruments rest after each event. Existing
+provider work, minute clocks and optional Whispers remain separate from
+decoration. Legacy Rootline flow runs while a panel is open on its output.
+Canopy Pulse is an opt-in continuous consumer only while audio plays and
+the effect is visible. Runtime resource use requires measurement; this
+description of the lifecycle is not a CPU or GPU benchmark.

@@ -20,7 +20,7 @@ PanelWindow {
     readonly property bool requested: Canopy.shown && Canopy.screen === modelData
     property bool mapped: false
     visible: mapped
-    readonly property bool morphing: !Theme.reducedMotion && !Config.testMode
+    readonly property bool morphing: VisualQuality.functionalMotion && !Config.testMode
     readonly property real sideInset: Config.barDetached ? Config.barMargin : 0
     // The bar frame sits five pixels inside the bar window; the drop joins its bottom edge.
     readonly property real barJoin: Config.barHeight - (Config.barStyle === "cedar" || Config.barIslands ? 5 : 0)
@@ -82,17 +82,26 @@ PanelWindow {
         drop.x = t.x; drop.width = t.width; drop.height = t.height;
     }
     function open() {
+        const continuing = mapped && drop.height > 0;
         closeDelay.stop();
-        swap.stop(); morph.stop();
+        openReveal.stop(); swap.stop(); morph.stop();
         switching = false;
         mapped = true;
         drop.topic = Canopy.topic;
         drop.standalone = Canopy.standalone;
         const w = topicWidth(drop.topic);
-        snap(topicX(w), w, 0);
-        drop.reveal = 0;
+        if (!continuing) {
+            snap(topicX(w), w, 0);
+            drop.reveal = 0;
+        }
         setState("opening");
-        Qt.callLater(() => { root.retarget(); openReveal.restart(); Canopy.enter(); });
+        // A still-mapped close is reversed from its current size and opacity.
+        // Only a completely hidden surface starts at zero. Guard deferred work
+        // so an immediate close cannot restart the reveal behind its back.
+        Qt.callLater(() => {
+            if (!root.requested) return;
+            root.retarget(); openReveal.restart(); Canopy.enter();
+        });
     }
     // Collapse straight back up into the bar.
     function collapse() {
@@ -123,6 +132,7 @@ PanelWindow {
     function switchTopic() {
         if (!root.requested || drop.topic === Canopy.topic) return;
         const next = targetFor(Canopy.topic);
+        openReveal.stop(); morph.stop(); swap.stop();
         if (Strata.sharesOrigin(Canopy.surfaceRect, next)) morph.restart(); else swap.restart();
     }
     Connections {
@@ -142,7 +152,7 @@ PanelWindow {
         property bool animate: true
         property bool growing: true
         property real reveal: 0
-        readonly property real cut: 12
+        readonly property real cut: Config.barStyle === "cedar" ? Theme.strataCut : 12
         readonly property real longCut: Math.round(cut * 16 / 9)
         y: root.barJoin
         Behavior on x { enabled: root.morphing && drop.animate; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
@@ -161,8 +171,9 @@ PanelWindow {
             anchors.fill: parent
             cut: drop.cut
             join: drop.cut
-            fill: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
-            stroke: Qt.alpha(Forest.accent, .25)
+            fill: Qt.alpha(Config.barStyle === "cedar" ? Theme.strataFoundation : Theme.background, Math.max(.96, Config.panelOpacity))
+            stroke: Qt.alpha(Config.barStyle === "cedar" ? Theme.strataAccent : Forest.accent, .25)
+            grainColor: Config.barStyle === "cedar" ? Theme.strataGrain : Qt.alpha(Theme.border, .55)
             lit: Canopy.surfaceState === "opening" || Canopy.surfaceState === "retargeting"
             growing: drop.growing && (Canopy.surfaceState === "opening" || Canopy.surfaceState === "retargeting")
         }

@@ -14,6 +14,7 @@ Item {
     property real maximumHeight: 680
     property bool hovering: false
     property bool focusRequested: false
+    readonly property bool integrated: Config.barStyle === "cedar"
     // HudPanel draws its bar frame five pixels inside the native window.
     readonly property int barInset: Config.barStyle === "cedar" || Config.barIslands ? 5 : 0
     readonly property int restingHeight: Config.barHeight - 2 * barInset
@@ -22,19 +23,19 @@ Item {
     readonly property bool alert: !!activity && (activity.sticky || activity.attentionUntil > CoreService.model.now)
     readonly property bool detailed: CoreService.expanded
     // A standalone Canopy (one hanging from its own bar control) is not the pill's.
-    readonly property bool canopyHere: Canopy.shown && !Canopy.standalone
+    readonly property bool canopyHere: !integrated && Canopy.shown && !Canopy.standalone
     readonly property bool peek: hovering && !!activity && !root.canopyHere
-    readonly property color accent: activity?.priority === 3 || ["recording", "camera", "microphone"].includes(activity?.type) ? Theme.ember : activity?.priority === 2 ? Theme.amber : (Config.saved.forestPulse ? Forest.accent : Theme.teal)
-    // The pill has two widths: resting (clock) and active (one signal). The network
-    // nub sits outside it, mirrored by equal space on the left so the pill stays centered.
+    readonly property color accent: activity?.priority === 3 || ["recording", "camera", "microphone"].includes(activity?.type) ? Theme.ember : activity?.priority === 2 ? Theme.amber : integrated ? Theme.strataAccent : (Config.saved.forestPulse ? Forest.accent : Theme.teal)
+    // Cedar keeps this center within the bar's reserved space. Other layouts
+    // retain their clock and the network nub with mirrored space on the left.
     readonly property bool panel: detailed || peek || CoreService.dropHover
     // Settled background activity (e.g. media playing) leaves the pill at rest; only
     // something asking for attention, an ongoing capture, or a live control widens it.
-    readonly property bool signalling: alert || volume || CoreService.recording || CoreService.privacy.length > 0 || CoreService.timer.active || root.canopyHere || !!Forest.whisper
-    readonly property bool showNetwork: Config.moduleEnabled("network") && !panel
+    readonly property bool signalling: alert || volume || CoreService.recording || CoreService.privacy.length > 0 || CoreService.timer.active || root.canopyHere || (!integrated && !!Forest.whisper)
+    readonly property bool showNetwork: !integrated && Config.moduleEnabled("network") && !panel
     readonly property real nubWidth: showNetwork ? networkStatus.implicitWidth : 0
     readonly property real nubSpace: showNetwork ? nubWidth + 6 : 0
-    readonly property real restWidth: 150
+    readonly property real restWidth: integrated ? Math.min(Math.round(150 * Theme.fontScale), CoreService.reserveWidth) : 150
     readonly property real activeWidth: Math.max(restWidth, Math.min(272, CoreService.reserveWidth - 2 * nubSpace))
     readonly property real pillWidth: signalling ? activeWidth : restWidth
     readonly property real targetWidth: Math.min(maximumWidth, panel ? 440 : pillWidth + 2 * nubSpace)
@@ -42,9 +43,23 @@ Item {
     readonly property color lineColor: CoreService.recording || CoreService.privacy.length ? Theme.ember : accent
     // One dot per signal, three at most. A lone signal already named by the text needs none.
     readonly property var dots: CoreService.rows.length > 1 || (CoreService.rows.length === 1 && !alert) ? CoreService.rows.slice(0, 3) : []
+    // Meaning and time have separate renderers: only the meaning resolves in.
+    // A clock minute, timer second or recording duration is an ordinary Text update.
+    readonly property string labelMode: detailed ? "hub" : canopyHere ? "canopy" : alert ? "alert" : CoreService.recording ? "recording" : CoreService.timer.active ? "timer" : integrated ? "profile" : Forest.whisper ? "whisper" : "clock"
+    readonly property string labelTitle: labelMode === "hub" ? (integrated ? "SIGNALS" : "CEDAR CORE")
+        : labelMode === "canopy" ? Canopy.title.toUpperCase()
+        : labelMode === "alert" ? (activity?.title || "")
+        : labelMode === "recording" ? "REC"
+        : labelMode === "timer" ? "TIMER"
+        : labelMode === "profile" ? (Gaming.active ? "GAMING" : Focus.active ? "FOCUS" : Profiles.current ? Profiles.currentLabel.toUpperCase() : "CEDAR")
+        : labelMode === "whisper" ? Forest.whisper : ""
+    readonly property string labelValue: labelMode === "recording" ? Media.elapsed((CoreService.now - CoreService.recordings[0].started) / 1000)
+        : labelMode === "timer" ? Media.elapsed(CoreService.timer.remaining)
+        : labelMode === "clock" ? (Config.moduleEnabled("clock") ? Config.formatTime(clock.date) : "◈") : ""
     property alias pillItem: pill
     property alias nubItem: networkStatus
-    // Quick Controls grows out of the pill: register its screen rect.
+    // Cedar's right rail owns Quick Controls and Power. Other layouts retain
+    // the Core anchor; clearing is conditional on this provider still owning it.
     readonly property string anchorOutput: CoreService.hostName
     function pillRect() {
         const win = root.QsWindow ? root.QsWindow.window : null;
@@ -55,7 +70,7 @@ Item {
     }
     function publishAnchor() {
         for (const topic of ["quick", "power"]) {
-            if (root.active)
+            if (root.active && !root.integrated)
                 Canopy.setAnchorProvider(topic, anchorOutput, root.pillRect);
             else
                 Canopy.clearAnchorProvider(topic, anchorOutput, root.pillRect);
@@ -63,13 +78,14 @@ Item {
     }
     Component.onDestruction: { Canopy.clearAnchorProvider("quick", anchorOutput, root.pillRect); Canopy.clearAnchorProvider("power", anchorOutput, root.pillRect); }
     onAnchorOutputChanged: publishAnchor()
+    onIntegratedChanged: publishAnchor()
     width: targetWidth
     implicitHeight: detailed ? Math.min(maximumHeight, hub.implicitHeight + root.restingHeight + 38) : peek ? root.restingHeight + Math.min(180, preview.implicitHeight) + 28 : CoreService.dropHover ? root.restingHeight + 60 : root.restingHeight
     // Morph rather than scale: width leads on a short curve, height follows on a
     // longer expressive curve with a hint of overshoot on the way out and a plain
     // decelerate on the way back. Content is staged by `reveal`. Reduced Motion
     // and an inactive surface snap every one of these.
-    readonly property bool morphing: root.active && !Theme.reducedMotion
+    readonly property bool morphing: root.active && VisualQuality.functionalMotion
     property bool growing: true
     // Allocate the end size once (plus the overshoot while growing), animate
     // inside it, then shrink after settling. Avoid negotiating a new Wayland
@@ -139,22 +155,25 @@ Item {
         height: root.height
         Shape {
             anchors.fill: parent
+            // The cedar center belongs to the bar. Its own boundary appears only
+            // when Signals, a peek or a file action grows below that foundation.
+            visible: !root.integrated || root.height > root.restingHeight + .5
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 strokeWidth: 1
                 // Seated in the bar at rest: the outline nearly disappears and the shape
                 // and ember line carry the identity; it lights with a signal or a panel.
                 strokeColor: Qt.alpha(root.lineColor, root.alert ? .36 : root.panel || root.signalling || hover.hovered ? .22 : .09)
-                fillColor: Qt.alpha(Theme.background, Math.max(.94, Config.barOpacity))
-                startX: 0; startY: 9 * root.chamfer
-                PathLine { x: 9 * root.chamfer; y: 0 }
-                PathLine { x: pill.width - 16 * root.chamfer; y: 0 }
-                PathLine { x: pill.width; y: 16 * root.chamfer }
-                PathLine { x: pill.width; y: pill.height - 9 * root.chamfer }
-                PathLine { x: pill.width - 9 * root.chamfer; y: pill.height }
-                PathLine { x: 16 * root.chamfer; y: pill.height }
-                PathLine { x: 0; y: pill.height - 16 * root.chamfer }
-                PathLine { x: 0; y: 9 * root.chamfer }
+                fillColor: Qt.alpha(root.integrated ? Theme.strataFoundation : Theme.background, Math.max(.94, Config.barOpacity))
+                startX: 0; startY: (root.integrated ? Theme.strataCut : 9) * root.chamfer
+                PathLine { x: (root.integrated ? Theme.strataCut : 9) * root.chamfer; y: 0 }
+                PathLine { x: pill.width - (root.integrated ? Theme.strataCut : 16) * root.chamfer; y: 0 }
+                PathLine { x: pill.width; y: (root.integrated ? Theme.strataCut : 16) * root.chamfer }
+                PathLine { x: pill.width; y: pill.height - (root.integrated ? Theme.strataCut : 9) * root.chamfer }
+                PathLine { x: pill.width - (root.integrated ? Theme.strataCut : 9) * root.chamfer; y: pill.height }
+                PathLine { x: (root.integrated ? Theme.strataCut : 16) * root.chamfer; y: pill.height }
+                PathLine { x: 0; y: pill.height - (root.integrated ? Theme.strataCut : 16) * root.chamfer }
+                PathLine { x: 0; y: (root.integrated ? Theme.strataCut : 9) * root.chamfer }
             }
         }
         // The ember line: the only signal indicator. It rests as a faint filament,
@@ -170,13 +189,13 @@ Item {
             width: root.panel ? pill.width * .55 : lit ? pill.width - 40 : echo ? pill.width * .4 : 28
             height: lit && !root.panel ? 2 : 1
             radius: 1
-            color: lit || root.panel ? root.lineColor : Theme.teal
+            color: lit || root.panel ? root.lineColor : root.integrated ? Theme.strataAccent : Theme.teal
             // Breathing steps at Motion.ambientFps and rests with the user; the
             // line is always mapped, so a vsync animator here never stopped.
-            readonly property bool breathing: root.active && Motion.active && Config.saved.ambientIntensity > 0 && Config.saved.forestPulse && Forest.state !== "HUNT" && !lit && !echo && !root.panel
-            opacity: root.panel ? .5 : lit ? .85 : echo ? .3 : breathing ? breath.value : .45
-            Behavior on y { enabled: root.morphing; NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-            Behavior on width { enabled: root.morphing; NumberAnimation { duration: Theme.transition; easing.type: Easing.OutCubic } }
+            readonly property bool breathing: !root.integrated && root.active && Motion.active && Config.saved.ambientIntensity > 0 && Config.saved.forestPulse && Forest.state !== "HUNT" && !lit && !echo && !root.panel
+            opacity: root.panel ? .5 : lit ? .85 : echo ? .3 : breathing ? breath.value : root.integrated ? .22 : .45
+            Behavior on y { enabled: root.morphing; NumberAnimation { duration: VisualQuality.ms(260); easing.type: Easing.OutCubic } }
+            Behavior on width { enabled: root.morphing; NumberAnimation { duration: VisualQuality.ms(Theme.transition); easing.type: Easing.OutCubic } }
             Behavior on opacity { enabled: !Theme.reducedMotion && !emberLine.breathing; NumberAnimation { duration: 600 } }
             Breath {
                 id: breath
@@ -235,7 +254,16 @@ Item {
     }
     SystemClock {
         id: clock
+        enabled: root.active && !root.integrated
         precision: SystemClock.Minutes
+    }
+    function toggleHeader() {
+        if (root.integrated) {
+            Canopy.close();
+            CoreService.toggle();
+        } else {
+            Canopy.toggleQuick();
+        }
     }
     StationButton {
         id: header
@@ -243,12 +271,13 @@ Item {
         x: pill.x
         width: pill.width
         height: root.restingHeight
-        hint: "Quick Controls"
+        hint: root.integrated ? "Signals" : "Quick Controls"
         enabled: !ShellState.locked
-        checked: Canopy.shown && Canopy.topic === "quick"
-        onClicked: { heartwood.pulse(); Canopy.toggleQuick(); }
+        checked: root.integrated ? root.detailed : Canopy.shown && Canopy.topic === "quick"
+        onClicked: { heartwood.pulse(); root.toggleHeader(); }
         Keys.onReturnPressed: event => {
-            Canopy.toggleQuick();
+            heartwood.pulse();
+            root.toggleHeader();
             event.accepted = true;
         }
         // A mouse click must not leave a highlight; only keyboard focus draws one.
@@ -256,9 +285,9 @@ Item {
         background: Rectangle {
             anchors.fill: parent; anchors.margins: 3
             radius: 5
-            color: header.hovered || header.visualFocus ? Qt.alpha(Theme.teal, .07) : Theme.transparent
+            color: header.hovered || header.visualFocus ? Qt.alpha(root.integrated ? Theme.strataAccent : Theme.teal, .07) : Theme.transparent
             border.width: header.visualFocus ? 1 : 0
-            border.color: Theme.teal
+            border.color: root.integrated ? Theme.strataAccent : Theme.teal
         }
         contentItem: Item {
             // The Heartwood: CEDAR's instrument, seated at the pill's left. It
@@ -267,41 +296,61 @@ Item {
             CedarHeartwood {
                 id: heartwood
                 visible: Config.saved.barHeartwood
+                active: root.active
                 x: 8
                 anchors.verticalCenter: parent.verticalCenter
-                // Seated small at rest so the clock leads; it grows with the hub.
+                // A small center mark at rest; it grows with the Signals hub.
                 size: root.detailed ? 44 : Math.min(24, root.restingHeight - 10)
                 hovered: header.hovered
-                unfolding: Canopy.surfaceState === "opening" && root.canopyHere
+                unfolding: root.integrated ? root.detailed : Canopy.surfaceState === "opening" && root.canopyHere
                 mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle"
                 warning: Shield.ready && Shield.posture !== "protected"
-                accent: root.alert ? root.accent : Theme.green
+                accent: root.alert ? root.accent : root.integrated ? Theme.strataAccent : Theme.green
                 intensity: VisualQuality.effectIntensity
                 Behavior on size { enabled: root.morphing; NumberAnimation { duration: VisualQuality.ms(Theme.morphGrow); easing.type: Easing.OutCubic } }
                 Connections { target: VisualQuality; function onAwakened() { heartwood.awaken(); } }
                 // A signal arriving ripples outward from the heart.
                 Connections { target: root; function onAlertChanged() { if (root.alert) heartwood.ripple(); } }
+                Connections { target: Profiles; function onCurrentChanged() { if (root.integrated) heartwood.ripple(); } }
             }
-            KineticLabel {
-                // Centered in the space left of the Heartwood and the dots. The
-                // clock's minute tick is rate-limited to a static update; a
-                // panel's name or a signal's title resolves in.
+            Row {
+                id: statusLabel
                 readonly property real leftInset: heartwood.visible ? heartwood.x + heartwood.width + 6 : 12
+                readonly property real availableWidth: Math.max(0, parent.width - leftInset - 12 - (root.dots.length ? dotRow.width + 8 : 0))
                 x: leftInset + Math.max(0, (parent.width - leftInset - 12 - (root.dots.length ? dotRow.width + 8 : 0) - width) / 2)
                 anchors.verticalCenter: parent.verticalCenter
-                height: implicitHeight
-                width: Math.min(implicitWidth, parent.width - leftInset - 12 - (root.dots.length ? dotRow.width + 8 : 0))
+                width: Math.min(implicitWidth, availableWidth)
+                spacing: title.visible && value.visible ? 7 : 0
+                clip: true
                 visible: !(root.volume && !root.panel && !root.canopyHere)
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
-                transitionStyle: "resolve"
-                minimumInterval: 900
-                maximumAnimatedLength: 24
-                text: root.detailed ? "CEDAR CORE" : root.canopyHere ? Canopy.title.toUpperCase() : root.alert ? (root.activity?.title || "") : CoreService.recording ? "REC  " + Media.elapsed((CoreService.now - CoreService.recordings[0].started) / 1000) : CoreService.timer.active ? "TIMER  " + Media.elapsed(CoreService.timer.remaining) : Forest.whisper || (Config.moduleEnabled("clock") ? Config.formatTime(clock.date) : "◈")
-                font.family: root.detailed ? Theme.labelFont : Theme.dataFont
-                font.pixelSize: root.detailed ? 19 : Theme.small + 1
-                font.letterSpacing: root.detailed ? 0 : .6
-                color: root.alert && !root.detailed && root.activity?.priority >= 2 ? root.accent : Theme.text
+                KineticLabel {
+                    id: title
+                    visible: root.labelTitle !== ""
+                    width: Math.max(0, Math.min(implicitWidth, statusLabel.availableWidth - (value.visible ? value.width + statusLabel.spacing : 0)))
+                    height: implicitHeight
+                    text: root.labelTitle
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    transitionStyle: "resolve"
+                    minimumInterval: 400
+                    maximumAnimatedLength: 24
+                    font.family: root.detailed ? Theme.labelFont : Theme.dataFont
+                    font.pixelSize: root.detailed ? 19 : root.integrated ? Theme.small : Theme.small + 1
+                    font.letterSpacing: root.detailed ? 0 : root.integrated ? 1.1 : .6
+                    color: root.alert && !root.detailed && root.activity?.priority >= 2 ? root.accent : root.integrated ? Theme.strataText : Theme.text
+                }
+                Text {
+                    id: value
+                    visible: root.labelValue !== ""
+                    text: root.labelValue
+                    textFormat: Text.PlainText
+                    font.family: Theme.dataFont
+                    font.pixelSize: Theme.small + 1
+                    color: root.integrated ? Theme.strataText : Theme.text
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, statusLabel.availableWidth)
+                    renderType: Text.QtRendering
+                }
             }
             Row {
                 id: dotRow

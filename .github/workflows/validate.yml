@@ -27,6 +27,10 @@ jobs:
           bash -n install.sh
           python3 scripts/audit_public.py
           python3 scripts/update_source_inventory.py --check
+      - name: Bar geometry and interruptible transitions
+        run: |
+          node tests/core/strata_test.js
+          node tests/core/canopy_transition_test.js
       - name: Build and test exact candidate contents
         run: |
           python3 scripts/package_release.py /tmp/cedar-shell-development.tar.gz

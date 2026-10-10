@@ -9,7 +9,7 @@ ColumnLayout {
     property string highlightKey: ""
     spacing: 16
     readonly property var layouts: [
-        {key:"cedar", title:"CEDAR", detail:"Original angular frame"},
+        {key:"cedar", title:"CEDAR Strata", detail:"Continuous frame, integrated Signals"},
         {key:"floating", title:"Floating", detail:"Rounded, with edge spacing"},
         {key:"minimal", title:"Full Width", detail:"Clean, edge to edge"},
         {key:"islands", title:"Islands", detail:"Workspaces, clock and status apart"},
@@ -57,9 +57,9 @@ ColumnLayout {
     SettingsSection {
         objectName: "modules"
         heading: "Modules"
-        caption: "What appears on the bar. The center always opens Quick Controls, with network status beside it; available space decides which edge modules fit."
+        caption: Config.barStyle === "cedar" ? "Signals sit in the center. Connections, audio, the clock and Quick Controls share the right rail. Optional detail recedes as space narrows." : "The center opens Quick Controls, with network status beside it; available space decides which edge modules fit."
         Repeater {
-            model: Schema.modules
+            model: Schema.modules.filter(m => !m.strataOnly || Config.barStyle === "cedar")
             SettingRow {
                 required property var modelData
                 Layout.fillWidth: true
