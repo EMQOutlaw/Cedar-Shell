@@ -2,6 +2,9 @@
 from pathlib import Path
 import importlib.util
 import json
+import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -132,10 +135,77 @@ class DesktopSingleRoutes(unittest.TestCase):
         import re
         route=re.compile(r'ShellState\.(open|toggle)\("settings"\)|settingsPage *=')
         # Canopy's Full Settings; the legacy Control Center replaces Canopy when it is disabled;
-        # the network indicator falls back only when Canopy is disabled; Trails replays history.
-        allowed={'modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml'}
+        # The network indicator and Strata's audio/calendar controls fall back only
+        # when Canopy is disabled; Trails replays history. Strata's exact fallback
+        # branches are executed below, so this exception cannot become another
+        # always-visible Full Settings entry.
+        allowed={'modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml','modules/StrataBarContents.qml'}
         found={name for name,text in self.sources().items() if route.search(text) and not name.startswith('modules/Settings')}
         self.assertEqual(found-allowed,set())
+        self.assertEqual(len(route.findall(self.sources()['modules/StrataBarContents.qml'])),4,
+                         'Only the two tested page assignments and settings fallbacks belong in Strata')
+    @unittest.skipUnless(shutil.which('node'), 'Node is needed to execute QML routing functions')
+    def test_strata_routes_use_canopy_or_their_guarded_fallback(self):
+        source=(ROOT/'modules/StrataBarContents.qml').read_text()
+        functions=[]
+        for name in ('openTopic','openAudio','openCalendar'):
+            match=re.search(r'    function '+name+r'\([^)]*\) \{.*?\n    \}',source,re.S)
+            self.assertIsNotNone(match,name)
+            functions.append(match.group())
+        script='''
+const vm = require('vm');
+const calls = [];
+const context = {
+    outputName: 'fixture-secondary',
+    Config: {saved: {canopyEnabled: true}},
+    ShellState: {
+        locked: false, settingsPage: '',
+        open(panel) { calls.push(['settings', panel, this.settingsPage]); },
+        toggle(panel) { calls.push(['legacy', panel]); }
+    },
+    Canopy: {toggleTopic(topic, output) { calls.push(['canopy', topic, output]); }}
+};
+context.root = context;
+vm.createContext(context);
+vm.runInContext(FUNCTIONS, context);
+for (const enabled of [true, false]) {
+    context.Config.saved.canopyEnabled = enabled;
+    context.openAudio(); context.openCalendar();
+}
+context.ShellState.locked = true;
+for (const enabled of [true, false]) {
+    context.Config.saved.canopyEnabled = enabled;
+    context.openAudio(); context.openCalendar();
+}
+console.log(JSON.stringify(calls));
+'''.replace('FUNCTIONS',json.dumps('\n'.join(functions)))
+        result=subprocess.run(['node','-e',script],capture_output=True,text=True,check=True,timeout=10)
+        self.assertEqual(json.loads(result.stdout),[
+            ['canopy','audio','fixture-secondary'],['canopy','calendar','fixture-secondary'],
+            ['settings','settings','audio'],['settings','settings','time']])
+    @unittest.skipUnless(shutil.which('node'), 'Node is needed to execute QML routing functions')
+    def test_audio_calendar_tabs_follow_the_active_bar_style_and_modules(self):
+        source=(ROOT/'services/Canopy.qml').read_text()
+        match=re.search(r'    function barRoute\([^)]*\) \{.*?\n    \}',source,re.S)
+        self.assertIsNotNone(match)
+        script='''
+const vm = require('vm');
+const hidden = new Set();
+const context = {Config: {barStyle: 'cedar', stage: 3, moduleEnabled: key => !hidden.has(key)}};
+vm.createContext(context); vm.runInContext(FUNCTION, context);
+const results = [];
+for (const style of ['cedar', 'floating', 'minimal', 'islands', 'center', 'split']) {
+    context.Config.barStyle = style;
+    results.push([style, context.barRoute('audio'), context.barRoute('calendar')]);
+}
+context.Config.barStyle = 'cedar'; hidden.add('audio'); hidden.add('clock');
+results.push(['hidden', context.barRoute('audio'), context.barRoute('calendar')]);
+console.log(JSON.stringify(results));
+'''.replace('FUNCTION',json.dumps(match.group()))
+        result=subprocess.run(['node','-e',script],capture_output=True,text=True,check=True,timeout=10)
+        self.assertEqual(json.loads(result.stdout),[
+            ['cedar',True,True],['floating',False,False],['minimal',False,False],
+            ['islands',False,False],['center',False,False],['split',False,False],['hidden',False,False]])
     def test_canopy_tabs_skip_destinations_with_bar_buttons(self):
         canopy=(ROOT/'services/Canopy.qml').read_text();panel=(ROOT/'modules/CanopyPanel.qml').read_text()
         self.assertIn('model: Canopy.tabs',panel);self.assertNotIn('text: "Open"',panel)

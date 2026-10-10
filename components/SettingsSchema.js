@@ -118,7 +118,8 @@ var fields = [
 ];
 var modules = [
  {key:"identity",label:"CEDAR / Field Station"}, {key:"go",label:"Go launcher"}, {key:"workspaces",label:"Workspaces"},
- {key:"activeWindow",label:"Active window"}, {key:"tray",label:"System tray"}, {key:"network",label:"Core network indicator"},
+ {key:"activeWindow",label:"Active window"}, {key:"tray",label:"System tray"}, {key:"network",label:"Connections"},
+ {key:"audio",label:"Audio (Strata layout)",strataOnly:true},
   {key:"battery",label:"Battery"}, {key:"notifications",label:"Notifications"},
   {key:"clock",label:"Clock"}
 ];

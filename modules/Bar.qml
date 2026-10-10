@@ -13,17 +13,20 @@ PanelWindow {
     id: root
     Component.onCompleted: { Canopy.registerControls(root); if (backingWindowVisible) awakenLater.start(); }
     Component.onDestruction: Canopy.unregisterControls(root)
-    // The awakening runs when the compositor has mapped this bar, a beat later, once.
+    // The awakening only lifts the material's light once after mapping. The
+    // controls are already visible and usable before any decoration starts.
     property bool awakened: false
     onBackingWindowVisibleChanged: if (backingWindowVisible) awakenLater.start()
     Timer { id: awakenLater; interval: 220; onTriggered: root.awakenBar() }
     function awakenBar() {
         if (awakened || Config.testMode || !VisualQuality.effects) return;
         awakened = true;
-        rootlines.grow(); sweepRun.start(); settleIn.start();
+        if (cedarBar) grainAwaken.start();
+        else { rootlines.grow(); sweepRun.start(); }
         VisualQuality.awaken();
     }
     required property var output
+    readonly property bool cedarBar: Config.barStyle === "cedar"
     screen: output
     anchors {
         top: true
@@ -50,11 +53,23 @@ PanelWindow {
     readonly property bool coreHost: CoreService.enabled && CoreService.hostName === output.name
     readonly property var monitor: Hyprland.monitorFor(screen)
     readonly property var battery: UPower.displayDevice
-    HudPanel {
+    StrataBarFrame {
+        id: strata
         anchors.fill: parent
-        visible: Config.barStyle === "cedar"
-        fillColor: Qt.alpha(Theme.background, Config.barOpacity)
-        padding: 0
+        visible: root.cedarBar
+        materialOpacity: Config.barOpacity
+        centerWidth: contents.item ? contents.item.centerWidth : 0
+        SequentialAnimation {
+            id: grainAwaken
+            NumberAnimation { target: strata; property: "awakening"; from: 0; to: 1; duration: VisualQuality.ms(160); easing.type: Easing.OutCubic }
+            NumberAnimation { target: strata; property: "awakening"; to: 0; duration: VisualQuality.ms(480); easing.type: Easing.OutCubic }
+        }
+    }
+    Connections {
+        target: VisualQuality
+        function onEffectsChanged() {
+            if (!VisualQuality.effects) { grainAwaken.stop(); strata.awakening = 0; sweepRun.stop(); }
+        }
     }
     Rectangle {
         anchors.fill: parent
@@ -64,46 +79,48 @@ PanelWindow {
         border.width: Config.barStyle === "floating" ? 1 : 0
         border.color: Theme.border
     }
-    // Rootlines in the bar's own surface: branching paths along its foot that
-    // light when a panel opens from this output, a profile changes, Focus
-    // starts or Shield's posture moves. Static otherwise.
+    // In Strata, roots carry one finite trace toward a panel as it opens,
+    // then disappear into the grain without a line crossing the center seat.
     CedarRootlines {
         id: rootlines
         anchors.fill: parent
         anchors.margins: 6
         visible: Config.saved.barRootlines && !Config.barIslands && VisualQuality.effects
+        tone: root.cedarBar ? Theme.strataGrain : Theme.green
+        intensity: VisualQuality.effectIntensity * (root.cedarBar ? .45 : 1)
+        opacity: root.cedarBar ? (traceProgress >= 0 ? Math.sin(Math.PI * traceProgress) : 0) : 1
+        growth: 1
         readonly property bool here: Canopy.screen === root.output
         function anchorX() { const a = Canopy.anchorRect; return a ? a.x + a.width / 2 - (Config.barDetached ? Config.barMargin : 0) - 6 : width / 2; }
-        // While a panel is open on this output, light streams along the root toward its control.
-        flowing: visible && here && Canopy.shown && !Canopy.peeking && Canopy.surfaceState !== "collapsed" && Canopy.surfaceState !== "closing"
+        // Other bar styles retain their existing current while a panel is open.
+        flowing: !root.cedarBar && visible && here && Canopy.shown && !Canopy.peeking && Canopy.surfaceState !== "collapsed" && Canopy.surfaceState !== "closing"
         flowTo: anchorX()
         Connections {
             target: Canopy
             function onSurfaceStateChanged() {
                 if (!rootlines.visible || !rootlines.here || Canopy.surfaceState !== "opening") return;
                 const to = rootlines.anchorX();
-                rootlines.trace(to < rootlines.width / 2 ? 8 : rootlines.width - 8, to, Forest.accent);
+                rootlines.trace(to < rootlines.width / 2 ? 8 : rootlines.width - 8, to, root.cedarBar ? Theme.strataAccent : Forest.accent);
             }
         }
-        Connections { target: Profiles; function onCurrentChanged() { if (rootlines.visible && root.coreHost) { rootlines.pulse("centre", Profiles.current ? Profiles.accentOf(Profiles.current) : Theme.green); rootlines.grow(); } } }
-        Connections { target: Focus; function onActiveChanged() { if (rootlines.visible && root.coreHost) rootlines.pulse("centre", Focus.active ? Theme.teal : Theme.green); } }
-        Connections { target: Shield; function onPostureChanged() { if (rootlines.visible && root.coreHost && Shield.ready) rootlines.signalTo(rootlines.width / 2, Shield.posture === "protected" ? Theme.green : Theme.amber); } }
+        Connections { target: Profiles; function onCurrentChanged() { if (!root.cedarBar && rootlines.visible && root.coreHost) { rootlines.pulse("centre", Profiles.current ? Profiles.accentOf(Profiles.current) : Theme.green); rootlines.grow(); } } }
+        Connections { target: Focus; function onActiveChanged() { if (!root.cedarBar && rootlines.visible && root.coreHost) rootlines.pulse("centre", Focus.active ? Theme.teal : Theme.green); } }
+        Connections { target: Shield; function onPostureChanged() { if (!root.cedarBar && rootlines.visible && root.coreHost && Shield.ready) rootlines.signalTo(rootlines.width / 2, Shield.posture === "protected" ? Theme.green : Theme.amber); } }
     }
     Loader {
         id: contents
         anchors.fill: parent
         anchors.margins: 6
         active: !Config.barIslands
-        sourceComponent: BarContents { output: root.output }
-        // The controls settle in after the frame has drawn itself; a fallback shows them regardless.
-        opacity: Config.testMode || !VisualQuality.effects ? 1 : 0
-        SequentialAnimation { id: settleIn; PauseAnimation { duration: 260 } NumberAnimation { target: contents; property: "opacity"; to: 1; duration: VisualQuality.ms(700); easing.type: Easing.OutCubic } }
-        Timer { interval: 4000; running: contents.opacity < 1 && !settleIn.running; onTriggered: contents.opacity = 1 }
+        sourceComponent: root.cedarBar ? strataContents : legacyContents
+        opacity: 1
     }
+    Component { id: strataContents; StrataBarContents { output: root.output } }
+    Component { id: legacyContents; BarContents { output: root.output } }
     // The awakening sweep: a band of light runs the bar's top edge once as the shell starts.
     Rectangle {
         id: sweepBand
-        visible: sweepRun.running
+        visible: !root.cedarBar && sweepRun.running
         y: 5; height: 2; width: 320
         x: -width
         gradient: Gradient { orientation: Gradient.Horizontal

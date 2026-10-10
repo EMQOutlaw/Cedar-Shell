@@ -7,7 +7,7 @@ import "../services"
 // The bar's shared control: quiet at rest, one treatment for every action.
 AbstractButton {
     id: root
-    property color accent: Theme.green
+    property color accent: Config.barStyle === "cedar" ? Theme.strataAccent : Theme.green
     property bool iconOnly: false
     // Quiet at rest: muted until hovered, pressed or checked. The bar's
     // secondary controls and the workspace row use it, so the wordmark, the
@@ -64,13 +64,13 @@ AbstractButton {
     // The control its panel grows from brightens as the surface unfolds, then settles to checked.
     readonly property bool unfolding: anchorTopic !== "" && Canopy.shown && Canopy.topic === anchorTopic && Canopy.surfaceState === "opening"
     background: Rectangle {
-        radius: 5
-        color: root.unfolding ? Qt.alpha(root.accent, 0.34)
+        radius: Config.barStyle === "cedar" ? 4 : 5
+        color: root.unfolding ? Qt.alpha(root.accent, Config.barStyle === "cedar" ? .16 : .34)
              : root.down ? Qt.alpha(root.accent, 0.18)
              : root.checked && !root.glide ? Qt.alpha(root.accent, 0.1)
              : root.hovered ? Qt.alpha(root.accent, 0.06)
              : Theme.transparent
-        Behavior on color { enabled: VisualQuality.effects; ColorAnimation { duration: VisualQuality.ms(Theme.hover) } }
+        Behavior on color { enabled: VisualQuality.functionalMotion; ColorAnimation { duration: VisualQuality.ms(Theme.hover) } }
         Rectangle {
             anchors.fill: parent; anchors.margins: Theme.focusInset
             radius: Math.max(0, parent.radius - Theme.focusInset)
