@@ -25,7 +25,7 @@ Where each one lives in the running bar, so nothing here is a scaffold:
 ## The awakening
 
 When the shell starts (not in test mode), each bar draws itself in: the
-Rootlines grow from the left over 1.1 s, a band of green light sweeps the
+Rootlines grow outward from the centre over 1.25 s, a band of green light sweeps the
 bar's top edge once, the controls settle in after a beat, and the Heartwood
 arrives spread and turned, its three rings spinning into place over 1.4 s
 while its glow fades. It starts 220 ms after the compositor has mapped the
@@ -63,22 +63,23 @@ is seen when the pill shows for an alert or the hub, and in the showcase.
 
 ## Rootlines
 
-A root along the bar's foot with branches rising from it and a lit tip on
-each, geometry built once per width and retained; drawn in by the growth
-(a dash-offset draw-in along the whole path), so the first thing seen is
-the drawing happening.
+A fine root along the bar's foot with curved, tapered forks facing outward
+from the centre. Uneven spacing keeps the silhouette organic. Detail stays
+in the bottom ten pixels below the controls, with feathered ends. Tiny sap sparks bloom at branch tips only when a
+current or growth front reaches them. Paths are retained; animation changes light, opacity and the reveal.
 
-- While a panel is open on that output, light streams along the root from
-  both ends toward the control it grew from (short dashes travelling at
-  50 px/s); the tips near that control glow. It stops the moment the panel
-  closes, so an idle bar has no running animation.
-- A panel opening runs a long bright light with a tail from the bar's
-  nearest end to the control.
-- A Desktop Profile change or Focus starting lights the centre branches and
-  tips in the profile's accent and lets them fade; the profile change also
-  regrows the drawing.
-- Shield's posture moving sends a light from the right end toward the Core
-  pill, amber for attention, green for protected.
+- On awakening, the root reveals from the centre over 1.25 s and the branches
+  appear as growth reaches them (duration follows the motion preset).
+- While a panel is open on that output, two soft currents travel toward its
+  control over 2.6 s. Nearby branches catch the light as it passes. A small
+  pool of light seats the control on the root; it fades when the panel closes.
+- A panel opening sends a single soft light from the nearest end to its control.
+- A Desktop Profile change or Focus starting lights the centre branches in
+  the profile's accent; changing profile also regrows the drawing.
+- Shield's posture moving sends a light toward the Core pill, amber for
+  attention and green for protected.
+- Hidden surfaces, Reduced Motion, performance mode and user inactivity stop
+  the animations, including effects already in flight. The idle bar is static.
 
 Hidden in the islands layouts, whose plates are separate.
 

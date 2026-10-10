@@ -1,5 +1,7 @@
 # 0.1.3 — Desktop Profiles, Focus, Station, the workspace overview, Connections, and the bar's animation identity
 
+- Rootlines redesigned with fine curved cedar roots, centre-out growth, soft currents that illuminate passing branches, tiny sap sparks at their tips, and a subtle light beneath the active panel control. Motion stops when hidden, idle, reduced, or in performance mode.
+
 - Desktop Profiles: Balanced, Work, Battery, Night, Gaming and Custom, applied as verified transactions over a shared engine (`components/Transaction.qml`) and ownership stack (`services/Overrides.qml`), with a preparation card, a Profiles window, a Quick Controls tile, Go entries, `cedar profiles` and Core pill signals. Gaming Mode now runs on the same engine. See docs/PROFILES.md.
 - CEDAR Focus: timed quiet sessions with held and interruption counts from what really happened, a window with the progress ring, a preparation card, pill actions, a Quick Controls tile, Go, Super+Shift+F and `cedar focus`. Shield, Profiles and Focus are Core pill signals. See docs/FOCUS.md.
 - CEDAR Station: health as a first-party application with a diagnostics engine (what, why, verified, action, privileges), live readings, services and failed units with confirmed restarts, the shell log and a redacted diagnostic bundle; `cedar station`. See docs/STATION.md.

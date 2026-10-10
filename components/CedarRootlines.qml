@@ -3,61 +3,60 @@ import QtQuick.Shapes
 import ".."
 import "../services"
 
-// Rootlines: a root along the bar's foot with branches rising from it and a
-// lit tip on each. The geometry is built once per width and retained.
-// Four motions, each from real state:
-//   grow()            the root and branches draw themselves in from the left
-//                     (the shell awakening, a profile change)
-//   flowing/flowTo    while a panel is open, light streams along the root
-//                     from both ends toward the control it grew from; it
-//                     stops the moment the panel closes
-//   pulse(region)     a region's branches and tips flare in a colour and fade
-//   signalTo(x)       a bright light runs from the right end to a point
+// CEDAR's living root: retained curves, centre-out growth and a soft current
+// drawn toward the active control. Only light/opacity moves; paths stay cached.
 Item {
     id: root
+    clip: true
     property real intensity: VisualQuality.effectIntensity
     property color tone: Theme.green
-    readonly property bool live: VisualQuality.effects && intensity > 0
-    readonly property real footY: height - 5
-    readonly property real lineWidth: 1.5
-    readonly property int branchSpacing: 104
+    readonly property bool live: visible && VisualQuality.effects && VisualQuality.decorative && Motion.active && intensity > 0
+    readonly property real footY: Math.max(0, height - 2)
     readonly property real third: width / 3
+    readonly property real strength: Math.max(0, Math.min(1.5, intensity))
+    readonly property real restAlpha: .22 * strength
+    readonly property real centre: width / 2
+    readonly property real reach: Math.max(0, width / 2 - 12)
 
-    // ---- geometry, built once per width
-    function branchPath(x0, x1) {
-        let d = "";
-        for (let x = x0 + 36; x < x1 - 24; x += branchSpacing) {
-            const up = ((x / branchSpacing) | 0) % 2 === 0 ? 1 : -1;
-            d += "M" + x + " " + footY + " l" + (up * 16) + " -9 l" + (up * 14) + " -5 ";
-            d += "M" + (x + 26) + " " + footY + " l" + (up * -9) + " -6 ";
+    // Irregular spacing and outward-facing forks suggest cedar roots. Keep the
+    // detail in the bottom eight pixels, below labels and button centres.
+    readonly property var branches: {
+        const rows = [], spacing = 112;
+        for (let side = -1; side <= 1; side += 2) {
+            for (let i = 0; i < Math.floor(reach / spacing); i++) {
+                const distance = 38 + i * spacing + (i % 3) * 9;
+                const x = centre + side * distance;
+                const length = 38 + (i % 3) * 8;
+                const rise = Math.min(Math.max(0, footY - 1), 7 + (i % 3));
+                const end = x + side * length;
+                if (end < 12 || end > width - 12) continue;
+                const f = n => Number(n).toFixed(2);
+                const path = `M ${f(x)} ${f(footY)} C ${f(x + side * 17)} ${f(footY)} ${f(end - side * 19)} ${f(footY - rise)} ${f(end)} ${f(footY - rise)}`;
+                const twig = `M ${f(x + side * 23)} ${f(footY - rise * .48)} Q ${f(x + side * 29)} ${f(footY - rise - 2)} ${f(x + side * 37)} ${f(footY - rise - 2)}`;
+                rows.push({ x: x, distance: distance, length: length, tipX: end, tipY: footY - rise, path: path, twig: twig });
+            }
         }
-        return d;
+        return rows;
     }
-    function tipsFor(x0, x1) {
-        const out = [];
-        for (let x = x0 + 36; x < x1 - 24; x += branchSpacing) { const up = ((x / branchSpacing) | 0) % 2 === 0 ? 1 : -1; out.push({ x: x + up * 30, y: footY - 14 }); out.push({ x: x + 26 - up * 9, y: footY - 6 }); }
-        return out;
-    }
-    readonly property string leftPath: branchPath(0, third)
-    readonly property string centrePath: branchPath(third, 2 * third)
-    readonly property string rightPath: branchPath(2 * third, width)
-    readonly property var tips: tipsFor(0, width)
-    // Dash units are multiples of the stroke width.
-    function units(px) { return px / lineWidth; }
 
-    // ---- growth: the whole drawing draws itself in, left to right
-    // Absent until the awakening draws it in; grow() breaks the binding and animates.
     property real growth: VisualQuality.awakenedOnce || Config.testMode || !live ? 1 : 0
-    readonly property real drawLength: width * 1.6
-    function grow() { if (!live) return; growth = 0; growing.restart(); }
-    NumberAnimation { id: growing; target: root; property: "growth"; from: 0; to: 1; duration: VisualQuality.ms(1100); easing.type: Easing.OutCubic }
+    function grow() { if (live) growing.restart(); }
+    NumberAnimation { id: growing; target: root; property: "growth"; from: 0; to: 1; duration: VisualQuality.ms(1250); easing.type: Easing.OutCubic }
 
-    // ---- flow: light streaming toward an open control, while it is open
     property bool flowing: false
     property real flowTo: width / 2
+    readonly property real destination: Math.max(12, Math.min(width - 12, flowTo))
     property real flowPhase: 0
-    NumberAnimation on flowPhase { running: root.flowing && root.live && root.visible; loops: Animation.Infinite; from: 0; to: 1; duration: 760 }
-    readonly property real flowStep: units(38)
+    property real flowAmount: flowing && live ? 1 : 0
+    Behavior on flowAmount { enabled: root.live; NumberAnimation { duration: VisualQuality.ms(280); easing.type: Easing.OutCubic } }
+    NumberAnimation on flowPhase {
+        running: root.flowing && root.live
+        loops: Animation.Infinite
+        from: 0; to: 1; duration: VisualQuality.ms(2600)
+    }
+    readonly property real leftCurrent: 12 + (destination - 12) * flowPhase
+    readonly property real rightCurrent: width - 12 + (destination - width + 12) * flowPhase
+    readonly property real currentEnvelope: Math.sin(Math.PI * flowPhase) * flowAmount
 
     // ---- pulses
     property real litLeft: 0
@@ -74,76 +73,135 @@ Item {
     SequentialAnimation { id: pulseRight; NumberAnimation { target: root; property: "litRight"; to: 1; duration: VisualQuality.ms(160); easing.type: Easing.OutCubic } NumberAnimation { target: root; property: "litRight"; to: 0; duration: VisualQuality.ms(900); easing.type: Easing.InCubic } }
     function litAt(x) { return x < third ? litLeft : x < 2 * third ? litCentre : litRight; }
 
-    // ---- the travelling light
     property real traceFrom: 0
     property real traceTo: 0
     property real traceProgress: -1
     property color traceTone: tone
-    readonly property real traceLength: Math.abs(traceTo - traceFrom)
+    readonly property real traceX: traceFrom + (traceTo - traceFrom) * Math.max(0, traceProgress)
+    readonly property real traceEnvelope: traceProgress >= 0 ? Math.sin(Math.PI * traceProgress) : 0
     function trace(fromX, toX, color) {
         if (!live || !isFinite(fromX) || !isFinite(toX) || Math.abs(toX - fromX) < 24) return;
-        traceTone = color || tone; traceFrom = fromX; traceTo = toX;
-        runner.duration = VisualQuality.ms(Math.max(320, Math.min(900, Math.abs(toX - fromX) * .7)));
+        traceTone = color || tone;
+        traceFrom = Math.max(12, Math.min(width - 12, fromX));
+        traceTo = Math.max(12, Math.min(width - 12, toX));
+        runner.duration = VisualQuality.ms(Math.max(650, Math.min(1400, Math.abs(traceTo - traceFrom))));
         runner.restart();
     }
-    function signalTo(toX, color) { trace(width - 8, toX, color || Theme.amber); }
-    NumberAnimation { id: runner; target: root; property: "traceProgress"; from: 0; to: 1; easing.type: Easing.InOutQuad; onFinished: root.traceProgress = -1 }
+    function signalTo(toX, color) { trace(width - 12, toX, color || Theme.amber); }
+    NumberAnimation { id: runner; target: root; property: "traceProgress"; from: 0; to: 1; easing.type: Easing.InOutCubic; onFinished: root.traceProgress = -1 }
 
-    readonly property real restAlpha: .24 * Math.min(1.5, intensity)
-    Shape {
-        anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
-        // The root, drawn in with the growth.
-        ShapePath {
-            strokeWidth: root.lineWidth; strokeColor: Qt.alpha(root.tone, root.restAlpha); fillColor: "transparent"; capStyle: ShapePath.RoundCap
-            strokeStyle: ShapePath.DashLine; dashPattern: [root.units(root.drawLength), root.units(root.drawLength)]; dashOffset: root.units(root.drawLength) * (1 - root.growth)
-            startX: 12; startY: root.footY
-            PathLine { x: root.width - 12; y: root.footY }
-        }
-        // The branches, three regions, each lit by its pulse; drawn in with the growth.
-        ShapePath { strokeWidth: root.lineWidth; strokeColor: Qt.alpha(root.litLeft > 0 ? root.pulseTone : root.tone, Math.min(1, root.restAlpha + .76 * root.litLeft)); fillColor: "transparent"; capStyle: ShapePath.RoundCap
-            strokeStyle: ShapePath.DashLine; dashPattern: [root.units(root.drawLength), root.units(root.drawLength)]; dashOffset: root.units(root.drawLength) * (1 - root.growth); PathSvg { path: root.leftPath } }
-        ShapePath { strokeWidth: root.lineWidth; strokeColor: Qt.alpha(root.litCentre > 0 ? root.pulseTone : root.tone, Math.min(1, root.restAlpha + .76 * root.litCentre)); fillColor: "transparent"; capStyle: ShapePath.RoundCap
-            strokeStyle: ShapePath.DashLine; dashPattern: [root.units(root.drawLength), root.units(root.drawLength)]; dashOffset: root.units(root.drawLength) * (1 - root.growth); PathSvg { path: root.centrePath } }
-        ShapePath { strokeWidth: root.lineWidth; strokeColor: Qt.alpha(root.litRight > 0 ? root.pulseTone : root.tone, Math.min(1, root.restAlpha + .76 * root.litRight)); fillColor: "transparent"; capStyle: ShapePath.RoundCap
-            strokeStyle: ShapePath.DashLine; dashPattern: [root.units(root.drawLength), root.units(root.drawLength)]; dashOffset: root.units(root.drawLength) * (1 - root.growth); PathSvg { path: root.rightPath } }
-        // The flow: short dashes streaming along the root from both ends toward the control.
-        ShapePath {
-            strokeWidth: 2.5; strokeColor: root.flowing ? Qt.alpha(root.tone, Math.min(1, .9 * root.intensity)) : "transparent"; fillColor: "transparent"; capStyle: ShapePath.RoundCap
-            strokeStyle: ShapePath.DashLine; dashPattern: [root.units(5), root.units(33)]
-            dashOffset: -root.flowPhase * root.flowStep
-            startX: 12; startY: root.footY
-            PathLine { x: Math.max(12, root.flowTo - 10); y: root.footY }
-        }
-        ShapePath {
-            strokeWidth: 2.5; strokeColor: root.flowing ? Qt.alpha(root.tone, Math.min(1, .9 * root.intensity)) : "transparent"; fillColor: "transparent"; capStyle: ShapePath.RoundCap
-            strokeStyle: ShapePath.DashLine; dashPattern: [root.units(5), root.units(33)]
-            dashOffset: -root.flowPhase * root.flowStep
-            startX: root.width - 12; startY: root.footY
-            PathLine { x: Math.min(root.width - 12, root.flowTo + 10); y: root.footY }
-        }
-        // The travelling light: long, bright, with a tail.
-        ShapePath {
-            strokeWidth: 3.5; strokeColor: root.traceProgress >= 0 ? Qt.alpha(root.traceTone, Math.min(1, root.intensity)) : "transparent"; fillColor: "transparent"; capStyle: ShapePath.RoundCap
-            strokeStyle: ShapePath.DashLine
-            dashPattern: [root.units(44), root.units(Math.max(60, root.traceLength + 60))]
-            dashOffset: root.units(44) - root.traceProgress * root.units(root.traceLength + 44)
-            startX: root.traceFrom; startY: root.footY
-            PathLine { x: root.traceTo; y: root.footY }
+    // A policy change stops in-flight effects as well as the panel's loop.
+    onLiveChanged: {
+        if (live) return;
+        growing.stop(); runner.stop(); pulseLeft.stop(); pulseCentre.stop(); pulseRight.stop();
+        growth = 1; traceProgress = -1; litLeft = 0; litCentre = 0; litRight = 0;
+    }
+    function proximity(x, at, radius) { return Math.max(0, 1 - Math.abs(x - at) / radius); }
+
+    // One quiet root with feathered ends. Reveal symmetrically from Heartwood.
+    Item {
+        x: root.centre * (1 - root.growth)
+        width: root.width * root.growth; height: root.height; clip: true
+        Rectangle {
+            x: -parent.x + 12; y: root.footY; width: Math.max(0, root.width - 24); height: 1
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: "transparent" }
+                GradientStop { position: .08; color: Qt.alpha(root.tone, root.restAlpha) }
+                GradientStop { position: .5; color: Qt.alpha(root.tone, root.restAlpha * 1.5) }
+                GradientStop { position: .92; color: Qt.alpha(root.tone, root.restAlpha) }
+                GradientStop { position: 1; color: "transparent" }
+            }
         }
     }
-    // The tips: a lit dot at every branch end, flaring with its region's pulse and glowing where the flow converges.
     Repeater {
-        model: root.tips
-        Rectangle {
+        model: root.branches
+        Item {
+            id: branch
             required property var modelData
-            readonly property real lit: root.litAt(modelData.x)
-            readonly property real near: root.flowing ? Math.max(0, 1 - Math.abs(modelData.x - root.flowTo) / 160) : 0
-            x: modelData.x - width / 2; y: modelData.y - height / 2
-            width: 3 + 3 * Math.max(lit, near); height: width; radius: width / 2
-            color: lit > 0 ? root.pulseTone : root.tone
-            opacity: (root.restAlpha * 1.4 + .8 * Math.max(lit, near)) * root.growth
-            Behavior on width { enabled: root.live; NumberAnimation { duration: 180 } }
+            anchors.fill: parent
+            readonly property real revealed: Math.max(0, Math.min(1, (root.growth * root.reach - modelData.distance) / modelData.length))
+            readonly property real current: Math.max(root.proximity(modelData.x, root.leftCurrent, 130), root.proximity(modelData.x, root.rightCurrent, 130)) * root.currentEnvelope
+            readonly property real signalLight: root.proximity(modelData.x, root.traceX, 110) * root.traceEnvelope
+            readonly property real lit: Math.max(root.litAt(modelData.x), current * .85, signalLight, growing.running ? Math.max(0, 1 - Math.abs(root.growth * root.reach - modelData.distance - modelData.length) / 100) : 0)
+            readonly property color ink: signalLight > .1 ? root.traceTone : root.litAt(modelData.x) > .1 ? root.pulseTone : root.tone
+            opacity: revealed
+            // Small sap sparks bloom only as light reaches the end of a root.
+            Rectangle {
+                x: branch.modelData.tipX - width / 2; y: branch.modelData.tipY - height / 2
+                width: 3 + branch.lit * 4; height: width; radius: width / 2
+                color: branch.ink; opacity: branch.lit * .18 * root.strength
+                Rectangle {
+                    anchors.centerIn: parent; width: 2; height: 2; radius: 1
+                    color: Qt.tint(branch.ink, "#80ffffff"); opacity: branch.lit
+                }
+            }
+            Shape {
+                anchors.fill: parent
+                preferredRendererType: Shape.CurveRenderer
+                // The broad pass is a restrained halo, with no blur texture.
+                ShapePath {
+                    strokeWidth: 4; strokeColor: Qt.alpha(branch.ink, branch.lit * .18 * root.strength)
+                    fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                    PathSvg { path: branch.modelData.path }
+                }
+                ShapePath {
+                    strokeWidth: 1; strokeColor: Qt.alpha(branch.ink, Math.min(1, root.restAlpha + branch.lit * .75 * root.strength))
+                    fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                    PathSvg { path: branch.modelData.path }
+                }
+                ShapePath {
+                    strokeWidth: .65; strokeColor: Qt.alpha(branch.ink, Math.min(1, root.restAlpha * .65 + branch.lit * .35 * root.strength))
+                    fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                    PathSvg { path: branch.modelData.twig }
+                }
+            }
+        }
+    }
+    // Soft currents replace the dotted conveyor. Each pass fades at both ends
+    // of its journey; branches respond as it passes through them.
+    Repeater {
+        model: 3
+        Item {
+            id: current
+            required property int index
+            readonly property bool signalPass: index === 2
+            readonly property color ink: signalPass ? root.traceTone : root.tone
+            width: signalPass ? 190 : 160; height: 9
+            x: (signalPass ? root.traceX : index === 0 ? root.leftCurrent : root.rightCurrent) - width / 2
+            y: root.footY - 4
+            opacity: Math.min(1, (signalPass ? root.traceEnvelope : root.currentEnvelope * .9) * root.strength) * root.growth
+            visible: opacity > .001
+            Rectangle {
+                anchors.fill: parent; radius: height / 2; opacity: .22
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: "transparent" }
+                    GradientStop { position: .5; color: current.ink }
+                    GradientStop { position: 1; color: "transparent" }
+                }
+            }
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 1.5
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: "transparent" }
+                    GradientStop { position: .5; color: current.ink }
+                    GradientStop { position: 1; color: "transparent" }
+                }
+            }
+        }
+    }
+    // A small pool of light seats an open panel on its root.
+    Rectangle {
+        x: root.destination - width / 2; y: root.footY - .5
+        width: 52; height: 2
+        opacity: root.flowAmount * .7 * Math.min(1, root.strength)
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: .5; color: root.tone }
+            GradientStop { position: 1; color: "transparent" }
         }
     }
 }
