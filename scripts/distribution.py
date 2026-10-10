@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CEDAR distribution transactions. Stdlib recovery works without Qt or a display."""
-import argparse, contextlib, fcntl, hashlib, json, os, shutil, stat, subprocess, sys, tarfile, tempfile, time, uuid
+import argparse, contextlib, fcntl, hashlib, json, os, shutil, signal, stat, subprocess, sys, tarfile, tempfile, time, uuid
 from pathlib import Path
 # The session helper imports this module. Keep one exception class when this
 # file is the installed executable as well as when it is imported by tests.
@@ -69,6 +69,47 @@ def command(argv,timeout=30):
     r=subprocess.run(argv,text=True,capture_output=True,timeout=timeout)
     if r.returncode:raise Refused('Command failed: '+argv[0]+' (exit '+str(r.returncode)+'). '+r.stderr.strip()[:300])
     return r.stdout
+
+def validation_command(argv,timeout=90,env=None):
+    """Bound an offscreen check and its children, keeping actionable Qt output."""
+    environment=dict(os.environ if env is None else env)
+    # QSG_RHI_BACKEND selects a GPU API; "software" is a Qt Quick adaptation.
+    # These settings apply to validation children, never to the desktop shell.
+    environment.pop('QSG_RHI_BACKEND',None)
+    environment['QT_QUICK_BACKEND']='software'
+    environment['QS_DISABLE_FILE_WATCHER']='1'
+    process=subprocess.Popen(argv,text=True,errors='replace',stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                             env=environment,start_new_session=True)
+    def stop_group():
+        try:os.killpg(process.pid,signal.SIGKILL)
+        except ProcessLookupError:pass
+    try:
+        deadline=time.monotonic()+timeout
+        timed_out=False
+        while True:
+            try:
+                out,err=process.communicate(timeout=max(.01,min(.2,deadline-time.monotonic())))
+                break
+            except subprocess.TimeoutExpired:
+                # A fixture may exit while a helper still holds its output
+                # pipe. Reap that helper without turning success into a hang.
+                if process.poll() is not None:
+                    stop_group();out,err=process.communicate();break
+                if time.monotonic()>=deadline:
+                    timed_out=True
+                    stop_group();out,err=process.communicate();break
+        if timed_out:
+            detail=(out+'\n'+err).strip()[-6000:]
+            raise Refused('Offscreen validation timed out after '+str(timeout)+' seconds: '+__import__('shlex').join(map(str,argv))+
+                          '. The check and its child processes were stopped.\n'+(detail or 'The check produced no output.')) from None
+        if process.returncode:
+            detail=(out+'\n'+err).strip()[-6000:]
+            raise Refused('Offscreen validation failed (exit '+str(process.returncode)+'): '+__import__('shlex').join(map(str,argv))+'\n'+
+                          (detail or 'The check produced no output.'))
+        return out+err
+    finally:
+        stop_group()
+        process.wait()
 
 @contextlib.contextmanager
 def exclusive():
@@ -302,9 +343,8 @@ def validate_imports(root):
         imports='\n'.join('import '+r['name'] for r in read_json(root/'data/dependencies.json')['modules'] if r.get('status')=='required')
         probe.write_text(imports+'\nShellRoot { property var svg: Image { source: '+json.dumps(svg.as_uri())+' } Timer { interval: 200; running: true; onTriggered: { if (svg.status === Image.Ready) console.log("CEDAR_IMPORTS_OK"); else console.error("SVG image support unavailable"); Qt.quit(); } } }\n')
         env={**os.environ,'CEDAR_TEST':'1','CEDAR_LOCAL_ONLY':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
-        result=subprocess.run(['qs','-p',str(probe)],capture_output=True,text=True,timeout=15,env=env)
-        output=result.stdout+result.stderr
-        if result.returncode or 'CEDAR_IMPORTS_OK' not in output:
+        output=validation_command(['qs','-p',str(probe)],timeout=15,env=env)
+        if 'CEDAR_IMPORTS_OK' not in output:
             raise Refused('Existing Quickshell/Qt lacks a required import or image plugin. Its runtime was not replaced. Review cedar doctor and the dependency manifest. Details: '+output[-1500:])
 
 
@@ -319,7 +359,9 @@ def validate(root):
     if shutil.which('qs'):
         validate_imports(root)
         for test in ['check_navigation.py','check_identity.py','check_trailwatch.py','check_portable_ui.py','check_controls.py']:
-            command([sys.executable,str(root/'tests'/test)],timeout=60)
+            # Leave time for each fixture's own deadline and cleanup to report
+            # the QML error instead of racing its 60-second inner watchdog.
+            validation_command([sys.executable,str(root/'tests'/test)],timeout=90 if test=='check_controls.py' else 45)
         return 'Offscreen components validated; native Wayland/PAM are Not Tested.'
     return 'Not Tested: Quickshell missing; installation only, preview/activation unavailable.'
 
