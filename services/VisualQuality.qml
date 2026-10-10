@@ -28,6 +28,9 @@ Singleton {
     // mode, near-instant in Gaming Mode. Reduced Motion disables the Behaviors
     // altogether, so it needs no scale. One number, read by every surface.
     readonly property real preset: ({ calm: .7, balanced: 1, expressive: 1.25, off: 0 })[Config.saved.motionPreset] ?? 1
+    // Functional surface motion is independent of ambience. Efficient/Gaming
+    // shorten it via motionScale; only the user's motion choices disable it.
+    readonly property bool functionalMotion: !Config.saved.reducedMotion && preset > 0
     readonly property bool effects: preset > 0 && !Theme.reducedMotion
     readonly property real motionScale: (gaming ? .35 : efficient ? .6 : 1) * (preset > 0 ? (preset > 1 ? 1.3 : preset) : 1)
     // Brightness and reach of decorative effects: the preset times the user's intensity.

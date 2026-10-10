@@ -5,19 +5,17 @@ are kept because people on older checkouts still hit them.
 
 ## Updating a checkout
 
-**Field Station → Update CEDAR** and `cedar installer --update` now do the whole
-update in the CEDAR Installer window: an Update stage fetches the newest
-CEDAR with visible steps (fast-forward of the checkout, or the latest
-verified release when there is no checkout; an unreadable `ORIG_HEAD` is
-cleared), explains any stop with what to do and, where a fix is safe, a
-button that applies it; then the installer hands the desktop back from a
-running CEDAR session, installs, and starts CEDAR again. See "Updating" in
-docs/INSTALLATION.md. The notes below describe the manual steps that still
-work.
+**Field Station → Update CEDAR** and `cedar installer --update` use the
+selected Stable (`main`) or Development (`dev`) channel and prepare a
+separate source copy. The channel selector also appears on the up-to-date
+and stopped screens. Your own checkout is not changed. See
+[Update channels](UPDATE-CHANNELS.md). The notes below describe manual
+checkout updates and older updater versions.
 
 `git pull` updates the checkout; a successful installation updates the
-installed `cedar` command. If setup was canceled or failed, the previous
-installed version remains selected. If Git reports local changes or
+installed `cedar` command. Canceling before installation preserves it; a
+failure after installation starts must be assessed from its recovery report.
+If Git reports local changes or
 divergent history, stop and preserve your edits; do not reset or delete the
 checkout. The installer copies only the reviewed source inventory, so an
 accidentally nested clone or local settings file is not included and is
@@ -30,10 +28,9 @@ before updating the installed release:
 "$HOME/.local/bin/cedar" restore && cd "$HOME/cedar-shell" && git pull --ff-only && bash ./install.sh
 ```
 
-From the desktop, **Field Station → Update CEDAR** runs these same steps in
-the installer window; `cedar installer --update --no-gui` prints them in a
-terminal. A refused fast-forward leaves the checkout and the desktop as they
-were, and the window says what to do next.
+The channel updater performs its fetch separately and then uses the same
+installer. Manual `git pull --ff-only` still preserves the checkout on a
+refused fast-forward; resolve that refusal without deleting your work.
 
 ## Messages from older candidates
 
