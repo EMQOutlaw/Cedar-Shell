@@ -19,6 +19,10 @@ Item {
     property var restoreReport: ({})
     property var guidance: ({})           // an update stop: title, message, steps, fix, fixLabel, retry, notes
     property var update: ({})             // the update result: kind, source, version, previousVersion, current, notes
+    property string updateChannel: "stable"
+    property string updateBranch: "main"
+    property string installedChannel: ""
+    property bool pendingStartupUpdate: false
     property string password: ""
     property var log: []
     property bool busy: false
@@ -40,6 +44,7 @@ Item {
     readonly property string sessionState: result.sessionState || ""
     readonly property bool cedarRunning: sessionState === "kept" || sessionState === "trial"
     signal stageEntered(string name)
+    signal commandSent(var request)
     onStageChanged: stageEntered(stage)
 
     Process {
@@ -57,6 +62,7 @@ Item {
     // Commands sent before the engine says ready are queued, not lost.
     property var queued: []
     function send(request) {
+        commandSent(request);
         if (fixture) return;
         if (!ready) { queued = queued.concat([request]); return; }
         engine.write(JSON.stringify(request) + "\n");
@@ -68,8 +74,10 @@ Item {
         switch (message.event) {
         case "ready":
             ready = true; version = data.version || "";
+            receiveChannel(data);
             for (const request of queued) engine.write(JSON.stringify(request) + "\n");
             queued = [];
+            if (pendingStartupUpdate) { pendingStartupUpdate = false; startUpdate(); }
             break;
         case "facts":
             facts = data; previous = data.previousInstall || null;
@@ -93,8 +101,9 @@ Item {
         case "done": result = data; busy = false; stage = "finish"; break;
         case "restored": restoreReport = data; busy = false; stage = "restored"; break;
         case "uninstalled": restoreReport = data; busy = false; stage = "restored"; break;
-        case "update-error": guidance = data; busy = false; stage = "update-error"; break;
+        case "update-error": receiveChannel(data); guidance = data; busy = false; stage = "update-error"; break;
         case "updated":
+            receiveChannel(data);
             update = data; busy = false;
             if (data.current) stage = "update-current"; else proceedUpdate();
             break;
@@ -108,6 +117,16 @@ Item {
     }
 
     // ---------------------------------------------------------------- actions
+    function channelLabel(channel) { return channel === "development" ? "Development" : "Stable"; }
+    function channelBranch(channel) { return channel === "development" ? "dev" : "main"; }
+    function receiveChannel(data) {
+        if (["stable", "development"].includes(data.channel)) {
+            updateChannel = data.channel;
+            updateBranch = data.branch || channelBranch(data.channel);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, "installedChannel"))
+            installedChannel = ["stable", "development"].includes(data.installedChannel) ? data.installedChannel : "";
+    }
     function begin() { stage = "scan"; busy = true; send({ cmd: "scan" }); }
     function rescan() { busy = true; stage = "scan"; send({ cmd: "scan" }); }
     function toPlan() { stage = "plan"; }
@@ -130,13 +149,23 @@ Item {
     // The update stage: the engine fetches the newest CEDAR and reports each step; a stop
     // arrives as guidance. On success the window closes and the process that owns it starts
     // the updated installer, which continues here as "updated".
-    function startUpdate() { stage = "update"; busy = true; operations = []; log = []; guidance = ({}); send({ cmd: "update" }); }
-    function fixUpdate(name) { stage = "update"; busy = true; operations = []; send({ cmd: "update-fix", fix: name }); }
+    function startUpdate(channel) {
+        if (["stable", "development"].includes(channel)) {
+            updateChannel = channel;
+            updateBranch = channelBranch(channel);
+        }
+        stage = "update"; busy = true; operations = []; log = []; guidance = ({});
+        send({ cmd: "update", channel: updateChannel });
+    }
+    function fixUpdate(name) { stage = "update"; busy = true; operations = []; send({ cmd: "update-fix", fix: name, channel: updateChannel }); }
     function proceedUpdate() { busy = true; send({ cmd: "update-proceed" }); }
     function cancelUpdate() { send({ cmd: "update-cancel" }); quit(); }
 
     Component.onCompleted: {
-        if (startWith === "update") startUpdate();
+        if (startWith === "update") {
+            stage = "update"; busy = true;
+            if (fixture || ready) startUpdate(); else pendingStartupUpdate = true;
+        }
         else if (startWith === "resume" || startWith === "start-over" || startWith === "updated") begin();
     }
 }

@@ -21,10 +21,13 @@ jobs:
           python3 -m unittest discover -s tests -p test_portable_lifecycle.py
           python3 -m unittest discover -s tests -p test_master_changes.py
           python3 -m unittest discover -s tests -p test_update_checkout.py
+          python3 -m unittest discover -s tests -p test_update_channels.py
+          python3 -m unittest discover -s tests -p test_installer.py
       - name: Python syntax and shell bootstrap
         run: |
-          python3 -m compileall -q scripts
+          python3 -m compileall -q scripts installer
           bash -n install.sh
+          bash -n installer/bootstrap/install.sh
           python3 scripts/audit_public.py
           python3 scripts/update_source_inventory.py --check
       - name: Build and test exact candidate contents

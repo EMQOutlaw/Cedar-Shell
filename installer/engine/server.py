@@ -24,8 +24,10 @@ operation records the engine sends.
 """
 import json
 import os
+import re
 from pathlib import Path
 import shutil
+import shlex
 import stat
 import sys
 import threading
@@ -39,6 +41,7 @@ from . import plan as plan_module
 from . import steps
 from .backup import Backup
 from .host import Host
+from . import update as update_module
 from .update import Guidance, Updater
 
 
@@ -117,9 +120,39 @@ class Engine:
 
     # -- installation ----------------------------------------------------
     def install(self, options=None, digest=None, resume=False):
+        if resume:
+            self.restore_update_context(ops.load_state(self.state_path))
+        if self.host.environ.get('CEDAR_INSTALLER_SOURCE_DIGEST'):
+            with update_module.update_lock(self.state_dir):
+                update_module.verify_update_source(self.source, self.host.environ)
+                return self._install(options, digest, resume)
+        return self._install(options, digest, resume)
+
+    def restore_update_context(self, state):
+        """A resumed operation must use the same source bytes as its completed steps."""
+        context = (state or {}).get('updateContext')
+        if context is None:
+            return
+        if not isinstance(context, dict):
+            raise RuntimeError('Invalid saved update context; check for updates again.')
+        update_module.channel_branch(context.get('channel'))
+        expected = context.get('sourceDigest', '')
+        commit = context.get('commit', '')
+        if not isinstance(expected, str) or not re.fullmatch(r'[0-9a-f]{64}', expected) or not isinstance(commit, str) or not re.fullmatch(r'[0-9a-f]{40,64}', commit):
+            raise RuntimeError('Invalid saved update revision; check for updates again.')
+        if update_module.content_digest(self.source) != expected:
+            prepared = Path(context.get('source', ''))
+            command = 'python3 ' + shlex.quote(str(prepared / 'installer/cedar_install.py')) + ' --resume'
+            raise RuntimeError('This interrupted update belongs to a different prepared revision. Resume its installer with: ' + command)
+        self.host.environ.update({'CEDAR_INSTALLER_CHANNEL': context['channel'], 'CEDAR_INSTALLER_COMMIT': commit,
+                                  'CEDAR_INSTALLER_SOURCE_DIGEST': expected})
+
+    def _install(self, options=None, digest=None, resume=False):
         if self.busy:
             raise RuntimeError('An operation is already running')
         self.busy = True
+        current = self.host.data_home() / 'cedar/current'
+        previous_runtime = str(current.resolve()) if current.is_symlink() else ''
         try:
             state = ops.load_state(self.state_path) if resume else None
             if resume and not state:
@@ -136,6 +169,10 @@ class Engine:
             log = self.open_log(state.get('runId') if state else None)
             ctx = steps.Context(self.host, self.source, self.facts, plan, plan['options'], log, self.emit)
             runner = steps.build(ctx, self.state_path, log, self.emit, log.run_id, plan['options'])
+            if self.host.environ.get('CEDAR_INSTALLER_SOURCE_DIGEST'):
+                runner.extra['updateContext'] = {'source': str(self.source), 'channel': self.host.environ['CEDAR_INSTALLER_CHANNEL'],
+                                                'commit': self.host.environ['CEDAR_INSTALLER_COMMIT'],
+                                                'sourceDigest': self.host.environ['CEDAR_INSTALLER_SOURCE_DIGEST']}
             if state:
                 runner.restore_from(state)
                 steps.reopen_backup(ctx)
@@ -145,11 +182,17 @@ class Engine:
                 summary = runner.run(ctx, resume=bool(state))
             except ops.Failed as failure:
                 data = self.failure(failure, runner)
+                runtime = str(current.resolve()) if current.is_symlink() else ''
+                data['runtimeChanged'] = runtime != previous_runtime
+                if data['runtimeChanged']:
+                    data['message'] += ' The runtime was installed, but final setup did not finish. Use Resume or Restore Previous System before switching again.'
+                data['installedChannel'] = update_module.installed_channel(self.host.environ)
                 self.emit('error', data)
                 return {'ok': False, **data}
             result = {'ok': True, **summary, 'backup': runner.backup, 'log': str(log.path), 'imports': plan['imports'],
                       'session': ctx.facts['environment'].get('adapter', '') if plan['options'].get('session') else '',
-                      'sessionState': self.session_state(), 'version': self.facts['cedarVersion']}
+                      'sessionState': self.session_state(), 'version': self.facts['cedarVersion'],
+                      'channel': update_module.installed_channel(self.host.environ)}
             log.info('finished: ' + json.dumps(summary))
             self.emit('done', result)
             return result
@@ -211,31 +254,48 @@ class Engine:
             return 'unknown'
 
     # -- update ------------------------------------------------------------
-    def updater(self):
-        if self._updater is None:
-            self._updater = Updater(self.source, emit=self.emit, environ=self.host.environ, state_dir=self.state_dir, log=self.open_log())
+    def selected_channel(self):
+        return (self._updater.channel if self._updater else None) or self.host.environ.get('CEDAR_INSTALLER_CHANNEL') or update_module.installed_channel(self.host.environ) or 'stable'
+
+    def updater(self, channel=None):
+        channel = self.selected_channel() if channel is None else channel
+        update_module.channel_branch(channel)
+        if self._updater is None or self._updater.channel != channel:
+            if self._updater:
+                self._updater.cancel()
+            self._updater = Updater(self.source, emit=self.emit, environ=self.host.environ,
+                                    state_dir=self.state_dir, log=self.open_log(), channel=channel)
         return self._updater
 
-    def update(self):
-        """The update stage: find, inspect, fetch, apply, hand off. Raises Guidance after emitting it."""
+    def update(self, channel=None):
+        """Check a managed branch; choosing a target does not change the installed preference."""
         if self.busy:
             raise RuntimeError('An operation is already running')
         self.busy = True
         try:
-            return self.updater().run()
+            try:
+                updater = self.updater(channel)
+            except Guidance as error:
+                self.emit('update-error', {**error.to_dict(), 'channel': self.selected_channel(),
+                                          'branch': update_module.CHANNELS.get(self.selected_channel(), ''),
+                                          'installedChannel': update_module.installed_channel(self.host.environ)})
+                raise
+            return updater.run()
         finally:
             self.busy = False
 
     def update_fix(self, name):
-        """Apply the safe repair the person chose by its button, then run the update again."""
         self.updater().fix(name)
         return self.update()
 
     def update_proceed(self, argv=()):
+        if self.busy:
+            raise RuntimeError('Wait for the branch check to finish')
         return self.updater().proceed(argv)
 
     def update_cancel(self):
-        self.updater().cancel()
+        if self._updater:
+            self._updater.cancel()
 
     # -- recovery --------------------------------------------------------
     def restore(self, dry_run=False):
@@ -396,7 +456,10 @@ def serve(source):
         except Guidance:
             pass
 
-    emit('ready', {'source': str(engine.source), 'version': (engine.source / 'VERSION').read_text().strip() if (engine.source / 'VERSION').is_file() else ''})
+    channel = engine.selected_channel()
+    emit('ready', {'source': str(engine.source), 'version': (engine.source / 'VERSION').read_text().strip() if (engine.source / 'VERSION').is_file() else '',
+                   'channel': channel, 'branch': update_module.CHANNELS.get(channel, ''), 'installedChannel': update_module.installed_channel(engine.host.environ),
+                   'channels': [{'id': value, 'branch': branch, 'label': 'Stable Branch' if value == 'stable' else 'Development Branch'} for value, branch in update_module.CHANNELS.items()]})
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -415,7 +478,7 @@ def serve(source):
             elif cmd == 'retry': background(engine.retry)
             elif cmd == 'restore': background(engine.restore)
             elif cmd == 'session': background(engine.session_now)
-            elif cmd == 'update': background(guided, engine.update)
+            elif cmd == 'update': background(guided, engine.update, request.get('channel'))
             elif cmd == 'update-fix': background(guided, engine.update_fix, request.get('fix', ''))
             elif cmd == 'update-proceed': engine.update_proceed(request.get('argv') or [])
             elif cmd == 'update-cancel': engine.update_cancel()

@@ -22,7 +22,7 @@ Run one command. It downloads a short, readable script that verifies the release
 curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/main/installer/bootstrap/install.sh | sh
 ```
 
-The command installs the latest published release and verifies its checksum. Contributors who want the current source branch instead can add `CEDAR_CHANNEL=development` before `sh`.
+The command installs the latest published release and verifies its checksum. Contributors who want the `dev` source branch instead can add `CEDAR_CHANNEL=development` before `sh`.
 
 Prefer Git? Clone the repository and run the installer from it:
 
@@ -36,7 +36,9 @@ To update later, press **Field Station → Update CEDAR**, or from a terminal:
 "$HOME/.local/bin/cedar" installer --update
 ```
 
-Both open the CEDAR Installer on an Update stage: it fetches the newest CEDAR (a fast-forward of your checkout when you have one, otherwise the latest verified release) one visible step at a time, then hands the desktop back from a running CEDAR session on its own, installs, and starts CEDAR again. If something stops it, the window says what happened, lists the steps that put it right and, where the fix is safe, offers a button that applies it. Your edits in a checkout are never discarded.
+Both open the CEDAR Installer on an Update stage. **Stable Branch** follows `main`; **Development Branch** follows `dev`. The up-to-date screen shows the selected branch and offers the other branch, so you can try development work and return to stable from the same window. The installer remembers the branch after a successful installation.
+
+Updates fetch an isolated copy of the selected branch and compare its actual contents with the installed copy, including changes that share the same version number. Your own checkout and edits stay untouched. Installation still shows a plan for approval and uses the existing desktop handoff and recovery. See [update channels](docs/UPDATE-CHANNELS.md).
 
 ### What the installer does
 
