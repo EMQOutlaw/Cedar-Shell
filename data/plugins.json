@@ -140,7 +140,8 @@
         "scripts/startup_apps.py",
         "services/Canopy.qml",
         "components/StrataButton.qml",
-        "components/StrataField.qml"
+        "components/StrataField.qml",
+        "modules/KeybindsCanopy.qml"
       ],
       "dependencies": [
         "qs"
@@ -177,7 +178,8 @@
         "scripts/startup_apps.py",
         "services/Canopy.qml",
         "components/StrataButton.qml",
-        "components/StrataField.qml"
+        "components/StrataField.qml",
+        "modules/KeybindsCanopy.qml"
       ]
     },
     {
@@ -1064,7 +1066,9 @@
         "scripts/startup_graph.py",
         "services/SessionIntegration.qml",
         "themes/keybinds.lua",
-        "themes/keybinds.conf"
+        "themes/keybinds.conf",
+        "data/keybinds.json",
+        "scripts/keybinds.py"
       ],
       "releaseArtifacts": [
         "auth-test.qml",
@@ -1081,7 +1085,9 @@
         "scripts/startup_graph.py",
         "services/SessionIntegration.qml",
         "themes/keybinds.lua",
-        "themes/keybinds.conf"
+        "themes/keybinds.conf",
+        "data/keybinds.json",
+        "scripts/keybinds.py"
       ],
       "dependencies": [
         "qs",
