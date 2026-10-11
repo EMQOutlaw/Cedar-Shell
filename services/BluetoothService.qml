@@ -30,6 +30,26 @@ Singleton {
         adapter.discovering=value;
         if (value) scanTimer.restart(); else { scanTimer.stop(); scanningAdapter=null; }
     }
+    // Power an adapter on or off. A soft-blocked radio (rfkill) is unblocked
+    // first; BlueZ would otherwise refuse the power change without a word.
+    function setEnabled(target, value) {
+        if (!target || ShellState.locked || Config.testMode) return;
+        error = "";
+        if (value && backend.item?.blocked(target)) { unblockTarget = target; unblock.running = true; return; }
+        target.enabled = value;
+    }
+    property var unblockTarget: null
+    Process {
+        id: unblock
+        command: ["rfkill", "unblock", "bluetooth"]
+        onExited: code => {
+            const target = root.unblockTarget; root.unblockTarget = null;
+            if (code !== 0) { root.error = "Bluetooth is blocked by rfkill and could not be unblocked."; return; }
+            powerOn.target = target; powerOn.restart();
+        }
+    }
+    // The adapter leaves the blocked state a moment after rfkill releases it.
+    Timer { id: powerOn; property var target: null; interval: 400; onTriggered: { if (target) target.enabled = true; target = null; } }
     function stopScan() { if (scanningAdapter) scanningAdapter.discovering=false; scanningAdapter=null; scanTimer.stop(); }
     function run(action,path,value) {
         if (busy || Config.testMode || ShellState.locked) return;

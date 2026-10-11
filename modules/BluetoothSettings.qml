@@ -20,7 +20,7 @@ ColumnLayout {
             required property var modelData
             Layout.fillWidth: true; label: modelData.name; checked: modelData.enabled
             description: modelData.adapterId; busy: BluetoothService.busy
-            onToggled: value => modelData.enabled=value
+            onToggled: value => BluetoothService.setEnabled(modelData, value)
         }
     }
     GlowText { visible: BluetoothService.adapters.length===0; text: "No Bluetooth adapter available."; color: Theme.muted }
