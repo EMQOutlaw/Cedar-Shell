@@ -12,9 +12,8 @@ Rectangle {
     property bool active: false
     property string tab: "quick"
     readonly property var player: Media.player
-    color: Qt.alpha(Theme.background, Config.panelOpacity)
-    radius: Config.panelRadius
-    border.color: Qt.alpha(Theme.teal, .18)
+    color: Theme.transparent
+    ChamferFrame { anchors.fill: parent; cut: Theme.strataCut; fill: Qt.alpha(Theme.strataFoundation, Config.panelOpacity); stroke: Qt.alpha(Theme.strataAccent, .25) }
     CedarAtmosphere {
         anchors.fill: parent
         active: root.active && Config.saved.ambientIntensity > 0
@@ -46,7 +45,7 @@ Rectangle {
                 }
                 GlowText {
                     text: "QUICK CONTROLS"
-                    color: Theme.teal
+                    color: Theme.strataAccent
                     font.pixelSize: 11
                 }
             }
@@ -54,11 +53,11 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
-                StationButton {
+                StrataButton {
                     text: "Settings"
                     onClicked: ShellState.toggle("settings")
                 }
-                StationButton {
+                StrataButton {
                     text: "×"
                     onClicked: ShellState.close()
                 }
@@ -84,7 +83,7 @@ Rectangle {
                         label: "Bluetooth"
                     }
                 ]
-                StationButton {
+                StrataButton {
                     required property var modelData
                     text: modelData.label
                     checked: root.tab === modelData.id

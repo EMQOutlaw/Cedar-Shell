@@ -31,6 +31,24 @@ class Migration(unittest.TestCase):
         self.assertEqual(self.settings(),{**original,'barStyle':'cedar','schemaVersion':1})
         self.assertEqual((self.paths['config']/'cedar/custom/my foxfire asset.txt').read_text(),'foxfire user script')
         self.assertEqual(result['status'],'committed');repeat=migrate.migrate();self.assertFalse(repeat['created']);self.assertFalse(repeat['preservedConflicts'])
+    def test_retired_bar_layouts_preserve_other_preferences(self):
+        for style in ('floating', 'minimal', 'islands', 'center', 'split'):
+            with self.subTest(style=style):
+                original={'barStyle':style,'unknown':{'barStyle':style},'barMargin':19}
+                source=self.legacy(original)
+                target=self.paths['config']/'cedar/settings.json'
+                if target.exists(): target.unlink()
+                migrate.migrate()
+                self.assertEqual(self.settings(),{**original,'barStyle':'cedar','schemaVersion':1})
+                self.assertEqual(json.loads(source.read_text()),original)
+                self.assertFalse(migrate.migrate()['preservedConflicts'])
+    def test_current_layout_preferences_are_not_overwritten_by_import(self):
+        target=self.paths['config']/'cedar/settings.json'
+        target.parent.mkdir(parents=True)
+        original={'barStyle':'floating','unknown':{'custom':True}}
+        target.write_text(json.dumps(original))
+        migrate.migrate()
+        self.assertEqual(self.settings(),original)
     def test_all_xdg_namespaces(self):
         for base in self.paths.values():
             source=base/'foxfire/custom';source.parent.mkdir(parents=True);source.write_text('custom state')

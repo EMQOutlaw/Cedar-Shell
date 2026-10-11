@@ -39,10 +39,9 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   from there, because they are different objects.
 - The pill sits inside the bar's height with the bar's own fill. At rest its
   outline nearly disappears, so its shape and the ember line carry the
-  identity; it lights with a signal, a hover or an open panel. Clicking it
-  opens Quick Controls, which grows from it; hovering a signal peeks and
-  clicking it morphs the pill itself into the Signals stack, inside the same
-  surface. Recording and privacy keep the line even while another signal is
+  identity; it lights with a signal, a hover or an open panel. Hovering it
+  opens Signals temporarily; clicking pins the same hub inside the same
+  surface without a second opening. Quick Controls uses its right-side button. Recording and privacy keep the line even while another signal is
   in front.
 - Opening a second topic collapses the open drop back into the bar and drops
   the next one from its own control; nothing floats between. Closing fades
@@ -56,8 +55,10 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   morph settles.
 - Every drop has an origin on the bar: the pill (Quick Controls, Power), the
   network nub (Connections), the CEDAR mark (Field Station), the apps button
-  (Go), the bell (Notifications) and the ▣ button at the end of the
-  workspace row (the overview). Topics with their own control are standalone,
+  (Go) and the ▣ button at the end of the workspace row (the overview).
+  Notifications have no bar control: they unfold from the Core pill and
+  their history is a section of Signals; the Notifications topic stays
+  reachable by keybind and IPC. Topics with their own control are standalone,
   without the tab strip; the rest are tabs inside the Canopy.
 
 ## Available now
@@ -78,7 +79,7 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   CEDAR surfaces, Settings pages, and non-input Go actions. Window titles,
   browser content, commands, and user-entered Go text are not collected. Lock or
   disabling Trails clears them. CEDAR navigation entries can be reopened.
-- Canopy: audio, network, Bluetooth, system, weather, time/calendar, clipboard,
+- Canopy: audio, network, Bluetooth, weather, time/calendar, clipboard,
   notifications, quick controls, Trails, Startup and Workspaces.
 - Connections carries a VPN section: every VPN-plugin or WireGuard profile
   NetworkManager knows, whoever created it, with Connect, Disconnect and
@@ -155,7 +156,7 @@ pinning, opt-in histories, and lock cleanup. `tests/core/forest_test.js` checks
 state priorities, bounded trails, and private Echo exclusions.
 `tests/test_instruments.py` checks stream identity, scene persistence, gain
 validation, and rejecting missing devices without mutation. Existing Settings,
-Core hold/animation, and six bar-layout harnesses remain in use.
+Core hold/animation, and Strata bar-layout harnesses remain in use.
 
 These offscreen checks do not establish hardware audio results or physical FPS.
 Native compositor, PipeWire, CAVA and clipboard interaction need the desktop
@@ -163,3 +164,8 @@ session; the development sandbox cannot access those sockets.
 
 Reference APIs: [Quickshell focus grabs](https://quickshell.org/docs/v0.3.0/types/Quickshell.Hyprland/HyprlandFocusGrab/),
 [Open-Meteo forecast variables](https://open-meteo.com/en/docs).
+
+Field Station owns performance monitoring: Overview and Tasks & performance
+share the Strata palette with Signals and Quick Controls. The retired System
+drop redirects to Field Station’s task page, including its existing IPC and
+menu entry. See [Station](STATION.md) for the task monitor’s data sources.

@@ -6,7 +6,7 @@ CEDAR Core is the small contextual surface at the center of the main display's b
 
 - At rest, the Core shows the shared 12/24-hour clock. Click to see the date, activities and timer controls.
 - Volume and brightness updates open their slider. Hovering or dragging holds it open. Repeated updates keep the same slider instance and explicit OSD state.
-- Hover an activity for a small preview. Click for its controls and the activity stack. In the expanded view, Tab moves between controls, arrows select activities, Enter activates, and Escape collapses.
+- Hover to open Signals with its controls and activity stack. Click to pin the same panel without a second opening; moving away closes an unpinned panel. Volume and brightness stay inline until clicked. In the expanded view, Tab moves between controls, arrows select activities, Enter activates, and Escape collapses.
 - Settings → CEDAR Core controls the host display, event sources, optional workspace/clipboard feedback and warning thresholds. It follows Main Display by default (the user’s saved preferred output), with one available-output fallback when that display is absent.
 - Go → CEDAR → CEDAR Core provides keyboard access through the existing launcher. A dedicated shortcut can be assigned in Core settings; the existing backend checks live bindings and refuses conflicts. No shortcut is installed automatically.
 - Disable Core to restore the original bar clock and volume/brightness OSD. Other panels also retain the original OSD while Core is hidden.
@@ -17,7 +17,7 @@ CEDAR Core is the small contextual surface at the center of the main display's b
 |---|---|
 | Volume / brightness | Shared native PipeWire Audio, Brightness and explicit ShellState OSD state. |
 | Media | Shared native MPRIS player selection; title, artist, art, playback and supported seeking. Track/playback changes get a brief foreground turn; media stays in the stack. |
-| Notifications | Critical notifications and their real actions. Other notifications stay in the normal notification system. Core does not copy application notifications into system-activity history. |
+| Notifications | Every notification, with its real actions: it unfolds from the pill for the popup duration (hover holds it), stays in the stack while the server keeps it, and the history lives in Signals. Do Not Disturb keeps ordinary ones out; critical ones always arrive. Core does not copy application notifications into system-activity history. |
 | Bluetooth | Native BlueZ connection changes and battery where exposed. |
 | Network / VPN | The existing NetworkManager service's snapshots; no separate network polling service. Connectivity changes appear after that service refreshes. |
 | Screenshots | Omarchy's saved-screenshot notification and image-path hint. Open, Copy image and Reveal validate the actual local file when clicked. Copy-only captures without a saved-file event do not invent a path. |
@@ -38,7 +38,7 @@ CEDAR Core is the small contextual surface at the center of the main display's b
 
 ## Activity model
 
-`components/core/Activities.js` contains the pure scheduling policy. `CoreActivityModel.qml` owns reactive state; `CoreService.qml` exposes publication, actions and routing; `CoreSources.qml` adapts existing services. CoreHost selects a single screen-keyed window instance. CoreWindow binds to that instance’s assigned screen for its lifetime. Display preference changes replace the host; activity changes retain it. This avoids moving a visible reused native window between screens during reload. Rendering is split into CoreSurface, CoreVolume, CoreMedia, CoreDetails and CoreHub. `Media.qml` supplies one shared player policy to Core, Field Station, Control Center and media IPC.
+`components/core/Activities.js` contains the pure scheduling policy. `CoreActivityModel.qml` owns reactive state; `CoreService.qml` exposes publication, actions and routing; `CoreSources.qml` adapts existing services. CoreHost selects a single screen-keyed window instance. CoreWindow binds to that instance’s assigned screen for its lifetime. Display preference changes replace the host; activity changes retain it. This avoids moving a visible reused native window between screens during reload. Rendering is split into CoreSurface, CoreVolume, CoreMedia, CoreDetails and CoreHub. Hover, click and notification arrivals share one lazily loaded hub and one geometry/reveal transition; its contents unload after closing. `Media.qml` supplies one shared player policy to Core, Field Station, Control Center and media IPC.
 
 Activities have stable IDs, type/source, title/subtitle, priority, progress, persistence, timestamp, attention deadline and whitelisted actions. Dismiss removes a row that can be removed (never a recording or privacy row); there is no snooze, because a row that comes from a live reading (temperature, a posture, a session) would simply be published again by its source. A value update replaces the row with the same identity; it does not recreate a native window. Critical sticky warnings can preempt a selected/held lower-priority activity. Persistent activities settle into the stack after their initial attention interval. Recording/privacy indicators remain visible alongside other foreground activities. The stack is bounded to 64 activities and system history to 32 entries. History is in-memory; only the timer is persisted.
 
@@ -77,7 +77,7 @@ python3 tests/check_desktop_ui.py
 python3 tests/check_lock_auth.py
 ```
 
-The QML tests run with isolated preferences and offscreen rendering. They exercise stable repeated volume updates, visibility hold, priority/preemption, activity stack, timer controls and persistence, six bar layouts with/without Core at two widths, Settings navigation and OSD fallback. They do not send passwords, stop actual recordings, apply display changes or operate real devices. Live compositor focus, hardware events and drag/drop require the actual desktop; shell-load logs are checked separately when deploying.
+The QML tests run with isolated preferences and offscreen rendering. They exercise stable repeated volume updates, visibility hold, priority/preemption, activity stack, timer controls and persistence, the Strata bar with/without Core at three widths, Settings navigation and OSD fallback. They do not send passwords, stop actual recordings, apply display changes or operate real devices. Live compositor focus, hardware events and drag/drop require the actual desktop; shell-load logs are checked separately when deploying.
 
 ### Reload stabilization, October 3
 

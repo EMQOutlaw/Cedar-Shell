@@ -175,10 +175,10 @@ ColumnLayout {
         Accessible.name: "Launch " + (app?.label || "") + (favourite ? ", favourite" : "")
         ChamferFrame {
             anchors.fill: parent
-            cut: 7
-            fill: tile.current ? Qt.alpha(Theme.green, .07) : hover.containsMouse ? Qt.alpha(Theme.teal, .05) : Qt.alpha(Theme.background, .5)
-            stroke: tile.current ? Qt.alpha(Theme.green, .55) : tile.favourite ? Qt.alpha(Theme.amber, .3) : hover.containsMouse ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .13)
-            line: tile.current; lineColor: Theme.green; lineFraction: .55
+            cut: Theme.strataCut
+            fill: tile.current ? Qt.alpha(Theme.strataAccent, .07) : hover.containsMouse ? Qt.alpha(Theme.strataAccent, .05) : Qt.alpha(Theme.strataFoundation, .5)
+            stroke: tile.current ? Qt.alpha(Theme.strataAccent, .55) : tile.favourite ? Qt.alpha(Theme.amber, .3) : hover.containsMouse ? Qt.alpha(Theme.strataAccent, .35) : Qt.alpha(Theme.strataAccent, .13)
+            line: tile.current; lineColor: Theme.strataAccent; lineFraction: .55
         }
         Column {
             anchors.centerIn: parent
@@ -200,7 +200,7 @@ ColumnLayout {
                 elide: Text.ElideRight
                 font.family: Theme.dataFont
                 font.pixelSize: 11
-                color: tile.current ? Theme.green : Theme.text
+                color: tile.current ? Theme.strataAccent : Theme.strataText
             }
         }
         MouseArea {
@@ -219,7 +219,7 @@ ColumnLayout {
             text: tile.favourite ? "★" : "☆"
             textFormat: Text.PlainText
             font.pixelSize: 12
-            color: tile.favourite ? Theme.amber : Theme.muted
+            color: tile.favourite ? Theme.amber : Theme.strataMuted
             opacity: tile.favourite ? .95 : hover.containsMouse || starHover.containsMouse ? .55 : 0
             Behavior on opacity { enabled: !Theme.reducedMotion; NumberAnimation { duration: 120 } }
             MouseArea {
@@ -249,10 +249,10 @@ ColumnLayout {
         Accessible.name: item?.label || ""
         ChamferFrame {
             anchors.fill: parent
-            cut: 7
-            fill: answer.current ? Qt.alpha(Theme.green, .07) : answerHover.containsMouse ? Qt.alpha(Theme.teal, .05) : Qt.alpha(Theme.background, .5)
-            stroke: answer.current ? Qt.alpha(Theme.green, .55) : answerHover.containsMouse ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .13)
-            line: answer.current; lineColor: Theme.green; lineFraction: .55
+            cut: Theme.strataCut
+            fill: answer.current ? Qt.alpha(Theme.strataAccent, .07) : answerHover.containsMouse ? Qt.alpha(Theme.strataAccent, .05) : Qt.alpha(Theme.strataFoundation, .5)
+            stroke: answer.current ? Qt.alpha(Theme.strataAccent, .55) : answerHover.containsMouse ? Qt.alpha(Theme.strataAccent, .35) : Qt.alpha(Theme.strataAccent, .13)
+            line: answer.current; lineColor: Theme.strataAccent; lineFraction: .55
         }
         RowLayout {
             anchors.fill: parent
@@ -262,7 +262,7 @@ ColumnLayout {
                 text: answer.isCalc ? "\udb80\udcec" : answer.item?.kind === "url" ? "\udb80\udf37" : "\udb81\udd9f"
                 textFormat: Text.PlainText
                 font.family: Theme.dataFont; font.pixelSize: 18
-                color: answer.current ? Theme.green : Theme.teal
+                color: answer.current ? Theme.strataAccent : Theme.strataAccent
             }
             ColumnLayout {
                 Layout.fillWidth: true
@@ -275,7 +275,7 @@ ColumnLayout {
                     font.family: answer.isCalc ? Theme.dataFont : Theme.labelFont
                     font.pixelSize: answer.isCalc ? 17 : 14
                     font.weight: Font.DemiBold
-                    color: answer.current ? Theme.white : Theme.text
+                    color: answer.current ? Theme.white : Theme.strataText
                 }
                 Text {
                     Layout.fillWidth: true
@@ -283,7 +283,7 @@ ColumnLayout {
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     font.family: Theme.dataFont; font.pixelSize: 10
-                    color: Theme.muted
+                    color: Theme.strataMuted
                 }
             }
             Text {
@@ -291,7 +291,7 @@ ColumnLayout {
                 text: answer.isCalc ? "ENTER COPIES" : "ENTER OPENS"
                 textFormat: Text.PlainText
                 font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1
-                color: Theme.muted
+                color: Theme.strataMuted
             }
         }
         MouseArea {
@@ -308,10 +308,10 @@ ColumnLayout {
         Layout.fillWidth: true
         opacity: root.beat(0)
         transform: Translate { y: 6 * (1 - root.beat(0)) }
-        SectionMark { text: "APPLICATIONS" }
+        GlowText { Layout.fillWidth: true; elide: Text.ElideRight; text: "APPLICATIONS"; font.family: Theme.labelFont; font.pixelSize: Math.round(24 * Theme.fontScale); font.letterSpacing: 1.8; color: Theme.strataAccent }
         Item { Layout.fillWidth: true }
         StatusPill { visible: root.favourites.length > 0; text: root.favourites.length + (root.favourites.length === 1 ? " favourite" : " favourites"); tone: Theme.amber }
-        StatusPill { text: DefaultApps.error ? "Catalog offline" : root.all.length + " apps"; tone: DefaultApps.error ? Theme.amber : Theme.teal }
+        StatusPill { text: DefaultApps.error ? "Catalog offline" : root.all.length + " apps"; tone: DefaultApps.error ? Theme.amber : Theme.strataAccent }
     }
 
     // Search: a filament lights under the field as the panel enters, turns
@@ -321,7 +321,7 @@ ColumnLayout {
         spacing: 6
         opacity: root.beat(1)
         transform: Translate { y: 6 * (1 - root.beat(1)) }
-        StationField {
+        StrataField {
             id: field
             objectName: "goSearch"
             Layout.fillWidth: true
@@ -351,14 +351,14 @@ ColumnLayout {
         Item {
             Layout.fillWidth: true
             implicitHeight: 2
-            Rectangle { width: parent.width; height: 1; y: 1; color: Qt.alpha(Theme.teal, .12) }
+            Rectangle { width: parent.width; height: 1; y: 1; color: Qt.alpha(Theme.strataAccent, .12) }
             Rectangle {
                 width: parent.width * (root.query ? 1 : .55 * root.beat(1, .6))
                 height: root.query ? 2 : 1
-                color: root.query ? (root.matches.length || root.answers.length ? Theme.green : Theme.amber) : Theme.teal
+                color: root.query ? (root.matches.length || root.answers.length ? Theme.strataAccent : Theme.amber) : Theme.strataAccent
                 opacity: root.query ? .85 : .5
                 Behavior on width { enabled: !Theme.reducedMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                Rectangle { anchors.right: parent.right; width: 24; height: parent.height; color: Theme.green; opacity: root.query ? 0 : .8 * (1 - root.beat(.5, .4)) }
+                Rectangle { anchors.right: parent.right; width: 24; height: parent.height; color: Theme.strataAccent; opacity: root.query ? 0 : .8 * (1 - root.beat(.5, .4)) }
             }
         }
         // What the field answers, shown until something is typed so nobody has
@@ -377,9 +377,9 @@ ColumnLayout {
                 Row {
                     required property var modelData
                     spacing: 6
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.glyph; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 12; color: Theme.teal }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.example; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.text }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.does; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.muted }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.glyph; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 12; color: Theme.strataAccent }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.example; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.strataText }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData.does; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.strataMuted }
                 }
             }
         }
@@ -390,7 +390,7 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
         visible: root.answers.length > 0
-        SectionMark { text: "ANSWER"; size: 9; tone: Theme.green }
+        SectionMark { text: "ANSWER"; size: 9; tone: Theme.strataAccent }
         Repeater {
             model: root.answers
             AnswerRow { required property var modelData; required property int index; item: modelData; flat: index; order: 1.5 }
@@ -408,7 +408,7 @@ ColumnLayout {
             Layout.fillWidth: true
             SectionMark { text: "FAVOURITES"; size: 9; tone: Theme.amber }
             Item { Layout.fillWidth: true }
-            Text { text: "F while browsing marks or clears one"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1; color: Theme.muted }
+            Text { text: "F while browsing marks or clears one"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1; color: Theme.strataMuted }
         }
         GridLayout {
             Layout.fillWidth: true
@@ -429,13 +429,13 @@ ColumnLayout {
         visible: !root.query && root.recents.length > 0
         opacity: root.beat(2)
         transform: Translate { y: 6 * (1 - root.beat(2)) }
-        SectionMark { text: "RECENT"; size: 9; tone: Theme.muted }
+        SectionMark { text: "RECENT"; size: 9; tone: Theme.strataMuted }
         Flow {
             Layout.fillWidth: true
             spacing: 8
             Repeater {
                 model: root.recents
-                StationButton {
+                StrataButton {
                     id: chip
                     required property var modelData
                     implicitHeight: 32
@@ -445,7 +445,7 @@ ColumnLayout {
                     contentItem: Row {
                         spacing: 8
                         Image { anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 32; sourceSize.height: 32; fillMode: Image.PreserveAspectFit; asynchronous: true; source: root.iconSource(chip.modelData) }
-                        Text { anchors.verticalCenter: parent.verticalCenter; text: chip.text; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: Theme.text }
+                        Text { anchors.verticalCenter: parent.verticalCenter; text: chip.text; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: Theme.strataText }
                     }
                 }
             }
@@ -455,12 +455,12 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         opacity: root.beat(3)
-        SectionMark { text: root.query ? "MATCHES" : "ALL APPS"; size: 9; tone: Theme.muted }
+        SectionMark { text: root.query ? "MATCHES" : "ALL APPS"; size: 9; tone: Theme.strataMuted }
         Item { Layout.fillWidth: true }
         Text {
             visible: root.query !== "" && root.matches.length > 0
             text: root.matches.length + (root.matches.length === 1 ? " match" : " matches")
-            textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1; color: Theme.muted
+            textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1; color: Theme.strataMuted
         }
     }
     // The grid scrolls under the fixed search field; five rows show at once.
@@ -489,11 +489,11 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.pinned.length + root.matches.length === 0
         spacing: 6
-        GlowText { anchors.horizontalCenter: parent.horizontalCenter; text: "󰈉"; color: Theme.teal; font.pixelSize: 28 }
+        GlowText { anchors.horizontalCenter: parent.horizontalCenter; text: "󰈉"; color: Theme.strataAccent; font.pixelSize: 28 }
         GlowText {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.query ? "No app named “" + root.query + "”" : DefaultApps.error ? DefaultApps.error : "Reading the application catalog…"
-            color: Theme.muted
+            color: Theme.strataMuted
         }
     }
     // The web search (and a bare address) under everything the query found.
@@ -501,7 +501,7 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
         visible: root.trailing.length > 0
-        SectionMark { text: "ELSEWHERE"; size: 9; tone: Theme.muted }
+        SectionMark { text: "ELSEWHERE"; size: 9; tone: Theme.strataMuted }
         Repeater {
             model: root.trailing
             AnswerRow { required property var modelData; required property int index; item: modelData; flat: root.answers.length + root.pinned.length + root.matches.length + index; order: 4 }
@@ -515,7 +515,7 @@ ColumnLayout {
             : selectedKind ? "ENTER open in browser   /   arrows move   /   ESC clear"
             : root.browsing ? "ENTER launch   /   F favourite   /   arrows move   /   ESC " + (root.query ? "clear" : "close")
             : "ENTER launch   /   arrows move   /   ESC " + (root.query ? "clear" : "close")
-        color: DefaultApps.launchError ? Theme.amber : Theme.muted
+        color: DefaultApps.launchError ? Theme.amber : Theme.strataMuted
         font.pixelSize: 10
         elide: Text.ElideRight
         opacity: root.beat(5)

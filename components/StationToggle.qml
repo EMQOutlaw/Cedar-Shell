@@ -7,6 +7,8 @@ RowLayout {
     property string label: ""
     property string accessibleLabel: label
     property string description: ""
+    property color accent: Theme.teal
+    property color focusAccent: Theme.green
     property bool checked: false
     property bool busy: false
     signal toggled(bool value)
@@ -29,9 +31,9 @@ RowLayout {
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         background: Rectangle {
             y: (toggle.height - height) / 2; height: 22; radius: 11
-            color: root.checked ? Qt.alpha(Theme.teal, 0.24) : Theme.surface
-            border.width: toggle.visualFocus ? Theme.focusWidth : 1; border.color: toggle.visualFocus ? Theme.green : root.checked ? Theme.teal : Theme.border
-            Rectangle { x: root.checked ? 23 : 5; y: 4; width: 14; height: 14; radius: 7; color: root.checked ? Theme.teal : Theme.muted }
+            color: root.checked ? Qt.alpha(root.accent, 0.24) : Theme.surface
+            border.width: toggle.visualFocus ? Theme.focusWidth : 1; border.color: toggle.visualFocus ? root.focusAccent : root.checked ? root.accent : Theme.border
+            Rectangle { x: root.checked ? 23 : 5; y: 4; width: 14; height: 14; radius: 7; color: root.checked ? root.accent : Theme.muted }
         }
     }
 }

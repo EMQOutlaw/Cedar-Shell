@@ -24,11 +24,43 @@ Item {
     readonly property bool detailed: CoreService.expanded
     // A standalone Canopy (one hanging from its own bar control) is not the pill's.
     readonly property bool canopyHere: !integrated && Canopy.shown && !Canopy.standalone
-    readonly property bool peek: hovering && !!activity && !root.canopyHere
+    // The slider owns the resting pill: label, dots, Heartwood and hint all yield to it.
+    readonly property bool volumeInline: volume && !panel && !canopyHere
+    property bool hoverDismissed: false
+    readonly property bool peek: hovering && !hoverDismissed && !volume && !root.canopyHere
+    // A notification arriving unfolds from the pill on its own for the popup
+    // duration, using the same Signals hub and real actions. Hover
+    // holds it; clicking pins the same Signals panel in place.
+    readonly property bool unfolded: unfold.running && !!activity && activity.type === "notification"
+    property string unfoldedId: ""
+    function syncUnfold() {
+        const a = activity;
+        if (!root.active || !Config.saved.notificationsEnabled || !a || a.type !== "notification" || a.id === unfoldedId || a.attentionUntil <= Date.now())
+            return;
+        unfoldedId = a.id;
+        unfold.interval = Math.max(2500, Math.min(60000, a.timeout));
+        unfold.restart();
+    }
+    Timer { id: unfold; interval: 7000 }
     readonly property color accent: activity?.priority === 3 || ["recording", "camera", "microphone"].includes(activity?.type) ? Theme.ember : activity?.priority === 2 ? Theme.amber : integrated ? Theme.strataAccent : (Config.saved.forestPulse ? Forest.accent : Theme.teal)
     // Cedar keeps this center within the bar's reserved space. Other layouts
     // retain their clock and the network nub with mirrored space on the left.
-    readonly property bool panel: detailed || peek || CoreService.dropHover
+    readonly property bool signalsOpen: root.active && !ShellState.locked && !Canopy.shown && (detailed || peek || unfolded)
+    readonly property bool panel: signalsOpen || CoreService.dropHover
+    property bool keepHub: false
+    onSignalsOpenChanged: if (signalsOpen) keepHub = true
+    function releaseHub() {
+        if (!signalsOpen && reveal === 0 && height <= restingHeight + .5)
+            keepHub = false;
+    }
+    // Explicit dismissal must not fall back to a hover opening under the pointer.
+    function dismissOpening() {
+        hoverDismissed = hover.hovered;
+        hovering = false;
+        hoverDelay.stop();
+        unfold.stop();
+    }
+    onDetailedChanged: if (!detailed) dismissOpening()
     // Settled background activity (e.g. media playing) leaves the pill at rest; only
     // something asking for attention, an ongoing capture, or a live control widens it.
     readonly property bool signalling: alert || volume || CoreService.recording || CoreService.privacy.length > 0 || CoreService.timer.active || root.canopyHere || (!integrated && !!Forest.whisper)
@@ -45,13 +77,12 @@ Item {
     readonly property var dots: CoreService.rows.length > 1 || (CoreService.rows.length === 1 && !alert) ? CoreService.rows.slice(0, 3) : []
     // Meaning and time have separate renderers: only the meaning resolves in.
     // A clock minute, timer second or recording duration is an ordinary Text update.
-    readonly property string labelMode: detailed ? "hub" : canopyHere ? "canopy" : alert ? "alert" : CoreService.recording ? "recording" : CoreService.timer.active ? "timer" : integrated ? "profile" : Forest.whisper ? "whisper" : "clock"
+    readonly property string labelMode: signalsOpen ? "hub" : canopyHere ? "canopy" : alert ? "alert" : CoreService.recording ? "recording" : CoreService.timer.active ? "timer" : !integrated && Forest.whisper ? "whisper" : "clock"
     readonly property string labelTitle: labelMode === "hub" ? (integrated ? "SIGNALS" : "CEDAR CORE")
         : labelMode === "canopy" ? Canopy.title.toUpperCase()
         : labelMode === "alert" ? (activity?.title || "")
         : labelMode === "recording" ? "REC"
         : labelMode === "timer" ? "TIMER"
-        : labelMode === "profile" ? (Gaming.active ? "GAMING" : Focus.active ? "FOCUS" : Profiles.current ? Profiles.currentLabel.toUpperCase() : "CEDAR")
         : labelMode === "whisper" ? Forest.whisper : ""
     readonly property string labelValue: labelMode === "recording" ? Media.elapsed((CoreService.now - CoreService.recordings[0].started) / 1000)
         : labelMode === "timer" ? Media.elapsed(CoreService.timer.remaining)
@@ -80,7 +111,7 @@ Item {
     onAnchorOutputChanged: publishAnchor()
     onIntegratedChanged: publishAnchor()
     width: targetWidth
-    implicitHeight: detailed ? Math.min(maximumHeight, hub.implicitHeight + root.restingHeight + 38) : peek ? root.restingHeight + Math.min(180, preview.implicitHeight) + 28 : CoreService.dropHover ? root.restingHeight + 60 : root.restingHeight
+    implicitHeight: signalsOpen ? Math.min(maximumHeight, (hubLoader.item?.implicitHeight || 0) + root.restingHeight + 38) : CoreService.dropHover ? root.restingHeight + 60 : root.restingHeight
     // Morph rather than scale: width leads on a short curve, height follows on a
     // longer expressive curve with a hint of overshoot on the way out and a plain
     // decelerate on the way back. Content is staged by `reveal`. Reduced Motion
@@ -91,7 +122,10 @@ Item {
     // inside it, then shrink after settling. Avoid negotiating a new Wayland
     // surface size on every animation frame.
     property int windowHeight: Math.ceil(implicitHeight) + 2
-    onImplicitHeightChanged: {
+    // Loader creation and its first layout can change implicitHeight together.
+    // Coalesce them before starting the single geometry transition.
+    onImplicitHeightChanged: Qt.callLater(updateHeight)
+    function updateHeight() {
         growing = implicitHeight > height;
         windowHeight = Math.max(windowHeight, Math.ceil(implicitHeight * (morphing && growing ? 1.03 : 1)) + 2);
         height = implicitHeight;
@@ -103,6 +137,7 @@ Item {
     onHeightChanged: {
         if (!heightAnimation.running)
             windowHeight = Math.ceil(height) + 2;
+        Qt.callLater(releaseHub);
     }
     Behavior on width {
         enabled: root.morphing
@@ -132,15 +167,7 @@ Item {
             NumberAnimation { duration: VisualQuality.ms(root.panel ? Theme.reveal : Theme.conceal); easing.type: Easing.OutCubic }
         }
     }
-    // The hub has its own reveal so its scroll view never sits over a hover peek.
-    property real hubReveal: detailed ? 1 : 0
-    Behavior on hubReveal {
-        enabled: root.morphing
-        SequentialAnimation {
-            PauseAnimation { duration: root.detailed ? VisualQuality.ms(Theme.revealDelay) : 0 }
-            NumberAnimation { duration: VisualQuality.ms(root.detailed ? Theme.reveal : Theme.conceal); easing.type: Easing.OutCubic }
-        }
-    }
+    onRevealChanged: Qt.callLater(releaseHub)
     // The chamfers open up a little with the panel, so the silhouette flows rather than stretches.
     property real chamfer: panel ? 1.35 : 1
     Behavior on chamfer {
@@ -214,10 +241,13 @@ Item {
     HoverHandler {
         id: hover
         onHoveredChanged: {
-            if (hovered)
-                hoverDelay.restart();
-            else {
+            if (hovered) {
+                leaveDelay.stop();
+                if (root.active && !root.hoverDismissed)
+                    hoverDelay.restart();
+            } else {
                 hoverDelay.stop();
+                root.hoverDismissed = false;
                 leaveDelay.restart();
             }
             root.syncHold();
@@ -229,11 +259,11 @@ Item {
         ShellState.osdCoreInteracting = held && root.volume;
     }
     // Foreground depends on heldId: defer its update out of the binding evaluation.
-    onActivityChanged: Qt.callLater(root.syncHold)
+    onActivityChanged: { Qt.callLater(root.syncHold); syncUnfold(); }
     onActiveChanged: {
         publishAnchor();
         if (!active) {
-            hovering = false;
+            dismissOpening();
             CoreService.hold("");
             ShellState.osdCoreInteracting = false;
         }
@@ -243,7 +273,7 @@ Item {
     Timer {
         id: hoverDelay
         interval: 330
-        onTriggered: if (hover.hovered)
+        onTriggered: if (root.active && hover.hovered && !root.hoverDismissed)
             root.hovering = true
     }
     Timer {
@@ -272,6 +302,9 @@ Item {
         width: pill.width
         height: root.restingHeight
         hint: root.integrated ? "Signals" : "Quick Controls"
+        // The hint names the resting control only; over a peek, the hub or the
+        // slider it would sit on the content.
+        ToolTip.visible: header.hovered && hint !== "" && !root.panel && !root.volumeInline
         enabled: !ShellState.locked
         checked: root.integrated ? root.detailed : Canopy.shown && Canopy.topic === "quick"
         onClicked: { heartwood.pulse(); root.toggleHeader(); }
@@ -295,14 +328,15 @@ Item {
             // unfolding) and answers the pointer; still otherwise.
             CedarHeartwood {
                 id: heartwood
-                visible: Config.saved.barHeartwood
+                // Steps aside while the compact slider seats its mute control here.
+                visible: Config.saved.barHeartwood && !root.volumeInline
                 active: root.active
                 x: 8
                 anchors.verticalCenter: parent.verticalCenter
                 // A small center mark at rest; it grows with the Signals hub.
-                size: root.detailed ? 44 : Math.min(24, root.restingHeight - 10)
+                size: root.signalsOpen ? 44 : Math.min(24, root.restingHeight - 10)
                 hovered: header.hovered
-                unfolding: root.integrated ? root.detailed : Canopy.surfaceState === "opening" && root.canopyHere
+                unfolding: root.integrated ? root.signalsOpen : Canopy.surfaceState === "opening" && root.canopyHere
                 mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle"
                 warning: Shield.ready && Shield.posture !== "protected"
                 accent: root.alert ? root.accent : root.integrated && !(VisualQuality.preset > 1 && (hovered || animating)) ? Theme.strataAccent : Theme.green
@@ -322,7 +356,7 @@ Item {
                 width: Math.min(implicitWidth, availableWidth)
                 spacing: title.visible && value.visible ? 7 : 0
                 clip: true
-                visible: !(root.volume && !root.panel && !root.canopyHere)
+                visible: !root.volumeInline
                 KineticLabel {
                     id: title
                     visible: root.labelTitle !== ""
@@ -334,10 +368,10 @@ Item {
                     transitionStyle: "resolve"
                     minimumInterval: 400
                     maximumAnimatedLength: 24
-                    font.family: root.detailed ? Theme.labelFont : Theme.dataFont
-                    font.pixelSize: root.detailed ? 19 : root.integrated ? Theme.small : Theme.small + 1
-                    font.letterSpacing: root.detailed ? 0 : root.integrated ? 1.1 : .6
-                    color: root.alert && !root.detailed && root.activity?.priority >= 2 ? root.accent : root.integrated ? Theme.strataText : Theme.text
+                    font.family: root.signalsOpen ? Theme.labelFont : Theme.dataFont
+                    font.pixelSize: root.signalsOpen ? 19 : root.integrated ? Theme.small : Theme.small + 1
+                    font.letterSpacing: root.signalsOpen ? 0 : root.integrated ? 1.1 : .6
+                    color: root.alert && !root.signalsOpen && root.activity?.priority >= 2 ? root.accent : root.integrated ? Theme.strataText : Theme.text
                 }
                 Text {
                     id: value
@@ -399,47 +433,31 @@ Item {
     }
     // Volume and brightness replace the text inside the pill; no second row.
     CoreVolume {
-        visible: root.volume && !root.panel && !root.canopyHere
+        visible: root.volumeInline
         compact: true
         x: pill.x + 10
         width: pill.width - 20
         height: root.restingHeight
         volume: root.activity?.type === "volume"
     }
-    Loader {
-        id: preview
-        active: root.peek && !root.volume && !root.detailed
-        visible: active
+    ScrollView {
+        id: fullScroll
+        visible: root.signalsOpen || root.reveal > 0
+        enabled: root.signalsOpen
         x: 18
         y: root.restingHeight + 8 + 10 * (1 - root.reveal)
         opacity: root.reveal
         width: parent.width - 36
-        sourceComponent: root.activity?.type === "media" ? mediaPreview : detailPreview
-    }
-    Component {
-        id: mediaPreview
-        CoreMedia {}
-    }
-    Component {
-        id: detailPreview
-        CoreDetails {
-            activity: root.activity
-        }
-    }
-    ScrollView {
-        id: fullScroll
-        visible: root.detailed || root.hubReveal > 0
-        x: 18
-        y: root.restingHeight + 8 + 10 * (1 - root.hubReveal)
-        opacity: root.hubReveal
-        width: parent.width - 36
-        height: parent.height - y - 18
+        height: Math.max(0, parent.height - y - 18)
         contentWidth: availableWidth
         clip: true
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-        CoreHub {
-            id: hub
+        Loader {
+            id: hubLoader
+            objectName: "coreHubLoader"
+            active: root.signalsOpen || root.keepHub
             width: fullScroll.availableWidth
+            sourceComponent: CoreHub {}
         }
     }
     GlowText {
@@ -470,6 +488,7 @@ Item {
         }
     }
     Keys.onEscapePressed: {
+        dismissOpening();
         CoreService.collapse();
         Canopy.close();
     }

@@ -167,6 +167,28 @@ ShellRoot {
                     break;
                 case 12:
                     CoreService.collapse();
+                    CoreService.remove("screenshot/test", false);
+                    CoreService.publish({
+                        id: "notification/42",
+                        type: "notification",
+                        priority: "normal",
+                        title: "Mail",
+                        subtitle: "A new message from the station",
+                        persistent: true,
+                        timeout: 4000,
+                        data: { noticeId: 42 },
+                        actions: [{ id: "notice:open", label: "Open" }]
+                    });
+                    window.shot = "core-notice";
+                    break;
+                case 13:
+                    window.check(core.height > core.restingHeight + 20, "A notification unfolds from the pill on its own");
+                    CoreService.remove("notification/42", false);
+                    window.shot = "core-notice-gone";
+                    break;
+                case 14:
+                    window.check(core.height <= core.restingHeight + .5, "The pill folds back once the notice is gone");
+                    CoreService.collapse();
                     ShellState.osdOpen = false;
                     Config.set("coreEnabled", false);
                     window.check(!CoreService.ownsOsd, "Legacy OSD remains available when Core is disabled");

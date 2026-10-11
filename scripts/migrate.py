@@ -60,6 +60,13 @@ def validate_settings(value):
         if not good: raise ValueError('Settings value has an incompatible type: '+name)
     return value
 
+def normalize_bar_style(value):
+    """Translate retired layout IDs without touching unrelated or unknown keys."""
+    result = dict(value)
+    if result.get('barStyle') in ('foxfire', 'floating', 'minimal', 'islands', 'center', 'split'):
+        result['barStyle'] = 'cedar'
+    return result
+
 def fingerprint(path):
     if path.is_symlink(): return 'link:'+os.readlink(path)
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -92,8 +99,7 @@ def migrate_locked(dirs,archive):
                 if target.exists() or target.is_symlink():
                     same=source.is_file() and target.is_file() and fingerprint(source)==fingerprint(target)
                     if not same and category=='config' and rel==Path('settings.json'):
-                        legacy=json.loads(source.read_text())
-                        if legacy.get('barStyle')=='foxfire':legacy['barStyle']='cedar'
+                        legacy=normalize_bar_style(json.loads(source.read_text()))
                         legacy['schemaVersion']=1
                         same=legacy==json.loads(target.read_text())
                     if not same:journal['preservedConflicts'].append(category+'/'+str(rel))
@@ -103,8 +109,7 @@ def migrate_locked(dirs,archive):
                 if source.is_symlink(): candidate.symlink_to(os.readlink(source))
                 else: shutil.copy2(source,candidate); candidate.chmod(0o600)
                 if category=='config' and rel==Path('settings.json'):
-                    value=validate_settings(json.loads(candidate.read_text()))
-                    if value.get('barStyle')=='foxfire': value['barStyle']='cedar'
+                    value=normalize_bar_style(validate_settings(json.loads(candidate.read_text())))
                     value['schemaVersion']=1
                     write_json(candidate,value)
                 staged.append((candidate,target))

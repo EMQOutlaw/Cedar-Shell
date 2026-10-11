@@ -228,18 +228,9 @@ FocusScope {
                 Frame {
                     order: 2
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop
-                    RowLayout { Layout.fillWidth: true
-                        SectionMark { text: "LIVE READINGS" }
-                        Item { Layout.fillWidth: true }
-                        Rectangle { width: 6; height: 6; radius: 3; color: SystemStats.available ? Theme.green : Theme.muted }
-                        GlowText { text: SystemStats.available ? "EVERY " + Math.round(SystemStats.fastCadence / 1000) + " S" : "WAITING"; font.pixelSize: 9; font.letterSpacing: 1.2; color: Theme.muted } }
-                    GridLayout { Layout.fillWidth: true; columns: 2; columnSpacing: 20; rowSpacing: 12
-                        Metric { label: "Processor"; value: SystemStats.cpu >= 0 ? Math.round(SystemStats.cpu) + "%" : "—"; trace: SystemStats.cpu >= 0 ? SystemStats.cpu / 100 : -1; order: 3 }
-                        Metric { label: "Memory"; value: SystemStats.ram >= 0 ? Math.round(SystemStats.ram * 100) + "%" : "—"; detail: SystemStats.memoryLabel; trace: SystemStats.ram >= 0 ? SystemStats.ram : -1; order: 4 }
-                        Metric { label: "Disk"; value: SystemStats.disk >= 0 ? Math.round(SystemStats.disk * 100) + "% used" : "—"; detail: Config.saved.diskPath || "/"; valueTone: SystemStats.disk >= Config.saved.coreDiskLimit / 100 ? Theme.warning : Theme.text; order: 5 }
-                        Metric { label: "Temperature"; value: SystemStats.temperature >= 0 ? Math.round(SystemStats.temperature) + " °C" : "—"; detail: "system sensor"; valueTone: SystemStats.temperature >= Config.saved.coreTemperatureLimit ? Theme.warning : Theme.text; order: 6 }
-                        Metric { label: "GPU"; value: Station.data.gpu.available ? Station.data.gpu.utilization + "%" + (Station.data.gpu.temperature !== null && Station.data.gpu.temperature !== undefined ? " · " + Math.round(Station.data.gpu.temperature) + " °C" : "") : "No supported path"; detail: Station.data.gpu.available ? "via " + Station.data.gpu.source + ", read on open and Check again" : (Station.data.gpu.reason || ""); order: 7 }
-                        Metric { label: "Uptime"; value: SystemStats.uptime; detail: "network " + (SystemStats.networkRate > 0 ? (SystemStats.networkRate / 1024).toFixed(0) + " KB/s" : "quiet"); order: 8 } }
+                    SectionMark { text: "FIELD STATION"; tone: Theme.strataAccent }
+                    GlowText { text: "Performance readings, processes and application windows live in Field Station."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.strataMuted }
+                    StrataButton { text: "Open tasks & performance"; onClicked: { Station.closeApp(); Canopy.openStation("tasks"); } }
                 }
             }
             Frame {
@@ -258,15 +249,6 @@ FocusScope {
                         StatusPill { text: modelData.status; tone: root.serviceTone(modelData.status) } }
                 }
                 GlowText { visible: !Station.services.length; text: SettingsInfo.busy ? "Reading…" : "Service health is unavailable."; color: Theme.muted; font.pixelSize: Theme.small }
-            }
-            Frame {
-                order: 4
-                Layout.fillWidth: true
-                SectionMark { text: "SHELL COST" }
-                GridLayout { Layout.fillWidth: true; columns: root.width >= 820 ? 3 : 1; columnSpacing: 20; rowSpacing: 12
-                    Metric { label: "Resident memory"; value: Station.data.shellMemoryMb >= 0 ? Math.round(Station.data.shellMemoryMb) + " MB" : "—"; detail: "this process; helpers and the GPU driver's share not included"; order: 6 }
-                    Metric { label: "Ambience"; value: VisualQuality.gaming ? "Gaming Mode" : VisualQuality.efficient ? "Performance mode" : Motion.active ? "Breathing" : "Resting"; detail: !VisualQuality.normal ? VisualQuality.reason : Theme.reducedMotion ? "Reduced Motion is on" : "pauses after " + Motion.restAfter + " s without input"; order: 7 }
-                    Metric { label: "Sampling"; value: SystemStats.instrument ? "Instrument" : SystemStats.demanded ? "Ambient" : "Idle"; detail: "CPU and memory every " + Math.round(SystemStats.fastCadence / 1000) + " s while this window is open"; order: 8 } }
             }
             GlowText { visible: Station.error !== ""; text: Station.error; color: Theme.danger; Layout.fillWidth: true; wrapMode: Text.WordWrap }
         }

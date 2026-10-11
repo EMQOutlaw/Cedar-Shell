@@ -70,10 +70,11 @@ Singleton {
     readonly property string pamService: Quickshell.env("CEDAR_PAM_SERVICE") || (omarchyIntegration ? "omarchy-lock-password" : "login")
     readonly property string pamDirectory: "/etc/pam.d"
 
-    readonly property string canonicalBarStyle: saved.barStyle === "foxfire" ? "cedar" : saved.barStyle
-    readonly property string barStyle: ["cedar", "floating", "minimal", "islands", "center", "split"].includes(canonicalBarStyle) ? canonicalBarStyle : "cedar"
-    readonly property bool barDetached: ["floating", "islands", "center", "split"].includes(barStyle)
-    readonly property bool barIslands: ["islands", "center", "split"].includes(barStyle)
+    // Retired layout preferences always resolve to Strata. Keep these read-only
+    // compatibility properties until the remaining panel consumers are folded.
+    readonly property string barStyle: "cedar"
+    readonly property bool barDetached: false
+    readonly property bool barIslands: false
     readonly property int barHeight: Math.max(40, Math.min(72, saved.barHeight))
     readonly property real barOpacity: Math.max(0.1, Math.min(1, saved.barOpacity))
     readonly property int barRadius: Math.max(0, Math.min(30, saved.barRadius))
@@ -137,8 +138,9 @@ Singleton {
         try { document = JSON.parse(store.text() || "{}"); }
         catch (error) { persistenceMessage = "Preferences contain invalid JSON. Repair the file before saving."; return; }
         if (!document || typeof document !== "object" || Array.isArray(document)) return;
-        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "focusDnd", "focusWhispers", "focusTrails", "focusQuiet", "focusAllowedApps", "focusMinutes", "barHeartwood", "barRootlines", "barKinetic", "barWhispers", "barPulse", "effectIntensity", "motionPreset", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
+        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "focusDnd", "focusWhispers", "focusTrails", "focusQuiet", "focusAllowedApps", "focusMinutes", "barHeartwood", "barRootlines", "barKinetic", "barWhispers", "barPulse", "effectIntensity", "motionPreset", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "relayRepo", "relayAgents", "relayClaudeModel", "relayClaudeEffort", "relayCodexModel", "relayCodexEffort", "relayMode", "relayRounds", "relayFirst", "relayWindowWidth", "relayWindowHeight", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin"];
         keys.forEach(key => document[key] = saved[key]);
+        document.barStyle = "cedar";
         store.setText(JSON.stringify(document, null, 2) + "\n");
     }
     Process { command: ["mkdir", "-p", "-m", "700", root.settingsDir, root.stateDir]; running: true }
@@ -220,6 +222,18 @@ Singleton {
             // Shield: preferred DNS-over-TLS provider and whether a network change triggers a fresh read while the window is closed.
             property string shieldDnsProvider: "cloudflare"
             property bool shieldWatchNetwork: true
+            // CEDAR AI: the checkout the agents work in ("" = this shell's), which agents (both | claude | codex), what they may do, rounds before pausing (0 = until done), who opens, and the window's last size.
+            property string relayRepo: ""
+            property string relayAgents: "both"
+            property string relayClaudeModel: ""   // "" = the tool's own default; else an alias or full name
+            property string relayClaudeEffort: ""  // "" | low | medium | high | xhigh | max
+            property string relayCodexModel: ""
+            property string relayCodexEffort: ""   // "" | minimal | low | medium | high | xhigh
+            property string relayMode: "edit"
+            property int relayRounds: 0
+            property string relayFirst: "claude"
+            property int relayWindowWidth: 1120
+            property int relayWindowHeight: 760
             property bool canopyEnabled:true
             property bool canopyPeek:true
             property bool forestPulse:true

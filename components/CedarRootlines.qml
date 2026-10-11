@@ -139,7 +139,7 @@ Item {
                 color: branch.ink; opacity: branch.lit * .18 * root.strength
                 Rectangle {
                     anchors.centerIn: parent; width: 2; height: 2; radius: 1
-                    color: Qt.tint(branch.ink, "#80ffffff"); opacity: branch.lit
+                    color: Qt.tint(branch.ink, Theme.rootlineHighlight); opacity: branch.lit
                 }
             }
             Shape {

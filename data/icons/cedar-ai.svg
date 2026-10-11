@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- CEDAR AI: two agents on one line, a reply passing between them, under the cedar's canopy. -->
+  <path d="M8 14 L50 14 L56 20 L56 50 L14 50 L8 44 Z" fill="#101E19" stroke="#3FE0C5" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M14 20 H34" stroke="#3FE0C5" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+  <path d="M22 34 H42" stroke="#3FE0C5" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>
+  <path d="M38 30.5 L42 34 L38 37.5" fill="none" stroke="#3FE0C5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+  <circle cx="18" cy="34" r="5.5" fill="#F2C879"/>
+  <circle cx="46" cy="34" r="5.5" fill="#3FE0C5"/>
+  <path d="M32 44 V26" stroke="#9DFFB0" stroke-width="1.8" stroke-linecap="round" opacity=".8"/>
+  <g stroke="#9DFFB0" stroke-width="1.6" stroke-linecap="round" fill="none" opacity=".8">
+    <path d="M32 40 Q29 39 27 37"/><path d="M32 40 Q35 39 37 37"/>
+    <path d="M32 33 Q29.5 32 28 30"/><path d="M32 33 Q34.5 32 36 30"/>
+  </g>
+</svg>

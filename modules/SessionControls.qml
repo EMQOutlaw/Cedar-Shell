@@ -76,7 +76,7 @@ ColumnLayout {
         event.accepted = true;
     }
 
-    // Title: the lantern phrase, with a filament that lights beneath it.
+    // The same spaced title and grain rule as the Strata drops.
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 6
@@ -85,14 +85,14 @@ ColumnLayout {
         RowLayout {
             Layout.fillWidth: true
             GlowText {
-                text: "TEND THE LIGHT"
+                text: "POWER & SESSION"
                 font.family: Theme.labelFont
-                font.pixelSize: root.embedded ? 22 : 28
-                font.letterSpacing: 2 + 6 * (1 - root.beat(0, .6))
-                color: Theme.green
+                font.pixelSize: Math.round((root.embedded ? 24 : 28) * Theme.fontScale)
+                font.letterSpacing: 1.8
+                color: Theme.strataAccent
             }
             Item { Layout.fillWidth: true }
-            StationButton { visible: root.embedded; text: "×"; hint: "Close"; iconOnly: true; onClicked: root.leave() }
+            StrataButton { visible: root.embedded; text: "×"; hint: "Close"; iconOnly: true; onClicked: root.leave() }
         }
         Item {
             Layout.fillWidth: true
@@ -100,8 +100,8 @@ ColumnLayout {
             Rectangle {
                 width: parent.width * root.beat(.3, .6)
                 height: 1
-                color: Qt.alpha(Theme.teal, .28)
-                Rectangle { anchors.right: parent.right; width: Math.min(parent.width, 100); height: 1; color: Theme.green; opacity: .8 * (1 - root.beat(.6, .4)) }
+                color: Qt.alpha(Theme.strataAccent, .28)
+                Rectangle { anchors.right: parent.right; width: Math.min(parent.width, 100); height: 1; color: Theme.strataAccent; opacity: .8 * (1 - root.beat(.6, .4)) }
             }
         }
     }
@@ -110,11 +110,11 @@ ColumnLayout {
         spacing: 8
         opacity: root.beat(1)
         transform: Translate { y: 6 * (1 - root.beat(1)) }
-        StatusPill { text: "Up " + SystemStats.uptime; tone: Theme.teal }
+        StatusPill { text: "Up " + SystemStats.uptime; tone: Theme.strataAccent }
         StatusPill {
             visible: UPower.displayDevice?.isPresent ?? false
             text: Math.round((UPower.displayDevice?.percentage ?? 0) * 100) + "% · " + (UPower.onBattery ? "battery" : "plugged in")
-            tone: UPower.onBattery && (UPower.displayDevice?.percentage ?? 1) < .2 ? Theme.amber : Theme.green
+            tone: UPower.onBattery && (UPower.displayDevice?.percentage ?? 1) < .2 ? Theme.amber : Theme.strataAccent
         }
         StatusPill { visible: root.pending !== ""; text: "Confirm " + root.words[root.pending]; tone: Theme.amber }
     }
@@ -122,7 +122,7 @@ ColumnLayout {
         Layout.fillWidth: true
         wrapMode: Text.WordWrap
         text: root.pending ? root.words[root.pending] + ": " + root.notes[root.pending] + ". Press Enter or Confirm to go ahead." : "Rest a while. We'll keep your place."
-        color: root.pending ? Theme.amber : Theme.muted
+        color: root.pending ? Theme.amber : Theme.strataMuted
         opacity: root.beat(1)
     }
     // One tile per action; the armed one glows amber, shut down keeps an ember edge.
@@ -141,7 +141,7 @@ ColumnLayout {
                 readonly property bool armed: root.pending === modelData
                 readonly property bool grave: modelData === "shutdown"
                 readonly property real sweep: root.beat(2 + index * .7, .4)
-                readonly property color tone: armed ? Theme.amber : grave ? Theme.ember : Theme.teal
+                readonly property color tone: armed ? Theme.amber : grave ? Theme.ember : Theme.strataAccent
                 Layout.fillWidth: true; Layout.preferredWidth: 1
                 implicitHeight: 84
                 opacity: sweep
@@ -150,10 +150,10 @@ ColumnLayout {
                 Accessible.name: root.words[modelData]
                 ChamferFrame {
                     anchors.fill: parent
-                    cut: 7
-                    fill: tile.armed ? Qt.alpha(Theme.amber, .08) : tile.current ? Qt.alpha(Theme.green, .06) : hover.containsMouse ? Qt.alpha(Theme.teal, .05) : Qt.alpha(Theme.background, .5)
-                    stroke: tile.armed ? Qt.alpha(Theme.amber, .7) : tile.current ? Qt.alpha(Theme.green, .55) : tile.grave ? Qt.alpha(Theme.ember, .35) : hover.containsMouse ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .13)
-                    line: tile.current || tile.armed; lineColor: tile.armed ? Theme.amber : Theme.green; lineFraction: .55
+                    cut: Theme.strataCut
+                    fill: tile.armed ? Qt.alpha(Theme.amber, .08) : tile.current ? Qt.alpha(Theme.strataAccent, .06) : hover.containsMouse ? Qt.alpha(Theme.strataAccent, .05) : Qt.alpha(Theme.strataFoundation, .5)
+                    stroke: tile.armed ? Qt.alpha(Theme.amber, .7) : tile.current ? Qt.alpha(Theme.strataAccent, .55) : tile.grave ? Qt.alpha(Theme.ember, .35) : hover.containsMouse ? Qt.alpha(Theme.strataAccent, .35) : Qt.alpha(Theme.strataAccent, .13)
+                    line: tile.current || tile.armed; lineColor: tile.armed ? Theme.amber : Theme.strataAccent; lineFraction: .55
                 }
                 Column {
                     anchors.centerIn: parent
@@ -173,7 +173,7 @@ ColumnLayout {
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
                         font.family: Theme.dataFont; font.pixelSize: 9; font.letterSpacing: 1.2
-                        color: tile.armed ? Theme.amber : tile.current ? Theme.green : Theme.text
+                        color: tile.armed ? Theme.amber : tile.current ? Theme.strataAccent : Theme.strataText
                     }
                 }
                 MouseArea {
@@ -190,13 +190,13 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         opacity: root.beat(5)
-        StationButton {
+        StrataButton {
             visible: root.pending !== ""
             text: "CONFIRM"
             accent: Theme.amber
             onClicked: root.confirm()
         }
-        StationButton {
+        StrataButton {
             visible: !root.embedded || root.pending !== ""
             text: root.pending ? "CANCEL" : "CLOSE"
             onClicked: root.leave()
@@ -204,7 +204,7 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
         GlowText {
             text: root.pending ? "ENTER confirm   /   ESC cancel" : "ENTER choose   /   arrows move   /   ESC close"
-            color: Theme.muted
+            color: Theme.strataMuted
             font.pixelSize: 10
             elide: Text.ElideRight
         }

@@ -17,7 +17,7 @@ ColumnLayout {
     }
     GlowText {
         text: root.activity?.subtitle || "All activities will gather here."
-        color: Theme.muted
+        color: Theme.strataMuted
         Layout.fillWidth: true
         wrapMode: Text.WordWrap
         font.pixelSize: Theme.small
@@ -25,7 +25,7 @@ ColumnLayout {
     GlowText {
         visible: root.activity?.type === "timer"
         text: CoreService.timer.completed ? "00:00" : Media.elapsed(CoreService.timer.remaining)
-        color: Theme.green
+        color: Theme.strataAccent
         font.pixelSize: 34
         font.family: Theme.labelFont
     }
@@ -45,13 +45,13 @@ ColumnLayout {
         Rectangle {
             width: parent.width * Math.max(0, root.activity?.progress ?? 0)
             height: parent.height
-            color: Theme.teal
+            color: Theme.strataAccent
         }
     }
     GlowText {
         visible: !!root.activity?.source && root.activity.source !== "cedar"
         text: "From " + (root.activity?.source || "")
-        color: Theme.muted
+        color: Theme.strataMuted
         font.pixelSize: Theme.small
     }
     Flow {
@@ -59,14 +59,14 @@ ColumnLayout {
         spacing: 6
         Repeater {
             model: root.activity?.actions || []
-            StationButton {
+            StrataButton {
                 required property var modelData
                 text: CoreService.confirmTrash === root.activity?.id && modelData.id === "trash-file" ? "Confirm Trash" : modelData.label
                 enabled: !CoreService.actionBusy
                 onClicked: CoreService.invoke(root.activity, modelData.id)
             }
         }
-        StationButton {
+        StrataButton {
             visible: CoreService.confirmTrash === root.activity?.id
             text: "Cancel"
             onClicked: CoreService.confirmTrash = ""
@@ -77,7 +77,7 @@ ColumnLayout {
         text: NoticeStore.live.find(n => n.id === root.activity?.data.noticeId)?.body || ""
         Layout.fillWidth: true
         wrapMode: Text.WordWrap
-        color: Theme.muted
+        color: Theme.strataMuted
         font.pixelSize: Theme.small
     }
 }

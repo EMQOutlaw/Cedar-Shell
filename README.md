@@ -2,7 +2,7 @@
 
 **A living desktop environment for Hyprland.** *Rooted in faith. Built with care.*
 
-CEDAR is a complete desktop shell for the Hyprland compositor: a bar in six styles, a central Core pill, Quick Controls, Field Station, searchable Settings, the Go launcher, notifications, on-screen displays, real system instruments, the Trailwatch lock screen, CEDAR Shield for network privacy, and a Gaming Mode. It is quiet, works offline, and keeps your existing applications, displays and settings.
+CEDAR is a complete desktop shell for the Hyprland compositor: the continuous Strata bar, a central Core pill, Quick Controls, Field Station, searchable Settings, the Go launcher, notifications, on-screen displays, real system instruments, the Trailwatch lock screen, CEDAR Shield for network privacy, and a Gaming Mode. It is quiet, works offline, and keeps your existing applications, displays and settings.
 
 > **Release 0.1.0.** This is CEDAR's first release. The first-party source and artwork remain unlicensed by the owner's decision: please do not redistribute them under an invented license. Upstream notices are in [credits](docs/LICENSES.md).
 

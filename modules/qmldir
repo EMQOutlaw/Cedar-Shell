@@ -1,7 +1,5 @@
 Background 1.0 Background.qml
 Bar 1.0 Bar.qml
-BarIslands 1.0 BarIslands.qml
-BarLayoutPreview 1.0 BarLayoutPreview.qml
 BluetoothSettings 1.0 BluetoothSettings.qml
 ConnectionSettings 1.0 ConnectionSettings.qml
 ControlCenter 1.0 ControlCenter.qml
@@ -32,7 +30,6 @@ SettingsOverview 1.0 SettingsOverview.qml
 SystemSettings 1.0 SystemSettings.qml
 CedarCore 1.0 CedarCore.qml
 CoreSettings 1.0 CoreSettings.qml
-BarContents 1.0 BarContents.qml
 StrataBarContents 1.0 StrataBarContents.qml
 CoreWindow 1.0 CoreWindow.qml
 DefaultAppsSettings 1.0 DefaultAppsSettings.qml
@@ -43,7 +40,6 @@ CalendarCanopy 1.0 CalendarCanopy.qml
 NotificationCanopy 1.0 NotificationCanopy.qml
 TrailCanopy 1.0 TrailCanopy.qml
 ClipboardCanopy 1.0 ClipboardCanopy.qml
-SystemCanopy 1.0 SystemCanopy.qml
 WeatherCanopy 1.0 WeatherCanopy.qml
 
 TrailwatchView 1.0 TrailwatchView.qml
@@ -75,3 +71,6 @@ FocusPages 1.0 FocusPages.qml
 StationApp 1.0 StationApp.qml
 StationPages 1.0 StationPages.qml
 WorkspaceCanopy 1.0 WorkspaceCanopy.qml
+RelayApp 1.0 RelayApp.qml
+RelayPages 1.0 RelayPages.qml
+StationTasks 1.0 StationTasks.qml

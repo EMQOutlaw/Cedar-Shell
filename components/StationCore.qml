@@ -33,9 +33,9 @@ Item {
             const c = getContext("2d"); c.reset();
             const r = Math.min(width,height)/2;
             const gradient = c.createRadialGradient(width/2,height/2,12,width/2,height/2,r);
-            gradient.addColorStop(0, Qt.alpha(Theme.green,0.11));
-            gradient.addColorStop(0.6, Qt.alpha(Theme.green,0.055));
-            gradient.addColorStop(1, Qt.alpha(Theme.green,0));
+            gradient.addColorStop(0, Qt.alpha(Theme.strataAccent,0.11));
+            gradient.addColorStop(0.6, Qt.alpha(Theme.strataAccent,0.055));
+            gradient.addColorStop(1, Qt.alpha(Theme.strataAccent,0));
             c.fillStyle=gradient; c.fillRect(0,0,width,height);
         }
     }
@@ -48,13 +48,13 @@ Item {
             const x = width / 2, y = height / 2, r = Math.min(x, y) - 12;
             c.lineWidth = 1;
             for (const offset of [0, 16]) {
-                c.strokeStyle = Qt.alpha(Theme.teal, offset === 0 ? 0.28 : 0.12);
+                c.strokeStyle = Qt.alpha(Theme.strataAccent, offset === 0 ? 0.28 : 0.12);
                 c.beginPath(); c.arc(x, y, r - offset, 0, Math.PI * 2); c.stroke();
             }
             for (let i = 0; i < 60; i++) {
                 const a = i * Math.PI / 30;
                 const length = i % 5 === 0 ? 6 : 2;
-                c.strokeStyle = Qt.alpha(Theme.teal, i % 5 === 0 ? 0.45 : 0.16);
+                c.strokeStyle = Qt.alpha(Theme.strataAccent, i % 5 === 0 ? 0.45 : 0.16);
                 c.beginPath(); c.moveTo(x + (r-3)*Math.cos(a), y + (r-3)*Math.sin(a));
                 c.lineTo(x + (r-3-length)*Math.cos(a), y + (r-3-length)*Math.sin(a)); c.stroke();
             }
@@ -68,9 +68,9 @@ Item {
         onPaint: {
             const c = getContext("2d"); c.reset();
             const x = width/2, y = height/2, r = Math.min(x,y)-12;
-            c.lineWidth = 2; c.lineCap = "round"; c.strokeStyle = Theme.green;
+            c.lineWidth = 2; c.lineCap = "round"; c.strokeStyle = Theme.strataAccent;
             c.beginPath(); c.arc(x,y,r,-Math.PI/2,-Math.PI/2+0.38); c.stroke();
-            c.lineWidth = 1; c.strokeStyle = Qt.alpha(Theme.green, 0.5);
+            c.lineWidth = 1; c.strokeStyle = Qt.alpha(Theme.strataAccent, 0.5);
             c.beginPath(); c.arc(x,y,r-16,Math.PI*0.35,Math.PI*0.8); c.stroke();
         }
         RotationAnimator on rotation {
@@ -82,9 +82,9 @@ Item {
         anchors.centerIn: parent
         spacing: 8
         width: parent.width - 52
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "THE LIGHT STAYS ON"; font.family: Theme.dataFont; font.pixelSize: 10; font.letterSpacing: 1.2; color: Theme.muted }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.time; font.family: Theme.labelFont; font.pixelSize: 58; font.weight: Font.Light; color: Theme.text }
-        Text { visible: root.period !== ""; width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.period; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.green }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.date; font.family: Theme.dataFont; font.pixelSize: 11; color: Theme.teal }
+        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "THE LIGHT STAYS ON"; font.family: Theme.dataFont; font.pixelSize: 10; font.letterSpacing: 1.2; color: Theme.strataMuted }
+        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.time; font.family: Theme.labelFont; font.pixelSize: 58; font.weight: Font.Light; color: Theme.strataText }
+        Text { visible: root.period !== ""; width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.period; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.strataAccent }
+        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.date; font.family: Theme.dataFont; font.pixelSize: 11; color: Theme.strataAccent }
     }
 }

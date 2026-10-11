@@ -337,15 +337,21 @@ Scope {
                 ]
             }))
                 service.routedNoticeIds = service.routedNoticeIds.concat([n.id]);
-        } else if (n.urgency === 2 && service.allowed("notification")) {
+        } else if (service.allowed("notification") && (n.urgency === 2 || !Config.saved.doNotDisturb || Focus.allows(n.appName))) {
+            // Every notification is a signal of the pill: it unfolds from the
+            // pill when it arrives and gathers in Signals. Do Not Disturb keeps
+            // ordinary ones out, as it keeps them off the fallback cards; a
+            // notice lives as long as the server keeps it (NotificationServer
+            // expires it), so the row is persistent and leaves with it.
             if (service.publish({
                 id: "notification/" + n.id,
                 type: "notification",
-                priority: "critical",
+                priority: n.urgency === 2 ? "critical" : n.urgency === 0 ? "passive" : "normal",
                 title: n.appName || "Notification",
                 subtitle: n.summary,
                 persistent: true,
-                timeout: 6000,
+                announce: n.urgency !== 0,
+                timeout: Math.max(3, Config.saved.notificationSeconds) * 1000,
                 data: {
                     noticeId: n.id
                 },

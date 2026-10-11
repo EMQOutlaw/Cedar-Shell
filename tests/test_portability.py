@@ -438,14 +438,81 @@ sys.stdin.buffer.read(1)
 
     def test_menu_routes_every_action_to_real_ipc(self):
         menu = d.read_json(d.ROOT / 'menus/cedar-menu.jsonc')
-        with patch.object(runtime, 'ipc') as call:
+        with patch.object(runtime, 'ipc') as call, patch.object(runtime, 'capture', return_value='') as shot:
             for item in menu.values():
                 if 'action' not in item: continue
                 self.assertTrue(item['action'].startswith('cedar:'))
                 runtime.main(item['action'][6:].split())
             self.assertGreater(call.call_count, 12)
+        # Capture is the one route that runs a local tool instead of the shell.
+        self.assertEqual(sorted(c.args[0] for c in shot.call_args_list), sorted(runtime.CAPTURE_MODES))
+        self.assertEqual(menu['capture']['when'], 'command -v grim')
+        self.assertEqual(menu['capture.region']['when'], 'command -v slurp')
         self.assertIn('apps', menu)
         self.assertNotIn('omarchy', json.dumps(menu).lower())
+
+    def test_capture_screenshots_with_grim(self):
+        (self.base / 'config').mkdir(exist_ok=True)
+        (self.base / 'config/user-dirs.dirs').write_text('XDG_PICTURES_DIR="$HOME/Shots"\n')
+        home = self.base / 'home'; home.mkdir(exist_ok=True)
+        window = {'address': '0x1', 'at': [10, 20], 'size': [300, 200]}
+        monitors = [{'name': 'DP-1', 'focused': False, 'x': 0, 'y': 0, 'width': 1920, 'height': 1080, 'scale': 1},
+                    {'name': 'DP-2', 'focused': True, 'x': 1920, 'y': 0, 'width': 3840, 'height': 2160, 'scale': 2}]
+
+        def fake_run(argv):
+            calls.append(argv)
+            if argv[:3] == ['hyprctl', '-j', 'activewindow']: return json.dumps(window)
+            if argv[:3] == ['hyprctl', '-j', 'monitors']: return json.dumps(monitors)
+            if argv[0] == 'grim': Path(argv[-1]).write_bytes(b'\x89PNG'); return ''
+            raise AssertionError(argv)
+
+        def fake_subprocess(argv, **_):
+            calls.append(argv)
+            if argv[0] == 'slurp': return subprocess.CompletedProcess(argv, slurp['code'], slurp['out'], '')
+            return subprocess.CompletedProcess(argv, 0, '', '')
+
+        tools = {'grim', 'slurp', 'wl-copy', 'notify-send'}
+        with patch.object(runtime.Path, 'home', return_value=home), patch.object(runtime, 'run', side_effect=fake_run), \
+                patch.object(runtime.subprocess, 'run', side_effect=fake_subprocess), \
+                patch.object(runtime.shutil, 'which', side_effect=lambda name: '/usr/bin/' + name if name in tools else None):
+            for mode, geometry in [('window', '10,20 300x200'), ('output', '1920,0 1920x1080'), ('all', None)]:
+                calls = []
+                saved = Path(runtime.capture(mode))
+                self.assertEqual(saved.parent, home / 'Shots/Screenshots')
+                self.assertTrue(saved.name.startswith('screenshot-') and saved.suffix == '.png' and saved.is_file())
+                grim = next(c for c in calls if c[0] == 'grim')
+                self.assertEqual(grim, ['grim', '-g', geometry, str(saved)] if geometry else ['grim', str(saved)])
+                self.assertIn(['wl-copy', '--type', 'image/png'], calls)
+                self.assertTrue(any(c[0] == 'notify-send' and str(saved) in c for c in calls))
+            calls = []; slurp = {'code': 0, 'out': '5,6 70x80\n'}
+            saved = runtime.capture('region')
+            self.assertEqual(next(c for c in calls if c[0] == 'grim')[:3], ['grim', '-g', '5,6 70x80'])
+            calls = []; slurp = {'code': 1, 'out': ''}
+            self.assertEqual(runtime.capture('region'), '')
+            self.assertFalse(any(c[0] == 'grim' for c in calls))
+            with self.assertRaises(ValueError): runtime.capture('clipboard')
+            # Two captures inside one second never overwrite each other.
+            with patch.object(runtime, 'datetime') as clock:
+                clock.now.return_value.strftime.return_value = 'screenshot-2026-10-10_12-00-00'
+                first, second, third = (Path(runtime.capture('all')) for _ in range(3))
+            self.assertEqual([p.name for p in (first, second, third)],
+                             ['screenshot-2026-10-10_12-00-00.png', 'screenshot-2026-10-10_12-00-00-2.png', 'screenshot-2026-10-10_12-00-00-3.png'])
+            self.assertTrue(first.is_file() and second.is_file() and third.is_file())
+            # A hung clipboard or notifier never reports a saved capture as failed, and one failing does not silence the other.
+            def hanging(argv, **_):
+                calls.append(argv)
+                if argv[0] in ('wl-copy', 'notify-send'): raise subprocess.TimeoutExpired(argv, 10)
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with patch.object(runtime.subprocess, 'run', side_effect=hanging):
+                calls = []
+                self.assertTrue(Path(runtime.capture('all')).is_file())
+                self.assertEqual([c[0] for c in calls if c[0] in ('wl-copy', 'notify-send')], ['wl-copy', 'notify-send'])
+            with patch.object(runtime.subprocess, 'run', side_effect=OSError('no bus')):
+                self.assertTrue(Path(runtime.capture('all')).is_file())
+            tools.discard('slurp')
+            with self.assertRaisesRegex(RuntimeError, 'slurp'): runtime.capture('region')
+            tools.discard('grim')
+            with self.assertRaisesRegex(RuntimeError, 'grim'): runtime.capture('window')
 
     def test_noctalia_v4_changes_only_approved_surfaces(self):
         original = {'settingsVersion': 59, 'bar': {'position': 'bottom', 'displayMode': 'auto_hide',

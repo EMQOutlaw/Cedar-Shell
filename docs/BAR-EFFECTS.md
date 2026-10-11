@@ -12,27 +12,26 @@ Canopy transitions use `VisualQuality.functionalMotion`: Efficient and Gaming
 shorten them, while Reduced Motion and Off disable them.
 
 The continuous cedar layout is described in [Strata bar](STRATA-BAR.md).
-Other layouts retain their own arrangements and effects.
+Strata is the only supported layout.
 
 Where each one lives in the running bar, so nothing here is a scaffold:
 
 | Instrument | Component | Instantiated in |
 | --- | --- | --- |
-| Awakening | `modules/Bar.qml` (cedar grain lift and root growth; legacy sweep), `CedarRootlines.grow()`, `CedarHeartwood.awaken()` | `modules/Bar.qml` per output; `components/core/CoreSurface.qml` |
+| Awakening | `modules/Bar.qml` (grain lift and root growth), `CedarRootlines.grow()`, `CedarHeartwood.awaken()` | `modules/Bar.qml` per output; `components/core/CoreSurface.qml` |
 | Heartwood | `components/CedarHeartwood.qml` | `components/core/CoreSurface.qml`, up to 24 px at rest, 44 px in the hub |
 | Rootlines | `components/CedarRootlines.qml` | `modules/Bar.qml`, between the frame and the controls, per output |
 | Strata frame | `components/StrataBarFrame.qml`, `components/DropFrame.qml` | cedar bar; `modules/CanopyWindow.qml`, every drop |
-| Workspace glide | `modules/StrataBarContents.qml`, `modules/BarContents.qml` | the workspace row |
+| Workspace glide | `modules/StrataBarContents.qml` | the workspace row |
 | Kinetic Type | `components/KineticLabel.qml`, `KineticStatus.qml`, `KineticNumber.qml` | `components/StatusPill.qml` (every status word), `modules/QuickControls.qml` (tile values), `components/core/CoreSurface.qml` (the pill's title), `components/CedarWhispers.qml` |
-| Whispers | `components/CedarWhispers.qml` | `modules/StrataBarContents.qml` and `modules/BarContents.qml`, the text region |
-| Canopy Pulse | `components/CanopyPulse.qml` over `services/Pulse.qml` | `modules/StrataBarContents.qml` and `modules/BarContents.qml`, before the tray; `components/AudioSpectrum.qml` shares the feed |
+| Whispers | `components/CedarWhispers.qml` | `modules/StrataBarContents.qml`, the text region |
+| Canopy Pulse | `components/CanopyPulse.qml` over `services/Pulse.qml` | `modules/StrataBarContents.qml`, before the tray; `components/AudioSpectrum.qml` shares the feed |
 
 ## The awakening
 
 When the shell starts (not in test mode), cedar lifts the light on
 its retained grain edge and grows its Rootlines outward once, then rests.
-Other layouts also sweep a band of light across the top once. Controls are visible
-and usable immediately in every layout. Heartwood arrives spread and turned,
+Controls are visible and usable immediately. Heartwood arrives spread and turned,
 its three rings settling into place while the glow fades.
 Awakening starts 220 ms after the compositor has mapped the
 bar's window (`PanelWindow.backingWindowVisible`), not at component
@@ -40,8 +39,7 @@ completion, because the shell finishes loading well before the bar is on
 screen. `VisualQuality.awakened` tells Heartwood when the first bar is up;
 its five-second fallback prevents it staying hidden if the window never
 maps. Desktop Profile changes ripple Heartwood and pulse the center roots in
-cedar; Expressive also regrows those roots in the profile's accent. Legacy
-layouts always regrow Rootlines on a profile change. Nothing repeats on its own.
+cedar; Expressive also regrows those roots in the profile's accent. Nothing repeats on its own.
 
 ## Heartwood
 
@@ -58,8 +56,7 @@ travelling the circumference. States, all from real desktop state:
   through one segment, still a finite response to pointer entry
 - click: a bloom — the instrument swells to 128 % in Balanced (112 % in Calm,
   138 % in Expressive) and springs back while a
-  white light runs the outer ring — then Signals opens in cedar, or Quick
-  Controls in other layouts
+  white light runs the outer ring — then Signals opens
 - a signal arriving (the pill's alert): a ring ripples outward and fades
 - a panel unfolding from the pill: the rings separate radially and settle
 - Gaming Mode: the outer ring brightens and thickens, completes one slow
@@ -79,24 +76,17 @@ current or growth front reaches them. Paths are retained; animation changes ligh
 
 Cedar uses finite event responses and fades the underlying root back into
 its grain afterwards. Balanced keeps muted accents; Expressive gives those
-events their brighter semantic accents. The repeating open-panel currents
-below apply only to legacy layouts.
+events their brighter semantic accents.
 
 - On awakening, the root reveals from the centre over 1.25 s and the branches
   appear as growth reaches them (duration follows the motion preset).
-- In legacy layouts, while a panel is open on that output, two soft currents travel toward its
-  control over 2.6 s. Nearby branches catch the light as it passes. A small
-  pool of light seats the control on the root; it fades when the panel closes.
 - A panel opening sends a single soft light from the nearest end to its control.
 - A Desktop Profile change or Focus starting or stopping lights the centre
-  branches. Changing profile also regrows the drawing in Expressive and in
-  legacy layouts.
+  branches. Changing profile also regrows the drawing in Expressive.
 - Shield's posture moving sends a light toward the Core pill, amber for
   attention and green for protected.
 - Hidden surfaces, Reduced Motion, performance mode and user inactivity stop
   the animations, including effects already in flight. The idle bar is static.
-
-Hidden in the islands layouts, whose plates are separate.
 
 ## The unfolding sequence
 
@@ -107,7 +97,7 @@ Foundation extends into the panel on the morph curve with a band of light
 along its leading edge (`DropFrame.growing`); the Grain contour follows
 eighty milliseconds later; a long bright dash traces the Living Edge once
 around the new boundary; the content reveals after the geometry; the
-Rootline trace settles (legacy layouts retain a current while open).
+Rootline trace settles.
 Hiding the drop, Reduced Motion, Off, performance mode and user inactivity
 cancel its in-flight Grain reveal and Living Edge tracer; the grain remains
 fully drawn in its static state.
