@@ -13,6 +13,8 @@ ShellRoot {
         visible: true
         implicitWidth: 1000
         implicitHeight: 900
+        // The offscreen host supplies CanopyWindow's native Escape handler.
+        contentItem.Keys.onEscapePressed: Canopy.close()
         CoreSurface {
             id: core
             x: 300
@@ -58,9 +60,8 @@ ShellRoot {
                 wait(20);
             }
             function test_navigation() {
-                // These established checks exercise the legacy Core that owns
-                // Quick Controls and the neighbouring network entry.
-                Config.set("barStyle", "floating");
+                // Quick Controls and Connections now belong to the right rail.
+                Config.set("barStyle", "cedar");
                 Config.set("reducedMotion", true);
                 Config.set("coreWarnings", false);
                 Config.set("canopyEnabled", true);
@@ -71,14 +72,13 @@ ShellRoot {
                 compare(grab.windows.length, 2);
                 Canopy.unregisterControls(window);
                 compare(Canopy.controlWindows.length, 0);
-                const header = named(core, "coreHeader"), network = named(core, "coreNetwork");
-                verify(header.width + network.width <= core.width);
+                const header = named(strata.item, "strataQuick"), network = named(strata.item, "strataNetwork");
                 click(header);
                 compare(Canopy.topic, "quick");
                 verify(Canopy.shown);
                 const volume = named(canopy, "quickVolume");
                 verify(volume !== null);
-                verify(volume.mapToItem(canopy, 0, 0).y < 400, "Volume immediately visible");
+                verify(!volume.visible, "Bar audio owns volume controls");
                 click(header);
                 verify(!Canopy.shown);
                 for (const type of ["media", "network", "warning", "notification"]) {
@@ -119,19 +119,17 @@ ShellRoot {
                 compare(Canopy.topic, "quick");
                 header.forceActiveFocus();
                 verify(header.activeFocus);
-                keyClick(Qt.Key_Return);
+                keyClick(Qt.Key_Space);
                 wait(20);
                 verify(!Canopy.shown);
-                keyClick(Qt.Key_Return);
+                keyClick(Qt.Key_Space);
                 wait(20);
                 verify(Canopy.shown);
                 keyClick(Qt.Key_Escape);
                 wait(20);
                 verify(!Canopy.shown);
-                header.forceActiveFocus();
-                keyClick(Qt.Key_Tab);
-                wait(20);
-                verify(network.activeFocus, "Network is the next focus target");
+                network.forceActiveFocus();
+                verify(network.activeFocus, "Connections accepts keyboard focus");
                 ShellState.open("control");
                 compare(Canopy.topic, "quick");
                 compare(ShellState.panel, "canopy");
@@ -234,6 +232,81 @@ ShellRoot {
                 verify(!CoreService.expanded && !Canopy.shown, "Strata actions respect the lock guard");
                 ShellState.locked = false;
                 console.log("PASS: Strata Signals header and right-side Quick/Network pointer and keyboard routes");
+            }
+            function signalCheck(ok, message = "Signals assertion") {
+                if (!ok) {
+                    console.error("FAIL: " + message);
+                    fail(message);
+                }
+            }
+            function signalCompare(actual, expected, message) {
+                signalCheck(actual === expected, message + ": " + actual + " != " + expected);
+            }
+            function test_unified_signals() {
+                Config.set("barStyle", "cedar");
+                Config.set("coreEnabled", true);
+                ShellState.locked = false;
+                Canopy.close();
+                CoreService.collapse();
+                const header = named(core, "coreHeader");
+                const loader = named(core, "coreHubLoader");
+                for (const reduced of [true, false]) {
+                    Config.set("reducedMotion", reduced);
+                    mouseMove(window.contentItem, 950, 850);
+                    wait(800);
+                    signalCheck(!loader.active, "Closed Signals unloads the hub");
+                    CoreService.publish({ id: "unified-fixture", type: "integration", title: "Signal opening", persistent: true });
+                    mouseMove(header, header.width / 2, header.height / 2);
+                    wait(1000);
+                    signalCheck(core.signalsOpen && !CoreService.expanded, "Hover opens the shared Signals panel: " + JSON.stringify({open: core.signalsOpen, hover: core.hovering, dismissed: core.hoverDismissed, pinned: CoreService.expanded, canopy: Canopy.shown, volume: core.volume, active: core.active, locked: ShellState.locked, headerHovered: header.hovered, headerWidth: header.width, width: core.width, height: core.height}));
+                    signalCheck(loader.item !== null);
+                    const hub = loader.item;
+                    const height = core.height;
+                    const width = core.width;
+                    let resizes = 0;
+                    const resized = () => { resizes++; };
+                    core.heightChanged.connect(resized);
+                    click(header);
+                    wait(500);
+                    signalCheck(CoreService.expanded, "Click pins the hovered panel");
+                    signalCheck(loader.item === hub, "Pinning retains the same hub and controls");
+                    signalCompare(core.height, height, "Pinning preserves panel height");
+                    signalCompare(core.width, width, "Pinning preserves panel width");
+                    signalCompare(resizes, 0, "Pinning does not start another height animation");
+                    core.heightChanged.disconnect(resized);
+                    mouseMove(window.contentItem, 950, 850);
+                    wait(600);
+                    signalCheck(core.signalsOpen, "Pinned panel survives pointer leave");
+                    click(header);
+                    wait(800);
+                    signalCheck(!core.signalsOpen && !loader.active, "Click closes fully even while still hovered");
+                    mouseMove(window.contentItem, 950, 850);
+                    wait(300);
+                    mouseMove(header, header.width / 2, header.height / 2);
+                    wait(800);
+                    signalCheck(core.signalsOpen, "Re-entering permits a new hover opening");
+                    mouseMove(window.contentItem, 950, 850);
+                    wait(1000);
+                    signalCheck(!core.signalsOpen && !loader.active, "Leaving unpinned Signals closes and unloads it");
+                    CoreService.remove("unified-fixture", false);
+                }
+                Config.set("reducedMotion", true);
+                ShellState.osd("VOLUME", .5, "50%");
+                mouseMove(header, header.width / 2, header.height / 2);
+                wait(800);
+                signalCheck(core.volumeInline && !core.signalsOpen, "Volume remains inline on hover");
+                mouseMove(window.contentItem, 950, 850);
+                ShellState.osdOpen = false;
+                console.log("PASS: Signals shares one hover/click panel, stable pin geometry, dismissal and lazy lifetime with motion on/off");
+            }
+            function test_retired_layout_preferences() {
+                for (const style of ["floating", "minimal", "islands", "center", "split"]) {
+                    Config.set("barStyle", style);
+                    compare(Config.barStyle, "cedar");
+                    verify(!Config.barDetached && !Config.barIslands);
+                    verify(core.integrated);
+                }
+                Config.set("barStyle", "cedar");
             }
             function cleanupTestCase() {
                 Qt.quit();

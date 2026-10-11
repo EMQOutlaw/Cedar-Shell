@@ -12,14 +12,19 @@ Rectangle {
     // Bare: hosted inside a surface that already paints the card and the
     // atmosphere (the bar drop), so the station draws only its instruments.
     property bool bare: false
+    readonly property string page: Canopy.stationPage
     readonly property bool narrow: width < 680
     readonly property int inset: narrow ? 22 : 36
     readonly property var player: Media.player
     implicitHeight: content.implicitHeight + inset * 2
-    color: bare ? Theme.transparent : Qt.alpha(Theme.background, Config.panelOpacity)
-    radius: bare ? 0 : Config.panelRadius
-    border.width: bare ? 0 : 1
-    border.color: Qt.alpha(Theme.teal, 0.18)
+    color: Theme.transparent
+    ChamferFrame {
+        visible: !root.bare
+        anchors.fill: parent
+        cut: Theme.strataCut
+        fill: Qt.alpha(Theme.strataFoundation, Config.panelOpacity)
+        stroke: Qt.alpha(Theme.strataAccent, .25)
+    }
     // Entrance: one linear clock drives every instrument through ease(), so the
     // title settles, the filament lights, the dial blooms and the telemetry
     // sweeps in as a single animation of about a second. Reduced Motion snaps.
@@ -72,42 +77,42 @@ Rectangle {
                     font.pixelSize: 24
                     // The letters settle in from a wider spread.
                     font.letterSpacing: 4 + 8 * (1 - root.ease(0, .6))
-                    color: Theme.text
+                    color: Theme.strataText
                 }
                 Text {
                     text: "FIELD STATION"
                     font.family: Theme.dataFont
                     font.pixelSize: 10
                     font.letterSpacing: 2
-                    color: Theme.teal
+                    color: Theme.strataAccent
                 }
             }
             Item {
                 Layout.fillWidth: true
             }
             // Go already has a bar button; offer it here only when that is hidden.
-            StationButton {
+            StrataButton {
                 iconOnly: true
                 visible: Config.stage >= 3 && !Config.moduleEnabled("go")
                 text: "󰀻"
                 hint: "Applications"
                 onClicked: Config.saved.canopyEnabled ? Canopy.toggleTopic("go") : Go.toggle("root")
             }
-            StationButton {
+            StrataButton {
                 iconOnly: true
                 visible: Config.stage >= 3
                 text: "󰸉"
                 hint: "Wallpapers"
                 onClicked: ShellState.toggle("wallpapers")
             }
-            StationButton {
+            StrataButton {
                 iconOnly: true
                 visible: Config.stage >= 3
                 text: "󰏘"
                 hint: "Themes"
                 onClicked: ShellState.toggle("themes")
             }
-            StationButton {
+            StrataButton {
                 iconOnly: true
                 text: "×"
                 hint: "Close Field Station"
@@ -121,16 +126,31 @@ Rectangle {
             Rectangle {
                 width: parent.width * root.ease(.08, .5)
                 height: 1
-                color: Qt.alpha(Theme.teal, .28)
+                color: Qt.alpha(Theme.strataAccent, .28)
                 Rectangle {
                     anchors.right: parent.right
                     width: Math.min(parent.width, 120)
                     height: 1
-                    color: Theme.green
+                    color: Theme.strataAccent
                     opacity: .8 * (1 - root.ease(.5, .4))
                 }
             }
         }
+        RowLayout {
+            Layout.fillWidth: true
+            StrataButton { text: "Overview"; checked: root.page === "overview"; onClicked: Canopy.stationPage = "overview" }
+            StrataButton { text: "Tasks & performance"; checked: root.page === "tasks"; onClicked: Canopy.stationPage = "tasks" }
+        }
+        StationTasks {
+            objectName: "stationTasks"
+            Layout.fillWidth: true
+            visible: root.page === "tasks"
+            active: root.active && visible
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.page === "overview"
+            spacing: 24
         GridLayout {
             Layout.fillWidth: true
             columns: root.narrow ? 1 : 2
@@ -142,7 +162,7 @@ Rectangle {
                 Layout.preferredHeight: 270
                 opacity: root.ease(.05, .5)
                 scale: .9 + .1 * root.ease(.05, .6)
-                active: root.active
+                active: root.active && root.page === "overview"
                 time: Config.timeDigits(clock.date)
                 period: Config.clock24 ? "" : Qt.formatDateTime(clock.date, "AP")
                 activity: SystemStats.cpu
@@ -163,7 +183,7 @@ Rectangle {
                     Rectangle {
                         visible: SystemStats.available
                         width: 6; height: 6; radius: 3
-                        color: Theme.green
+                        color: Theme.strataAccent
                         opacity: liveBreath.running ? liveBreath.value : .9
                         Breath { id: liveBreath; running: root.active && SystemStats.available && Motion.active; from: .95; to: .35; rise: 1400; fall: 1800 }
                     }
@@ -172,12 +192,13 @@ Rectangle {
                         font.family: Theme.dataFont
                         font.pixelSize: 10
                         font.letterSpacing: 1.2
-                        color: SystemStats.available ? Theme.green : Theme.muted
+                        color: SystemStats.available ? Theme.strataAccent : Theme.strataMuted
                     }
                 }
                 ActivityTrace {
                     Layout.fillWidth: true
-                    active: root.active
+                    active: root.active && root.page === "overview"
+                    accent: Theme.strataAccent
                     value: SystemStats.cpu
                     opacity: root.ease(.3, .4)
                 }
@@ -214,10 +235,10 @@ Rectangle {
             spacing: 8
             opacity: root.ease(.4, .4)
             transform: Translate { y: 6 * (1 - root.ease(.4, .4)) }
-            StatusPill { text: "Up " + SystemStats.uptime; tone: Theme.teal }
-            StatusPill { text: Network.label; tone: Network.state === "connected" ? Theme.green : Theme.muted }
-            StatusPill { visible: Network.vpnActive; text: "VPN"; tone: Theme.green }
-            StatusPill { visible: SystemStats.available; text: "Telemetry live"; tone: Theme.green }
+            StatusPill { text: "Up " + SystemStats.uptime; tone: Theme.strataAccent }
+            StatusPill { text: Network.label; tone: Network.state === "connected" ? Theme.strataAccent : Theme.strataMuted }
+            StatusPill { visible: Network.vpnActive; text: "VPN"; tone: Theme.strataAccent }
+            StatusPill { visible: SystemStats.available; text: "Telemetry live"; tone: Theme.strataAccent }
         }
         Rule {}
         GridLayout {
@@ -240,7 +261,7 @@ Rectangle {
                     elide: Text.ElideRight
                     font.family: Theme.labelFont
                     font.pixelSize: 23
-                    color: Theme.text
+                    color: Theme.strataText
                 }
                 Text {
                     Layout.fillWidth: true
@@ -248,25 +269,25 @@ Rectangle {
                     elide: Text.ElideRight
                     font.family: Theme.dataFont
                     font.pixelSize: 11
-                    color: Theme.muted
+                    color: Theme.strataMuted
                 }
                 RowLayout {
                     spacing: 4
-                    StationButton {
+                    StrataButton {
                         iconOnly: true
                         text: "󰒮"
                         hint: "Previous track"
                         enabled: root.player?.canGoPrevious ?? false
                         onClicked: root.player.previous()
                     }
-                    StationButton {
+                    StrataButton {
                         iconOnly: true
                         text: root.player?.isPlaying ? "󰏤" : "󰐊"
                         hint: root.player?.isPlaying ? "Pause" : "Play"
                         enabled: root.player?.canTogglePlaying ?? false
                         onClicked: root.player.togglePlaying()
                     }
-                    StationButton {
+                    StrataButton {
                         iconOnly: true
                         text: "󰒭"
                         hint: "Next track"
@@ -291,7 +312,7 @@ Rectangle {
                         text: Weather.temperature
                         font.family: Theme.labelFont
                         font.pixelSize: 32
-                        color: Theme.text
+                        color: Theme.strataText
                     }
                     Text {
                         Layout.fillWidth: true
@@ -299,7 +320,7 @@ Rectangle {
                         wrapMode: Text.WordWrap
                         font.family: Theme.dataFont
                         font.pixelSize: 11
-                        color: Theme.muted
+                        color: Theme.strataMuted
                     }
                 }
                 Text {
@@ -308,7 +329,7 @@ Rectangle {
                     wrapMode: Text.WordWrap
                     font.family: Theme.dataFont
                     font.pixelSize: 11
-                    color: Theme.muted
+                    color: Theme.strataMuted
                 }
                 Text {
                     Layout.fillWidth: true
@@ -316,7 +337,7 @@ Rectangle {
                     wrapMode: Text.WordWrap
                     font.family: Theme.dataFont
                     font.pixelSize: 10
-                    color: Weather.stale ? Theme.amber : Theme.muted
+                    color: Weather.stale ? Theme.amber : Theme.strataMuted
                 }
             }
         }
@@ -329,16 +350,19 @@ Rectangle {
                 implicitWidth: 4
                 implicitHeight: 4
                 radius: 2
-                color: Theme.green
+                color: Theme.strataAccent
                 opacity: root.active ? 0.7 : 0.3
             }
+            // The greeting rotates only while Field Station is on screen; the
+            // shared index keeps every output's instance on the same line.
+            Timer { interval: 60000; repeat: true; running: root.visible; onTriggered: ShellState.rotateGreeting() }
             Text {
                 Layout.fillWidth: true
                 text: ShellState.greeting
                 elide: Text.ElideRight
                 font.family: Theme.dataFont
                 font.pixelSize: 11
-                color: Theme.muted
+                color: Theme.strataMuted
             }
         }
         Flow {
@@ -361,7 +385,7 @@ Rectangle {
                         cmd: Config.files
                     }
                 ]
-                StationButton {
+                StrataButton {
                     required property var modelData
                     text: modelData.name
                     onClicked: {
@@ -374,10 +398,10 @@ Rectangle {
             // fetches the newest CEDAR with visible steps and turns any stop into
             // what to do next; then the installer hands the desktop back,
             // installs, and starts CEDAR again. Its own scope outlives the shell.
-            StationButton {
+            StrataButton {
                 text: "Update CEDAR"
                 hint: "Update CEDAR or switch between Stable and Development"
-                accent: Theme.green
+                accent: Theme.strataAccent
                 onClicked: {
                     Quickshell.execDetached(["systemd-run", "--user", "--scope", "--quiet", "--collect", "--",
                         "python3", Quickshell.shellPath("installer/cedar_install.py"), "--update"]);
@@ -428,24 +452,25 @@ Rectangle {
                     }
                     ReadingText {
                         text: Branding.content.psalm.reference + " · " + Branding.content.psalm.translation
-                        color: Theme.muted
+                        color: Theme.strataMuted
                         font.pixelSize: Theme.normal
                     }
                 }
             }
         }
     }
+    }
     component Rule: Rectangle {
         Layout.fillWidth: true
         implicitHeight: 1
-        color: Qt.alpha(Theme.teal, 0.13)
+        color: Qt.alpha(Theme.strataAccent, 0.13)
     }
     component SectionLabel: Item {
         property alias text: label.text
         property alias elide: label.elide
         implicitWidth: 22 + label.implicitWidth
         implicitHeight: label.implicitHeight
-        Rectangle { y: Math.round(parent.height / 2); width: 14; height: 1; color: Theme.teal; opacity: .7 }
+        Rectangle { y: Math.round(parent.height / 2); width: 14; height: 1; color: Theme.strataAccent; opacity: .7 }
         Text {
             id: label
             x: 22
@@ -453,7 +478,7 @@ Rectangle {
             font.family: Theme.dataFont
             font.pixelSize: 10
             font.letterSpacing: 1.4
-            color: Theme.teal
+            color: Theme.strataAccent
         }
     }
     component Metric: ColumnLayout {
@@ -475,7 +500,7 @@ Rectangle {
                 text: metric.title
                 font.family: Theme.dataFont
                 font.pixelSize: 12
-                color: Theme.muted
+                color: Theme.strataMuted
             }
             Item {
                 Layout.fillWidth: true
@@ -484,19 +509,19 @@ Rectangle {
                 text: metric.readout
                 font.family: Theme.dataFont
                 font.pixelSize: 13
-                color: metric.value > 0.85 ? Theme.amber : Theme.text
+                color: metric.value > 0.85 ? Theme.amber : Theme.strataText
             }
         }
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 2
-            color: Qt.alpha(Theme.teal, 0.12)
+            color: Qt.alpha(Theme.strataAccent, 0.12)
             Rectangle {
                 width: parent.width * Math.max(0, Math.min(1, metric.value)) * metric.sweep
                 height: parent.height
-                color: metric.value > 0.85 ? Theme.amber : Theme.teal
+                color: metric.value > 0.85 ? Theme.amber : Theme.strataAccent
                 // A hot tip rides the end of the bar while it is lit.
-                Rectangle { visible: parent.width > 12; anchors.right: parent.right; width: 10; height: parent.height; color: Theme.green; opacity: metric.value > 0.85 ? 0 : .8 }
+                Rectangle { visible: parent.width > 12; anchors.right: parent.right; width: 10; height: parent.height; color: Theme.strataAccent; opacity: metric.value > 0.85 ? 0 : .8 }
                 Behavior on width {
                     enabled: root.active && !Theme.reducedMotion && !entrance.running
                     NumberAnimation {
@@ -511,7 +536,7 @@ Rectangle {
             text: metric.detail
             font.family: Theme.dataFont
             font.pixelSize: 10
-            color: Theme.muted
+            color: Theme.strataMuted
         }
     }
 }

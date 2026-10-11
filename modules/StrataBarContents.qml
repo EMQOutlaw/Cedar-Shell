@@ -15,7 +15,7 @@ Item {
     required property var output
     readonly property string outputName: output?.name || ""
     readonly property bool coreHost: CoreService.enabled && CoreService.hostName === outputName
-    readonly property real centerWidth: coreHost ? CoreService.reserveWidth : 96
+    readonly property real centerWidth: coreHost ? CoreService.reserveWidth : Math.max(96, Math.ceil(centerClockMetrics.advanceWidth) + 20)
     readonly property real sideWidth: Math.max(0, (width - centerWidth) / 2 - 8)
     readonly property real controlHeight: Math.max(24, height)
     readonly property real railGap: sideWidth < 240 ? 1 : 2
@@ -31,8 +31,9 @@ Item {
     readonly property bool audioShown: Config.moduleEnabled("audio")
     readonly property bool powerShown: Config.moduleEnabled("battery")
     readonly property bool clockShown: Config.moduleEnabled("clock")
-    readonly property bool noticesShown: Config.stage >= 3 && Config.moduleEnabled("notifications")
-    readonly property int statusCount: 1 + Number(networkShown) + Number(audioShown) + Number(powerShown) + Number(clockShown) + Number(noticesShown)
+    readonly property string calendarCompactText: nerdIcons ? "󰃭" : "Cal"
+    readonly property string calendarDateText: Config.saved.barShowDate ? Config.formatDate(clock.date, true) : calendarCompactText
+    readonly property int statusCount: 1 + Number(networkShown) + Number(audioShown) + Number(powerShown) + Number(clockShown)
     readonly property real networkWidth: Network.vpnActive ? 46 : 32
     readonly property real compactClockWidth: Math.ceil(compactClockMetrics.advanceWidth) + 12
     readonly property real normalClockWidth: Math.ceil(normalClockMetrics.advanceWidth) + 14
@@ -40,10 +41,10 @@ Item {
     readonly property real audioTextWidth: Math.max(26, Math.ceil(audioMetrics.advanceWidth) + 14)
     readonly property real powerTextWidth: Math.max(26, Math.ceil(powerMetrics.advanceWidth) + 14)
     readonly property real minimumStatusWidth: (networkShown ? networkWidth : 0) + (audioShown ? 26 : 0) + (powerShown ? 26 : 0)
-        + (clockShown ? compactClockWidth : 0) + (noticesShown ? 26 : 0) + 30 + railGap * (statusCount - 1)
+        + (clockShown ? compactClockWidth : 0) + 30 + railGap * (statusCount - 1)
     readonly property real statusLabelExtra: (audioShown ? audioTextWidth - 26 : 0) + (powerShown ? powerTextWidth - 26 : 0)
     // Measured text, rather than screen-width breakpoints, keeps enlarged fonts
-    // inside the rail. A compact clock retains its complete value in its hint.
+    // inside the rail. The calendar yields to an icon while the time stays centered.
     readonly property bool statusLabels: sideWidth >= minimumStatusWidth + statusLabelExtra + 40
     readonly property real labeledStatusWidth: minimumStatusWidth + (statusLabels ? statusLabelExtra : 0)
     readonly property bool fullClock: clockShown && sideWidth >= labeledStatusWidth + fullClockWidth - compactClockWidth + 28
@@ -96,9 +97,10 @@ Item {
     }
 
     SystemClock { id: clock; precision: SystemClock.Minutes }
-    TextMetrics { id: compactClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: Config.timeDigits(clock.date) }
-    TextMetrics { id: normalClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: Config.formatTime(clock.date) }
-    TextMetrics { id: fullClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: Config.barClock(clock.date) }
+    TextMetrics { id: centerClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small + 1; text: Config.formatTime(clock.date) }
+    TextMetrics { id: compactClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: root.calendarCompactText }
+    TextMetrics { id: normalClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: root.calendarDateText }
+    TextMetrics { id: fullClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: root.calendarDateText }
     TextMetrics { id: audioMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: Audio.label }
     TextMetrics { id: powerMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: root.batteryPresent ? root.batteryPercent + "%" : root.nerdIcons ? "⏻" : "P" }
     TextMetrics { id: identityMetrics; font.family: Theme.labelFont; font.pixelSize: Theme.small; font.letterSpacing: 2; text: "CEDAR" }
@@ -108,14 +110,13 @@ Item {
         objectName: "barCoreControls"
         visible: !root.coreHost
         anchors.centerIn: parent
-        width: 96
-        text: "CEDAR"
-        color: Theme.strataMuted
-        font.family: Theme.labelFont
-        font.pixelSize: Theme.small
-        font.letterSpacing: 2
+        width: root.centerWidth
+        text: root.clockShown ? Config.formatTime(clock.date) : "◈"
+        color: Theme.strataText
+        font.family: Theme.dataFont
+        font.pixelSize: Theme.small + 1
         horizontalAlignment: Text.AlignHCenter
-        Accessible.name: "CEDAR"
+        Accessible.name: root.clockShown ? "Time " + text : ""
     }
 
     Item {
@@ -422,7 +423,7 @@ Item {
                 visible: root.clockShown
                 width: root.clockWidth
                 height: root.controlHeight
-                text: root.fullClock ? Config.barClock(clock.date) : root.normalClock ? Config.formatTime(clock.date) : Config.timeDigits(clock.date)
+                text: root.fullClock || root.normalClock ? root.calendarDateText : root.calendarCompactText
                 hint: Config.formatDate(clock.date) + " · " + Config.formatTime(clock.date) + " · Calendar"
                 enabled: !ShellState.locked
                 accent: Theme.strataAccent
@@ -431,32 +432,7 @@ Item {
                 checked: root.selected("calendar")
                 onClicked: root.openCalendar()
             }
-            BarButton {
-                objectName: "strataNotifications"
-                visible: root.noticesShown
-                width: 26
-                height: root.controlHeight
-                text: root.nerdIcons ? (Config.saved.doNotDisturb ? "󰂛" : "󰂚") : "N"
-                iconOnly: true
-                quiet: true
-                enabled: !ShellState.locked
-                hint: "Notification history" + (Config.saved.doNotDisturb ? " · Do not disturb" : "")
-                accent: Theme.strataAccent
-                anchorTopic: "notifications"
-                canopyOutput: root.outputName
-                checked: root.selected("notifications")
-                onClicked: root.openTopic("notifications", "history")
-                Rectangle {
-                    visible: NoticeStore.live.length > 0
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.margins: 4
-                    width: 3
-                    height: 3
-                    radius: 1.5
-                    color: Theme.strataAccent
-                }
-            }
+            // No bell: notifications unfold from the Core pill and gather in Signals.
             BarButton {
                 id: quickButton
                 objectName: "strataQuick"

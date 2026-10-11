@@ -77,6 +77,13 @@ def validation_command(argv,timeout=90,env=None):
     # These settings apply to validation children, never to the desktop shell.
     environment.pop('QSG_RHI_BACKEND',None)
     environment['QT_QUICK_BACKEND']='software'
+    # The desktop shell runs with QSG_RENDER_LOOP=threaded and the installer
+    # launched from it inherits that. Qt's software adaptation renders Shapes
+    # on the render thread while the GUI thread tears a panel down, which
+    # segfaults Quickshell mid-check (crash handler restarts it, the check
+    # then times out). Validation always uses the single-threaded loop.
+    environment['QSG_RENDER_LOOP']='basic'
+    environment.pop('QSG_USE_SIMPLE_ANIMATION_DRIVER',None)
     environment['QS_DISABLE_FILE_WATCHER']='1'
     process=subprocess.Popen(argv,text=True,errors='replace',stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                              env=environment,start_new_session=True)
@@ -420,7 +427,8 @@ def install(root,approved=False,plan_only=False):
         portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py','portable_controls.py','adoption_plan.py','startup_graph.py')]
         # First-party application entries: a launcher entry and icon for CEDAR Shield, journaled like every other installed file.
         share=paths()['data'].parent
-        launcher_files={share/'applications/cedar-shield.desktop':(root/'data/applications/cedar-shield.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-shield.svg':(root/'data/icons/cedar-shield.svg',0o644)}
+        launcher_files={share/'applications/cedar-shield.desktop':(root/'data/applications/cedar-shield.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-shield.svg':(root/'data/icons/cedar-shield.svg',0o644),
+                        share/'applications/cedar-ai.desktop':(root/'data/applications/cedar-ai.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-ai.svg':(root/'data/icons/cedar-ai.svg',0o644)}
         owner=command_owner(binary)
         if owner=='other':raise Refused('The cedar command at '+str(binary)+' belongs to something other than CEDAR, so it is left alone. Move it aside (for example: mv '+__import__('shlex').quote(str(binary))+' '+__import__('shlex').quote(str(binary)+'.other')+'), then run the installer again.')
         if owner=='source':print('Replacing the cedar command from the local-source registration ('+(os.readlink(binary) if binary.is_symlink() else str(binary))+'); the journal puts it back on uninstall.')
@@ -639,7 +647,7 @@ def main(argv=None):
         if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
         os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*argv[1:]])
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','installer'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','ai','installer'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
@@ -682,6 +690,7 @@ def main(argv=None):
     elif args.action=='ipc':os.execvp('qs',['qs',*shell_selector(),'ipc','call',*args.arguments])
     elif args.action=='shield':os.execvp('qs',['qs',*shell_selector(),'ipc','call','shield',*(['page',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='station':os.execvp('qs',['qs',*shell_selector(),'ipc','call','station',*(['page',args.arguments[0]] if args.arguments else ['open'])])
+    elif args.action=='ai':os.execvp('qs',['qs',*shell_selector(),'ipc','call','relay',*(['page',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='focus':os.execvp('qs',['qs',*shell_selector(),'ipc','call','focus',*(['start',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='profiles':os.execvp('qs',['qs',*shell_selector(),'ipc','call','profiles',*(['activate',args.arguments[0]] if args.arguments else ['open'])])
     else:

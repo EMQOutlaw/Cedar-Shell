@@ -12,6 +12,8 @@ Overlay {
         active: root.visible
         sourceComponent: Component {
             HudPanel {
+                fillColor: Theme.strataFoundation
+                accent: Theme.strataAccent
                 implicitHeight: Math.max(320, actions.implicitHeight + 48)
                 highlighted: true
                 SessionControls {

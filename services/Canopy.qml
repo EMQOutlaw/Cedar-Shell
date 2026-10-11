@@ -5,9 +5,11 @@ import ".."
 
 Singleton {
     id: root
-    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "system", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces"]
+    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces"]
     // One route per destination: a topic with a visible bar button gets no tab.
     // Cedar has a dedicated right-side Quick control; its center opens Signals.
+    // Topics the bar routes itself (its own control, or the pill for Signals-owned
+    // ones); they never become tabs in the drop. Notifications are the pill's.
     function barRoute(value) {
         if (Config.barStyle === "cedar" && Config.stage >= 3
                 && ((value === "audio" && Config.moduleEnabled("audio"))
@@ -27,6 +29,12 @@ Singleton {
         controlWindows = controlWindows.filter(w => w !== window);
     }
     property string topic: "quick"
+    property string stationPage: "overview"
+    function openStation(page = "overview") {
+        if (ShellState.locked) return;
+        stationPage = page === "tasks" ? "tasks" : "overview";
+        if (Config.saved.canopyEnabled) open("station"); else ShellState.open("hud");
+    }
     // The surface controller's state, driven by CanopyWindow:
     //   collapsed | opening | expanded | retargeting | closing
     property string surfaceState: "collapsed"
@@ -121,6 +129,7 @@ Singleton {
             workspaces: "Workspaces"
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
+        if (value === "system") { if (ShellState.locked) return; stationPage = "tasks"; value = "station"; }
         if (!topics.includes(value) || ShellState.locked || !Config.saved.canopyEnabled)
             return;
         if (peek && (pinned || (ShellState.panel !== "" && !peeking)))

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell.Services.Mpris
 import Quickshell.Services.UPower
 import ".."
 import "../components"
@@ -9,13 +8,20 @@ import "../services"
 
 // Quick Controls in the Core pill's language: three tiles for the links
 // that matter (network, Bluetooth, quiet hours), slim level rows, the
-// station's stances as a compact grid, one power choice, and what is
-// playing. Every reading is the service's own; absent hardware is hidden.
+// station's stances as a compact grid and one power choice. Every reading
+// is the service's own; absent hardware is hidden. Nothing here repeats a
+// control the bar or the Field Station already has: media transport lives in
+// the Field Station and the Core pill, and when the bar carries its own audio
+// control (Strata) the volume rows and device choices stay with it.
 ColumnLayout {
     id: root
     property bool active: false
-    readonly property var player: Media.player
     readonly property bool nerd: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    // The bar's audio control (Strata) scrolls the volume and opens the audio
+    // instrument, so the level rows are only drawn where the bar has none.
+    readonly property bool barAudio: Canopy.barRoute("audio")
+    // Strata's battery/power control opens Power and session; the legacy bars have none.
+    readonly property bool barPower: Config.barStyle === "cedar" && Config.moduleEnabled("battery")
     function glyph(icon, fallback) { return nerd ? icon : fallback; }
     onActiveChanged: if (active)
         Controls.refresh()
@@ -46,12 +52,12 @@ ColumnLayout {
         transform: Translate { x: 12 * (1 - level.sweep) }
         RowLayout {
             anchors.fill: parent; spacing: 10
-            StationButton {
+            StrataButton {
                 implicitWidth: 32; implicitHeight: 32; iconOnly: true
                 enabled: level.canMute
                 text: level.icon
                 hint: level.canMute ? (level.muted ? "Unmute " : "Mute ") + level.label.toLowerCase() : level.label
-                accent: level.muted ? Theme.amber : Theme.teal
+                accent: level.muted ? Theme.amber : Theme.strataAccent
                 checked: level.muted
                 onClicked: level.toggled()
             }
@@ -59,7 +65,7 @@ ColumnLayout {
                 Layout.preferredWidth: 96
                 text: level.label; textFormat: Text.PlainText
                 font.family: Theme.labelFont; font.pixelSize: Math.round(14 * Theme.fontScale)
-                color: level.muted ? Theme.amber : Theme.text
+                color: level.muted ? Theme.amber : Theme.strataText
                 elide: Text.ElideRight
             }
             StationSlider {
@@ -75,14 +81,14 @@ ColumnLayout {
                 text: level.muted ? "MUTED" : Math.round(level.value * 100 * level.sweep) + "%"
                 textFormat: Text.PlainText
                 font.family: Theme.dataFont; font.pixelSize: level.muted ? 9 : Theme.small; font.letterSpacing: level.muted ? 1.2 : 0
-                color: level.muted ? Theme.amber : Theme.green
+                color: level.muted ? Theme.amber : Theme.strataAccent
             }
         }
     }
 
     // A tile: glyph and name on the first line, the state dot at the far
     // right, and the reading on the second line. Lit along its foot when on.
-    component Tile: StationButton {
+    component Tile: StrataButton {
         id: tile
         property string mark: ""
         property string label: ""
@@ -98,21 +104,21 @@ ColumnLayout {
         checked: on
         Accessible.name: label + ": " + value
         background: ChamferFrame {
-            cut: 7
-            fill: tile.on ? Qt.alpha(Theme.green, .06) : Qt.alpha(Theme.background, .6)
-            stroke: tile.visualFocus ? Theme.green : tile.on ? Qt.alpha(Theme.green, .45) : tile.hovered ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .14)
+            cut: Theme.strataCut
+            fill: tile.on ? Qt.alpha(Theme.strataAccent, .06) : Qt.alpha(Theme.strataFoundation, .6)
+            stroke: tile.visualFocus ? Theme.strataAccent : tile.on ? Qt.alpha(Theme.strataAccent, .45) : tile.hovered ? Qt.alpha(Theme.strataAccent, .35) : Qt.alpha(Theme.strataAccent, .14)
             strokeWidth: tile.visualFocus ? 2 : 1
-            line: tile.on; lineColor: Theme.green; lineFraction: .6
+            line: tile.on; lineColor: Theme.strataAccent; lineFraction: .6
         }
         contentItem: ColumnLayout {
             spacing: 3
             RowLayout {
                 Layout.fillWidth: true; spacing: 8
-                Text { visible: tile.mark !== ""; text: tile.mark; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 15; color: tile.on ? Theme.green : Theme.muted }
-                Text { Layout.fillWidth: true; text: tile.label; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(15 * Theme.fontScale); color: tile.on ? Theme.green : Theme.text; elide: Text.ElideRight }
-                Rectangle { width: 5; height: 5; radius: 3; color: tile.on ? Theme.green : Theme.muted; opacity: tile.on ? 1 : .5; Layout.alignment: Qt.AlignVCenter }
+                Text { visible: tile.mark !== ""; text: tile.mark; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 15; color: tile.on ? Theme.strataAccent : Theme.strataMuted }
+                Text { Layout.fillWidth: true; text: tile.label; textFormat: Text.PlainText; font.family: Theme.labelFont; font.pixelSize: Math.round(15 * Theme.fontScale); color: tile.on ? Theme.strataAccent : Theme.strataText; elide: Text.ElideRight }
+                Rectangle { width: 5; height: 5; radius: 3; color: tile.on ? Theme.strataAccent : Theme.strataMuted; opacity: tile.on ? 1 : .5; Layout.alignment: Qt.AlignVCenter }
             }
-            KineticLabel { Layout.fillWidth: true; height: implicitHeight; text: tile.value; transitionStyle: "resolve"; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.muted; elide: Text.ElideRight }
+            KineticLabel { Layout.fillWidth: true; height: implicitHeight; text: tile.value; transitionStyle: "resolve"; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.strataMuted; elide: Text.ElideRight }
         }
     }
 
@@ -169,6 +175,7 @@ ColumnLayout {
         Layout.fillWidth: true; spacing: 2
         LevelRow {
             order: 3
+            visible: !root.barAudio
             label: "Output"; sliderName: "quickVolume"
             icon: Audio.muted ? root.glyph("󰝟", "×") : root.glyph("󰕾", "♪")
             enabled: Audio.audio !== null
@@ -180,7 +187,7 @@ ColumnLayout {
             order: 4
             label: "Microphone"
             icon: Audio.microphone?.muted ? root.glyph("󰍭", "×") : root.glyph("󰍬", "M")
-            visible: Audio.microphone !== null
+            visible: !root.barAudio && Audio.microphone !== null
             value: Audio.microphone?.volume ?? 0; muted: Audio.microphone?.muted ?? false
             onMoved: value => Audio.setMicrophone(value)
             onToggled: Audio.toggleMicrophone()
@@ -196,7 +203,7 @@ ColumnLayout {
     }
     GridLayout {
         Layout.fillWidth: true; columns: root.width < 360 ? 1 : 2; columnSpacing: 8; rowSpacing: 6
-        visible: Audio.outputs.length > 1 || Audio.inputs.length > 1
+        visible: !root.barAudio && (Audio.outputs.length > 1 || Audio.inputs.length > 1)
         opacity: root.beat(5)
         transform: Translate { y: 6 * (1 - root.beat(5)) }
         StationCombo {
@@ -223,7 +230,7 @@ ColumnLayout {
         Layout.fillWidth: true; spacing: 6
         opacity: root.beat(6)
         transform: Translate { y: 6 * (1 - root.beat(6)) }
-        SectionMark { text: "STATION"; size: 9; tone: Theme.muted }
+        SectionMark { text: "STATION"; size: 9; tone: Theme.strataMuted }
         GridLayout {
             Layout.fillWidth: true
             columns: root.width < 420 ? 2 : 3; columnSpacing: 8; rowSpacing: 8
@@ -299,14 +306,14 @@ ColumnLayout {
         Layout.fillWidth: true; spacing: 6
         opacity: root.beat(9)
         transform: Translate { y: 6 * (1 - root.beat(9)) }
-        SectionMark { text: "POWER"; size: 9; tone: Theme.muted }
+        SectionMark { text: "POWER"; size: 9; tone: Theme.strataMuted }
         GridLayout {
             Layout.fillWidth: true
             columns: Math.max(1, Controls.data.profiles.length); columnSpacing: 8
             uniformCellWidths: true
             Repeater {
                 model: Controls.data.profiles
-                StationButton {
+                StrataButton {
                     id: profile
                     required property string modelData
                     required property int index
@@ -319,51 +326,31 @@ ColumnLayout {
                     Accessible.name: "Power profile " + text + (on ? ", in use" : "")
                     onClicked: if (!on) Controls.run({action: "profile", value: modelData})
                     background: ChamferFrame {
-                        cut: 6
-                        fill: profile.on ? Qt.alpha(Theme.green, .06) : Qt.alpha(Theme.background, .6)
-                        stroke: profile.visualFocus ? Theme.green : profile.on ? Qt.alpha(Theme.green, .45) : profile.hovered ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .14)
+                        cut: Theme.strataCut / 2
+                        fill: profile.on ? Qt.alpha(Theme.strataAccent, .06) : Qt.alpha(Theme.strataFoundation, .6)
+                        stroke: profile.visualFocus ? Theme.strataAccent : profile.on ? Qt.alpha(Theme.strataAccent, .45) : profile.hovered ? Qt.alpha(Theme.strataAccent, .35) : Qt.alpha(Theme.strataAccent, .14)
                         strokeWidth: profile.visualFocus ? 2 : 1
-                        line: profile.on; lineColor: Theme.green; lineFraction: .5
+                        line: profile.on; lineColor: Theme.strataAccent; lineFraction: .5
                     }
-                    contentItem: Text { text: profile.text; textFormat: Text.PlainText; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.family: Theme.labelFont; font.pixelSize: Math.round(16 * Theme.fontScale); color: profile.on ? Theme.green : Theme.text; elide: Text.ElideRight }
+                    contentItem: Text { text: profile.text; textFormat: Text.PlainText; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.family: Theme.labelFont; font.pixelSize: Math.round(16 * Theme.fontScale); color: profile.on ? Theme.strataAccent : Theme.strataText; elide: Text.ElideRight }
                 }
             }
         }
     }
     RowLayout {
         Layout.fillWidth: true
-        visible: (UPower.displayDevice?.isPresent ?? false) || !Config.saved.canopyEnabled
+        visible: (UPower.displayDevice?.isPresent ?? false) || (!Config.saved.canopyEnabled && !root.barPower)
         opacity: root.beat(10)
         StatusPill {
             visible: UPower.displayDevice?.isPresent ?? false
             text: Math.round((UPower.displayDevice?.percentage ?? 0) * 100) + "% · " + (UPower.onBattery ? "battery" : "plugged in")
-            tone: UPower.onBattery && (UPower.displayDevice?.percentage ?? 1) < .2 ? Theme.amber : Theme.green
+            tone: UPower.onBattery && (UPower.displayDevice?.percentage ?? 1) < .2 ? Theme.amber : Theme.strataAccent
         }
         Item { Layout.fillWidth: true }
-        StationButton {
-            visible: !Config.saved.canopyEnabled
+        StrataButton {
+            visible: !Config.saved.canopyEnabled && !root.barPower
             text: "Power & session"
             onClicked: ShellState.toggle("power")
-        }
-    }
-
-    // On the air
-    Item {
-        Layout.fillWidth: true
-        implicitHeight: 52
-        opacity: root.beat(10.5)
-        transform: Translate { y: 8 * (1 - root.beat(10.5)) }
-        ChamferFrame { anchors.fill: parent; cut: 7; stroke: Qt.alpha(Theme.teal, .14); line: root.player?.isPlaying ?? false; lineColor: Theme.teal; lineFraction: .5 * root.beat(10.5, .6); lineOpacity: .6 }
-        RowLayout {
-            anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 8; spacing: 6
-            ColumnLayout {
-                Layout.fillWidth: true; spacing: 1
-                Text { Layout.fillWidth: true; text: root.player?.trackTitle || "The woods are quiet"; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: root.player ? Theme.text : Theme.muted; elide: Text.ElideRight }
-                Text { Layout.fillWidth: true; visible: text !== ""; text: root.player?.trackArtist || ""; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 10; color: Theme.muted; elide: Text.ElideRight }
-            }
-            StationButton { visible: !!root.player; iconOnly: true; implicitWidth: 32; text: root.glyph("󰒮", "‹"); hint: "Previous"; enabled: root.player?.canGoPrevious ?? false; onClicked: root.player.previous() }
-            StationButton { visible: !!root.player; iconOnly: true; implicitWidth: 32; text: root.player?.isPlaying ? root.glyph("󰏤", "Ⅱ") : root.glyph("󰐊", "▶"); hint: root.player?.isPlaying ? "Pause" : "Play"; enabled: root.player?.canTogglePlaying ?? false; onClicked: root.player.togglePlaying() }
-            StationButton { visible: !!root.player; iconOnly: true; implicitWidth: 32; text: root.glyph("󰒭", "›"); hint: "Next"; enabled: root.player?.canGoNext ?? false; onClicked: root.player.next() }
         }
     }
 }

@@ -34,7 +34,7 @@ ColumnLayout {
             }
             GlowText {
                 text: root.player?.trackArtist || root.player?.identity || ""
-                color: Theme.muted
+                color: Theme.strataMuted
                 font.pixelSize: Theme.small
                 Layout.fillWidth: true
                 elide: Text.ElideRight
@@ -43,14 +43,14 @@ ColumnLayout {
     }
     RowLayout {
         Layout.alignment: Qt.AlignHCenter
-        StationButton {
+        StrataButton {
             iconOnly: true
             text: "󰒮"
             hint: "Previous track"
             enabled: root.player?.canGoPrevious ?? false
             onClicked: Media.previous()
         }
-        StationButton {
+        StrataButton {
             iconOnly: true
             objectName: "coreMediaPlay"
             text: root.player?.isPlaying ? "󰏤" : "󰐊"
@@ -58,7 +58,7 @@ ColumnLayout {
             enabled: root.player?.canTogglePlaying ?? false
             onClicked: Media.toggle()
         }
-        StationButton {
+        StrataButton {
             iconOnly: true
             text: "󰒭"
             hint: "Next track"
@@ -82,14 +82,14 @@ ColumnLayout {
         }
         GlowText {
             text: Media.elapsed(root.position) + " / " + Media.elapsed(root.player?.length)
-            color: Theme.muted
+            color: Theme.strataMuted
             font.pixelSize: Theme.small
         }
     }
     GlowText {
         visible: root.detailed
         text: (Audio.sink?.description || "No output") + " · " + Audio.label
-        color: Theme.muted
+        color: Theme.strataMuted
         Layout.fillWidth: true
         elide: Text.ElideRight
         font.pixelSize: Theme.small

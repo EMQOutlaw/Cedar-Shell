@@ -1,3 +1,5 @@
+//@ pragma UseQApplication
+// Native app menus in the bar require QApplication (a full restart after enabling).
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
@@ -75,6 +77,12 @@ ShellRoot {
     LazyLoader {
         active: Config.stage >= 3 && Shield.windowOpen
         ShieldApp {}
+    }
+    // CEDAR AI: the window over the Relay service (two coding agents working
+    // one goal together). The session keeps running while the window is closed.
+    LazyLoader {
+        active: Config.stage >= 3 && Relay.windowOpen
+        RelayApp {}
     }
     // Desktop Profiles: the preparation panel while a profile applies or
     // restores, and the Profiles window while it is open.
@@ -174,6 +182,20 @@ ShellRoot {
     IpcHandler {
         target: "permission"
         function status(): string { return JSON.stringify({ enabled: Permission.enabled, registered: Permission.registered, active: Permission.active }); }
+    }
+    // CEDAR AI: `relay open|close|toggle|page <session|sessions|settings>`,
+    // `relay start <goal>` (refused while locked or while a session runs),
+    // `relay say <message>`, `relay stop`, `relay status`.
+    IpcHandler {
+        target: "relay"
+        function open(): void { if (Config.stage >= 3) Relay.openApp(); }
+        function page(name: string): void { if (Config.stage >= 3) Relay.openPage(name); }
+        function close(): void { Relay.closeApp(); }
+        function toggle(): void { if (Config.stage >= 3) Relay.toggleApp(); }
+        function start(goal: string): void { if (Config.stage >= 3 && !ShellState.locked && String(goal || "").length <= 4000) { Relay.start(goal); Relay.openApp(); } }
+        function say(message: string): void { if (Config.stage >= 3 && !ShellState.locked && String(message || "").length <= 4000) Relay.say(message); }
+        function stop(): void { if (Config.stage >= 3) Relay.stop(); }
+        function status(): string { return JSON.stringify(Relay.status()); }
     }
     IpcHandler {
         target: "shield"

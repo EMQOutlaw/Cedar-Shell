@@ -69,13 +69,13 @@ Linux / Wayland / PipeWire / systemd → Hyprland → Quickshell → CEDAR.
 - `services/NoticeStore.qml`: bounded notification history and live objects; DND filtering preserves critical alerts.
 - `services/Go.qml` and `components/MenuModel.js`: Omarchy menu providers plus applications, search, prompts, and shell compatibility shim.
 
-Reusable station components include `StationButton`, `StationPanel`, `StationField`, `StationSlider`, `StationToggle`, `StationCombo`, `StationCore`, `CedarAtmosphere`, and `ActivityTrace`. Prefer these over another control family.
+Reusable station components include `StationButton`, `StationField`, `StationSlider`, `StationToggle`, `StationCombo`, `StationCore`, `CedarAtmosphere`, and `ActivityTrace`. Prefer these over another control family.
 
 ## Current implementation and boundaries
 
 ### Already present before this update
 
-Six bar layouts; minimal bar buttons; Field Station redesign with real telemetry and restrained motion; shared 12/24-hour time and date preferences; Settings redesign; explicit, persistent volume OSD interaction; launcher, notification history, wallpaper/theme selection, power menu, lock and shell lifecycle integration.
+One Strata bar layout; minimal bar buttons; Field Station redesign with real telemetry and restrained motion; shared 12/24-hour time and date preferences; Settings redesign; explicit, persistent volume OSD interaction; launcher, notification history, wallpaper/theme selection, power menu, lock and shell lifecycle integration.
 
 ### Added in this update
 
@@ -97,7 +97,7 @@ Added real desktop inventory, installed theme and wallpaper previews, appearance
 
 ### CEDAR Core
 
-A single host on the main display integrates into all six bars. CoreHost keys its native window to the assigned screen so reload/display changes do not migrate a reused visible window; two live reloads passed after this stabilization. Shared native services provide audio, media, critical notification actions, Bluetooth, network/VPN, battery/power and workspace events. Core adds real recorder/keyboard monitoring, identifiable PipeWire privacy activity, persisted timers, actionable saved screenshots/local file drops, on-demand repository update checks and leased provider publications. Priorities, interaction hold, bounded history, stable OSD controls and Reduced Motion are central invariants. See `docs/CORE.md` for source limitations, APIs and verification. General download detection, external integrations and update progress are not implemented merely because their publication API exists.
+A single host on the main display integrates into the Strata bar. CoreHost keys its native window to the assigned screen so reload/display changes do not migrate a reused visible window; two live reloads passed after this stabilization. Shared native services provide audio, media, critical notification actions, Bluetooth, network/VPN, battery/power and workspace events. Core adds real recorder/keyboard monitoring, identifiable PipeWire privacy activity, persisted timers, actionable saved screenshots/local file drops, on-demand repository update checks and leased provider publications. Priorities, interaction hold, bounded history, stable OSD controls and Reduced Motion are central invariants. See `docs/CORE.md` for source limitations, APIs and verification. General download detection, external integrations and update progress are not implemented merely because their publication API exists.
 
 ### Still roadmap work — do not describe as complete
 
@@ -105,7 +105,7 @@ Full universal-search providers; draggable window overview; general reorderable/
 
 ## Top bar direction
 
-Preserve CEDAR, Floating, Full Width, Islands, Center and Split. Internal `minimal` denotes Full Width. Keep gaps between floating/island groups transparent to pointer input through the existing region masks.
+Strata (`cedar`) is the only bar layout. Retired layout IDs resolve to `cedar`; preserve unrelated preferences and unknown settings during migration.
 
 Build configurable modules around identity/Go, workspaces, active app, window state, clock/date, media/context, tray, privacy indicators, VPN, network, Bluetooth, volume/mic, brightness, battery, power profile and notifications. Support ordering, enable/disable, responsive hiding, and per-monitor placement. A module whose hardware is absent should disappear or explain availability appropriately.
 

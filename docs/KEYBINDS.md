@@ -31,6 +31,7 @@ from the terminal.
 | Super+Shift+P | Desktop Profiles |
 | Super+Shift+F | Focus |
 | Super+Shift+H | Station (health) |
+| Super+Shift+A | CEDAR AI |
 | Super+Tab | Workspace overview |
 | Super+V, Super+Alt+V | Clipboard |
 | Ctrl+Alt+V | Audio |

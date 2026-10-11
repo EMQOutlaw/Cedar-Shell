@@ -22,15 +22,15 @@ Rectangle {
     ChamferFrame {
         visible: root.framed
         anchors.fill: parent
-        cut: 12
-        fill: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
-        stroke: Qt.alpha(Forest.accent, .25)
+        cut: Theme.strataCut
+        fill: Qt.alpha(Theme.strataFoundation, Math.max(.96, Config.panelOpacity))
+        stroke: Qt.alpha(Theme.strataAccent, .25)
     }
     // A short lit line at the top edge ties the panel to the pill above it.
     Rectangle {
         visible: root.framed
         x: root.tieX >= 0 ? Math.round(Math.max(14, Math.min(root.tieX - width / 2, parent.width - width - 14))) : Math.round((parent.width - width) / 2)
-        y: 0; width: 64; height: 2; radius: 1; color: Forest.accent; opacity: .7
+        y: 0; width: 64; height: 2; radius: 1; color: Theme.strataAccent; opacity: .7
         Behavior on x { enabled: !Theme.reducedMotion; NumberAnimation { duration: Theme.transition; easing.type: Easing.OutCubic } }
     }
     CedarAtmosphere {
@@ -69,7 +69,7 @@ Rectangle {
                   trails: "Where you have been.", startup: "What rises with the shell." })[value] || "";
     }
     function sentence(value) { const t = String(value || "").toLowerCase(); return t ? t.charAt(0).toUpperCase() + t.slice(1) + "." : ""; }
-    component CanopyTab: StationButton {
+    component CanopyTab: StrataButton {
         id: tab
         property string topic: ""
         property string label: ""
@@ -79,12 +79,12 @@ Rectangle {
         checked: topic !== "" && root.topic === topic
         Accessible.name: label + " tab"
         background: ChamferFrame {
-            cut: 5
-            fill: tab.checked ? Qt.alpha(Forest.accent, .10) : tab.hovered ? Qt.alpha(Theme.teal, .05) : Theme.transparent
-            stroke: tab.visualFocus ? Theme.green : tab.checked ? Qt.alpha(Forest.accent, .35) : Theme.transparent
+            cut: Theme.strataCut / 2
+            fill: tab.checked ? Qt.alpha(Theme.strataAccent, .10) : tab.hovered ? Qt.alpha(Theme.strataAccent, .05) : Theme.transparent
+            stroke: tab.visualFocus ? Theme.green : tab.checked ? Qt.alpha(Theme.strataAccent, .35) : Theme.transparent
             strokeWidth: tab.visualFocus ? 2 : 1
         }
-        contentItem: Text { text: tab.text; textFormat: Text.PlainText; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.family: Theme.labelFont; font.pixelSize: Math.round(13 * Theme.fontScale); color: tab.checked ? Forest.accent : tab.hovered ? Theme.text : Theme.muted; elide: Text.ElideRight }
+        contentItem: Text { text: tab.text; textFormat: Text.PlainText; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.family: Theme.labelFont; font.pixelSize: Math.round(13 * Theme.fontScale); color: tab.checked ? Theme.strataAccent : tab.hovered ? Theme.strataText : Theme.strataMuted; elide: Text.ElideRight }
         onClicked: if (topic !== "") Canopy.open(topic)
     }
     ColumnLayout {
@@ -124,20 +124,20 @@ Rectangle {
                     visible: !(root.standalone && ["network", "go", "workspaces"].includes(root.topic))
                     Layout.fillWidth: true
                     text: Canopy.titleFor(root.topic).toUpperCase()
-                    tone: Forest.accent
+                    tone: Theme.strataAccent
                     size: 10
                     elide: Text.ElideRight
                 }
                 GlowText {
                     visible: Canopy.peeking
                     text: "PEEK · click the bar control to open"
-                    color: Theme.muted
+                    color: Theme.strataMuted
                     font.pixelSize: 10
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
             }
-            StationButton {
+            StrataButton {
                 visible: !Canopy.peeking
                 iconOnly: true
                 implicitWidth: 32; implicitHeight: 28
@@ -146,7 +146,7 @@ Rectangle {
                 checked: Canopy.pinned
                 onClicked: Canopy.pin()
             }
-            StationButton {
+            StrataButton {
                 iconOnly: true
                 implicitWidth: 32; implicitHeight: 28
                 text: root.nerd ? "󰅖" : "×"
@@ -169,13 +169,13 @@ Rectangle {
             visible: strip.visible
             Layout.fillWidth: true
             spacing: 12
-            SectionMark { text: Canopy.titleFor(root.topic).toUpperCase(); tone: Forest.accent; size: 10 }
+            SectionMark { text: Canopy.titleFor(root.topic).toUpperCase(); tone: Theme.strataAccent; size: 10 }
             Item { Layout.fillWidth: true }
             Text {
                 text: root.tagline(root.topic)
                 textFormat: Text.PlainText
                 font.family: Theme.labelFont; font.pixelSize: Math.round(12 * Theme.fontScale)
-                color: Theme.muted
+                color: Theme.strataMuted
                 elide: Text.ElideRight
                 Layout.maximumWidth: root.width * .55
             }
@@ -186,7 +186,7 @@ Rectangle {
             Layout.fillHeight: true
             wrapMode: Text.WordWrap
             text: root.topic === "audio" ? (Audio.sink?.description || "No output") + " · " + Audio.label : root.topic === "network" ? Network.label : root.topic === "bluetooth" ? (BluetoothService.adapter?.enabled ? "Bluetooth on" : "Bluetooth off") : Forest.phrase
-            color: Theme.text
+            color: Theme.strataText
         }
         ScrollView {
             visible: !Canopy.peeking
@@ -206,7 +206,6 @@ Rectangle {
                         network: network,
                         bluetooth: bluetooth,
                         power: power,
-                        system: system,
                         weather: weather,
                         calendar: calendar,
                         clipboard: clipboard,
@@ -225,16 +224,20 @@ Rectangle {
             visible: !Canopy.peeking && !root.standalone
             Layout.fillWidth: true
             spacing: 8
-            Rectangle { width: 5; height: 5; radius: 3; color: Canopy.pinned ? Theme.green : Forest.accent; opacity: .8; Layout.alignment: Qt.AlignVCenter }
+            Rectangle { width: 5; height: 5; radius: 3; color: Canopy.pinned ? Theme.green : Theme.strataAccent; opacity: .8; Layout.alignment: Qt.AlignVCenter }
             Text {
                 Layout.fillWidth: true
                 text: Canopy.pinned ? "Pinned. One instrument stays with you." : root.sentence(Forest.phrase)
                 textFormat: Text.PlainText
                 font.family: Theme.labelFont; font.pixelSize: Math.round(13 * Theme.fontScale)
-                color: Theme.muted
+                color: Theme.strataMuted
                 elide: Text.ElideRight
             }
-            StationButton {
+            // Strata's center control already opens Signals; this is the route
+            // only where the bar has none (legacy layouts, or Core disabled).
+            StrataButton {
+                objectName: "canopySignals"
+                visible: !(Config.barStyle === "cedar" && CoreService.enabled)
                 text: "Signals"
                 implicitHeight: 28
                 onClicked: {
@@ -242,11 +245,11 @@ Rectangle {
                     CoreService.expand();
                 }
             }
-            StationButton {
+            StrataButton {
                 objectName: "fullSettings"
                 text: "Settings  ↗"
                 implicitHeight: 28
-                accent: Forest.accent
+                accent: Theme.strataAccent
                 onClicked: {
                     Canopy.close();
                     ShellState.settingsPage = "overview";
@@ -274,12 +277,6 @@ Rectangle {
     Component {
         id: bluetooth
         BluetoothSettings {}
-    }
-    Component {
-        id: system
-        SystemCanopy {
-            active: root.active
-        }
     }
     Component {
         id: weather

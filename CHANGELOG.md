@@ -1,9 +1,20 @@
 # Unreleased — Stable and Development updates
 
+- The updater's installation no longer stops at "CEDAR runtime" when the installer was opened from the shell: offscreen validation pins Qt's single-threaded render loop instead of inheriting the desktop's threaded one, which crashed the software renderer mid-check. The navigation check reports a Quickshell crash as a failure instead of timing out.
+- Field Station's greeting rotates only while visible, with shared rotation across outputs; unused Hud form controls, StationPanel, BarCoreControls, Search.js and the clock-test harness are removed. The recorder probe skips unnecessary one-second wakeups on systems without keyboard LEDs.
+- Signals offers an interactive Topgrade system upgrade in a terminal. The integrated Core clock stays current, and native application menus use QApplication.
+- Signals uses one panel for hover, click and notification arrivals. Clicking pins the hovered panel without a second resize; closed hub contents unload, and volume/brightness stay inline on hover.
+- Field Station, Signals, Quick Controls and Notifications adopt Strata styling. Field Station now owns performance monitoring with a searchable process table, per-core activity, GPU readings and application windows; duplicated telemetry panels link there.
+
+- Connections, Power, Calendar and Applications drops share Strata frames, controls and typography while retaining their existing actions.
+
+- Strata is now the only bar layout; retired layout preferences resolve to CEDAR while unrelated and unknown settings are retained.
+
 - Installer rendering checks explicitly select Qt Quick's software renderer, retain useful Qt output on failure and timeout, and stop their child processes. The controls check keeps its complete lifecycle test; its inner deadline finishes before the installer's watchdog.
 - Development keeps the integrated Strata bar layout and restores finite startup, profile, Focus and Shield flourishes. Expressive adds brighter event accents and a Heartwood counter-turn and bloom; hidden, Reduced Motion and Off cancel active effects.
 - Field Station → Update CEDAR offers Development Branch (`dev`) and Stable Branch (`main`), including when CEDAR is up to date. The updater remembers a branch after verified installation and compares actual release contents, so development changes are found even without a version bump.
 - Branch checks prepare an isolated source snapshot without changing a personal checkout. Failed checks and canceled installations retain the last successful branch; interrupted installations resume against the exact prepared revision. See docs/UPDATE-CHANNELS.md.
+- CEDAR AI: Claude Code and Codex CLI work one goal together, turn by turn, in one checkout, or either agent alone, each at a chosen model and effort; sessions run until the agents say the goal is done, every hand-off between them is shown, and the session reports what each agent used, with Claude's plan windows. Installed as an application beside Shield (`cedar ai`). A Shield-style window (Super+Shift+A, Go › CEDAR AI, `relay` IPC) shows the goal, the conversation down a spine with the running agent's tool activity, and a line to step in; Sessions reopens and resumes recorded sessions; Settings holds the checkout, access (read/edit/full), rounds and who speaks first. The same relay is `scripts/cedar_ai.py` in a terminal. See docs/CEDAR-AI.md.
 
 # 0.1.3 — Desktop Profiles, Focus, Station, the workspace overview, Connections, and the bar's animation identity
 

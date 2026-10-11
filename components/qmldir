@@ -5,10 +5,7 @@ StrataBarFrame 1.0 StrataBarFrame.qml
 CedarAtmosphere 1.0 CedarAtmosphere.qml
 GlowText 1.0 GlowText.qml
 HudButton 1.0 HudButton.qml
-HudField 1.0 HudField.qml
 HudPanel 1.0 HudPanel.qml
-HudSlider 1.0 HudSlider.qml
-HudToggle 1.0 HudToggle.qml
 LockAuth 1.0 LockAuth.qml
 Overlay 1.0 Overlay.qml
 ServiceRequest 1.0 ServiceRequest.qml
@@ -16,7 +13,6 @@ StationButton 1.0 StationButton.qml
 StationCombo 1.0 StationCombo.qml
 StationCore 1.0 StationCore.qml
 StationField 1.0 StationField.qml
-StationPanel 1.0 StationPanel.qml
 StationSlider 1.0 StationSlider.qml
 StationToggle 1.0 StationToggle.qml
 SettingControl 1.0 SettingControl.qml
@@ -27,7 +23,6 @@ SettingsHeading 1.0 SettingsHeading.qml
 AudioSpectrum 1.0 AudioSpectrum.qml
 ReadingText 1.0 ReadingText.qml
 NetworkIndicator 1.0 NetworkIndicator.qml
-BarCoreControls 1.0 BarCoreControls.qml
 Breath 1.0 Breath.qml
 Keycap 1.0 Keycap.qml
 ChoiceChips 1.0 ChoiceChips.qml
@@ -50,3 +45,5 @@ CedarHeartwood 1.0 CedarHeartwood.qml
 CedarRootlines 1.0 CedarRootlines.qml
 CedarWhispers 1.0 CedarWhispers.qml
 CanopyPulse 1.0 CanopyPulse.qml
+StrataButton 1.0 StrataButton.qml
+StrataField 1.0 StrataField.qml

@@ -14,7 +14,6 @@ ShellRoot {
         implicitHeight: 180
         color: Theme.background
         property int step: 0
-        property var styles: ["cedar", "floating", "minimal", "islands", "center", "split"]
         function check(ok, label) {
             if (!ok) {
                 console.error("FAIL: " + label);
@@ -38,41 +37,23 @@ ShellRoot {
             Item {
                 id: bar
                 y: 20
-                x: Config.barDetached ? Config.barMargin : 0
+                x: 0
                 width: scene.width - x * 2
                 height: Config.barHeight
                 StrataBarFrame {
                     anchors.fill: parent
-                    visible: Config.barStyle === "cedar"
                     materialOpacity: Config.barOpacity
                     centerWidth: contents.item ? contents.item.centerWidth : 0
                 }
-                Rectangle {
-                    anchors.fill: parent
-                    visible: !Config.barIslands && Config.barStyle !== "cedar"
-                    color: Theme.surface
-                    radius: Config.barStyle === "floating" ? Config.barRadius : 0
-                }
                 Loader {
                     id: contents
-                    active: !Config.barIslands
                     anchors.fill: parent
                     anchors.margins: 6
-                    sourceComponent: Config.barStyle === "cedar" ? strataContents : legacyContents
+                    sourceComponent: strataContents
                 }
                 Component {
                     id: strataContents
                     StrataBarContents { output: Quickshell.screens[0] }
-                }
-                Component {
-                    id: legacyContents
-                    BarContents { output: Quickshell.screens[0] }
-                }
-                Loader {
-                    id: islands
-                    active: Config.barIslands
-                    anchors.fill: parent
-                    sourceComponent: BarIslands { output: Quickshell.screens[0] }
                 }
             }
             CoreSurface {
@@ -95,10 +76,10 @@ ShellRoot {
             id: inspect
             interval: 190
             onTriggered: {
-                const group = Config.barIslands ? islands.item : contents.item;
+                const group = contents.item;
                 window.check(group !== null, "Selected bar layout is loaded");
                 if (group.coreHost) {
-                    const left = window.named(group, Config.barIslands ? "barLeftPlate" : "barLeftControls"), right = window.named(group, Config.barIslands ? "barRightPlate" : "barRightControls");
+                    const left = window.named(group, "barLeftControls"), right = window.named(group, "barRightControls");
                     window.check(left !== null && right !== null, "Selected bar exposes both side regions");
                     window.check(left.x + left.width <= group.width / 2 - CoreService.reserveWidth / 2, "Left controls must leave room for Core in " + Config.barStyle);
                     window.check(right.x >= group.width / 2 + CoreService.reserveWidth / 2, "Right controls must leave room for Core in " + Config.barStyle);
@@ -118,17 +99,17 @@ ShellRoot {
             repeat: true
             running: true
             onTriggered: {
-                if (window.step === 36) {
-                    console.log("PASS: six bar layouts reserve Core space at three widths and keep a centered fallback");
+                if (window.step === 6) {
+                    console.log("PASS: Strata bar reserve Core space at three widths and keep a centered fallback");
                     Qt.quit();
                     return;
                 }
                 Config.set("reducedMotion", true);
                 Config.set("coreWarnings", false);
-                Config.set("barStyle", window.styles[window.step % 6]);
-                Config.set("coreEnabled", Math.floor(window.step / 6) % 2 === 0);
-                scene.width = window.step < 12 ? 1280 : window.step < 24 ? 960 : 640;
-                Config.set("fontScale", window.step < 24 ? 1 : 1.25);
+                Config.set("barStyle", "cedar");
+                Config.set("coreEnabled", window.step % 2 === 0);
+                scene.width = window.step < 2 ? 1280 : window.step < 4 ? 960 : 640;
+                Config.set("fontScale", window.step < 4 ? 1 : 1.25);
                 inspect.restart();
                 window.step++;
             }

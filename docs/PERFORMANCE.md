@@ -18,11 +18,16 @@ They just stop asking for frames they cannot be seen in.
 3. **Nothing samples a hidden value.** Brightness is read while a brightness
    control or OSD is visible and on key presses, not every ten seconds for the
    life of the shell. Telemetry cadence is owned by its visible consumers
-   (`SystemStats`); the ambient CPU hint samples every 20 s.
+   (`SystemStats`); the ambient CPU hint samples every 20 s. Field Station
+   alone requests the instrument cadence. Its task page starts the read-only
+   process sampler every two seconds, with optional GPU reads every ten
+   seconds; closing, pausing or locking stops that helper. Settings, Quick
+   Controls and Station diagnostics do not request fast telemetry.
 4. **Subscribe, then filter.** The NetworkManager stream ignores access-point
    signal-strength churn unless a network list is on screen, and debounces to
-   600 ms when collapsed. The recorder probe wakes once per second and scans
-   `/proc` every third second.
+   600 ms when collapsed. The recorder probe scans `/proc` every three seconds;
+   it wakes once per second only when keyboard LED paths are present. Keyboard
+   hotplug discovery runs every thirty seconds.
 5. **Build panels when shown.** Go, Settings, Field Station, Canopy, Control
    Center, Power, Themes, Wallpapers and notification history are created by a
    `Loader` on first show and released on close, per output.

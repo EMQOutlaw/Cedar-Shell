@@ -52,30 +52,10 @@ ColumnLayout {
         }
     }
 
-    // Live telemetry
     SettingsSection {
-        heading: "Right now"; caption: "Measured on this computer. A dash means the reading is unavailable, not zero."
-        GridLayout {
-            Layout.fillWidth: true; columns: root.width < 640 ? 2 : 4; columnSpacing: 8; rowSpacing: 8
-            Repeater {
-                model: [
-                    {label:"CPU", value:SystemStats.cpu, text:root.percent(SystemStats.cpu), accent:Theme.green},
-                    {label:"Memory", value:SystemStats.ram, text:root.percent(SystemStats.ram), accent:Theme.teal},
-                    {label:"Storage", value:SystemStats.disk, text:root.percent(SystemStats.disk), accent:SystemStats.disk * 100 >= Config.saved.coreDiskLimit ? Theme.amber : Theme.teal},
-                    {label:"Temperature", value:SystemStats.temperature < 0 ? -1 : SystemStats.temperature / Math.max(1, Config.saved.coreTemperatureLimit), text:SystemStats.temperature < 0 ? "—" : Math.round(SystemStats.temperature) + "°C", accent:SystemStats.temperature >= Config.saved.coreTemperatureLimit ? Theme.ember : Theme.amber}
-                ]
-                ColumnLayout {
-                    required property var modelData
-                    Layout.fillWidth: true; Layout.preferredWidth: 120; spacing: 0
-                    ArcGauge {
-                        Layout.alignment: Qt.AlignHCenter; implicitWidth: 112; implicitHeight: 112
-                        value: Math.max(0, Math.min(1, modelData.value)); valueText: modelData.text; accent: modelData.accent
-                        active: root.visible && modelData.value >= 0
-                    }
-                    GlowText { Layout.alignment: Qt.AlignHCenter; text: modelData.label.toUpperCase(); color: Theme.muted; font.pixelSize: 9; font.letterSpacing: 1.6 }
-                }
-            }
-        }
+        heading: "Field Station"
+        caption: "Live performance, processes and open applications are together in Field Station."
+        StrataButton { text: "Open tasks & performance"; onClicked: Canopy.openStation("tasks") }
     }
 
     // State of each area
@@ -116,7 +96,7 @@ ColumnLayout {
         Readout {
             label: "Look"; lit: true; tone: Theme.teal
             value: SettingsInfo.data.theme || "CEDAR"
-            detail: ({cedar:"CEDAR", floating:"Floating", minimal:"Full Width", islands:"Islands", center:"Center", split:"Split"})[Config.barStyle] + " bar  ·  " + (Config.saved.reducedMotion ? "Reduced Motion" : "Ambient " + Math.round(Config.saved.ambientIntensity * 100) + "%")
+            detail: "CEDAR Strata bar  ·  " + (Config.saved.reducedMotion ? "Reduced Motion" : "Ambient " + Math.round(Config.saved.ambientIntensity * 100) + "%")
         }
         Readout {
             label: "Privacy"; lit: Config.localOnly; tone: Theme.green

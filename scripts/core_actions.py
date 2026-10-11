@@ -4,7 +4,7 @@ import json,mimetypes,os,signal,stat,subprocess,sys
 from pathlib import Path
 from urllib.parse import unquote,urlparse
 from core_probe import recording
-from desktop_runtime import omarchy
+from desktop_runtime import launch,omarchy
 
 RECORDING_FILE=Path('/tmp/omarchy-screenrecord-filename')
 
@@ -28,6 +28,9 @@ def run(args,timeout=15,stdin=None):
 
 def action(req):
     name=req.get('action')
+    if name=='upgrade-system':
+        launch('terminal',[sys.executable,str(Path(__file__).resolve().with_name('upgrade_system.py'))])
+        return {'action':name,'message':'Topgrade opened in a terminal. Follow its prompts there.'}
     if name=='check-updates':
         p=subprocess.run(['checkupdates','--nocolor'],capture_output=True,text=True,timeout=90)
         if p.returncode not in (0,2):raise RuntimeError(p.stderr.strip() or 'Package check failed.')

@@ -1,26 +1,60 @@
 # Strata bar
 
 The `cedar` layout uses one continuous Foundation and Grain frame. The Core
-rests directly on that surface, without a separate border. Other bar styles
-keep their existing layout.
+rests directly on that surface, without a separate border. Strata is the only
+bar layout. Saved Floating, Full Width (`minimal`), Islands, Center and Split
+preferences resolve to `cedar`; the next preference save records `cedar` while
+retaining unknown settings. Legacy imports translate those same IDs. The layout
+picker and the unused margin, radius and item-spacing controls are removed.
 
 | Region | Controls |
 | --- | --- |
 | Left | CEDAR / Station, applications, workspaces, focused application or optional Whispers |
-| Center | Heartwood, current profile or real activity, Signals |
-| Right | Optional audio pulse and tray, connections, audio, battery / power, calendar, notifications, Quick Controls |
+| Center | Heartwood and the clock at rest, or real activity; clicking opens Signals, and notifications unfold here |
+| Right | Optional audio pulse and tray, connections, audio, battery / power, calendar, Quick Controls |
 
-Clicking the center opens Signals. Quick Controls has its own button at the
+Hovering the center opens Signals temporarily; clicking pins the same panel
+without a second resize or content swap. Clicking again or pressing Escape
+closes it. Notification arrivals use that same panel, and closed contents
+unload after the transition. Volume and brightness remain inline on hover.
+Quick Controls has its own button at the
 right edge on every output, including outputs without the activity Core.
+The time stays centered on every output; the right-hand calendar shows the
+date, or an icon when space is tight or the date is disabled. The left CEDAR
+button opens Field Station.
 Audio supports wheel volume adjustment. Tray items retain activation,
 secondary activation, context menus and scrolling. Each dropdown anchor
 belongs to the output containing its control.
+
+One control per destination. Because Strata's bar already carries audio,
+power and Signals, Quick Controls under Strata omits the output and
+microphone level rows, the device choices, the fallback Power & session
+button and the Canopy footer's Signals button; brightness, the link tiles,
+the station stances and the power profile stay. Media transport is never in
+Quick Controls: it lives in the Field Station and the Core pill.
 
 The layout uses theme tokens and measured text widths. As space contracts,
 the application title, optional effects, tray items, date and status labels
 yield first. The workspace strip becomes the current workspace plus its
 overview control. Core reservation is smaller on narrow logical outputs.
 The time remains visible; its tooltip retains the full date and time.
+
+## Drop controls
+
+Field Station, Signals, Quick Controls, Notifications, Connections, Power,
+Calendar and Applications share the bar's Foundation,
+chamfered edges and restrained accent. `StrataButton` and `StrataField` retain
+Station control behavior, with `strataFoundation` fills, `strataCut` corners,
+`strataAccent` borders and explicit keyboard focus. Titles use the label font
+in spaced capitals; `SectionMark` separates instruments. Body text uses
+`strataText` and `strataMuted`. Amber confirmation/error and ember shutdown
+states remain distinct. The shared Canopy frame uses the same palette.
+
+Calendar's current day has a chamfered marker, and its timer controls retain
+the existing start, pause and cancel actions. Connections keeps its radio,
+join, saved-profile, VPN and hotspot paths. Applications keeps favorites,
+search, calculator and keyboard navigation. Power keeps its confirmation
+step and lock guard.
 
 ## Ownership and motion
 
@@ -61,7 +95,7 @@ the existing shared Pulse provider.
 The redesign has passed Qt 6.12 QML syntax parsing, the production Canopy
 transition-command tests, and Strata geometry / Kinetic tests. Actual
 Quickshell 0.3.1 with bundled Qt 6.11.2 also passed the 24-state Strata harness
-and the existing 36-state six-layout harness using the offscreen software
+and the six-state Strata/Core harness using the offscreen software
 backend. These runs instantiate the production QML and produce screenshots;
 their provider inputs are fixtures. They do not certify Hyprland placement,
 GPU frame timing or real hardware actions.
@@ -73,7 +107,10 @@ window allocation, collapse, Reduced Motion and critical-signal preemption. It
 also observes balanced and expressive Rootline/Heartwood responses in real Qt,
 their fully rested states while hover remains held, and cancellation of
 in-flight Rootline, Heartwood and DropFrame effects when hidden or disabled.
-The Canopy harness rendered its 15 production pages at 960px and 480px widths.
+The Canopy harness renders its 14 production pages at 960px and 480px widths.
+Field Station’s Tasks & performance page has a separate narrow-layout,
+sorting and filtering harness. See [Station](STATION.md) for data sources
+and process-sampling semantics.
 
 Run the actual Quickshell layout harness:
 

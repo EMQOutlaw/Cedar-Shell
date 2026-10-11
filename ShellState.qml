@@ -40,6 +40,15 @@ Singleton {
         osdTimer.stop();
     }
     property int greetingIndex: 0
+    property real greetingAt: 0
+    // Every visible Field Station ticks this; the index moves once a minute
+    // however many stations are on screen.
+    function rotateGreeting() {
+        const now = Date.now();
+        if (now - greetingAt < 55000) return;
+        greetingAt = now;
+        greetingIndex++;
+    }
     readonly property var greetings: ["Evenin'. CEDAR's lit.", "A little light from the deep woods.", "Set a spell. There's knowledge to keep.", "The ridge is quiet. The light stays on.", "Old wisdom. New trails."]
     readonly property string greeting: greetings[greetingIndex % greetings.length]
     function focusedOutput() {
@@ -113,12 +122,6 @@ Singleton {
         id: osdTimer
         interval: Math.max(2000, Theme.osdDuration)
         onTriggered: root.osdOpen = false
-    }
-    Timer {
-        interval: 60000
-        repeat: true
-        running: true
-        onTriggered: root.greetingIndex++
     }
     Connections {
         target: Quickshell

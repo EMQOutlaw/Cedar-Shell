@@ -79,7 +79,7 @@ ShellRoot {
             }
             const regions = [
                 [left, ["strataIdentity", "strataLauncher", "strataWorkspaces", "strataWorkspaceOverview", "strataWindowTitle"]],
-                [right, ["strataNetwork", "strataAudio", "strataPower", "strataClock", "strataNotifications", "strataQuick"]]
+                [right, ["strataNetwork", "strataAudio", "strataPower", "strataClock", "strataQuick"]]
             ];
             for (const region of regions) {
                 for (const name of region[1]) {

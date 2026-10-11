@@ -1,8 +1,22 @@
 # Interface consolidation
 
+## Current Strata surfaces
+
+Strata is the sole bar layout. The center pill opens Signals and unfolds
+notifications; the right-side control opens Quick Controls. Connections,
+audio, power and calendar have their own bar routes. Field Station owns
+live performance and task monitoring; the old System topic redirects there.
+All requested drops share Strata colors, chamfers and controls. See
+[Strata bar](STRATA-BAR.md) and [Station](STATION.md).
+
+## Earlier consolidation and staging notes
+
+The following records the earlier implementation and its deployment procedure;
+its layout and route descriptions are superseded by the current Strata design.
+
 The Core's main button always toggles Quick Controls. Its network indicator opens Connections inside the same Canopy. Audio, Bluetooth, Power/session, system telemetry, weather, calendar, clipboard, notifications and Trails use that shared surface. Signals retain their separate activity-stack destination.
 
-The right edge keeps tray items, battery information and notification history. Its old Control Center, Settings, volume and raw network-label buttons are removed. Field Station's redundant Control Center button is removed too. Secondary monitors and configurations with activity Core disabled retain a centered clock/control entry, including Split layout. Calendar remains available through Canopy → Time.
+The right edge keeps tray items and battery information; notification history moved into Signals, reached from the pill, and notifications unfold from the pill rather than a bell. Its old Control Center, Settings, volume and raw network-label buttons are removed. Field Station's redundant Control Center button is removed too. Secondary monitors and configurations with activity Core disabled retain a centered clock/control entry, including Split layout. Calendar remains available through Canopy → Time.
 
 Quick Controls is now a reusable content component, without an embedded second header, tab strip, Settings button or scroll container. Output volume is immediately visible. Power/session actions share one implementation with the legacy power overlay. Existing command/IPC entry points remain; `ShellState.open/toggle("control")` and power calls route to Canopy when enabled. If Canopy is explicitly disabled, existing overlays reuse the same controls. Saved preferences (including legacy hidden-module keys) are retained; removed modules no longer appear as ineffective toggles in Settings.
 
@@ -17,7 +31,7 @@ The Core uses an icon, with a simple text fallback if the Nerd Font is missing. 
 - 125 project Python tests pass, including 11 network-selection regressions.
 - Five staging-updater tests cover locked-session refusal, conflicting edits, edits during validation, backups/repeated application and rollback.
 - Real Qt mouse events test Core toggling, changing activities, network navigation, media click isolation, keyboard focus/Enter/Escape and lock guards; also tested at 150% display scale.
-- All six bar styles render at 640/960/1280 logical pixels with Core on/off; narrow cases include enlarged text. Assertions check center reservation and centered fallback geometry.
+- The Strata bar renders at 640/960/1280 logical pixels with Core on/off; narrow cases include enlarged text. Assertions check center reservation and centered fallback geometry.
 - Eleven Canopy destinations render at 480/960 pixels; pinning and locked-session privacy checks pass.
 - Existing Settings, scoped reset, persistence, rapid-volume/drag-hold, animation/reduced-motion, lock-auth state-machine and two-virtual-monitor host/reload checks pass.
 - 132 QML files parse. Activity and Forest policy JavaScript tests pass.

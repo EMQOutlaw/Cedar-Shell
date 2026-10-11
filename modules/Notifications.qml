@@ -30,27 +30,28 @@ Scope {
             Repeater {
                 model: NoticeStore.popups.slice(-3)
                 HudPanel {
+                    fillColor: Theme.strataFoundation
                     id: card
                     required property var modelData
                     width: stack.width; implicitHeight: contents.implicitHeight + 40
                     padding: 20; highlighted: true
-                    accent: modelData.urgency === 2 ? Theme.ember : Theme.teal
+                    accent: modelData.urgency === 2 ? Theme.ember : Theme.strataAccent
                     ColumnLayout {
                         id: contents
                         width: parent.width
                         spacing: 8
                         RowLayout {
                             Layout.fillWidth: true
-                            GlowText { text: card.modelData.appName || "SIGNAL"; color: Theme.teal; font.family: Theme.labelFont; Layout.fillWidth: true; elide: Text.ElideRight }
-                            HudButton { text: "×"; implicitWidth: 30; implicitHeight: 28; onClicked: card.modelData.dismiss() }
+                            GlowText { text: card.modelData.appName || "SIGNAL"; color: Theme.strataAccent; font.family: Theme.labelFont; Layout.fillWidth: true; elide: Text.ElideRight }
+                            StrataButton { text: "×"; implicitWidth: 30; implicitHeight: 28; onClicked: card.modelData.dismiss() }
                         }
                         GlowText { text: card.modelData.summary; Layout.fillWidth: true; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight }
-                        GlowText { text: card.modelData.body; Layout.fillWidth: true; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; color: Theme.muted }
+                        GlowText { text: card.modelData.body; Layout.fillWidth: true; wrapMode: Text.Wrap; maximumLineCount: 3; elide: Text.ElideRight; color: Theme.strataMuted }
                         Flow {
                             Layout.fillWidth: true; spacing: 4
                             Repeater {
                                 model: card.modelData.actions
-                                HudButton {
+                                StrataButton {
                                     required property var modelData
                                     text: modelData.text; implicitHeight: 30
                                     onClicked: modelData.invoke()
@@ -74,27 +75,31 @@ Scope {
         Component {
         id: historyList
         HudPanel {
+            fillColor: Theme.strataFoundation
+            accent: Theme.strataAccent
             ColumnLayout {
                 anchors.fill: parent
                 RowLayout {
-                    GlowText { text: "FIELD NOTES / NOTIFICATIONS"; color: Theme.green; font.family: Theme.labelFont; font.pixelSize: 22; Layout.fillWidth: true }
-                    HudButton { text: "CLEAR"; onClicked: NoticeStore.clear() }
-                    HudButton { text: "×"; onClicked: ShellState.close() }
+                    GlowText { text: "FIELD NOTES / NOTIFICATIONS"; color: Theme.strataAccent; font.family: Theme.labelFont; font.pixelSize: 22; Layout.fillWidth: true }
+                    StrataButton { text: "CLEAR"; onClicked: NoticeStore.clear() }
+                    StrataButton { text: "×"; onClicked: ShellState.close() }
                 }
-                GlowText { visible: NoticeStore.history.length === 0; text: "No signals recorded this session."; color: Theme.muted }
+                GlowText { visible: NoticeStore.history.length === 0; text: "No signals recorded this session."; color: Theme.strataMuted }
                 ListView {
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 8
                     model: NoticeStore.history
                     ScrollBar.vertical: ScrollBar {}
                     delegate: HudPanel {
+                        fillColor: Theme.strataFoundation
+                        accent: Theme.strataAccent
                         required property var modelData
                         width: ListView.view.width; implicitHeight: note.implicitHeight + 40
                         padding: 20
                         Column {
                             id: note; width: parent.width; spacing: 8
-                            GlowText { text: (modelData.timestamp ? Config.formatTime(new Date(modelData.timestamp)) : modelData.time) + " / " + modelData.app; color: Theme.teal; width: parent.width; elide: Text.ElideRight }
-                            GlowText { text: modelData.summary; color: modelData.critical ? Theme.ember : Theme.text; width: parent.width; wrapMode: Text.Wrap }
-                            GlowText { text: modelData.body; color: Theme.muted; width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 8; elide: Text.ElideRight }
+                            GlowText { text: (modelData.timestamp ? Config.formatTime(new Date(modelData.timestamp)) : modelData.time) + " / " + modelData.app; color: Theme.strataAccent; width: parent.width; elide: Text.ElideRight }
+                            GlowText { text: modelData.summary; color: modelData.critical ? Theme.ember : Theme.strataText; width: parent.width; wrapMode: Text.Wrap }
+                            GlowText { text: modelData.body; color: Theme.strataMuted; width: parent.width; wrapMode: Text.Wrap; maximumLineCount: 8; elide: Text.ElideRight }
                         }
                     }
                 }

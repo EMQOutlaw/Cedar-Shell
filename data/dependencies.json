@@ -15,10 +15,17 @@
       "whenUnavailable": "Branch updates need Git; the installed shell continues running.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
-      "architectures": ["x86_64"],
+      "architectures": [
+        "x86_64"
+      ],
       "testedRange": "Validated by the local bare-repository channel tests",
-      "verification": ["command-presence", "feature-runtime-test"],
-      "consumers": ["installer/engine/update.py"],
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "installer/engine/update.py"
+      ],
       "autoInstall": true
     },
     {
@@ -483,7 +490,6 @@
         "modules/WeatherLocationSettings.qml",
         "modules/CoreWindow.qml",
         "modules/Bar.qml",
-        "modules/BarIslands.qml",
         "modules/CanopyWindow.qml"
       ],
       "autoInstall": true
@@ -661,11 +667,11 @@
     },
     {
       "command": "grim",
-      "feature": "Developer screenshots",
-      "status": "development",
+      "feature": "Screenshots (Go \u203a Capture)",
+      "status": "feature-required",
       "archPackage": "grim",
-      "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
-      "scope": "development",
+      "whenUnavailable": "The Capture menu is hidden and `cedar:capture` reports that grim is missing; no fake capture.",
+      "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
       "architectures": [
         "x86_64"
@@ -676,7 +682,31 @@
         "feature-runtime-test"
       ],
       "consumers": [
+        "scripts/desktop_runtime.py",
+        "menus/cedar-menu.jsonc",
         "scripts/smoke.py"
+      ],
+      "autoInstall": false
+    },
+    {
+      "command": "slurp",
+      "feature": "Region screenshots (Go \u203a Capture \u203a Region)",
+      "status": "feature-required",
+      "archPackage": "slurp",
+      "whenUnavailable": "Capture \u203a Region is hidden and `cedar:capture region` reports that slurp is missing; window, screen and all-screen captures still work.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Observed versions only; see compatibility.json",
+      "verification": [
+        "command-presence",
+        "feature-runtime-test"
+      ],
+      "consumers": [
+        "scripts/desktop_runtime.py",
+        "menus/cedar-menu.jsonc"
       ],
       "autoInstall": false
     },
@@ -927,12 +957,8 @@
         "components/HudPanel.qml",
         "components/HudButton.qml",
         "components/Overlay.qml",
-        "components/HudField.qml",
-        "components/HudToggle.qml",
-        "components/HudSlider.qml",
         "components/StationButton.qml",
         "components/ActivityTrace.qml",
-        "components/StationPanel.qml",
         "components/StationField.qml",
         "components/LockAuth.qml",
         "components/ServiceRequest.qml",
@@ -951,12 +977,10 @@
         "components/CedarAtmosphere.qml",
         "components/ReadingText.qml",
         "components/NetworkIndicator.qml",
-        "components/BarCoreControls.qml",
         "modules/Hud.qml",
         "modules/LockScreen.qml",
         "modules/Themes.qml",
         "modules/WallpaperPicker.qml",
-        "modules/BarLayoutPreview.qml",
         "modules/TimeSettings.qml",
         "modules/ControlCenter.qml",
         "modules/Notifications.qml",
@@ -982,7 +1006,6 @@
         "modules/CoreSettings.qml",
         "modules/NotificationCanopy.qml",
         "modules/SettingsPanel.qml",
-        "modules/SystemCanopy.qml",
         "modules/TrailCanopy.qml",
         "modules/TrailwatchView.qml",
         "modules/DesktopSettingsPage.qml",
@@ -994,8 +1017,6 @@
         "modules/TopBarSettings.qml",
         "modules/Bar.qml",
         "modules/ControlPanel.qml",
-        "modules/BarContents.qml",
-        "modules/BarIslands.qml",
         "modules/CanopyPanel.qml",
         "modules/CanopyWindow.qml",
         "modules/FieldStation.qml",
@@ -1036,7 +1057,10 @@
         "components/trailwatch/Metric.qml",
         "components/trailwatch/Topo.qml",
         "components/trailwatch/Complication.qml",
-        "components/trailwatch/WatchFace.qml"
+        "components/trailwatch/WatchFace.qml",
+        "components/StrataButton.qml",
+        "components/StrataField.qml",
+        "modules/StationTasks.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1047,8 +1071,6 @@
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
         "components/HudButton.qml",
-        "components/HudField.qml",
-        "components/HudSlider.qml",
         "components/StationButton.qml",
         "components/StationField.qml",
         "components/StationCombo.qml",
@@ -1073,7 +1095,8 @@
         "modules/QuickControls.qml",
         "components/core/CoreHub.qml",
         "components/core/CoreSurface.qml",
-        "components/trailwatch/LockTerminal.qml"
+        "components/trailwatch/LockTerminal.qml",
+        "modules/StationTasks.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1084,7 +1107,6 @@
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
         "preview.qml",
-        "components/HudToggle.qml",
         "components/SettingsHeading.qml",
         "components/SettingsCard.qml",
         "components/SettingsFields.qml",
@@ -1114,7 +1136,6 @@
         "modules/CoreSettings.qml",
         "modules/NotificationCanopy.qml",
         "modules/SettingsPanel.qml",
-        "modules/SystemCanopy.qml",
         "modules/TrailCanopy.qml",
         "modules/TrailwatchView.qml",
         "modules/DesktopSettingsPage.qml",
@@ -1124,8 +1145,6 @@
         "modules/TopBarSettings.qml",
         "modules/Bar.qml",
         "modules/ControlPanel.qml",
-        "modules/BarContents.qml",
-        "modules/BarIslands.qml",
         "modules/CanopyPanel.qml",
         "modules/FieldStation.qml",
         "modules/QuickControls.qml",
@@ -1138,7 +1157,8 @@
         "components/trailwatch/Instrument.qml",
         "components/trailwatch/LockTerminal.qml",
         "components/trailwatch/Metric.qml",
-        "components/trailwatch/Complication.qml"
+        "components/trailwatch/Complication.qml",
+        "modules/StationTasks.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1171,7 +1191,6 @@
         "components/Overlay.qml",
         "components/ServiceRequest.qml",
         "components/AudioSpectrum.qml",
-        "components/BarCoreControls.qml",
         "modules/LockScreen.qml",
         "modules/Themes.qml",
         "modules/WallpaperPicker.qml",
@@ -1191,8 +1210,6 @@
         "modules/CoreWindow.qml",
         "modules/ConnectionSettings.qml",
         "modules/Bar.qml",
-        "modules/BarContents.qml",
-        "modules/BarIslands.qml",
         "modules/CanopyWindow.qml",
         "modules/FieldStation.qml",
         "modules/SessionControls.qml",
@@ -1222,7 +1239,8 @@
         "services/Network.qml",
         "components/core/CoreHub.qml",
         "components/core/CoreHost.qml",
-        "components/core/CoreSurface.qml"
+        "components/core/CoreSurface.qml",
+        "modules/StationTasks.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1245,11 +1263,10 @@
         "ShellState.qml",
         "modules/CoreWindow.qml",
         "modules/Bar.qml",
-        "modules/BarContents.qml",
-        "modules/BarIslands.qml",
         "modules/CanopyWindow.qml",
         "services/CoreSources.qml",
-        "services/Forest.qml"
+        "services/Forest.qml",
+        "modules/StationTasks.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1276,7 +1293,8 @@
         "services/Forest.qml",
         "services/Go.qml",
         "services/SystemStats.qml",
-        "services/Weather.qml"
+        "services/Weather.qml",
+        "modules/StationTasks.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1332,9 +1350,7 @@
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
-        "modules/Bar.qml",
-        "modules/BarContents.qml",
-        "modules/BarIslands.qml"
+        "modules/Bar.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1347,8 +1363,6 @@
         "modules/PowerSettings.qml",
         "modules/Bar.qml",
         "modules/ControlPanel.qml",
-        "modules/BarContents.qml",
-        "modules/BarIslands.qml",
         "modules/QuickControls.qml",
         "services/CoreSources.qml",
         "services/Forest.qml",

@@ -14,7 +14,7 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: root.compact
-        StationButton {
+        StrataButton {
             implicitHeight: root.compact ? 28 : Theme.controlHeight
             visible: root.volume
             text: Audio.muted ? "󰝟" : "󰕾"
@@ -49,7 +49,7 @@ ColumnLayout {
         }
         GlowText {
             text: Math.round((root.volume ? Audio.volume : Brightness.value) * 100) + "%"
-            color: Theme.green
+            color: Theme.strataAccent
             font.pixelSize: root.compact ? Theme.small : Theme.normal
             Layout.preferredWidth: root.compact ? 40 : 48
             horizontalAlignment: Text.AlignRight
@@ -58,7 +58,7 @@ ColumnLayout {
     GlowText {
         visible: CoreService.expanded && !root.compact
         text: root.volume ? (Audio.sink?.description || "No output device") : "Display backlight"
-        color: Theme.muted
+        color: Theme.strataMuted
         Layout.fillWidth: true
         elide: Text.ElideRight
         font.pixelSize: Theme.small

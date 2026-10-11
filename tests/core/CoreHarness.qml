@@ -127,6 +127,8 @@ ShellRoot {
                     window.shot = "core-stack";
                     break;
                 case 9:
+                    const upgrade = window.find(core, "upgradeSystemButton");
+                    window.check(upgrade !== null && upgrade.visible && upgrade.enabled, "Signals exposes the system upgrade action");
                     CoreService.remove("critical", false);
                     CoreService.timer.start(300, "Tea timer");
                     CoreService.model.selectedId = "timer";
@@ -166,6 +168,28 @@ ShellRoot {
                     window.shot = "core-screenshot";
                     break;
                 case 12:
+                    CoreService.collapse();
+                    CoreService.remove("screenshot/test", false);
+                    CoreService.publish({
+                        id: "notification/42",
+                        type: "notification",
+                        priority: "normal",
+                        title: "Mail",
+                        subtitle: "A new message from the station",
+                        persistent: true,
+                        timeout: 4000,
+                        data: { noticeId: 42 },
+                        actions: [{ id: "notice:open", label: "Open" }]
+                    });
+                    window.shot = "core-notice";
+                    break;
+                case 13:
+                    window.check(core.height > core.restingHeight + 20, "A notification unfolds from the pill on its own");
+                    CoreService.remove("notification/42", false);
+                    window.shot = "core-notice-gone";
+                    break;
+                case 14:
+                    window.check(core.height <= core.restingHeight + .5, "The pill folds back once the notice is gone");
                     CoreService.collapse();
                     ShellState.osdOpen = false;
                     Config.set("coreEnabled", false);

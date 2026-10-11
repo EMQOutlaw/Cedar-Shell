@@ -16,6 +16,56 @@
     "label": "Power",
     "action": "cedar:power"
   },
+  "capture": {
+    "label": "Capture",
+    "icon": "󰄀",
+    "description": "Screenshots with grim: saved to Pictures/Screenshots and copied to the clipboard",
+    "when": "command -v grim",
+    "aliases": [
+      "screenshot",
+      "screen shot",
+      "grab",
+      "print screen",
+      "snip"
+    ]
+  },
+  "capture.region": {
+    "label": "Region",
+    "description": "Draw a rectangle to capture",
+    "action": "cedar:capture region",
+    "when": "command -v slurp",
+    "aliases": [
+      "area",
+      "selection"
+    ]
+  },
+  "capture.window": {
+    "label": "Window",
+    "description": "The focused window",
+    "action": "cedar:capture window",
+    "aliases": [
+      "active window"
+    ]
+  },
+  "capture.output": {
+    "label": "Screen",
+    "description": "The focused monitor",
+    "action": "cedar:capture output",
+    "aliases": [
+      "monitor",
+      "display",
+      "fullscreen"
+    ]
+  },
+  "capture.all": {
+    "label": "All screens",
+    "description": "Every monitor in one image",
+    "action": "cedar:capture all",
+    "aliases": [
+      "everything",
+      "desktop"
+    ]
+  },
   "cedar": {
     "label": "CEDAR"
   },
@@ -35,6 +85,16 @@
   "cedar.settings": {
     "label": "Settings",
     "action": "cedar:settings"
+  },
+  "cedar.ai": {
+    "label": "CEDAR AI",
+    "action": "cedar:ai",
+    "aliases": [
+      "ai",
+      "claude",
+      "codex",
+      "agents"
+    ]
   },
   "cedar.wallpapers": {
     "label": "Wallpapers",
@@ -64,7 +124,7 @@
     "action": "cedar:canopy bluetooth"
   },
   "cedar.canopy.system": {
-    "label": "System Instrument",
+    "label": "Field Station · Tasks & performance",
     "action": "cedar:canopy system"
   },
   "cedar.canopy.weather": {

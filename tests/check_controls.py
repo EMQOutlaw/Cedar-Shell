@@ -10,7 +10,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-core-ui-') as tmp:
     harness=(ROOT/'tests/core/ControlsHarness.qml').read_text().replace('"../.."','"."').replace('"../../','"')
     (source/'preview.qml').write_text(harness)
     (source/'tests/response_limit.py').write_text('import sys,time\nsys.stdin.readline()\nsys.stdout.write("x"*100000);sys.stdout.flush()\ntime.sleep(10)\n')
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QT_QUICK_BACKEND':'software','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state'),'CEDAR_SCREENSHOT_DIR':str(shots)}
+    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QT_QUICK_BACKEND':'software','QSG_RENDER_LOOP':'basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state'),'CEDAR_SCREENSHOT_DIR':str(shots)}
     try:
         result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=60)
     except subprocess.TimeoutExpired as error:

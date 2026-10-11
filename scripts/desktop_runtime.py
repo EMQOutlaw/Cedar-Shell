@@ -4,6 +4,7 @@
 The Omarchy branch is an explicit compatibility choice, never auto-selected
 because an executable or a directory happens to exist.
 """
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -250,6 +251,99 @@ def launch(role, command=()):
     subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+CAPTURE_MODES = ('region', 'window', 'output', 'all')
+
+
+def pictures_dir():
+    """The user's Pictures folder from user-dirs.dirs, else ~/Pictures."""
+    home = Path.home()
+    try:
+        for line in (xdg('CONFIG', '.config') / 'user-dirs.dirs').read_text().splitlines():
+            match = re.fullmatch(r'\s*XDG_PICTURES_DIR="(.*)"\s*', line)
+            if match:
+                value = match.group(1).replace('$HOME', str(home))
+                if value.startswith('/'):
+                    return Path(value)
+    except OSError:
+        pass
+    return home / 'Pictures'
+
+
+def hyprctl(*args):
+    value = json.loads(run(['hyprctl', '-j', *args]))
+    if not value:
+        raise RuntimeError('Hyprland reported nothing to capture.')
+    return value
+
+
+def capture_geometry(mode):
+    """grim's `x,y wxh` for a capture mode; None when the user cancelled a region."""
+    if mode == 'region':
+        picked = subprocess.run(['slurp', '-d'], capture_output=True, text=True, timeout=120)
+        if picked.returncode:
+            return None
+        return picked.stdout.strip() or None
+    if mode == 'window':
+        window = hyprctl('activewindow')
+        if not window.get('address'):
+            raise RuntimeError('No window has focus.')
+        (x, y), (w, h) = window['at'], window['size']
+        return '%d,%d %dx%d' % (x, y, w, h)
+    if mode == 'output':
+        monitor = next((m for m in hyprctl('monitors') if m.get('focused')), None)
+        if monitor is None:
+            raise RuntimeError('No monitor has focus.')
+        scale = float(monitor.get('scale') or 1)
+        return '%d,%d %dx%d' % (monitor['x'], monitor['y'], round(monitor['width'] / scale), round(monitor['height'] / scale))
+    return ''
+
+
+def capture(mode):
+    """Screenshot with grim: save under Pictures/Screenshots, copy to the clipboard, notify.
+
+    The file is the result; the clipboard copy and the notification are best
+    effort and never report a saved capture as failed.
+    """
+    if mode not in CAPTURE_MODES:
+        raise ValueError('Capture modes: ' + ', '.join(CAPTURE_MODES) + '.')
+    if not shutil.which('grim'):
+        raise RuntimeError('Install grim to take screenshots.')
+    if mode == 'region' and not shutil.which('slurp'):
+        raise RuntimeError('Install slurp to capture a region.')
+    geometry = capture_geometry(mode)
+    if geometry is None:
+        return ''
+    folder = pictures_dir() / 'Screenshots'
+    folder.mkdir(parents=True, exist_ok=True)
+    path = capture_path(folder)
+    run(['grim', *(['-g', geometry] if geometry else []), str(path)])
+    quiet = {'stdout': subprocess.DEVNULL, 'stderr': subprocess.DEVNULL, 'timeout': 10}
+    if shutil.which('wl-copy'):
+        try:
+            with open(path, 'rb') as image:
+                subprocess.run(['wl-copy', '--type', 'image/png'], stdin=image, **quiet)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    if shutil.which('notify-send'):
+        try:
+            subprocess.run(['notify-send', '-a', 'cedar', '-i', str(path), '-h', 'string:image-path:' + str(path),
+                            'Screenshot saved', str(path)], **quiet)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return str(path)
+
+
+def capture_path(folder):
+    """A fresh screenshot-<timestamp>.png; a second capture in the same second gets -2, -3, ..."""
+    stem = datetime.now().strftime('screenshot-%Y-%m-%d_%H-%M-%S')
+    path = folder / (stem + '.png')
+    counter = 2
+    while path.exists():
+        path = folder / ('%s-%d.png' % (stem, counter))
+        counter += 1
+    return path
+
+
 def main(args):
     name = args[0] if args else ''
     surfaces = {'settings': ('settings', 'toggle'), 'field-station': ('hud', 'toggle'),
@@ -262,6 +356,8 @@ def main(args):
         ipc('settings', 'show', args[1])
     elif name == 'shield':
         ipc('shield', 'open')
+    elif name == 'ai':
+        ipc('relay', 'page', args[1]) if len(args) == 2 else ipc('relay', 'open')
     elif name == 'station':
         ipc('station', 'page', args[1]) if len(args) == 2 else ipc('station', 'open')
     elif name == 'focus':
@@ -275,6 +371,10 @@ def main(args):
         launch(args[1], args[2:])
     elif name == 'wallpaper' and len(args) == 2:
         set_wallpaper(args[1])
+    elif name == 'capture':
+        saved = capture(args[1] if len(args) == 2 else 'region')
+        if saved:
+            print(saved)
     else:
         raise ValueError('Unknown CEDAR desktop action.')
 

@@ -13,6 +13,17 @@ def module(name):
     spec=importlib.util.spec_from_file_location(name,ROOT/'scripts'/f'{name}.py')
     obj=importlib.util.module_from_spec(spec);spec.loader.exec_module(obj);return obj
 d=module('desktop');info=module('settings_info');net=module('connections')
+class StrataOnlySettings(unittest.TestCase):
+    def test_retired_layout_choices_and_inactive_geometry_are_absent(self):
+        schema=(ROOT/'components/SettingsSchema.js').read_text()
+        for key in ('barStyle','barMargin','barRadius','barSpacing'):
+            self.assertNotIn('key:"'+key+'"',schema)
+        page=(ROOT/'modules/TopBarSettings.qml').read_text()
+        self.assertNotIn('BarLayoutPreview',page)
+        for name in ('BarContents','BarIslands','BarLayoutPreview'):
+            self.assertFalse((ROOT/'modules'/f'{name}.qml').exists())
+            self.assertNotIn(name, [line.split()[0] for line in (ROOT/'modules/qmldir').read_text().splitlines() if line.strip()])
+
 class RemasterTransactions(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
@@ -113,6 +124,11 @@ class SingleEntryPoints(unittest.TestCase):
         pattern=re.compile(r'\bnavigate\(|signal navigate|ShellState\.(toggle|open|lock|settingsPage)|Canopy\.(open|context|toggle)|CoreService\.expand')
         for name in PAGES:
             text=(ROOT/'modules'/f'{name}.qml').read_text()
+            # Performance moved out of Settings; these links lead to its one owner.
+            if name in ('SettingsOverview', 'SystemSettings'):
+                self.assertNotIn('SystemStats.cpu', text)
+                self.assertNotIn('SystemStats.ram', text)
+                text = text.replace('Canopy.openStation("tasks")', '')
             self.assertIsNone(pattern.search(text),f'{name} adds a second route to another place')
     def test_each_preference_has_one_custom_control(self):
         import re
@@ -144,6 +160,27 @@ class DesktopSingleRoutes(unittest.TestCase):
         self.assertEqual(found-allowed,set())
         self.assertEqual(len(route.findall(self.sources()['modules/StrataBarContents.qml'])),4,
                          'Only the two tested page assignments and settings fallbacks belong in Strata')
+    def test_quick_controls_do_not_repeat_bar_or_station_controls(self):
+        """Quick Controls offers nothing the bar or the Field Station already does."""
+        quick=(ROOT/'modules/QuickControls.qml').read_text()
+        station=(ROOT/'modules/FieldStation.qml').read_text()
+        # Media transport belongs to the Field Station and the Core pill.
+        self.assertIn('togglePlaying()',station)
+        for route in ('togglePlaying','player.next','player.previous','Media.player'):
+            self.assertNotIn(route,quick,route)
+        # Strata's audio control scrolls volume and opens the audio instrument; the
+        # level rows and device choices only exist where the bar has no such control.
+        self.assertIn('readonly property bool barAudio: Canopy.barRoute("audio")',quick)
+        for guarded in ('visible: !root.barAudio\n            label: "Output"',
+                        'visible: !root.barAudio && Audio.microphone !== null',
+                        'visible: !root.barAudio && (Audio.outputs.length > 1 || Audio.inputs.length > 1)'):
+            self.assertIn(guarded,quick,guarded)
+        # Strata's battery/power control opens Power and session; the fallback button yields to it.
+        self.assertIn('visible: !Config.saved.canopyEnabled && !root.barPower\n            text: "Power & session"',quick)
+        # Strata's center opens Signals; the Canopy footer offers it only where the bar cannot.
+        panel=(ROOT/'modules/CanopyPanel.qml').read_text()
+        self.assertIn('visible: !(Config.barStyle === "cedar" && CoreService.enabled)\n                text: "Signals"',panel)
+        self.assertEqual(panel.count('CoreService.expand()'),1)
     @unittest.skipUnless(shutil.which('node'), 'Node is needed to execute QML routing functions')
     def test_strata_routes_use_canopy_or_their_guarded_fallback(self):
         source=(ROOT/'modules/StrataBarContents.qml').read_text()

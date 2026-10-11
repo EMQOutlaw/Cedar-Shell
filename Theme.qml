@@ -36,6 +36,7 @@ Singleton {
     readonly property color brightViolet: "#D7C6EF"
     readonly property color brightTeal: "#9AF4E1"
     readonly property color white: "#F4FFF8"
+    readonly property color rootlineHighlight: "#80ffffff"
     // Strata's structural bar materials inherit the user's palette. The
     // restrained accent is mixed with the readable secondary ink rather than
     // introducing an unrelated fixed palette when the theme changes.
