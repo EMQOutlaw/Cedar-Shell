@@ -11,9 +11,7 @@
       "status": "Implemented",
       "entryPoint": "components/BarButton.qml",
       "files": [
-        "clock-test.qml",
         "components/BarButton.qml",
-        "components/BarCoreControls.qml",
         "components/NetworkIndicator.qml",
         "modules/Bar.qml",
         "modules/StrataBarContents.qml",
@@ -36,9 +34,7 @@
         "tests/check_navigation.py"
       ],
       "releaseArtifacts": [
-        "clock-test.qml",
         "components/BarButton.qml",
-        "components/BarCoreControls.qml",
         "components/NetworkIndicator.qml",
         "modules/Bar.qml",
         "modules/StrataBarContents.qml",

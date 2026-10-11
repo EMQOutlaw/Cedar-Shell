@@ -1,3 +1,5 @@
+//@ pragma UseQApplication
+// Native app menus in the bar require QApplication (a full restart after enabling).
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris

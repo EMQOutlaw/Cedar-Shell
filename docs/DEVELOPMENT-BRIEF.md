@@ -69,7 +69,7 @@ Linux / Wayland / PipeWire / systemd → Hyprland → Quickshell → CEDAR.
 - `services/NoticeStore.qml`: bounded notification history and live objects; DND filtering preserves critical alerts.
 - `services/Go.qml` and `components/MenuModel.js`: Omarchy menu providers plus applications, search, prompts, and shell compatibility shim.
 
-Reusable station components include `StationButton`, `StationPanel`, `StationField`, `StationSlider`, `StationToggle`, `StationCombo`, `StationCore`, `CedarAtmosphere`, and `ActivityTrace`. Prefer these over another control family.
+Reusable station components include `StationButton`, `StationField`, `StationSlider`, `StationToggle`, `StationCombo`, `StationCore`, `CedarAtmosphere`, and `ActivityTrace`. Prefer these over another control family.
 
 ## Current implementation and boundaries
 

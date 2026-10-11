@@ -353,6 +353,9 @@ Rectangle {
                 color: Theme.strataAccent
                 opacity: root.active ? 0.7 : 0.3
             }
+            // The greeting rotates only while Field Station is on screen; the
+            // shared index keeps every output's instance on the same line.
+            Timer { interval: 60000; repeat: true; running: root.visible; onTriggered: ShellState.rotateGreeting() }
             Text {
                 Layout.fillWidth: true
                 text: ShellState.greeting

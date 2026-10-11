@@ -25,8 +25,9 @@ They just stop asking for frames they cannot be seen in.
    Controls and Station diagnostics do not request fast telemetry.
 4. **Subscribe, then filter.** The NetworkManager stream ignores access-point
    signal-strength churn unless a network list is on screen, and debounces to
-   600 ms when collapsed. The recorder probe wakes once per second and scans
-   `/proc` every third second.
+   600 ms when collapsed. The recorder probe scans `/proc` every three seconds;
+   it wakes once per second only when keyboard LED paths are present. Keyboard
+   hotplug discovery runs every thirty seconds.
 5. **Build panels when shown.** Go, Settings, Field Station, Canopy, Control
    Center, Power, Themes, Wallpapers and notification history are created by a
    `Loader` on first show and released on close, per output.

@@ -284,7 +284,7 @@ Item {
     }
     SystemClock {
         id: clock
-        enabled: root.active && !root.integrated
+        enabled: root.active
         precision: SystemClock.Minutes
     }
     function toggleHeader() {

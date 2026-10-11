@@ -127,6 +127,8 @@ ShellRoot {
                     window.shot = "core-stack";
                     break;
                 case 9:
+                    const upgrade = window.find(core, "upgradeSystemButton");
+                    window.check(upgrade !== null && upgrade.visible && upgrade.enabled, "Signals exposes the system upgrade action");
                     CoreService.remove("critical", false);
                     CoreService.timer.start(300, "Tea timer");
                     CoreService.model.selectedId = "timer";

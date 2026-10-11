@@ -121,6 +121,13 @@ ColumnLayout {
                 action: "check-updates"
             })
         }
+        StrataButton {
+            objectName: "upgradeSystemButton"
+            text: "Upgrade system"
+            hint: "Run Topgrade in a terminal"
+            enabled: !CoreService.actionBusy
+            onClicked: CoreService.run({ action: "upgrade-system" })
+        }
     }
     Loader {
         visible: root.notices

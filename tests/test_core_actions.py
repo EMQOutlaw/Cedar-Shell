@@ -1,12 +1,17 @@
 """Core file/recorder handling must act on real, explicitly selected data."""
 from pathlib import Path
-import importlib.util,json,os,sys,tempfile,unittest
+import importlib.util,io,json,os,sys,tempfile,unittest
 from unittest.mock import patch
 SCRIPTS=Path(__file__).resolve().parents[1]/'scripts'
 sys.path.insert(0,str(SCRIPTS))
 import core_actions as actions
 import core_probe as probe
 class FileActions(unittest.TestCase):
+    def test_system_upgrade_opens_interactive_terminal(self):
+        with patch.object(actions,'launch') as launch:
+            result=actions.action({'action':'upgrade-system'})
+        launch.assert_called_once_with('terminal',[sys.executable,str(SCRIPTS/'upgrade_system.py')])
+        self.assertEqual(result['action'],'upgrade-system')
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.path=Path(self.tmp.name)/'a ; $(touch no).png';self.path.write_bytes(b'\x89PNG\r\n\x1a\nexample')
@@ -56,3 +61,25 @@ class FileActions(unittest.TestCase):
         p=Path(self.tmp.name)/'brightness';p.write_text('1\n')
         self.assertEqual(probe.keyboard({'capslock':[p]}),{'capslock':True})
         p.unlink();self.assertEqual(probe.keyboard({'capslock':[p]}),{})
+
+class ProbeCadence(unittest.TestCase):
+    def run_probe(self, leds):
+        with patch.object(probe, 'LEDS') as root, patch.object(probe, 'recording', return_value=[]) as recording, patch.object(probe, 'keyboard', return_value={}), patch.object(probe.time, 'sleep', side_effect=[None] * 10 + [KeyboardInterrupt]) as sleep, patch('sys.stdout', new_callable=io.StringIO) as output:
+            root.glob.return_value = leds
+            with self.assertRaises(KeyboardInterrupt):
+                probe.watch()
+        return root, recording, sleep, output.getvalue()
+
+    def test_no_leds_sleep_until_recorder_scan_and_rediscover_devices(self):
+        root, recording, sleep, output = self.run_probe([])
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [3] * 11)
+        self.assertEqual(recording.call_count, 11)
+        self.assertEqual(root.glob.call_count, 4)  # Both LEDs at 0 and 30 seconds.
+        self.assertEqual(len(output.splitlines()), 1)
+
+    def test_leds_keep_one_second_responsiveness(self):
+        root, recording, sleep, output = self.run_probe([Path('/unused/brightness')])
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1] * 11)
+        self.assertEqual(recording.call_count, 4)
+        self.assertEqual(root.glob.call_count, 2)
+        self.assertEqual(len(output.splitlines()), 1)
