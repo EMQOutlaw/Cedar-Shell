@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "id": "noctalia",
+  "name": "Noctalia",
+  "compatibility": "experimental",
+  "adapter": "portable",
+  "signatures": {
+    "paths": [
+      "{config}/noctalia",
+      "{config}/quickshell/noctalia"
+    ],
+    "packages": [
+      "noctalia",
+      "noctalia-shell"
+    ],
+    "commands": [
+      "noctalia"
+    ],
+    "processes": [
+      "noctalia"
+    ],
+    "quickshell": [
+      "/noctalia/shell.qml",
+      "/noctalia-shell/shell.qml"
+    ],
+    "startup": [
+      "noctalia",
+      "qs -c noctalia"
+    ],
+    "units": [
+      "noctalia.service"
+    ]
+  },
+  "dependencies": [
+    "hyprctl",
+    "qs",
+    "systemctl",
+    "systemd-run",
+    "busctl"
+  ],
+  "conflicts": [
+    "bar",
+    "notifications",
+    "osd",
+    "bundled-lock-idle"
+  ],
+  "startupIntegration": "Existing reviewed adapter only; preserve upstream startup and use journaled CEDAR login hook",
+  "ownership": "Never edit package-owned, generated or symlinked dotfiles; keep monitors, input, apps and unrelated bindings",
+  "activation": "Version and runtime ownership checks in portable adapter",
+  "restoration": "Recorded file journal and original provider identities/service states; never uninstall",
+  "limitations": [
+    "Native matrix validation still required",
+    "Installed is not active",
+    "Do not stop bundled lock services"
+  ]
+}

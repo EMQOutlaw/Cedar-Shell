@@ -1,0 +1,23 @@
+# Build from a reviewed CEDAR source archive. No install hooks or service changes.
+pkgname=cedar-shell
+pkgver=0.1.3
+pkgrel=1
+pkgdesc='CEDAR shell and reversible Hyprland compatibility tools'
+arch=('x86_64' 'aarch64')
+url='https://github.com/EMQOutlaw/Cedar-Shell'
+license=('custom:unlicensed')
+depends=('python' 'quickshell' 'hyprland' 'qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-multimedia' 'qt6-5compat' 'qt6-imageformats' 'systemd')
+optdepends=('brightnessctl: brightness controls' 'wireplumber: audio controls' 'wl-clipboard: Wayland clipboard' 'cliphist: optional clipboard history' 'networkmanager: network controls' 'git: reviewed update channels')
+# Put the exact locally reviewed package_release.py output next to this file.
+source=("cedar-${pkgver}.tar.gz")
+# Generate and review checksums with updpkgsums before distributing a PKGBUILD.
+sha256sums=('SKIP')
+package() {
+    local source_root
+    source_root=$(find "$srcdir" -mindepth 1 -maxdepth 2 -name shell.qml -printf '%h\n' | head -n 1)
+    [[ -n "$source_root" ]] || return 1
+    install -d "$pkgdir/usr/share/cedar" "$pkgdir/usr/bin"
+    cp -a "$source_root/." "$pkgdir/usr/share/cedar/"
+    printf '#!/bin/sh\nexec python3 /usr/share/cedar/scripts/distribution.py "$@"\n' > "$pkgdir/usr/bin/cedar"
+    chmod 755 "$pkgdir/usr/bin/cedar"
+}

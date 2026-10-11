@@ -95,7 +95,7 @@ Singleton {
     // ---------------------------------------------------------------- window
     property bool windowOpen: false
     readonly property bool open: windowOpen && !ShellState.locked
-    readonly property var pageIds: ["overview", "services", "issues", "log", "report"]
+    readonly property var pageIds: ["overview", "services", "issues", "log", "report", "desktop"]
     property string requestedPage: ""
     function openApp() { if (ShellState.locked) return; windowOpen = true; }
     function openPage(page) { const id = String(page || "").toLowerCase(); if (!pageIds.includes(id) || ShellState.locked) return; windowOpen = true; requestedPage = ""; requestedPage = id; }

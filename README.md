@@ -93,3 +93,9 @@ CEDAR takes inspiration from the cedar of Lebanon in Scripture: patient growth i
 ## For maintainers
 
 Build the release assets with `python3 scripts/package_release.py --release-assets dist` and test those exact bytes with `python3 tests/check_artifact.py dist/cedar-*-x86_64.tar.gz`. A `v*` tag runs the release workflow, which attaches them to the GitHub release; CI never installs or updates anything on users' machines. When adding or removing source files, stage them and run `python3 scripts/update_source_inventory.py`; CI checks that `data/source-files.json` matches the tracked files. Public publication requires licensing, the documented acceptance gates and explicit owner approval.
+
+## Shell compatibility (development)
+
+See [compatibility and migration](docs/compatibility/README.md) for multi-shell
+evidence, approved previews, recovery, Field Station controls and the explicit
+experimental support matrix. Existing stable/development update channels are unchanged.

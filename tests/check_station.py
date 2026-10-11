@@ -71,6 +71,23 @@ ShellRoot {
                 window.check(Station.status === "healthy" && Station.issues.length === 0, "Healthy once the readings are clean (" + Station.status + ")");
                 break;
             case 5:
+                Compatibility.status = { stage: "kept", login: false, health: { healthy: true }, history: [{ id: "fixture", stage: "commit", error: "" }] };
+                Compatibility.detection = { compositor: { active: true }, activeShells: ["waybar"], matches: [{ name: "Waybar", compatibility: "experimental", states: { installed: true, active: true } }], dependencies: [{ command: "qs", available: true }] };
+                Compatibility.plan = { digest: "fixture", blocked: [], actions: [{ classification: "Preserve", target: "monitors", description: "Existing configuration" }], shortcuts: {} };
+                pages.navigate("desktop");
+                break;
+            case 6:
+                window.check(pages.page === "desktop", "Desktop compatibility page opens at narrow width");
+                window.check(!pages.sidebar, "Desktop page uses narrow navigation");
+                window.shot("station-desktop-narrow");
+                break;
+            case 7:
+                win.pagesWidth = 1180;
+                break;
+            case 8:
+                window.shot("station-desktop-wide");
+                break;
+            case 9:
                 console.log("PASS: Station diagnostics from fixture readings and the pages at two widths");
                 Qt.quit();
             }
