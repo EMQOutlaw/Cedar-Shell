@@ -19,7 +19,7 @@ local cedar = home .. "/.local/bin/cedar"
 -- scripts/distribution.py.
 local config = os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")
 local root = data .. "/cedar/current"
-local qs = "qs -p " .. root .. "/shell.qml"
+local qs = 'qs -p "$(readlink -f ' .. root .. '/shell.qml)"'
 do
   local profile = io.open(config .. "/quickshell/cedar/shell.qml", "r")
   if profile then profile:close(); qs = "qs -c cedar"; root = config .. "/quickshell/cedar" end
@@ -145,9 +145,9 @@ each({ "CTRL + SUPER + Space", "XF86AudioPlay", "XF86AudioPause" }, ipc("media t
 each({ "CTRL + SUPER + Equal", "XF86AudioNext" }, ipc("media next"), "Next track", locked)
 each({ "CTRL + SUPER + Minus", "XF86AudioPrev" }, ipc("media previous"), "Previous track", locked)
 each({ "CTRL + SUPER + Backspace", "XF86AudioStop" }, ipc("media pause"), "Stop", locked)
-each({ "SUPER + SHIFT + M", "XF86AudioMute" }, ipc("osd mute"), "Mute", locked)
+each({ "SUPER + SHIFT + M", "XF86AudioMute", "F1" }, ipc("osd mute"), "Mute", locked)
 bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), "Mute microphone", locked)
-bind("XF86AudioRaiseVolume", ipc("osd volume 5"), "Volume up", locked_repeating)
-bind("XF86AudioLowerVolume", ipc("osd volume -5"), "Volume down", locked_repeating)
-bind("XF86MonBrightnessUp", ipc("osd brightness 5"), "Brightness up", locked_repeating)
-bind("XF86MonBrightnessDown", ipc("osd brightness -5"), "Brightness down", locked_repeating)
+each({ "XF86AudioRaiseVolume", "F3" }, ipc("osd volume 5"), "Volume up", locked_repeating)
+each({ "XF86AudioLowerVolume", "F2" }, ipc("osd volume -5"), "Volume down", locked_repeating)
+each({ "XF86MonBrightnessUp", "F6" }, ipc("osd brightness 5"), "Brightness up", locked_repeating)
+each({ "XF86MonBrightnessDown", "F5" }, ipc("osd brightness -5"), "Brightness down", locked_repeating)
