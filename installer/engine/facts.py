@@ -264,6 +264,12 @@ def scan(host, source, state_dir=None):
     chosen = next((r for r in detected['results'] if r['id'] == detected['chosen']), {'evidence': []})
     facts['environment'] = {**detected, **provider.describe(facts), 'evidence': chosen.get('evidence', [])}
     facts['conflicts'] = provider.conflicts(facts)
+    # Additional multi-match evidence. Keep the installer's established adapter
+    # selection and update-channel behavior; compatibility previews do not use a
+    # distro match as permission to stop an active shell.
+    from compatibility.detection import scan as compatibility_scan
+    facts['compatibility'] = compatibility_scan(host, facts)
+
     facts['previousInstall'] = operations.describe_state(operations.load_state(Path(state_dir) / 'state.json')) if state_dir else None
     return facts
 

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "id": "waybar",
+  "name": "Waybar",
+  "compatibility": "experimental",
+  "adapter": "portable",
+  "signatures": {
+    "paths": [
+      "{config}/waybar"
+    ],
+    "packages": [
+      "waybar"
+    ],
+    "commands": [
+      "waybar"
+    ],
+    "processes": [
+      "waybar"
+    ],
+    "quickshell": [],
+    "startup": [
+      "waybar"
+    ],
+    "units": [
+      "waybar.service"
+    ]
+  },
+  "dependencies": [
+    "hyprctl",
+    "qs",
+    "systemctl",
+    "systemd-run",
+    "busctl"
+  ],
+  "conflicts": [
+    "bar",
+    "notifications",
+    "osd"
+  ],
+  "startupIntegration": "Existing reviewed adapter only; preserve upstream startup and use journaled CEDAR login hook",
+  "ownership": "Never edit package-owned, generated or symlinked dotfiles; keep monitors, input, apps and unrelated bindings",
+  "activation": "Version and runtime ownership checks in portable adapter",
+  "restoration": "Recorded file journal and original provider identities/service states; never uninstall",
+  "limitations": [
+    "Native matrix validation still required",
+    "Shared or unknown supervisors require review"
+  ]
+}

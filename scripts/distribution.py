@@ -175,6 +175,9 @@ class Transaction:
             backup=self.directory/('file-'+str(len(self.record['files'])))
             shutil.copy2(path,backup);backup.chmod(0o600)
             if digest(backup)!=before['sha256']:raise Refused('Backup checksum mismatch.')
+            # The durable journal must never precede the backup's file data.
+            # Its atomic save below also syncs this directory entry.
+            with backup.open('rb') as stream:os.fsync(stream.fileno())
             entry['backup']=backup.name
         self.record['files'].append(entry);self.save();return entry
     def apply_file(self,entry,data,mode=0o600):
@@ -641,13 +644,42 @@ def uninstall(approved=False):
 
 def main(argv=None):
     argv=list(sys.argv[1:] if argv is None else argv)
+    # Compatibility is shipped in the release, not duplicated in the stable
+    # recovery directory. Existing installer/update dispatch remains unchanged.
+    compatibility_actions = {'compatibility', 'migrate', 'start', 'stop', 'restart', 'history', 'status', 'doctor'}
+    legacy_diagnostics = argv and argv[0] in ('status', 'doctor') and any(a in argv for a in ('--source', '--adapter', '--plan'))
+    if argv and not legacy_diagnostics and (argv[0] in compatibility_actions or argv[0] in ('rollback', 'restore', 'uninstall')):
+        source = ROOT
+        if not (source / 'compatibility').is_dir():
+            try: source = installed()
+            except (Refused, OSError, ValueError): source = None
+        if source is None or not (source / 'compatibility').is_dir():
+            # The standalone recovery copy must still undo an interrupted install
+            # when `current` is missing or invalid. Do not require Qt or a release
+            # for legacy file recovery, or mistake a pending migration for one.
+            for journal in sorted((paths()['state'] / 'transactions').glob('*/journal.json'), reverse=True):
+                record = read_json(journal)
+                if record.get('action') == 'compatibility-migration' and record.get('stage') != 'restored':
+                    raise Refused('Compatibility recovery needs its original source: ' + record['plan']['source'] + '/scripts/distribution.py rollback; journal: ' + str(journal))
+            if argv[0] in compatibility_actions:
+                raise Refused('Compatibility tools are unavailable in the selected release. Legacy offline restore remains available.')
+        else:
+            sys.path.insert(0, str(source))
+            from compatibility import cli as compatibility_cli
+            from compatibility.engine import pending as compatibility_pending
+            pending_migration = compatibility_pending()
+            if argv[0] == 'uninstall' and pending_migration:
+                raise Refused('Restore compatibility migration ' + pending_migration['id'] + ' with cedar rollback before uninstalling.')
+            if argv[0] in compatibility_actions or argv[0] in ('rollback', 'restore') and (pending_migration or '--migration' in argv):
+                if os.getuid() == 0: raise Refused('Run CEDAR as your ordinary user, never root.')
+                return compatibility_cli.main(argv, root=source)
     # `cedar installer …` hands every argument to the installed copy's installer untouched;
     # its own options (--update, --uninstall, --dry-run, …) are not this parser's business.
     if argv and argv[0]=='installer':
         if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
         os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*argv[1:]])
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','ai','installer'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','ai','installer','compatibility','migrate','start','stop','restart','history'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')

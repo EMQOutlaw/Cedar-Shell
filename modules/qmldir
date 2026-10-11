@@ -70,6 +70,7 @@ FocusApp 1.0 FocusApp.qml
 FocusPages 1.0 FocusPages.qml
 StationApp 1.0 StationApp.qml
 StationPages 1.0 StationPages.qml
+CompatibilityPage 1.0 CompatibilityPage.qml
 WorkspaceCanopy 1.0 WorkspaceCanopy.qml
 RelayApp 1.0 RelayApp.qml
 RelayPages 1.0 RelayPages.qml

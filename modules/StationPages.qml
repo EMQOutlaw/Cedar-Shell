@@ -17,7 +17,7 @@ FocusScope {
     signal closed()
     property string page: "overview"
     readonly property bool sidebar: width >= 860
-    readonly property var pages: [["overview", "Health", "✚"], ["services", "Services", "⚙"], ["issues", "Issues", "!"], ["log", "Log", "≡"], ["report", "Report", "▤"]]
+    readonly property var pages: [["overview", "Health", "✚"], ["services", "Services", "⚙"], ["issues", "Issues", "!"], ["log", "Log", "≡"], ["report", "Report", "▤"], ["desktop", "Desktop", "⌂"]]
     function navigate(id) { page = id; }
     function consumeRequest() { if (Station.requestedPage) { navigate(Station.requestedPage); Station.requestedPage = ""; } }
     Connections { target: Station; function onRequestedPageChanged() { root.consumeRequest(); } }
@@ -189,10 +189,12 @@ FocusScope {
                 contentWidth: width; contentHeight: body.implicitHeight + 56
                 clip: true; boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: scroll.contentHeight > scroll.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
-                Loader { id: body; x: 28; y: 28; width: scroll.width - 56; sourceComponent: ({ overview: overview, services: servicesPage, issues: issuesPage, log: logPage, report: reportPage })[root.page] || overview }
+                Loader { id: body; x: 28; y: 28; width: scroll.width - 56; sourceComponent: ({ overview: overview, services: servicesPage, issues: issuesPage, log: logPage, report: reportPage, desktop: desktopPage })[root.page] || overview }
             }
         }
     }
+
+    Component { id: desktopPage; CompatibilityPage {} }
 
     // --------------------------------------------------------------- overview
     Component {

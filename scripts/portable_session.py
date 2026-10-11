@@ -136,6 +136,7 @@ def trial(root, approved=False, expected_adapter='auto', cedar_launcher=False, t
         try: adoption_plan.require_unchanged(approved_plan, refreshed, selections)
         except ValueError as error: raise d.Refused(str(error)) from error
         tx = d.Transaction('portable-session')
+        row['compatibilityMigration'] = os.environ.get('CEDAR_COMPATIBILITY_MIGRATION', '')
         tx.record['plan'] = approved_plan
         tx.record['operations'] = [dict(operation) for operation in approved_plan['operations']]
         tx.save()
@@ -401,7 +402,7 @@ def supervise(identity, generation):
                         if row.get('trailwatch'): operation_state(row, 'verify-trailwatch', 'applying')
                         if controls.finish_lock_handoff(row, transaction(row), save, ipc, unlocked):
                             if row.get('trailwatch'): operation_state(row, 'verify-trailwatch', 'verified')
-                            row['stage'] = 'kept' if row.get('login') else 'trial'
+                            row['stage'] = 'kept' if row.get('login') or row.pop('restartKept', False) else 'trial'
                             row['deadline'] = time.time() + 120
                             row.pop('error', None)
                             save(row)
