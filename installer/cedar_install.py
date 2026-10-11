@@ -133,6 +133,9 @@ def update(source, args, argv):
     if result['current']:
         say('CEDAR is up to date on ' + result['branch'] + ' (' + result['commit'][:12] + ').')
         return 0
+    say("What's updating:")
+    for item in result.get('summary', ['CEDAR desktop and maintenance updates']):
+        say('  • ' + item)
     say('Starting the updated installer…'); sys.stdout.flush()
     start_updated(result, passthrough)
 
@@ -206,7 +209,7 @@ def main(argv=None):
     parser.add_argument('--cedar-launcher', action='store_true', help='also point the application-launcher shortcut at CEDAR Go')
     parser.add_argument('--trailwatch', action='store_true', help='also select CEDAR Trailwatch as the locker, with its password and lock tests')
     parser.add_argument('--fonts', action='store_true', help='also install the recommended fonts')
-    parser.add_argument('--keybinds', dest='keybinds', action='store_true', default=None, help='install CEDAR’s keybinds (Caelestia layout) into the Hyprland configuration')
+    parser.add_argument('--keybinds', dest='keybinds', action='store_true', default=None, help='install CEDAR’s keybinds into the Hyprland configuration')
     parser.add_argument('--no-keybinds', dest='keybinds', action='store_false', help='leave the Hyprland keybinds untouched')
     parser.add_argument('--source', type=Path, default=SOURCE, help=argparse.SUPPRESS)
     parser.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)

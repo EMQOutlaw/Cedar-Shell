@@ -5,7 +5,7 @@ import ".."
 
 Singleton {
     id: root
-    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces"]
+    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces", "keybinds"]
     // One route per destination: a topic with a visible bar button gets no tab.
     // Cedar has a dedicated right-side Quick control; its center opens Signals.
     // Topics the bar routes itself (its own control, or the pill for Signals-owned
@@ -108,7 +108,8 @@ Singleton {
             station: "Field Station",
             go: "Applications",
             startup: "Startup",
-            workspaces: "Workspaces"
+            workspaces: "Workspaces",
+            keybinds: "Keybinds"
         })[value] || "Canopy";
     }
     readonly property string title: ({
@@ -126,7 +127,8 @@ Singleton {
             station: "Field Station",
             go: "Applications",
             startup: "Startup",
-            workspaces: "Workspaces"
+            workspaces: "Workspaces",
+            keybinds: "Keybinds"
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
         if (value === "system") { if (ShellState.locked) return; stationPage = "tasks"; value = "station"; }

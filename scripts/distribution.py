@@ -305,7 +305,7 @@ def ensure_unlocked():
         from portable_providers import qs_instances, qs_ipc
         for row in qs_instances():
             source = Path(row.get('config_path', '/unavailable'))
-            if source.is_relative_to(paths()['data']/'releases') and qs_ipc(source, 'shell', 'isLocked') != 'false':
+            if source.name == 'shell.qml' and source.parent.parent == paths()['data']/'releases' and qs_ipc(source, 'shell', 'isLocked') != 'false':
                 raise Refused('CEDAR is locking or locked; operation deferred.')
 
 

@@ -171,7 +171,7 @@ def render_lua(state):
         if m.get('mirror'): monitor['mirror']=m['mirror']
         lines.append('hl.monitor('+lua(monitor)+')')
     if state.get('keybinds'):
-        # CEDAR's keybind set (Caelestia layout), copied to the owned folder so it is the user's to edit.
+        # CEDAR's keybind set, copied to the owned folder so it is the user's to edit.
         lines.append('do local f = io.open('+lua(str(OWN/'keybinds.lua'))+', "r") if f then f:close(); dofile('+lua(str(OWN/'keybinds.lua'))+') end end')
     for b in state.get('bindings',[]):
         for original in b.get('originals', [b['original']] if b.get('original') else []):

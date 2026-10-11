@@ -105,7 +105,7 @@ Item {
         case "updated":
             receiveChannel(data);
             update = data; busy = false;
-            if (data.current) stage = "update-current"; else proceedUpdate();
+            if (data.current) stage = "update-current"; else stage = "update-summary";
             break;
         case "handoff": Qt.quit(); break;
         }

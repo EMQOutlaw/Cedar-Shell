@@ -251,6 +251,58 @@ def launch(role, command=()):
     subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+# Unified copy, cut and paste: Super+C/X/V send the focused window the
+# shortcut it understands. Terminals read Ctrl+C as an interrupt, so they get
+# Ctrl+Shift+C and Ctrl+Shift+V, and cut does not exist there.
+TERMINAL_CLASSES = {'foot', 'footclient', 'org.codeberg.dnkl.foot', 'kitty', 'alacritty', 'org.wezfurlong.wezterm', 'wezterm',
+                    'com.mitchellh.ghostty', 'ghostty', 'xterm', 'urxvt', 'st', 'st-256color', 'konsole', 'org.kde.konsole',
+                    'gnome-terminal-server', 'org.gnome.terminal', 'org.gnome.ptyxis', 'tilix', 'terminator', 'xfce4-terminal',
+                    'termite', 'rio', 'contour', 'org.contourterminal.contour', 'blackbox', 'com.raggesilver.blackbox', 'warp', 'dev.warp.warp'}
+CLIPBOARD_KEYS = {'copy': 'c', 'cut': 'x', 'paste': 'v'}
+
+
+def active_window_class():
+    # Do not guess a normal application when the compositor query fails:
+    # sending Ctrl+C to an unidentified terminal would interrupt its process.
+    window = hyprctl('activewindow')
+    return str(window.get('class') or window.get('initialClass') or '') if isinstance(window, dict) else ''
+
+
+def is_terminal_class(name):
+    name = name.lower()
+    if not name:
+        return False
+    if name in TERMINAL_CLASSES:
+        return True
+    configured = configured_argv('terminal')
+    return bool(configured) and Path(configured[0]).name.lower() == name
+
+
+def clipboard(action):
+    """Send the focused window its own copy, cut or paste shortcut."""
+    if action not in CLIPBOARD_KEYS:
+        raise ValueError('Unified clipboard actions are copy, cut and paste.')
+    terminal = is_terminal_class(active_window_class())
+    if terminal and action == 'cut':
+        return False  # terminals have no cut; nothing is sent
+    mods = 'CTRL SHIFT' if terminal else 'CTRL'
+    key = CLIPBOARD_KEYS[action]
+    if (xdg('CONFIG', '.config') / 'hypr' / 'hyprland.lua').is_file():
+        fields = 'mods = ' + json.dumps(mods) + ', key = ' + json.dumps(key)
+        # A paired down/up avoids stuck synthetic keys on Lua Hyprland.
+        # Keep the release in the compositor so Python exiting cannot omit it.
+        expression = ('hl.dispatch(hl.dsp.send_key_state({ ' + fields + ', state = "down" })); '
+                      'hl.timer(function() hl.dispatch(hl.dsp.send_key_state({ ' + fields + ', state = "up" })) end, '
+                      '{ timeout = 50, type = "oneshot" })')
+        argv = ['hyprctl', 'dispatch', expression]
+    else:
+        argv = ['hyprctl', 'dispatch', 'sendshortcut', mods + ', ' + key + ',']
+    result = subprocess.run(argv, capture_output=True, text=True, timeout=10)
+    if result.returncode != 0 or 'error' in (result.stdout + result.stderr).lower():
+        raise RuntimeError('Hyprland did not send the shortcut: ' + (result.stdout + result.stderr).strip()[-200:])
+    return True
+
+
 CAPTURE_MODES = ('region', 'window', 'output', 'all')
 
 
@@ -371,6 +423,8 @@ def main(args):
         launch(args[1], args[2:])
     elif name == 'wallpaper' and len(args) == 2:
         set_wallpaper(args[1])
+    elif name == 'clipboard' and len(args) == 2:
+        clipboard(args[1])
     elif name == 'capture':
         saved = capture(args[1] if len(args) == 2 else 'region')
         if saved:

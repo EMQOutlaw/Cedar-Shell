@@ -1,0 +1,539 @@
+{
+  "version": 1,
+  "name": "CEDAR default keybinds",
+  "scratchpad": "special",
+  "notes": [
+    "Super is the Windows or logo key. Number keys are the top row; 0 stands for workspace 10.",
+    "Mouse shortcuts mean holding Super while dragging with that button."
+  ],
+  "groups": [
+    {
+      "id": "applications",
+      "title": "Applications",
+      "entries": [
+        {
+          "keys": [
+            "SUPER + SPACE"
+          ],
+          "description": "Toggle the application launcher",
+          "lua": "ipc(\"menu toggle apps\")",
+          "conf": "exec, $cedarShell menu toggle apps"
+        },
+        {
+          "keys": [
+            "SUPER + T"
+          ],
+          "description": "Open the terminal chosen in Settings",
+          "lua": "launch(\"terminal\")",
+          "conf": "exec, $cedarLaunch terminal"
+        },
+        {
+          "keys": [
+            "SUPER + W"
+          ],
+          "description": "Open the browser chosen in Settings",
+          "lua": "launch(\"browser\")",
+          "conf": "exec, $cedarLaunch browser"
+        },
+        {
+          "keys": [
+            "SUPER + E"
+          ],
+          "description": "Open the file manager chosen in Settings",
+          "lua": "launch(\"files\")",
+          "conf": "exec, $cedarLaunch files"
+        },
+        {
+          "keys": [
+            "SUPER + C"
+          ],
+          "description": "Unified copy (Ctrl+C, or Ctrl+Shift+C in a terminal)",
+          "lua": "clipboard(\"copy\")",
+          "conf": "exec, $cedarRuntime clipboard copy"
+        },
+        {
+          "keys": [
+            "SUPER + X"
+          ],
+          "description": "Unified cut where the window supports it (Ctrl+X; nothing in a terminal)",
+          "lua": "clipboard(\"cut\")",
+          "conf": "exec, $cedarRuntime clipboard cut"
+        },
+        {
+          "keys": [
+            "SUPER + V"
+          ],
+          "description": "Unified paste (Ctrl+V, or Ctrl+Shift+V in a terminal)",
+          "lua": "clipboard(\"paste\")",
+          "conf": "exec, $cedarRuntime clipboard paste"
+        },
+        {
+          "keys": [
+            "SUPER + SHIFT + V"
+          ],
+          "description": "Toggle clipboard history",
+          "lua": "ipc(\"canopy flip clipboard\")",
+          "conf": "exec, $cedarShell canopy flip clipboard"
+        },
+        {
+          "keys": [
+            "SUPER + SHIFT + K"
+          ],
+          "description": "Show the searchable active keymap",
+          "lua": "ipc(\"keymap show\")",
+          "conf": "exec, $cedarShell keymap show"
+        },
+        {
+          "keys": [
+            "SUPER + CTRL + ALT + SPACE"
+          ],
+          "description": "Choose a wallpaper from the rounded preview grid",
+          "lua": "ipc(\"wallpapers toggle\")",
+          "conf": "exec, $cedarShell wallpapers toggle"
+        }
+      ],
+      "note": "Unified copy, cut and paste send the application's own shortcut: Ctrl+C, Ctrl+X and Ctrl+V in most windows, Ctrl+Shift+C and Ctrl+Shift+V in terminals, where cut does not exist."
+    },
+    {
+      "id": "windows",
+      "title": "Windows",
+      "note": "Super+Shift+arrows move a tiled window within the layout (it swaps places with its neighbour in that direction) and snap a floating window to that edge of the monitor's usable area, keeping its size and clearing the bar.",
+      "entries": [
+        {
+          "keys": [
+            "SUPER + Q"
+          ],
+          "description": "Close the focused window",
+          "lua": "hl.dsp.window.close()",
+          "conf": "killactive"
+        },
+        {
+          "keys": [
+            "SUPER + F"
+          ],
+          "description": "Toggle fullscreen for the focused window",
+          "lua": "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })",
+          "conf": "fullscreen, 0"
+        },
+        {
+          "keys": [
+            "SUPER + ALT + SPACE"
+          ],
+          "description": "Toggle the focused window between floating and tiled",
+          "lua": "hl.dsp.window.float({ action = \"toggle\" })",
+          "conf": "togglefloating"
+        },
+        {
+          "keys": [
+            "SUPER + {key}"
+          ],
+          "display": "SUPER + ARROWS",
+          "description": "Focus the window in that direction",
+          "each": "Focus the window to the {name}",
+          "vars": [
+            {
+              "key": "left",
+              "d": "l",
+              "name": "left"
+            },
+            {
+              "key": "right",
+              "d": "r",
+              "name": "right"
+            },
+            {
+              "key": "up",
+              "d": "u",
+              "name": "top"
+            },
+            {
+              "key": "down",
+              "d": "d",
+              "name": "bottom"
+            }
+          ],
+          "lua": "hl.dsp.focus({ direction = \"{d}\" })",
+          "conf": "movefocus, {d}"
+        },
+        {
+          "keys": [
+            "SUPER + SHIFT + {key}"
+          ],
+          "display": "SUPER + SHIFT + ARROWS",
+          "description": "Move the focused window that way: tiled windows swap in the layout, floating windows snap to that edge",
+          "each": "Move the focused window {name}",
+          "vars": [
+            {
+              "key": "left",
+              "d": "l",
+              "name": "left"
+            },
+            {
+              "key": "right",
+              "d": "r",
+              "name": "right"
+            },
+            {
+              "key": "up",
+              "d": "u",
+              "name": "up"
+            },
+            {
+              "key": "down",
+              "d": "d",
+              "name": "down"
+            }
+          ],
+          "lua": "hl.dsp.window.move({ direction = \"{d}\" })",
+          "conf": "movewindow, {d}"
+        },
+        {
+          "keys": [
+            "SUPER + mouse:272"
+          ],
+          "description": "Move a window by dragging it with the left button",
+          "lua": "hl.dsp.window.drag()",
+          "conf": "movewindow",
+          "flags": [
+            "mouse"
+          ]
+        },
+        {
+          "keys": [
+            "SUPER + mouse:273"
+          ],
+          "description": "Resize a window by dragging with the right button",
+          "lua": "hl.dsp.window.resize()",
+          "conf": "resizewindow",
+          "flags": [
+            "mouse"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workspaces",
+      "title": "Workspaces",
+      "note": "Super+1 to Super+9 are workspaces 1 to 9; Super+0 is workspace 10. Sending a window to a workspace follows it there.",
+      "entries": [
+        {
+          "keys": [
+            "SUPER + {key}"
+          ],
+          "display": "SUPER + 1-0",
+          "description": "Switch to workspace 1 to 10 (0 is workspace 10)",
+          "each": "Switch to workspace {n}",
+          "vars": [
+            {
+              "key": "1",
+              "n": "1"
+            },
+            {
+              "key": "2",
+              "n": "2"
+            },
+            {
+              "key": "3",
+              "n": "3"
+            },
+            {
+              "key": "4",
+              "n": "4"
+            },
+            {
+              "key": "5",
+              "n": "5"
+            },
+            {
+              "key": "6",
+              "n": "6"
+            },
+            {
+              "key": "7",
+              "n": "7"
+            },
+            {
+              "key": "8",
+              "n": "8"
+            },
+            {
+              "key": "9",
+              "n": "9"
+            },
+            {
+              "key": "0",
+              "n": "10"
+            }
+          ],
+          "lua": "hl.dsp.focus({ workspace = \"{n}\" })",
+          "conf": "workspace, {n}"
+        },
+        {
+          "keys": [
+            "SUPER + SHIFT + {key}"
+          ],
+          "display": "SUPER + SHIFT + 1-0",
+          "description": "Send the focused window to workspace 1 to 10 and follow it (0 is workspace 10)",
+          "each": "Send the focused window to workspace {n} and follow it",
+          "vars": [
+            {
+              "key": "1",
+              "n": "1"
+            },
+            {
+              "key": "2",
+              "n": "2"
+            },
+            {
+              "key": "3",
+              "n": "3"
+            },
+            {
+              "key": "4",
+              "n": "4"
+            },
+            {
+              "key": "5",
+              "n": "5"
+            },
+            {
+              "key": "6",
+              "n": "6"
+            },
+            {
+              "key": "7",
+              "n": "7"
+            },
+            {
+              "key": "8",
+              "n": "8"
+            },
+            {
+              "key": "9",
+              "n": "9"
+            },
+            {
+              "key": "0",
+              "n": "10"
+            }
+          ],
+          "lua": "hl.dsp.window.move({ workspace = \"{n}\" })",
+          "conf": "movetoworkspace, {n}"
+        }
+      ]
+    },
+    {
+      "id": "scratchpad",
+      "title": "Scratchpad",
+      "note": "One scratchpad, the special workspace named \"special\". Sending a window there hides it without leaving your workspace; toggling shows it over the current workspace and hides it again, returning focus to what is left on screen.",
+      "entries": [
+        {
+          "keys": [
+            "SUPER + S"
+          ],
+          "description": "Show or hide the scratchpad",
+          "lua": "hl.dsp.workspace.toggle_special(\"special\")",
+          "conf": "togglespecialworkspace, special"
+        },
+        {
+          "keys": [
+            "SUPER + ALT + S"
+          ],
+          "description": "Send the focused window to the scratchpad and stay on this workspace",
+          "lua": "hl.dsp.window.move({ workspace = \"special:special\", follow = false })",
+          "conf": "movetoworkspacesilent, special:special"
+        }
+      ]
+    },
+    {
+      "id": "capture",
+      "title": "Capture",
+      "entries": [
+        {
+          "keys": [
+            "SUPER + P"
+          ],
+          "description": "Open the screenshot menu",
+          "lua": "ipc(\"menu toggle capture\")",
+          "conf": "exec, $cedarShell menu toggle capture"
+        },
+        {
+          "keys": [
+            "Print"
+          ],
+          "description": "Open the screenshot menu (Print Screen key)",
+          "lua": "ipc(\"menu toggle capture\")",
+          "conf": "exec, $cedarShell menu toggle capture",
+          "flags": [
+            "locked"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "session",
+      "title": "Session",
+      "entries": [
+        {
+          "keys": [
+            "SUPER + L"
+          ],
+          "description": "Lock the session with Trailwatch",
+          "lua": "ipc(\"lock lock\")",
+          "conf": "exec, $cedarShell lock lock"
+        },
+        {
+          "keys": [
+            "SUPER + Escape"
+          ],
+          "description": "Toggle the power and session menu",
+          "lua": "ipc(\"power toggle\")",
+          "conf": "exec, $cedarShell power toggle"
+        },
+        {
+          "keys": [
+            "SUPER + Comma"
+          ],
+          "description": "Toggle CEDAR Settings",
+          "lua": "ipc(\"settings toggle\")",
+          "conf": "exec, $cedarShell settings toggle"
+        },
+        {
+          "keys": [
+            "SUPER + K"
+          ],
+          "description": "Toggle this keybind reference",
+          "lua": "ipc(\"canopy flip keybinds\")",
+          "conf": "exec, $cedarShell canopy flip keybinds"
+        }
+      ]
+    },
+    {
+      "id": "media",
+      "title": "Media and hardware",
+      "note": "These keys work while the session is locked. Held volume and brightness keys repeat.",
+      "entries": [
+        {
+          "keys": [
+            "XF86AudioPlay",
+            "XF86AudioPause",
+            "CTRL + SUPER + SPACE"
+          ],
+          "description": "Play or pause",
+          "lua": "ipc(\"media toggle\")",
+          "conf": "exec, $cedarShell media toggle",
+          "flags": [
+            "locked"
+          ]
+        },
+        {
+          "keys": [
+            "XF86AudioNext",
+            "CTRL + SUPER + Equal"
+          ],
+          "description": "Next track",
+          "lua": "ipc(\"media next\")",
+          "conf": "exec, $cedarShell media next",
+          "flags": [
+            "locked"
+          ]
+        },
+        {
+          "keys": [
+            "XF86AudioPrev",
+            "CTRL + SUPER + Minus"
+          ],
+          "description": "Previous track",
+          "lua": "ipc(\"media previous\")",
+          "conf": "exec, $cedarShell media previous",
+          "flags": [
+            "locked"
+          ]
+        },
+        {
+          "keys": [
+            "XF86AudioStop",
+            "CTRL + SUPER + Backspace"
+          ],
+          "description": "Stop playback",
+          "lua": "ipc(\"media pause\")",
+          "conf": "exec, $cedarShell media pause",
+          "flags": [
+            "locked"
+          ]
+        },
+        {
+          "keys": [
+            "XF86AudioMute",
+            "SUPER + SHIFT + M"
+          ],
+          "description": "Mute or unmute the output",
+          "lua": "ipc(\"osd mute\")",
+          "conf": "exec, $cedarShell osd mute",
+          "flags": [
+            "locked"
+          ]
+        },
+        {
+          "keys": [
+            "XF86AudioMicMute"
+          ],
+          "description": "Mute or unmute the microphone",
+          "lua": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle\")",
+          "conf": "exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+          "flags": [
+            "locked"
+          ]
+        },
+        {
+          "keys": [
+            "XF86AudioRaiseVolume"
+          ],
+          "description": "Volume up",
+          "lua": "ipc(\"osd volume 5\")",
+          "conf": "exec, $cedarShell osd volume 5",
+          "flags": [
+            "locked",
+            "repeating"
+          ]
+        },
+        {
+          "keys": [
+            "XF86AudioLowerVolume"
+          ],
+          "description": "Volume down",
+          "lua": "ipc(\"osd volume -5\")",
+          "conf": "exec, $cedarShell osd volume -5",
+          "flags": [
+            "locked",
+            "repeating"
+          ]
+        },
+        {
+          "keys": [
+            "XF86MonBrightnessUp"
+          ],
+          "description": "Brightness up",
+          "lua": "ipc(\"osd brightness 5\")",
+          "conf": "exec, $cedarShell osd brightness 5",
+          "flags": [
+            "locked",
+            "repeating"
+          ]
+        },
+        {
+          "keys": [
+            "XF86MonBrightnessDown"
+          ],
+          "description": "Brightness down",
+          "lua": "ipc(\"osd brightness -5\")",
+          "conf": "exec, $cedarShell osd brightness -5",
+          "flags": [
+            "locked",
+            "repeating"
+          ]
+        }
+      ]
+    }
+  ]
+}

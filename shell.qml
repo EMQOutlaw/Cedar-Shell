@@ -149,8 +149,15 @@ ShellRoot {
     IpcHandler {
         target: "wallpapers"
         function toggle(): void {
-            if (Config.stage >= 3)
-                ShellState.toggle("wallpapers");
+            if (Config.stage >= 3 && !ShellState.locked)
+                Quickshell.execDetached(["qs", "--no-duplicate", "-p", Quickshell.shellPath("wallpaper-picker.qml")]);
+        }
+    }
+    IpcHandler {
+        target: "keymap"
+        function show(): void {
+            if (Config.stage >= 3 && !ShellState.locked)
+                Quickshell.execDetached(["qs", "--no-duplicate", "-p", Quickshell.shellPath("keymap.qml")]);
         }
     }
     IpcHandler {

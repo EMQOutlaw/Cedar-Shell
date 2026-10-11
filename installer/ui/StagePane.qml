@@ -23,7 +23,7 @@ Item {
         anchors { fill: parent; leftMargin: 56; rightMargin: 56; topMargin: 48; bottomMargin: 40 }
         sourceComponent: { switch (root.model.stage) {
             case "welcome": return welcome; case "scan": return scan; case "environment": return environment; case "plan": return planPage;
-            case "update": return updatePage; case "update-error": return updateError; case "update-current": return updateCurrent;
+            case "update-summary": return updateSummary; case "update": return updatePage; case "update-error": return updateError; case "update-current": return updateCurrent;
             case "attention": return attention; case "interrupted": return interrupted; case "install": return install; case "error": return errorPage;
             case "finish": return finish; case "restored": return restored; } return welcome; }
         opacity: 0
@@ -122,6 +122,26 @@ Item {
     }
 
     // ------------------------------------------------------------- update
+    Component {
+        id: updateSummary
+        ColumnLayout {
+            spacing: 12
+            SectionMark { text: "UPDATE READY" }
+            Heading { text: "What's updating" }
+            Lead { text: "The basics of this CEDAR update:" }
+            Repeater {
+                model: root.model.update.summary || ["CEDAR desktop and maintenance updates"]
+                Row_ { required property string modelData; text: modelData; glyph: "•"; glyphColor: Theme.teal }
+            }
+            Item { Layout.fillHeight: true }
+            RowLayout {
+                Layout.fillWidth: true
+                Quiet { text: "Close"; onClicked: root.model.cancelUpdate() }
+                Item { Layout.fillWidth: true }
+                Primary { text: "Continue to installation"; onClicked: root.model.proceedUpdate() }
+            }
+        }
+    }
     Component {
         id: updatePage
         ColumnLayout {
@@ -289,7 +309,7 @@ Item {
                         StationToggle { Layout.fillWidth: true; visible: root.env.adapter === "hyprland" || root.env.adapter === "noctalia"; label: "Point the application-launcher shortcut at CEDAR Go"; checked: root.model.options.launcher; onToggled: v => root.model.setOption("launcher", v) }
                         StationToggle { Layout.fillWidth: true; visible: !!root.env.adapter; label: "Use CEDAR Trailwatch as the locker"; description: "After a local password test and one real lock/unlock test."; checked: root.model.options.trailwatch; onToggled: v => root.model.setOption("trailwatch", v) }
                         StationToggle { Layout.fillWidth: true; visible: (root.facts.wallpapers || []).length > 0; label: "Point CEDAR at your wallpaper library"; checked: root.model.options.wallpapers; onToggled: v => root.model.setOption("wallpapers", v) }
-                        StationToggle { Layout.fillWidth: true; visible: (root.facts.compositor || {}).name === "hyprland"; label: "Use CEDAR’s keybinds (Caelestia layout)"; description: "Super+T terminal, Super+W browser, Super+Q close, Super+1…0 workspaces, Super+N Quick Controls, Super+L lock. Loaded through CEDAR’s journaled Hyprland loader; your other bindings stay."; checked: !!root.model.options.keybinds; onToggled: v => root.model.setOption("keybinds", v) }
+                        StationToggle { Layout.fillWidth: true; visible: (root.facts.compositor || {}).name === "hyprland"; label: "Use CEDAR’s keybinds"; description: "Super+T terminal, Super+W browser, Super+Q close, Super+1…0 workspaces, Super+K keybind reference, Super+L lock. Loaded through CEDAR’s journaled Hyprland loader; your other bindings stay."; checked: !!root.model.options.keybinds; onToggled: v => root.model.setOption("keybinds", v) }
                         StationToggle { Layout.fillWidth: true; label: "Also install the recommended fonts"; description: "Readable fallbacks are used otherwise."; checked: root.model.options.fonts; onToggled: v => root.model.setOption("fonts", v) }
                     }
                     ExpandableDetails {

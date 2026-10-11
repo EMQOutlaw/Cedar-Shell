@@ -117,6 +117,14 @@ def backup_run(ctx, op):
                    'distro': facts['distro']['name'], 'hyprland': facts['hyprlandVersion'], 'quickshell': facts['quickshellVersion']}
     backup = Backup(ctx.backup_dir(), host.home, facts['installerVersion'], facts['cedarVersion'])
     backup.create(environment, ctx.options, services=facts['userUnits'], packages=facts['packages'])
+    # Remember the old release before runtime_run switches the current link.
+    # Persist in the journal so a resumed installation makes the same decision.
+    backup.manifest['keybindsDefaults'] = {}
+    for syntax in ('lua', 'conf'):
+        previous = host.data_home() / 'cedar/current/themes' / ('keybinds.' + syntax)
+        if previous.is_file():
+            backup.manifest['keybindsDefaults'][syntax] = file_digest(previous)
+    backup.save()
     existing = [t for t in sorted(targets) if Path(t).exists()]
     for index, target in enumerate(existing):
         backup.add(target, 'may be changed or paused by this installation')
@@ -305,12 +313,18 @@ def migrate_run(ctx, op):
         target = config / 'hypr' / ('keybinds.' + syntax)
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         if backup: backup.add(target, 'CEDAR keybinds copy')
-        if not target.is_file():
-            shutil.copy2(ctx.source / 'themes' / ('keybinds.' + syntax), target); os.chmod(target, 0o600)
+        shipped = ctx.source / 'themes' / ('keybinds.' + syntax)
+        previous = ctx.host.data_home() / 'cedar/current/themes' / ('keybinds.' + syntax)
+        previous_digest = backup.manifest.get('keybindsDefaults', {}).get(syntax) if backup else None
+        outcome = refresh_keybinds_copy(target, shipped, previous, state, previous_digest)
+        if outcome == 'installed':
             if backup: backup.changed(target)
             imported.append('keybinds')
-        else:
-            notes.append('Your existing keybinds copy was kept.')
+        elif outcome == 'updated':
+            if backup: backup.changed(target)
+            imported.append('keybinds updated to the current set')
+        elif outcome == 'kept':
+            notes.append('Your edited keybinds copy was kept; the current default set is in ' + str(shipped) + '.')
         state['keybinds'] = True
     write_private_json(desktop_path, state)
     if backup: backup.changed(desktop_path)
@@ -481,3 +495,36 @@ def build(ctx, state_path, log, emit, run_id, options):
     runner = ops.Runner(operations, state_path, log, emit, version=ctx.facts['cedarVersion'], options=options, run_id=run_id)
     ctx.runner = runner
     return runner
+
+
+def file_digest(path):
+    import hashlib
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def refresh_keybinds_copy(target, shipped, previous, state, previous_digest=None):
+    """Install CEDAR's keybind file at `target`, or bring an unmodified copy up to date.
+
+    A copy is unmodified when it still matches the digest recorded at its
+    install (`keybindsDigest`) or the file the installed release shipped
+    (`previous`), which also covers copies made before digests were recorded.
+    An edited copy is left alone, so personal changes survive an update.
+    Returns installed | current | updated | kept."""
+    target, shipped = Path(target), Path(shipped)
+    new = file_digest(shipped)
+    if not target.is_file():
+        shutil.copy2(shipped, target); os.chmod(target, 0o600)
+        state['keybindsDigest'] = new
+        return 'installed'
+    current = file_digest(target)
+    if current == new:
+        state['keybindsDigest'] = new
+        return 'current'
+    known = {state.get('keybindsDigest'), previous_digest}
+    if Path(previous).is_file():
+        known.add(file_digest(previous))
+    if current in known:
+        shutil.copy2(shipped, target); os.chmod(target, 0o600)
+        state['keybindsDigest'] = new
+        return 'updated'
+    return 'kept'

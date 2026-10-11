@@ -14,6 +14,22 @@ from installer.engine.server import Engine
 from installer import cedar_install
 
 
+class SummaryTests(unittest.TestCase):
+    def test_only_changed_product_areas(self):
+        with tempfile.TemporaryDirectory() as temp:
+            old, new = Path(temp) / 'old', Path(temp) / 'new'
+            for root in (old, new):
+                (root / 'themes').mkdir(parents=True)
+                (root / 'modules').mkdir()
+                (root / 'themes/keybinds.lua').write_text('original')
+                (root / 'modules/LockScreen.qml').write_text('same')
+            (new / 'themes/keybinds.lua').write_text('changed')
+            (old / 'release-files.json').write_text('{}')
+            self.assertEqual(update.basic_update_summary(old, new), ['Keyboard shortcuts'])
+            (old / 'modules/LockScreen.qml').unlink()
+            self.assertEqual(update.basic_update_summary(old, new), ['Keyboard shortcuts', 'Lock screen and sign-in'])
+
+
 class ChannelTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='cedar branches 雨 ')

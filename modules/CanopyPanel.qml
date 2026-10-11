@@ -61,12 +61,12 @@ Rectangle {
     readonly property bool nerd: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
     function tabLabel(value) {
         return ({ audio: "Audio", network: "Connections", bluetooth: "Bluetooth", power: "Power", system: "System", weather: "Sky", calendar: "Time",
-                  clipboard: "Clipboard", notifications: "Notes", quick: "Controls", trails: "Trails", station: "Station", go: "Apps", startup: "Startup", workspaces: "Spaces" })[value] || value;
+                  clipboard: "Clipboard", notifications: "Notes", quick: "Controls", trails: "Trails", station: "Station", go: "Apps", startup: "Startup", workspaces: "Spaces", keybinds: "Keys" })[value] || value;
     }
     function tagline(value) {
         return ({ quick: "One place. Everything close.", audio: "What is playing, and where.", bluetooth: "Nearby and paired.", system: "Readings from the station.",
                   weather: "The sky over the station.", calendar: "The days ahead.", clipboard: "What you copied, kept here.", notifications: "What asked for you.",
-                  trails: "Where you have been.", startup: "What rises with the shell." })[value] || "";
+                  trails: "Where you have been.", startup: "What rises with the shell.", keybinds: "Every key the station answers to." })[value] || "";
     }
     function sentence(value) { const t = String(value || "").toLowerCase(); return t ? t.charAt(0).toUpperCase() + t.slice(1) + "." : ""; }
     component CanopyTab: StrataButton {
@@ -209,6 +209,7 @@ Rectangle {
                         weather: weather,
                         calendar: calendar,
                         clipboard: clipboard,
+                        keybinds: keybinds,
                         notifications: notifications,
                         quick: quick,
                         trails: trails,
@@ -289,6 +290,10 @@ Rectangle {
     Component {
         id: clipboard
         ClipboardCanopy {}
+    }
+    Component {
+        id: keybinds
+        KeybindsCanopy {}
     }
     Component {
         id: notifications
