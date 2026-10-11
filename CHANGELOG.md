@@ -1,5 +1,6 @@
 # Unreleased — Stable and Development updates
 
+- The updater's installation no longer stops at "CEDAR runtime" when the installer was opened from the shell: offscreen validation pins Qt's single-threaded render loop instead of inheriting the desktop's threaded one, which crashed the software renderer mid-check. The navigation check reports a Quickshell crash as a failure instead of timing out.
 - Field Station's greeting rotates only while visible, with shared rotation across outputs; unused Hud form controls, StationPanel, BarCoreControls, Search.js and the clock-test harness are removed. The recorder probe skips unnecessary one-second wakeups on systems without keyboard LEDs.
 - Signals offers an interactive Topgrade system upgrade in a terminal. The integrated Core clock stays current, and native application menus use QApplication.
 - Signals uses one panel for hover, click and notification arrivals. Clicking pins the hovered panel without a second resize; closed hub contents unload, and volume/brightness stay inline on hover.

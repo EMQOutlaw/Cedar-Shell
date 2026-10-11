@@ -26,10 +26,13 @@ class ValidationChecks(unittest.TestCase):
             '#!' + sys.executable + '\n'
             'import json, os\n'
             'print(json.dumps({key: os.environ.get(key) for key in '
-            '["QT_QUICK_BACKEND", "QSG_RHI_BACKEND", "CEDAR_FIXTURE_SENTINEL"]}))\n'
+            '["QT_QUICK_BACKEND", "QSG_RHI_BACKEND", "QSG_RENDER_LOOP", "QSG_USE_SIMPLE_ANIMATION_DRIVER", "CEDAR_FIXTURE_SENTINEL"]}))\n'
         )
         fake_qs.chmod(0o755)
+        # The shell service exports the threaded loop; a check launched from it
+        # must not inherit that (the software renderer crashes in Shapes).
         inherited = {'QT_QUICK_BACKEND': 'rhi', 'QSG_RHI_BACKEND': 'software',
+                     'QSG_RENDER_LOOP': 'threaded', 'QSG_USE_SIMPLE_ANIMATION_DRIVER': '1',
                      'CEDAR_FIXTURE_SENTINEL': 'retained'}
         with patch.dict(os.environ, inherited):
             for explicit_env in (None, dict(os.environ)):
@@ -37,6 +40,8 @@ class ValidationChecks(unittest.TestCase):
                     actual = json.loads(d.validation_command([str(fake_qs)], timeout=2, env=explicit_env))
                     self.assertEqual(actual['QT_QUICK_BACKEND'], 'software')
                     self.assertIsNone(actual['QSG_RHI_BACKEND'])
+                    self.assertEqual(actual['QSG_RENDER_LOOP'], 'basic')
+                    self.assertIsNone(actual['QSG_USE_SIMPLE_ANIMATION_DRIVER'])
                     self.assertEqual(actual['CEDAR_FIXTURE_SENTINEL'], 'retained')
                     for key, value in inherited.items():
                         self.assertEqual(os.environ[key], value)

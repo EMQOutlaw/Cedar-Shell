@@ -77,6 +77,13 @@ def validation_command(argv,timeout=90,env=None):
     # These settings apply to validation children, never to the desktop shell.
     environment.pop('QSG_RHI_BACKEND',None)
     environment['QT_QUICK_BACKEND']='software'
+    # The desktop shell runs with QSG_RENDER_LOOP=threaded and the installer
+    # launched from it inherits that. Qt's software adaptation renders Shapes
+    # on the render thread while the GUI thread tears a panel down, which
+    # segfaults Quickshell mid-check (crash handler restarts it, the check
+    # then times out). Validation always uses the single-threaded loop.
+    environment['QSG_RENDER_LOOP']='basic'
+    environment.pop('QSG_USE_SIMPLE_ANIMATION_DRIVER',None)
     environment['QS_DISABLE_FILE_WATCHER']='1'
     process=subprocess.Popen(argv,text=True,errors='replace',stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                              env=environment,start_new_session=True)

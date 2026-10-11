@@ -19,8 +19,11 @@ installer still uses its already loaded code.
 
 The fixed validation path uses `QT_QUICK_BACKEND=software` only for its test
 processes, keeps the complete controls lifecycle test, gives its own timeout
-time to report, and stops leftover children. It does not change the desktop's
-renderer. See [Qt's backend selection documentation](https://doc.qt.io/qt-6/qtquick-visualcanvas-adaptations.html).
+time to report, and stops leftover children. It also pins `QSG_RENDER_LOOP=basic`:
+the desktop shell exports the threaded loop, and an installer opened from the
+shell passed it on, which crashed the software renderer mid-check (the update
+then stopped at "CEDAR runtime" with "Navigation checks timed out"). It does not
+change the desktop's renderer. See [Qt's backend selection documentation](https://doc.qt.io/qt-6/qtquick-visualcanvas-adaptations.html).
 
 If a corrected check still fails, open **View log** and keep the diagnostic
 output. From the corrected checkout, this also runs the isolated controls
