@@ -133,6 +133,9 @@ def update(source, args, argv):
     if result['current']:
         say('CEDAR is up to date on ' + result['branch'] + ' (' + result['commit'][:12] + ').')
         return 0
+    say("What's updating:")
+    for item in result.get('summary', ['CEDAR desktop and maintenance updates']):
+        say('  • ' + item)
     say('Starting the updated installer…'); sys.stdout.flush()
     start_updated(result, passthrough)
 

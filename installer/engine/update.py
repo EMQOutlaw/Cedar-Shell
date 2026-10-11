@@ -176,6 +176,36 @@ def content_digest(root):
     return digest.hexdigest()
 
 
+def basic_update_summary(installed, incoming):
+    """Describe changed product areas, without exposing file lists or Git jargon."""
+    def files(root):
+        return {str(p.relative_to(root)): p for p in root.rglob('*')
+                if p.is_file() and not p.is_symlink()
+                and not any(part.startswith('.') or part == '__pycache__' for part in p.relative_to(root).parts)
+                and p.suffix != '.pyc'}
+    before, after = files(Path(installed)), files(Path(incoming))
+    areas = set()
+    for name in before.keys() | after.keys():
+        if name in before and name in after and before[name].read_bytes() == after[name].read_bytes():
+            continue
+        low = name.lower()
+        if low.startswith(('tests/', 'docs/', 'data/')) or low.endswith(('.md', '.lock')) or low in ('version', 'release-files.json'):
+            continue
+        if 'keybind' in low:
+            areas.add('Keyboard shortcuts')
+        elif any(word in low for word in ('lockscreen', 'trailwatch', 'fingerprint', 'auth')):
+            areas.add('Lock screen and sign-in')
+        elif any(word in low for word in ('wallpaper', 'backgrounds/', 'theme')):
+            areas.add('Wallpapers and appearance')
+        elif low.startswith(('installer/', 'compatibility/')) or any(word in low for word in ('distribution.py', 'update_', 'install.sh')):
+            areas.add('Installation and updates')
+        elif low.startswith(('modules/', 'components/', 'menus/', 'services/')) or low.endswith('.qml'):
+            areas.add('Desktop panels and controls')
+        else:
+            areas.add('Desktop integration and fixes')
+    return sorted(areas) or ['Maintenance files and version information']
+
+
 def installed_channel(environ=None):
     """Only trust a successful install record that still describes the selected runtime."""
     environ = os.environ if environ is None else environ
@@ -555,6 +585,7 @@ class Updater:
         self.result['installedChannel'] = installed_channel(self.environ)
         self.result['current'] = same_contents and self.result['installedChannel'] == self.channel
         self.result['changed'] = not same_contents
+        self.result['summary'] = [] if same_contents else basic_update_summary(current.resolve(), Path(self.result['source']))
         self.prepared = True
         op.detail = ('CEDAR is up to date on ' + self.branch if self.result['current'] else
                      'Ready to install from ' + self.branch + ' · ' + self.result['commit'][:12])

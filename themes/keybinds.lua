@@ -48,6 +48,8 @@ bind("SUPER + C", clipboard("copy"), "Unified copy (Ctrl+C, or Ctrl+Shift+C in a
 bind("SUPER + X", clipboard("cut"), "Unified cut where the window supports it (Ctrl+X; nothing in a terminal)")
 bind("SUPER + V", clipboard("paste"), "Unified paste (Ctrl+V, or Ctrl+Shift+V in a terminal)")
 bind("SUPER + SHIFT + V", ipc("canopy flip clipboard"), "Toggle clipboard history")
+bind("SUPER + SHIFT + K", ipc("keymap show"), "Show the searchable active keymap")
+bind("SUPER + CTRL + ALT + SPACE", ipc("wallpapers toggle"), "Choose a wallpaper from the rounded preview grid")
 
 -- Windows
 bind("SUPER + Q", hl.dsp.window.close(), "Close the focused window")

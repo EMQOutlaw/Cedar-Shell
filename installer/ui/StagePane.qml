@@ -23,7 +23,7 @@ Item {
         anchors { fill: parent; leftMargin: 56; rightMargin: 56; topMargin: 48; bottomMargin: 40 }
         sourceComponent: { switch (root.model.stage) {
             case "welcome": return welcome; case "scan": return scan; case "environment": return environment; case "plan": return planPage;
-            case "update": return updatePage; case "update-error": return updateError; case "update-current": return updateCurrent;
+            case "update-summary": return updateSummary; case "update": return updatePage; case "update-error": return updateError; case "update-current": return updateCurrent;
             case "attention": return attention; case "interrupted": return interrupted; case "install": return install; case "error": return errorPage;
             case "finish": return finish; case "restored": return restored; } return welcome; }
         opacity: 0
@@ -122,6 +122,26 @@ Item {
     }
 
     // ------------------------------------------------------------- update
+    Component {
+        id: updateSummary
+        ColumnLayout {
+            spacing: 12
+            SectionMark { text: "UPDATE READY" }
+            Heading { text: "What's updating" }
+            Lead { text: "The basics of this CEDAR update:" }
+            Repeater {
+                model: root.model.update.summary || ["CEDAR desktop and maintenance updates"]
+                Row_ { required property string modelData; text: modelData; glyph: "•"; glyphColor: Theme.teal }
+            }
+            Item { Layout.fillHeight: true }
+            RowLayout {
+                Layout.fillWidth: true
+                Quiet { text: "Close"; onClicked: root.model.cancelUpdate() }
+                Item { Layout.fillWidth: true }
+                Primary { text: "Continue to installation"; onClicked: root.model.proceedUpdate() }
+            }
+        }
+    }
     Component {
         id: updatePage
         ColumnLayout {

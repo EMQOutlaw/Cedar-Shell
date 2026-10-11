@@ -305,7 +305,7 @@ def ensure_unlocked():
         from portable_providers import qs_instances, qs_ipc
         for row in qs_instances():
             source = Path(row.get('config_path', '/unavailable'))
-            if source.is_relative_to(paths()['data']/'releases') and qs_ipc(source, 'shell', 'isLocked') != 'false':
+            if source.name == 'shell.qml' and source.parent.parent == paths()['data']/'releases' and qs_ipc(source, 'shell', 'isLocked') != 'false':
                 raise Refused('CEDAR is locking or locked; operation deferred.')
 
 
@@ -378,7 +378,7 @@ def validate(root):
 def plan_install(root):
     source=list(files(root));size=sum(p.stat().st_size for p,_ in source)
     version=(root/'VERSION').read_text().strip()
-    if not __import__('re').fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.]+)?',version):raise Refused('Invalid version identifier.')
+    if not __import__('re').fullmatch(r'[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[a-z0-9.]+)?',version):raise Refused('Invalid version identifier.')
     # Executable-bit updates are runtime changes even when file bytes and VERSION stay the same.
     fingerprint=hashlib.sha256(''.join(str(rel)+digest(p)+str(p.stat().st_mode&0o111) for p,rel in source).encode()).hexdigest()[:16]
     release=paths()['data']/'releases'/(version+'-'+fingerprint)

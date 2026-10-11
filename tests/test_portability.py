@@ -199,6 +199,15 @@ sys.stdin.buffer.read(1)
         with patch.object(p, 'qs_instances', side_effect=d.Refused('Unknown Quickshell state')):
             with self.assertRaises(d.Refused): d.release_in_use()
 
+    def test_installer_is_not_queried_as_a_session_locker(self):
+        root = self.proc_fixture()
+        self.proc_entry(root, 102, 'Hyprland', '/fixture/Hyprland', ['Hyprland'])
+        source = str(d.paths()['data']/'releases/fixture/installer.qml')
+        self.proc_entry(root, 103, 'qs', '/fixture/qs', ['qs', '-p', source])
+        with patch.object(p, 'compositor_locked', return_value=False), patch.object(p, 'qs_instances', return_value=[{'config_path': source}]), patch.object(p, 'qs_ipc') as ipc:
+            d.ensure_unlocked()
+            ipc.assert_not_called()
+
     def test_pending_cedar_lock_still_blocks_with_unrelated_protected_process(self):
         root = self.proc_fixture()
         other = self.proc_entry(root, 101, 'keyring-agent', '/fixture/keyring-agent')

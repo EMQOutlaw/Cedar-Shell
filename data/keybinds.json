@@ -74,6 +74,22 @@
           "description": "Toggle clipboard history",
           "lua": "ipc(\"canopy flip clipboard\")",
           "conf": "exec, $cedarShell canopy flip clipboard"
+        },
+        {
+          "keys": [
+            "SUPER + SHIFT + K"
+          ],
+          "description": "Show the searchable active keymap",
+          "lua": "ipc(\"keymap show\")",
+          "conf": "exec, $cedarShell keymap show"
+        },
+        {
+          "keys": [
+            "SUPER + CTRL + ALT + SPACE"
+          ],
+          "description": "Choose a wallpaper from the rounded preview grid",
+          "lua": "ipc(\"wallpapers toggle\")",
+          "conf": "exec, $cedarShell wallpapers toggle"
         }
       ],
       "note": "Unified copy, cut and paste send the application's own shortcut: Ctrl+C, Ctrl+X and Ctrl+V in most windows, Ctrl+Shift+C and Ctrl+Shift+V in terminals, where cut does not exist."
