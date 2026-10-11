@@ -23,6 +23,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_update_checkout.py
           python3 -m unittest discover -s tests -p test_update_channels.py
           python3 -m unittest discover -s tests -p test_installer.py
+          python3 -m unittest discover -s tests -p test_keybinds.py
           python3 -m unittest discover -s tests -p test_validation_checks.py
       - name: Python syntax and shell bootstrap
         run: |

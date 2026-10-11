@@ -427,31 +427,49 @@ class Keybinds(unittest.TestCase):
         self.assertTrue(any('keybinds' in r for r in plan['cedar']))
         self.assertNotEqual(plan['digest'], plan_module.build(facts_module.scan(plain, ROOT), {'keybinds': False})['digest'])
 
-    def test_both_syntaxes_bind_the_same_keys(self):
-        import re
-        lua = (ROOT / 'themes/keybinds.lua').read_text()
-        conf = (ROOT / 'themes/keybinds.conf').read_text()
-        def norm(mods, key):
-            mods = sorted(m.upper() for m in mods if m)
-            key = key.strip()
-            aliases = {'backslash': 'BACKSLASH', 'comma': 'COMMA', 'minus': 'MINUS', 'equal': 'EQUAL', 'backspace': 'BACKSPACE', 'space': 'SPACE', 'tab': 'TAB', 'left': 'LEFT', 'right': 'RIGHT', 'up': 'UP', 'down': 'DOWN'}
-            key = aliases.get(key.lower(), key)
-            return ' '.join(mods + [key.upper() if len(key) == 1 else key])
-        conf_keys = set()
-        for m in re.finditer(r'^bind[a-z]*\s*=\s*([^,]*),\s*([^,]+),', conf, re.M):
-            conf_keys.add(norm(m.group(1).split(), m.group(2)))
-        lua_keys = set()
-        for m in re.finditer(r'"((?:[A-Z_]+ \+ )+[A-Za-z0-9_:]+|XF86[A-Za-z]+|Print)"', lua):
-            parts = [p.strip() for p in m.group(1).split('+')]
-            lua_keys.add(norm(parts[:-1], parts[-1]))
-        for i in range(1, 11):
-            key = str(i % 10)
-            lua_keys.update({norm(['SUPER'], key), norm(['SUPER', 'ALT'], key), norm(['CTRL', 'SUPER'], key), norm(['CTRL', 'SUPER', 'ALT'], key)})
-        for d in ('left', 'right', 'up', 'down'):
-            lua_keys.update({norm(['SUPER'], d), norm(['SUPER', 'SHIFT'], d)})
-        missing_in_conf = sorted(k for k in lua_keys if k not in conf_keys)
-        missing_in_lua = sorted(k for k in conf_keys if k not in lua_keys)
-        self.assertEqual(missing_in_conf, [], 'in lua only'); self.assertEqual(missing_in_lua, [], 'in conf only')
+    def test_both_syntaxes_come_from_the_keybind_definition(self):
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import keybinds
+        self.assertEqual(keybinds.check(), [], 'themes/keybinds.* are rendered from data/keybinds.json; run scripts/keybinds.py --write')
+        self.assertEqual(keybinds.duplicates(keybinds.load()), [])
+
+    def test_an_unmodified_keybinds_copy_is_replaced_and_an_edited_one_is_kept(self):
+        import tempfile
+        from installer.engine import steps
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            shipped = tmp / 'new' / 'keybinds.lua'; shipped.parent.mkdir(); shipped.write_text('-- new set\n')
+            previous = tmp / 'old' / 'keybinds.lua'; previous.parent.mkdir(); previous.write_text('-- old set\n')
+            target = tmp / 'hypr' / 'keybinds.lua'; target.parent.mkdir()
+            state = {}
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, previous, state), 'installed')
+            self.assertEqual(target.read_text(), '-- new set\n'); self.assertEqual(state['keybindsDigest'], steps.file_digest(shipped))
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, previous, state), 'current')
+            target.write_text('-- old set\n'); state.pop('keybindsDigest')   # a copy from before digests were recorded, untouched
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, previous, state), 'updated')
+            self.assertEqual(target.read_text(), '-- new set\n')
+            target.write_text('-- old set\nbind("SUPER + Y", nil, "mine")\n'); state['keybindsDigest'] = steps.file_digest(previous)
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, previous, state), 'kept')
+            self.assertIn('mine', target.read_text()); self.assertEqual(state['keybindsDigest'], steps.file_digest(previous), 'an edited copy keeps its recorded digest')
+            missing = tmp / 'none' / 'keybinds.lua'
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, missing, state), 'kept')
+
+    def test_keybind_migration_uses_pre_switch_digest_on_resume(self):
+        from installer.engine import steps
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            shipped = tmp / 'new.lua'; shipped.write_text('-- new default\n')
+            previous = tmp / 'current.lua'; previous.write_text('-- old default\n')
+            target = tmp / 'user.lua'; target.write_text(previous.read_text())
+            backup = backup_module.Backup(tmp / 'backups', tmp, '1', '2').create({}, {})
+            backup.manifest['keybindsDefaults'] = {'lua': steps.file_digest(previous)}
+            backup.save()
+            previous.write_text(shipped.read_text())  # runtime switched current already
+            resumed = backup_module.Backup.load(backup.root)
+            state = {}
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, previous, state,
+                resumed.manifest['keybindsDefaults']['lua']), 'updated')
+            self.assertEqual(target.read_text(), shipped.read_text())
 
     def test_desktop_loader_includes_the_copy_when_asked(self):
         sys.path.insert(0, str(ROOT / 'scripts'))

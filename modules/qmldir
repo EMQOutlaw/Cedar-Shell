@@ -40,6 +40,7 @@ CalendarCanopy 1.0 CalendarCanopy.qml
 NotificationCanopy 1.0 NotificationCanopy.qml
 TrailCanopy 1.0 TrailCanopy.qml
 ClipboardCanopy 1.0 ClipboardCanopy.qml
+KeybindsCanopy 1.0 KeybindsCanopy.qml
 WeatherCanopy 1.0 WeatherCanopy.qml
 
 TrailwatchView 1.0 TrailwatchView.qml

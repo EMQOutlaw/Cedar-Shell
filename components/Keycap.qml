@@ -5,7 +5,7 @@ Row {
     id: root
     property string keys: ""
     property color accent: Theme.teal
-    readonly property var names: ({SUPER:"Super", CTRL:"Ctrl", ALT:"Alt", SHIFT:"Shift", RETURN:"Enter", KP_ENTER:"Enter", SPACE:"Space", BACKSPACE:"⌫", DELETE:"Del", TAB:"Tab", LEFT:"←", RIGHT:"→", UP:"↑", DOWN:"↓", ESCAPE:"Esc", PRINT:"PrtSc"})
+    readonly property var names: ({SUPER:"Super", CTRL:"Ctrl", ALT:"Alt", SHIFT:"Shift", COMMA:",", ARROWS:"← → ↑ ↓", "1-0":"1 … 9, 0", "MOUSE:272":"Left drag", "MOUSE:273":"Right drag", MOUSE_UP:"Scroll up", MOUSE_DOWN:"Scroll down", RETURN:"Enter", KP_ENTER:"Enter", SPACE:"Space", BACKSPACE:"⌫", DELETE:"Del", TAB:"Tab", LEFT:"←", RIGHT:"→", UP:"↑", DOWN:"↓", ESCAPE:"Esc", PRINT:"PrtSc"})
     readonly property var media: ({AUDIORAISEVOLUME:"Vol +", AUDIOLOWERVOLUME:"Vol −", AUDIOMUTE:"Mute", AUDIOMICMUTE:"Mic mute", AUDIOPLAY:"Play", AUDIOPAUSE:"Pause", AUDIONEXT:"Next", AUDIOPREV:"Prev", AUDIOSTOP:"Stop", MONBRIGHTNESSUP:"Bright +", MONBRIGHTNESSDOWN:"Bright −", KBDBRIGHTNESSUP:"Kbd +", KBDBRIGHTNESSDOWN:"Kbd −", CALCULATOR:"Calc", SEARCH:"Search", POWEROFF:"Power"})
     function label(part) {
         if (names[part]) return names[part];
