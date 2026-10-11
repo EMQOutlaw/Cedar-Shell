@@ -230,6 +230,11 @@ ColumnLayout {
         visible: root.hotspot && root.showHotspot
         Layout.fillWidth: true
     }
+    ProtonCard {
+        Layout.fillWidth: true; Layout.topMargin: 8
+        opacity: root.beat(5)
+        transform: Translate { x: 10 * (1 - root.beat(5)) }
+    }
     // VPN: the tunnels NetworkManager knows, whoever created them. A profile a
     // VPN application manages is still controllable here; the app may reconnect.
     RowLayout {
