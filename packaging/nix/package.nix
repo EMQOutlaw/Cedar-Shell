@@ -1,7 +1,7 @@
 { lib, stdenvNoCC, makeWrapper, python3, quickshell, hyprland, systemd, coreutils, qt6, src }:
 stdenvNoCC.mkDerivation {
   pname = "cedar-shell";
-  version = "1.5";
+  version = "1.6";
   inherit src;
   nativeBuildInputs = [ makeWrapper ];
   dontBuild = true;
