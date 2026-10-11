@@ -1,5 +1,12 @@
 # Offline recovery
 
+For sessions created by the compatibility migration engine, `cedar restore` and
+`cedar rollback` first use the pending compatibility manifest, including its
+binding backups and linked adapter journal. Inspect `cedar history` and follow
+the [compatibility recovery procedure](compatibility/README.md#recovery-and-conflicts).
+Release rollback and the legacy recovery behavior below apply when no such
+migration remains. Uninstall refuses until that migration has been restored.
+
 The distribution installs a stable recovery script at `$XDG_DATA_HOME/cedar/recovery/distribution.py` (default `~/.local/share/cedar/recovery/distribution.py`). It needs Python 3.11+, not Quickshell, plugins, internet or a display.
 
 ```sh

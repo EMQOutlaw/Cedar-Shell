@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "id": "hyde",
+  "name": "HyDE",
+  "compatibility": "detected",
+  "adapter": null,
+  "signatures": {
+    "paths": [
+      "{config}/hyde",
+      "{data}/hyde",
+      "{data}/hypr/hyde.lua"
+    ],
+    "packages": [
+      "hyde-cli"
+    ],
+    "commands": [
+      "hyde-shell"
+    ],
+    "processes": [],
+    "quickshell": [],
+    "startup": [
+      "hyde-shell",
+      "HyDE"
+    ],
+    "units": []
+  },
+  "dependencies": [
+    "hyprctl",
+    "qs",
+    "systemctl",
+    "systemd-run",
+    "busctl"
+  ],
+  "conflicts": [
+    "bar",
+    "notifications",
+    "osd"
+  ],
+  "startupIntegration": "Existing reviewed adapter only; preserve upstream startup and use journaled CEDAR login hook",
+  "ownership": "Never edit package-owned, generated or symlinked dotfiles; keep monitors, input, apps and unrelated bindings",
+  "activation": "Manual review required; no automatic process stop",
+  "restoration": "Recorded file journal and original provider identities/service states; never uninstall",
+  "limitations": [
+    "Native matrix validation still required",
+    "Shared or unknown supervisors require review"
+  ]
+}

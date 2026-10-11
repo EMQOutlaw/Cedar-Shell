@@ -136,9 +136,11 @@ Rectangle {
                 }
             }
         }
-        RowLayout {
+        Flow {
             Layout.fillWidth: true
+            spacing: 8
             StrataButton { text: "Overview"; checked: root.page === "overview"; onClicked: Canopy.stationPage = "overview" }
+            StrataButton { text: "Desktop environment"; onClicked: { Canopy.close(); Station.openPage("desktop"); } }
             StrataButton { text: "Tasks & performance"; checked: root.page === "tasks"; onClicked: Canopy.stationPage = "tasks" }
         }
         StationTasks {

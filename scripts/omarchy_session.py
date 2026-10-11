@@ -165,11 +165,13 @@ def notification_owner():
     if not match:raise d.Refused('Cannot identify the notification provider.')
     return int(match.group(1))
 
-def trial(root,approved=False,trailwatch=False):
+def trial(root,approved=False,trailwatch=False,expected_snapshot=None):
     root=root.resolve()
     with guard():
         if active():raise d.Refused('A CEDAR desktop trial/session already exists. Use cedar keep, status, or restore.')
         row=inspect(root)
+        if expected_snapshot is not None and row != expected_snapshot:
+            raise d.Refused('The reviewed desktop evidence changed. Refresh the migration preview; no provider was changed.')
         plan={'action':'Try CEDAR for 120 seconds','adapter':row['adapter'],'changes':['Select the CEDAR empty-bar bridge in Omarchy user settings','Temporarily disable Omarchy notification and OSD plugins','Restart the Omarchy shell once, while unlocked, if it still holds notifications','Start the full CEDAR bar, Core, Canopy, Settings and notifications','Create a temporary post-boot recovery hook'],
               'preserve':['Omarchy lockscreen, PAM, idle handling, polkit agent, wallpaper, secret service and portals','Display configuration, existing keyboard shortcuts and applications'],
               'confirmation':'Run cedar keep before the timer expires; login startup needs cedar activate afterwards','recovery':'Independent supervisor restores the recorded configuration after timeout or a CEDAR crash; it defers while locked.'}
@@ -185,7 +187,10 @@ def trial(root,approved=False,trailwatch=False):
             plan['confirmation']='Run cedar keep before the timer expires; it completes the Trailwatch handoff after you unlock once. Login startup needs cedar activate afterwards'
         d.approve(plan,approved)
         print(d.validate(root));unlocked(row);companions_ready(row)
+        if expected_snapshot is not None and inspect(root) != expected_snapshot:
+            raise d.Refused('Desktop evidence changed during validation. Review a new migration preview.')
         tx=d.Transaction('omarchy-session')
+        row['compatibilityMigration'] = os.environ.get('CEDAR_COMPATIBILITY_MIGRATION', '')
         row.update({'id':uuid.uuid4().hex,'stage':'prepared','journal':str(tx.path),'deadline':time.time()+120,'login':False})
         row['generation']=uuid.uuid4().hex
         row['sessionSignature']=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
@@ -366,7 +371,7 @@ def supervise(identity,generation=None):
                     try:
                         if not cedar_rows(row):start_cedar(row)
                         healthy(row)
-                        row['stage']='kept' if row.get('login') else 'trial';row['deadline']=time.time()+120;row.pop('error',None);save(row)
+                        row['stage']='kept' if row.get('login') or row.pop('restartKept', False) else 'trial';row['deadline']=time.time()+120;row.pop('error',None);save(row)
                     except (d.Refused,OSError,ValueError,subprocess.SubprocessError) as error:
                         row['error']=str(error)[:500];save(row)
                         if time.time()>row['readyDeadline']:row['stage']='restore-requested';save(row)

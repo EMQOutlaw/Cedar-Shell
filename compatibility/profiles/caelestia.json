@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "caelestia",
+  "name": "Caelestia",
+  "compatibility": "detected",
+  "adapter": null,
+  "signatures": {
+    "paths": [
+      "{config}/caelestia"
+    ],
+    "packages": [
+      "caelestia-shell",
+      "caelestia-shell-git",
+      "caelestia-cli"
+    ],
+    "commands": [
+      "caelestia"
+    ],
+    "processes": [],
+    "quickshell": [
+      "/caelestia/shell.qml"
+    ],
+    "startup": [
+      "caelestia shell",
+      "caelestia-shell"
+    ],
+    "units": [
+      "caelestia.service"
+    ]
+  },
+  "dependencies": [
+    "hyprctl",
+    "qs",
+    "systemctl",
+    "systemd-run",
+    "busctl"
+  ],
+  "conflicts": [
+    "bar",
+    "notifications",
+    "osd",
+    "bundled-lock-idle"
+  ],
+  "startupIntegration": "Existing reviewed adapter only; preserve upstream startup and use journaled CEDAR login hook",
+  "ownership": "Never edit package-owned, generated or symlinked dotfiles; keep monitors, input, apps and unrelated bindings",
+  "activation": "Manual review required; no automatic process stop",
+  "restoration": "Recorded file journal and original provider identities/service states; never uninstall",
+  "limitations": [
+    "Native matrix validation still required",
+    "Installed is not active",
+    "Do not stop bundled lock services"
+  ]
+}

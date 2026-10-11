@@ -20,7 +20,7 @@ local data = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share")
 -- scripts/distribution.py.
 local config = os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")
 local root = data .. "/cedar/current"
-local qs = "qs -p " .. root .. "/shell.qml"
+local qs = 'qs -p "$(readlink -f ' .. root .. '/shell.qml)"' 
 do
   local profile = io.open(config .. "/quickshell/cedar/shell.qml", "r")
   if profile then profile:close(); qs = "qs -c cedar"; root = config .. "/quickshell/cedar" end

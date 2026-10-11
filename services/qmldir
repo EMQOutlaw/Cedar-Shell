@@ -40,3 +40,4 @@ singleton Focus 1.0 Focus.qml
 singleton Station 1.0 Station.qml
 singleton Pulse 1.0 Pulse.qml
 singleton Relay 1.0 Relay.qml
+singleton Compatibility 1.0 Compatibility.qml
