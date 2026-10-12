@@ -9,6 +9,8 @@ import "modules"
 import "services"
 
 ShellRoot {
+    readonly property bool applicationThemingEnabled: ApplicationTheming.enabled
+
     LazyLoader {
         active: Config.externalSession
         component: SessionIntegration {}

@@ -1,0 +1,6 @@
+[KDE]
+SingleClick=false
+[General]
+BrowserApplication=firefox.desktop
+[Colors:Window]
+BackgroundNormal=34,34,34

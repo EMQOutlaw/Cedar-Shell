@@ -13,12 +13,68 @@ Scope {
     id: root
     readonly property string status: authController.status
     property bool hadSecureLock: false
+    property bool fingerprintAvailable: false
+    property string fingerprintStatus: ""
+    readonly property bool fingerprintEnabled: ShellState.locked && lock.secure && !Config.testMode && fingerprintAvailable
+    function finishUnlock() {
+        if (!ShellState.locked || !lock.secure) return;
+        if (root.hadSecureLock) ShellState.securedUnlocks++;
+        // Disable both conversations before releasing the secure surface.
+        ShellState.locked = false;
+        lock.locked = false;
+        ShellState.suspendAfterLock = false;
+    }
+    function startFingerprint() {
+        if (!fingerprintEnabled || fingerprintPam.active) return;
+        fingerprintStatus = "Touch the fingerprint sensor or enter your password";
+        if (!fingerprintPam.start()) fingerprintStatus = "Fingerprint unavailable · enter your password";
+    }
+    onFingerprintEnabledChanged: {
+        fingerprintRetry.stop();
+        if (fingerprintEnabled) startFingerprint();
+        else {
+            if (fingerprintPam.active) fingerprintPam.abort();
+            fingerprintStatus = "";
+        }
+    }
+    ServiceRequest {
+        id: fingerprintCheck
+        script: "scripts/fingerprint_status.py"
+        onResult: value => root.fingerprintAvailable = value.available === true
+        onFailed: root.fingerprintAvailable = false
+    }
+    PamContext {
+        id: fingerprintPam
+        config: "omarchy-lock-fingerprint"
+        configDirectory: Config.pamDirectory
+        onCompleted: result => {
+            if (!root.fingerprintEnabled) return;
+            if (result === PamResult.Success) root.finishUnlock();
+            else {
+                root.fingerprintStatus = "Fingerprint not accepted · try again or enter your password";
+                fingerprintRetry.restart();
+            }
+        }
+        onError: {
+            root.fingerprintStatus = "Fingerprint unavailable · enter your password";
+            if (root.fingerprintEnabled) fingerprintRetry.restart();
+        }
+        onPamMessage: {
+            if (root.fingerprintEnabled && message) root.fingerprintStatus = message;
+        }
+    }
+    Timer {
+        id: fingerprintRetry
+        interval: 1500
+        onTriggered: root.startFingerprint()
+    }
     Component.onCompleted: ShellState.nativeLockReady = true
     Component.onDestruction: ShellState.nativeLockReady = false
     // Keep this ID distinct from TrailwatchView.auth: an implicit lock-surface
     // component otherwise resolves `auth: auth` to its own unset property.
     LockAuth {
         id: authController
+        property string fingerprintHint: root.fingerprintStatus
         context: pam
         enabled: (ShellState.locked || ShellState.authTest) && !Config.testMode
         onClearInputs: root.clearInputs()
@@ -28,10 +84,7 @@ Scope {
                 ShellState.authTests++;
                 return;
             }
-            if (root.hadSecureLock) ShellState.securedUnlocks++;
-            lock.locked = false;
-            ShellState.locked = false;
-            ShellState.suspendAfterLock = false;
+            root.finishUnlock();
         }
     }
     PamContext {
@@ -59,6 +112,7 @@ Scope {
         function onLockedChanged() {
             if (ShellState.locked && !Config.testMode) {
                 root.hadSecureLock = false;
+                if (Config.omarchyIntegration) fingerprintCheck.send({});
                 lock.locked = true;
                 root.clearInputs();
             }

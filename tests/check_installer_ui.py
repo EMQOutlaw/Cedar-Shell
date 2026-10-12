@@ -72,7 +72,15 @@ ShellRoot {
             interval: 500; running: true; repeat: true
             onTriggered: {
                 switch (window.step++) {
-                case 0: window.check(model.fixture && model.stage === "welcome", "Fixture model starts at welcome"); model.receive(JSON.stringify({ event: "ready", data: { version: "0.1.0-dev.15", channel: "stable", branch: "main", installedChannel: "stable" } })); break;
+                case 0:
+                    window.check(model.fixture && model.stage === "welcome", "Fixture model starts at welcome");
+                    model.receive(JSON.stringify({ event: "facts", data: window.facts }));
+                    window.check(!Object.prototype.hasOwnProperty.call(window.lastCommand.options, "trailwatch"), "First GUI plan inherits the existing locker");
+                    model.receive(JSON.stringify({ event: "plan", data: Object.assign({}, window.plan, { options: Object.assign({}, window.plan.options, { trailwatch: true }) }) }));
+                    window.check(model.options.trailwatch === true, "GUI retains inherited Trailwatch selection");
+                    model.setOption("trailwatch", false);
+                    window.check(window.lastCommand.options.trailwatch === false, "GUI sends an explicit locker change");
+                    model.receive(JSON.stringify({ event: "ready", data: { version: "0.1.0-dev.15", channel: "stable", branch: "main", installedChannel: "stable" } })); break;
                 case 1: window.shot("welcome"); break;
                 case 2: model.stage = "scan"; model.busy = true; break;
                 case 3: window.shot("scan"); break;
@@ -128,6 +136,8 @@ ShellRoot {
                     model.receive(JSON.stringify({ event: "ready", data: { version: "0.1.2", channel: "development", branch: "dev", installedChannel: "development" } }));
                     window.check(!model.pendingStartupUpdate && window.lastCommand.channel === "development", "Startup waits for the remembered channel before requesting an update");
                     model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: false, channel: "development", branch: "dev", installedChannel: "development" } }));
+                    window.check(model.stage === "update-summary" && !model.busy, "A new revision shows its summary before continuing");
+                    model.proceedUpdate();
                     window.check(window.lastCommand.cmd === "update-proceed" && model.busy && model.stage !== "update-current", "A new revision continues to the install plan");
                     model.receiveChannel({ installedChannel: "" }); window.check(model.installedChannel === "", "Unknown installed provenance clears an old branch label");
                     // The offscreen platform does not resize mapped windows. Exercise

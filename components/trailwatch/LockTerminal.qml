@@ -107,7 +107,7 @@ Rectangle {
         }
         FieldText {
             Layout.fillWidth: true
-            text: root.preview ? "Visual preview · no session lock" : root.auth.status
+            text: root.preview ? "Visual preview · no session lock" : (root.auth.status === "Enter your password" && root.auth.fingerprintHint ? root.auth.fingerprintHint : root.auth.status)
             color: root.auth.status === "Enter your password" ? Theme.muted : root.auth.busy ? Theme.teal : Theme.amber
             font.pixelSize: 11
             wrapMode: Text.WordWrap

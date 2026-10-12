@@ -5,8 +5,14 @@ import Quickshell.Io
 
 Singleton {
     property var palette: ({})
+    property var defaultPalette: ({})
+    FileView {
+        path: Quickshell.shellPath("themes/palettes/cedar.json")
+        printErrors: false
+        onLoaded: { try { defaultPalette = JSON.parse(text()).colors || ({}); } catch (_) {} }
+    }
     function token(name, fallback) {
-        const color = palette[name];
+        const color = palette[name] || defaultPalette[name];
         return typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback;
     }
     FileView {
@@ -16,7 +22,7 @@ Singleton {
         onFileChanged: reload()
         onLoaded: { try { palette = JSON.parse(text()).colors || ({}); } catch (_) { palette = ({}); } }
     }
-    // All literal colors live here. scripts/export-themes.py derives app palettes.
+    // The shared JSON palette is authoritative; literals are emergency loading fallbacks.
     readonly property color background: token("background", "#080F0D")
     readonly property color surface: token("surface", "#101E19")
     readonly property color elevated: token("elevated", "#192D25")

@@ -23,7 +23,7 @@ def default_options(facts):
     can_handoff = bool(env.get('adapter')) and facts['compositor']['name'] == 'hyprland' and facts['compositor']['running']
     # CEDAR's keybinds by default where no shell binding set exists; environments with their own keep theirs unless asked.
     keybinds = env.get('id') in ('plain-hyprland', 'waybar', 'generic-quickshell') and facts['compositor']['name'] == 'hyprland'
-    return {'session': can_handoff, 'launcher': False, 'trailwatch': False, 'fonts': False, 'wallpapers': bool(facts['wallpapers']), 'migrate': True, 'keybinds': keybinds}
+    return {'session': can_handoff, 'launcher': False, 'trailwatch': bool(facts['existingCedar'].get('trailwatch')), 'fonts': False, 'wallpapers': bool(facts['wallpapers']), 'migrate': True, 'keybinds': keybinds}
 
 
 def attention(facts, options):

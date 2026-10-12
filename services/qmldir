@@ -41,3 +41,6 @@ singleton Station 1.0 Station.qml
 singleton Pulse 1.0 Pulse.qml
 singleton Relay 1.0 Relay.qml
 singleton Compatibility 1.0 Compatibility.qml
+
+singleton ApplicationTheming 1.0 ApplicationTheming.qml
+singleton Proton 1.0 Proton.qml

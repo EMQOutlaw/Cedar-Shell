@@ -157,7 +157,7 @@ ColumnLayout {
             on: BluetoothService.adapter?.enabled ?? false
             enabled: !BluetoothService.busy
             hint: on ? "Tap to turn Bluetooth off" : "Tap to turn Bluetooth on"
-            onClicked: BluetoothService.adapter.enabled = !BluetoothService.adapter.enabled
+            onClicked: BluetoothService.setEnabled(BluetoothService.adapter, !BluetoothService.adapter.enabled)
         }
         Tile {
             order: 2

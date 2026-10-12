@@ -790,6 +790,26 @@
       "autoInstall": false
     },
     {
+      "command": "protonvpn",
+      "feature": "Proton VPN card in Connections",
+      "status": "feature-required",
+      "archPackage": "proton-vpn-cli",
+      "whenUnavailable": "The card offers to install Proton's CLI; the rest of Connections is unaffected.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "Output parsed tolerantly; proton-vpn-cli 1.0.x",
+      "verification": [
+        "command-presence"
+      ],
+      "consumers": [
+        "scripts/protonvpn.py"
+      ],
+      "autoInstall": false
+    },
+    {
       "command": "pgrep",
       "feature": "Helpers, recovery or explicit update verification",
       "status": "feature-required",

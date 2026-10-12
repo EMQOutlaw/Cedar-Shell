@@ -52,6 +52,7 @@ SessionControls 1.0 SessionControls.qml
 FirstRunSettings 1.0 FirstRunSettings.qml
 LockStatePublisher 1.0 LockStatePublisher.qml
 HotspotSettings 1.0 HotspotSettings.qml
+ProtonCard 1.0 ProtonCard.qml
 ConnectionsPage 1.0 ConnectionsPage.qml
 NotificationSettings 1.0 NotificationSettings.qml
 GoCanopy 1.0 GoCanopy.qml
@@ -76,3 +77,5 @@ WorkspaceCanopy 1.0 WorkspaceCanopy.qml
 RelayApp 1.0 RelayApp.qml
 RelayPages 1.0 RelayPages.qml
 StationTasks 1.0 StationTasks.qml
+
+ApplicationThemingSettings 1.0 ApplicationThemingSettings.qml
