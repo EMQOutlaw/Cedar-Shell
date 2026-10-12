@@ -502,6 +502,7 @@
   "tests/test_portability.py",
   "tests/test_portable_lifecycle.py",
   "tests/test_publish_version.py",
+  "tests/test_security_hardening.py",
   "tests/test_settings_remaster.py",
   "tests/test_shield.py",
   "tests/test_startup_apps.py",

@@ -13,7 +13,8 @@ import re
 
 MAX_FILES = 48
 CONF_MONITOR = re.compile(r'^\s*monitor\s*=\s*(.+?)\s*$', re.M)
-CONF_BLOCK = re.compile(r'^\s*monitorv2\s*\{(.*?)^\s*\}', re.M | re.S)
+CONF_BLOCK_OPEN = re.compile(r'^\s*monitorv2\s*\{(.*)$')
+CONF_BLOCK_CLOSE = re.compile(r'^\s*\}')
 LUA_MONITOR = re.compile(r'hl\.monitor\s*\(\s*\{(.*?)\}\s*\)', re.S)
 LUA_FIELD = re.compile(r'([A-Za-z_]+)\s*=\s*("([^"\\]*(?:\\.[^"\\]*)*)"|\'([^\']*)\'|[-A-Za-z0-9_.@x]+)')
 CONF_SOURCE = re.compile(r'^\s*source\s*=\s*(.+?)\s*$', re.M)
@@ -73,6 +74,22 @@ def _lua_fields(body):
     return fields
 
 
+def conf_blocks(text):
+    """Bodies of `monitorv2 { ... }` blocks in one linear pass. A block left
+    open at the end of the file is dropped, as hyprlang would reject it."""
+    body = None
+    for line in text.splitlines():
+        if body is None:
+            match = CONF_BLOCK_OPEN.match(line)
+            if match:
+                body = [match.group(1)]
+        elif CONF_BLOCK_CLOSE.match(line):
+            yield body
+            body = None
+        else:
+            body.append(line)
+
+
 def parse_monitors(text, syntax):
     """Monitor rows in Hyprland's own vocabulary: output, mode, position, scale, transform, vrr, mirror."""
     rows = []
@@ -98,9 +115,9 @@ def parse_monitors(text, syntax):
             elif key == 'mirror': row['mirror'] = value
             extra = extra[2:]
         rows.append(row)
-    for match in CONF_BLOCK.finditer(text):
+    for body in conf_blocks(text):
         fields = {}
-        for line in match.group(1).splitlines():
+        for line in body:
             if '=' in line:
                 key, value = line.split('=', 1)
                 fields[key.strip()] = value.strip()

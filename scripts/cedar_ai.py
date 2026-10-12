@@ -36,6 +36,7 @@ import select
 import shutil
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import textwrap
@@ -548,9 +549,11 @@ class Claude(Agent):
 
     def command(self, prompt: str) -> list[str]:
         cmd = ["claude", "-p", "--output-format", "stream-json", "--verbose"]
-        read_tools = ["Read", "Glob", "Grep",
-                      "Bash(git log:*)", "Bash(git diff:*)", "Bash(git status:*)", "Bash(git show:*)"]
+        # Read mode allows no git history commands: Claude matches Bash rules by
+        # prefix, and git log/diff/show accept --output=FILE, which writes.
+        read_tools = ["Read", "Glob", "Grep", "Bash(git status:*)"]
         edit_tools = read_tools + ["Edit", "Write", "MultiEdit", "NotebookEdit",
+                                   "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)",
                                    "Bash(git add:*)", "Bash(git commit:*)",
                                    "Bash(python3:*)", "Bash(node:*)", "Bash(npm test:*)",
                                    "Bash(ls:*)", "Bash(cat:*)", "Bash(qmllint:*)", "Bash(qs:*)"]
@@ -1128,15 +1131,44 @@ def main(argv: list[str] | None = None) -> int:
         out.close_link()
 
 
+def _private_dir(path: Path) -> None:
+    """Create or accept a directory only if this user owns it, it is not a
+    symlink and nobody else can write or list it."""
+    try:
+        path.mkdir(mode=0o700)
+    except FileExistsError:
+        pass
+    info = os.lstat(path)
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid():
+        raise SystemExit(f"cedar-ai: refusing {path}: not a directory owned by you")
+    if info.st_mode & 0o077:
+        os.chmod(path, 0o700)
+
+
+def private_runtime_root() -> Path:
+    """The socket directory. Under /tmp (no XDG_RUNTIME_DIR) every level is
+    checked, since another account could have created the predictable name."""
+    if os.environ.get("XDG_RUNTIME_DIR"):
+        RUNTIME_ROOT.mkdir(parents=True, exist_ok=True)
+        os.chmod(RUNTIME_ROOT, 0o700)
+    else:
+        _private_dir(RUNTIME_ROOT.parent)
+        _private_dir(RUNTIME_ROOT)
+    return RUNTIME_ROOT
+
+
 def detach(args: argparse.Namespace) -> int:
     """Launch this same command as its own process, apart from whoever asked,
     and print one line saying where to attach. A transient systemd user unit
     keeps it out of the shell's control group, so restarting the shell leaves
     it running; without systemd it is started in its own session instead."""
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-    sock = Path(args.socket) if args.socket else RUNTIME_ROOT / f"{stamp}.sock"
-    sock.parent.mkdir(parents=True, exist_ok=True)
-    os.chmod(sock.parent, 0o700)
+    if args.socket:
+        sock = Path(args.socket)
+        sock.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(sock.parent, 0o700)
+    else:
+        sock = private_runtime_root() / f"{stamp}.sock"
     passed = sys.argv[1:]
     rest: list[str] = []
     skip = False
@@ -1159,7 +1191,9 @@ def detach(args: argparse.Namespace) -> int:
         run = ["systemd-run", "--user", "--collect", "--quiet", f"--unit={unit}", f"--property=WorkingDirectory={os.getcwd()}"]
         for key in CARRIED_ENV:
             if os.environ.get(key):
-                run.append(f"--setenv={key}={os.environ[key]}")
+                # Name only: systemd-run copies the value from its own
+                # environment, so API keys never appear in its argv.
+                run.append(f"--setenv={key}")
         result = subprocess.run(run + command, stdin=subprocess.DEVNULL, capture_output=True, text=True)
         if result.returncode == 0:
             print(json.dumps({"type": "launched", "socket": str(sock), "unit": unit, "pid": 0}))

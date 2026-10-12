@@ -5,6 +5,7 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import time
 from desktop_runtime import omarchy
@@ -41,6 +42,25 @@ def agenda(path, now):
         return {'status': 'unavailable', 'events': []}
 
 
+def private_dir(path):
+    try:info=os.lstat(path)
+    except OSError:return False
+    return stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and not info.st_mode&0o022
+
+
+def reminder_title(path):
+    """Read a reminder message without following links: a regular file this
+    user owns, at most 4 KiB."""
+    try:fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    except OSError:return ''
+    try:
+        info=os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or info.st_size>4096:return ''
+        return os.read(fd,4096).decode('utf-8','replace').strip()[:160]
+    except OSError:return ''
+    finally:os.close(fd)
+
+
 def reminders():
     if not omarchy(): return []
     raw = command(['systemctl', '--user', 'list-timers', '--all', '--output=json', 'omarchy-reminder-*.timer'])
@@ -48,7 +68,10 @@ def reminders():
         return None
     try:
         rows=[]
-        base=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/'omarchy-reminders'
+        # Titles come only from this user's private runtime directory; shared
+        # /tmp could hold another account's symlink to a private file.
+        runtime=os.environ.get('XDG_RUNTIME_DIR')
+        base=Path(runtime)/'omarchy-reminders' if runtime and private_dir(Path(runtime)/'omarchy-reminders') else None
         for row in json.loads(raw):
             unit=row.get('unit','')
             if not unit.startswith('omarchy-reminder-') or '/' in unit or not unit.endswith('.timer'):
@@ -57,10 +80,7 @@ def reminders():
             if at<=time.time()*1000:
                 continue
             title='Reminder'
-            try:
-                path=base/(unit[:-6]+'.message')
-                if path.stat().st_size<=4096:title=path.read_text().strip()[:160] or title
-            except OSError:pass
+            if base is not None:title=reminder_title(base/(unit[:-6]+'.message')) or title
             rows.append({'at':at,'title':title})
         return sorted(rows,key=lambda r:r['at'])
     except (ValueError,TypeError):

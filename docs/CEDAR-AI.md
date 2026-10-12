@@ -40,7 +40,7 @@ its own process, and the window attaches to it.
 
 | Mode | Claude Code | Codex CLI |
 |---|---|---|
-| Read | Read, Glob, Grep, read-only git | `sandbox_mode=read-only` |
+| Read | Read, Glob, Grep, git status (no git log/diff/show: their `--output` option writes files) | `sandbox_mode=read-only` |
 | Edit (default) | file edits, git log/diff/status/add/commit, python3, node, qs | `sandbox_mode=workspace-write` |
 | Full | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` |
 
