@@ -1,0 +1,25 @@
+{
+  "name": "CEDAR",
+  "mode": "dark",
+  "colors": {
+    "background": "#080F0D",
+    "surface": "#101E19",
+    "elevated": "#192D25",
+    "border": "#315C4D",
+    "green": "#9DFFB0",
+    "brightGreen": "#4DFF9A",
+    "teal": "#3FE0C5",
+    "amber": "#F2C879",
+    "ember": "#E58B73",
+    "text": "#E3F2E9",
+    "muted": "#A0B9AD",
+    "blue": "#89BFCB",
+    "violet": "#BBA9D6",
+    "brightEmber": "#FFAB91",
+    "brightAmber": "#FFE0A0",
+    "brightBlue": "#B4DEEA",
+    "brightViolet": "#D7C6EF",
+    "brightTeal": "#9AF4E1",
+    "white": "#F4FFF8"
+  }
+}

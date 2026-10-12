@@ -1,0 +1,9 @@
+# Personal settings and imported bindings must survive appearance changes.
+[general]
+import = ["bindings.toml"]
+[window]
+padding = { x = 12, y = 9 }
+[font]
+size = 14
+[colors.primary]
+background = "#151515"

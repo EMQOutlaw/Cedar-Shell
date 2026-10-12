@@ -76,3 +76,5 @@ WorkspaceCanopy 1.0 WorkspaceCanopy.qml
 RelayApp 1.0 RelayApp.qml
 RelayPages 1.0 RelayPages.qml
 StationTasks 1.0 StationTasks.qml
+
+ApplicationThemingSettings 1.0 ApplicationThemingSettings.qml

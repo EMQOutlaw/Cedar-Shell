@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Export app themes from Theme.qml, the sole editable color source."""
+"""Export legacy app assets from the shared CEDAR palette."""
 from pathlib import Path
 import re
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
-P = dict(re.findall(r'property color (\w+): (?:token\("[^"]+", )?"(#[0-9A-Fa-f]{6})"', (ROOT/'Theme.qml').read_text()))
+P = json.loads((ROOT/'themes/palettes/cedar.json').read_text())['colors']
 OUT = ROOT/'themes'
 OUT.mkdir(exist_ok=True)
 ansi = ['background', 'ember', 'green', 'amber', 'blue', 'violet', 'teal', 'text', 'muted', 'brightEmber', 'brightGreen', 'brightAmber', 'brightBlue', 'brightViolet', 'brightTeal', 'white']

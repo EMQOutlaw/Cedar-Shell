@@ -5,6 +5,7 @@ var pages = [
  {id:"setup",label:"Desktop Setup",icon:"◇",group:"",description:"Review desktop ownership, privacy, applications and recovery."},
  {id:"overview",label:"Overview",icon:"◈",group:"",description:"Your desktop at a glance."},
  {id:"appearance",label:"Appearance",icon:"◐",group:"Personalize",description:"The light, texture, and character of your interface."},
+ {id:"application-theming",label:"Application Theming",icon:"◐",group:"",description:"Synchronize native application palettes, coverage, ownership and recovery."},
  {id:"apps",label:"Default Apps",icon:"▦",group:"",description:"Choose the apps that open your links, files, and everyday tasks."},
  {id:"desktop",label:"Desktop",icon:"▧",group:"",description:"Wallpaper and Field Station preferences."},
  {id:"bar",label:"Top Bar",icon:"━",group:"",description:"Shape a bar that fits the way you work."},

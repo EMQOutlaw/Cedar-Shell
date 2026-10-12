@@ -1,0 +1,8 @@
+{
+  // Keep editor behavior and custom colors outside the managed set.
+  "editor.tabSize": 3,
+  "files.autoSave": "afterDelay",
+  "workbench.colorCustomizations": {
+    "editor.lineHighlightBorder": "#123456",
+  },
+}

@@ -30,4 +30,4 @@ with tempfile.TemporaryDirectory(prefix='cedar-ui-') as tmp:
         print(output); raise SystemExit(1)
     images=list(shots.glob('*.png'))
     if len(images)<35: print(output); raise SystemExit('Missing rendered pages')
-    print('PASS: 16 Settings pages at wide and narrow sizes, 3 Control Center tabs, and Settings interaction checks passed')
+    print('PASS: 17 Settings pages at wide and narrow sizes, 3 Control Center tabs, and Settings interaction checks passed')
