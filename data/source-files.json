@@ -324,6 +324,7 @@
   "scripts/distribution.py",
   "scripts/document.py",
   "scripts/export-themes.py",
+  "scripts/fingerprint_status.py",
   "scripts/gamemode_watch.py",
   "scripts/gaming.py",
   "scripts/install.py",

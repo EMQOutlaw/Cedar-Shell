@@ -155,8 +155,13 @@ PanelWindow {
         readonly property real cut: Config.barStyle === "cedar" ? Theme.strataCut : 12
         readonly property real longCut: Math.round(cut * 16 / 9)
         y: root.barJoin
-        Behavior on x { enabled: root.morphing && drop.animate; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
-        Behavior on width { enabled: root.morphing && drop.animate; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
+        // Anchor providers can settle after the window is mapped. Never
+        // interpolate that correction during a dropdown entrance: it makes
+        // right-side controls sweep across the screen from the old origin.
+        // Only an explicit in-place tab morph may animate horizontally.
+        readonly property bool animateHorizontal: root.morphing && drop.animate && morph.running
+        Behavior on x { enabled: drop.animateHorizontal; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
+        Behavior on width { enabled: drop.animateHorizontal; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
         Behavior on height {
             enabled: root.morphing && drop.animate
             NumberAnimation {

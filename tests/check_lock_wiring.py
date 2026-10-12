@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-lock-wiring-') as tmp:
     qml='\n'.join(line for line in qml.splitlines() if 'WlrLayershell.' not in line and 'exclusionMode:' not in line)
     qml=qml.replace(' && !Config.testMode','').replace('!Config.testMode && ','')
     qml=qml.replace('Quickshell.execDetached(["systemctl", "suspend"]);','throw new Error("Unexpected suspend in wiring test");')
-    qml=qml.replace('id: root','id: root\n    property alias testPam: pam\n    property alias testLock: lock\n    property alias testController: '+controller,1)
+    qml=qml.replace('id: root','id: root\n    property alias testPam: pam\n    property alias testFingerprint: fingerprintPam\n    property alias testLock: lock\n    property alias testController: '+controller,1)
     (source/'modules/LockScreen.qml').write_text(qml)
     (source/'modules/FakeIdle.qml').write_text('import QtQuick\nQtObject { property bool enabled:false; property int timeout:0; property bool respectInhibitors:false; property bool isIdle:false }')
     (source/'modules/FakePam.qml').write_text('''import QtQuick
@@ -81,6 +81,14 @@ ShellRoot {
             test.check(first.auth===auth && second.auth===auth,"Both dynamic surfaces receive the production controller");
             test.check(first.terminal.auth===auth && second.terminal.auth===auth,"Controller reaches both password terminals");
             test.check(auth.enabled,"Controller enabled by lock state");
+            screen.fingerprintAvailable=true;
+            const fingerprint=screen.testFingerprint;
+            test.check(fingerprint.active && fingerprint.starts===1,"Secure lock starts fingerprint PAM");
+            test.check(!auth.busy,"Fingerprint scan leaves password usable");
+            fingerprint.finish(PamResult.Failed);
+            test.check(ShellState.locked,"Failed fingerprint keeps secure lock");
+            screen.startFingerprint();
+            test.check(fingerprint.active,"Fingerprint can retry");
             second.terminal.field.text="discarded-on-other-monitor";
             first.terminal.field.text="test-response";
             first.terminal.field.accepted();
@@ -101,6 +109,16 @@ ShellRoot {
             test.check(!ShellState.locked && !screen.testLock.locked,"Only successful authentication releases lock");
             test.check(ShellState.securedUnlocks===1,"A secure lock plus successful PAM records one validation");
             test.check(auth.pendingResponse==="" && !auth.enabled,"Unlock clears and disables controller");
+            test.check(!fingerprint.active,"Password success cancels fingerprint scan");
+            fingerprint.finish(PamResult.Success);
+            test.check(ShellState.securedUnlocks===1,"Late fingerprint result is ignored");
+            ShellState.lock(false);
+            test.check(fingerprint.active,"Next secure lock rearms fingerprint");
+            auth.submit("test-response");
+            fingerprint.finish(PamResult.Success);
+            test.check(!ShellState.locked && !screen.testLock.locked,"Fingerprint success releases secure lock");
+            test.check(!pam.active && auth.pendingResponse==="","Fingerprint success cancels password and clears secrets");
+            test.check(ShellState.securedUnlocks===2,"Fingerprint unlock validates a secure cycle exactly once");
             console.log("PASS: production lock wiring, two dynamic surfaces, Enter, failure and retry");Qt.quit();
         }
     }
