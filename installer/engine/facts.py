@@ -182,7 +182,7 @@ def existing_cedar(host):
     data = host.data_home() / 'cedar'
     state = host.state_home() / 'cedar'
     current = data / 'current'
-    result = {'installed': host.is_symlink(current) or host.is_dir(current), 'version': '', 'command': False, 'session': 'not active', 'releases': []}
+    result = {'installed': host.is_symlink(current) or host.is_dir(current), 'version': '', 'command': False, 'session': 'not active', 'trailwatch': False, 'releases': []}
     if result['installed']:
         result['version'] = (host.read(current / 'VERSION') or '').strip()
     result['releases'] = host.listdir(data / 'releases')
@@ -198,6 +198,9 @@ def existing_cedar(host):
         row = read_json(host, state / name)
         if isinstance(row, dict) and row.get('stage') not in (None, 'restored'):
             result['session'] = row.get('stage', 'unknown')
+            # Capture the selected locker before the update's leave step
+            # restores the old desktop and replaces this session record.
+            result['trailwatch'] = row.get('locker') == 'trailwatch' or bool(row.get('trailwatch'))
     result['config'] = host.is_dir(host.config_home() / 'cedar')
     return result
 

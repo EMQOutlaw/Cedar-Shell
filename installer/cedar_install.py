@@ -266,7 +266,9 @@ def main(argv=None):
         if not args.yes:
             return 3
         args.resume = True
-    options = {'launcher': args.cedar_launcher, 'trailwatch': args.trailwatch, 'fonts': args.fonts}
+    options = {'launcher': args.cedar_launcher, 'fonts': args.fonts}
+    if args.trailwatch:
+        options['trailwatch'] = True
     if args.keybinds is not None:
         options['keybinds'] = args.keybinds
     if args.no_session:

@@ -30,7 +30,8 @@ Item {
     property bool showDetails: false
     property bool showTechnical: false
     property string version: ""
-    property var options: ({ session: true, launcher: false, trailwatch: false, fonts: false, wallpapers: true, migrate: true, keybinds: false })
+    // Let the first plan inherit the installed session's locker selection.
+    property var options: ({ session: true, launcher: false, fonts: false, wallpapers: true, migrate: true, keybinds: false })
     readonly property bool fixture: Quickshell.env("CEDAR_INSTALLER_FIXTURE") === "1"
     readonly property bool motion: Quickshell.env("CEDAR_INSTALLER_REDUCED_MOTION") !== "1"
     readonly property string source: Quickshell.env("CEDAR_INSTALLER_SOURCE") || Quickshell.shellPath("../..")

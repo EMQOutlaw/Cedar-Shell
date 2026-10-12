@@ -258,6 +258,45 @@ class Planning(unittest.TestCase):
         quiet = plan_module.build(facts_module.scan(arch_host(), ROOT))
         self.assertFalse(next(op for op in quiet['operations'] if op['id'] == 'leave')['enabled'])
 
+    def test_update_preserves_selected_locker_and_allows_explicit_change(self):
+        for name, record in (
+            ('session.json', {'stage': 'kept', 'locker': 'trailwatch', 'trailwatch': {'ready': True}}),
+            ('session.json', {'stage': 'trial', 'locker': 'trailwatch-pending', 'trailwatch': {'ready': False}}),
+            ('portable-session.json', {'stage': 'kept', 'locker': 'trailwatch'}),
+        ):
+            with self.subTest(name=name, record=record):
+                host = arch_host(files={**arch_host().files, HOME + '/.local/state/cedar/' + name: json.dumps(record)})
+                plan_module.set_check_host(host)
+                facts = facts_module.scan(host, ROOT)
+                self.assertTrue(plan_module.build(facts)['options']['trailwatch'])
+                self.assertFalse(plan_module.build(facts, {'trailwatch': False})['options']['trailwatch'])
+
+    def test_fresh_stock_and_restored_sessions_do_not_select_trailwatch(self):
+        for record in ({}, {'stage': 'kept'}, {'stage': 'restored', 'locker': 'trailwatch', 'trailwatch': {'ready': True}}):
+            with self.subTest(record=record):
+                host = arch_host(files={**arch_host().files, HOME + '/.local/state/cedar/session.json': json.dumps(record)})
+                plan_module.set_check_host(host)
+                facts = facts_module.scan(host, ROOT)
+                self.assertFalse(plan_module.build(facts)['options']['trailwatch'])
+
+    def test_terminal_update_does_not_override_existing_locker_with_false(self):
+        from unittest.mock import Mock, patch
+        from installer import cedar_install
+        host = arch_host(files={**arch_host().files, HOME + '/.local/state/cedar/session.json': json.dumps({'stage': 'kept', 'locker': 'trailwatch'})})
+        plan_module.set_check_host(host)
+        facts = facts_module.scan(host, ROOT)
+        engine = Mock()
+        engine.scan.return_value = facts
+        plans = []
+        def build(options):
+            result = plan_module.build(facts, options)
+            plans.append(result)
+            return result
+        engine.build_plan.side_effect = build
+        with patch.object(cedar_install, 'Engine', return_value=engine), patch.object(cedar_install, 'say'), patch.object(cedar_install.os, 'getuid', return_value=1000):
+            self.assertEqual(cedar_install.main(['--no-gui', '--dry-run', '--yes']), 0)
+        self.assertTrue(plans[0]['options']['trailwatch'])
+
     def test_omarchy_handoff_preconditions_are_warned_in_the_plan(self):
         def rows(*paths): return [{'config_path': p, 'pid': 100 + i} for i, p in enumerate(paths)]
         base = arch_host()
