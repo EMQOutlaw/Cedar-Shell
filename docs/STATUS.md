@@ -10,6 +10,9 @@ The Strata bar, the Go menu, searchable Settings, default app selection, display
 
 “CEDAR Instruments” describes existing specialist controls; it is not a general extension framework. EQ/DSP has availability reporting but no supported control backend. Audio scenes do not supply EQ. No fake frequencies or signal processing controls are provided.
 
-Rituals, Constellation, general plugins, Home Assistant integration, full desktop profiles, global downloads, account calendar sync, game FPS/1%-low telemetry and advanced DSP remain planned. Their names in design documents do not imply availability. The shell is not yet independent of Omarchy's session/launcher/PAM setup.
+Rituals, Constellation, general plugins, Home Assistant integration, full desktop profiles, global downloads, Google calendar OAuth/event editing, game FPS/1%-low telemetry and advanced DSP remain planned. Their names in design documents do not imply availability. The shell is not yet independent of Omarchy's session/launcher/PAM setup.
 
 Forest states retain Quiet, Awake, Flow, Hunt, Watch, Ember and Rest. No cloud AI or second assistant identity is introduced.
+
+Read-only Google/Proton calendar subscriptions and ICS file imports are implemented;
+see [CALENDAR.md](CALENDAR.md) for setup and recurrence boundaries.

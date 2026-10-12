@@ -141,7 +141,11 @@
         "services/Canopy.qml",
         "components/StrataButton.qml",
         "components/StrataField.qml",
-        "modules/KeybindsCanopy.qml"
+        "modules/KeybindsCanopy.qml",
+        "modules/CalendarConnections.qml",
+        "services/CalendarFeeds.qml",
+        "scripts/calendar_service.py",
+        "scripts/calendar_ical.py"
       ],
       "dependencies": [
         "qs"
@@ -150,14 +154,16 @@
       "capabilities": [
         "local UI and system service access"
       ],
-      "external": false,
+      "external": true,
       "settings": "Config.qml and components/SettingsSchema.js",
-      "dataSources": "One shared surface; pinned surface persists until close/lock",
+      "dataSources": "One shared surface; pinned surface persists until close/lock; opt-in read-only Google/Proton HTTPS calendar subscriptions and local ICS imports",
       "lifecycle": "One shared surface; pinned surface persists until close/lock",
       "tests": [
         "tests/check_canopy.py",
         "tests/check_navigation.py",
-        "tests/test_startup_apps.py"
+        "tests/test_startup_apps.py",
+        "tests/test_calendar.py",
+        "tests/check_calendar.py"
       ],
       "releaseArtifacts": [
         "components/ChamferFrame.qml",
@@ -179,7 +185,11 @@
         "services/Canopy.qml",
         "components/StrataButton.qml",
         "components/StrataField.qml",
-        "modules/KeybindsCanopy.qml"
+        "modules/KeybindsCanopy.qml",
+        "modules/CalendarConnections.qml",
+        "services/CalendarFeeds.qml",
+        "scripts/calendar_service.py",
+        "scripts/calendar_ical.py"
       ]
     },
     {
@@ -1251,7 +1261,7 @@
     "Home Assistant",
     "full desktop profiles",
     "global download detection",
-    "account calendar sync",
+    "Google calendar OAuth and event editing",
     "advanced DSP/EQ backend",
     "game FPS/1% low"
   ],

@@ -143,7 +143,9 @@
         "services/Weather.qml",
         "modules/WallpaperPicker.qml",
         "components/ServiceRequest.qml",
-        "components/AudioSpectrum.qml"
+        "components/AudioSpectrum.qml",
+        "scripts/calendar_service.py",
+        "scripts/calendar_ical.py"
       ],
       "autoInstall": true
     },
@@ -667,7 +669,7 @@
     },
     {
       "command": "grim",
-      "feature": "Screenshots (Go \u203a Capture)",
+      "feature": "Screenshots (Go › Capture)",
       "status": "feature-required",
       "archPackage": "grim",
       "whenUnavailable": "The Capture menu is hidden and `cedar:capture` reports that grim is missing; no fake capture.",
@@ -690,10 +692,10 @@
     },
     {
       "command": "slurp",
-      "feature": "Region screenshots (Go \u203a Capture \u203a Region)",
+      "feature": "Region screenshots (Go › Capture › Region)",
       "status": "feature-required",
       "archPackage": "slurp",
-      "whenUnavailable": "Capture \u203a Region is hidden and `cedar:capture region` reports that slurp is missing; window, screen and all-screen captures still work.",
+      "whenUnavailable": "Capture › Region is hidden and `cedar:capture region` reports that slurp is missing; window, screen and all-screen captures still work.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
       "architectures": [
@@ -1516,6 +1518,15 @@
       "sent": "Image URL and connection metadata",
       "frequency": "When shown",
       "retention": "Qt in-memory image cache",
+      "defaultEnabled": false
+    },
+    {
+      "id": "calendar",
+      "destination": "Google Calendar or Proton Calendar HTTPS subscription endpoint",
+      "purpose": "Read-only calendar events after the user adds a calendar link",
+      "sent": "Calendar sharing URL and connection metadata",
+      "frequency": "Every 15 minutes after opening Calendar, while unlocked and external requests are allowed; manual refresh on request",
+      "retention": "Private calendar links in XDG_CONFIG_HOME/cedar/calendar; event cache in XDG_CACHE_HOME/cedar/calendar; removed on disconnect",
       "defaultEnabled": false
     }
   ],

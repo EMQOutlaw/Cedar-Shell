@@ -29,7 +29,7 @@ function groupOf(id) {
     return "CEDAR";
 }
 var fields = [
- {page:"desktop",group:"Privacy",key:"localOnly",label:"Local-only mode",description:"Block CEDAR external weather, location and artwork requests.",type:"toggle",defaultValue:true},
+ {page:"desktop",group:"Privacy",key:"localOnly",label:"Local-only mode",description:"Block CEDAR external weather, location, calendar and artwork requests.",type:"toggle",defaultValue:true},
  {page:"desktop",group:"Privacy",key:"weatherEnabled",label:"Weather access",description:"Allow Open-Meteo forecasts, IP-based location and explicitly requested city search when local-only is off.",type:"toggle",defaultValue:false},
  {page:"desktop",group:"Privacy",key:"remoteArtwork",label:"Remote artwork",description:"Allow media artwork hosts when local-only is off.",type:"toggle",defaultValue:false},
  {page:"power",group:"Trailwatch privacy",key:"lockPrivacy",label:"Privacy while locked",description:"Hide media, event, reminder and device names. Notification contents never appear on Trailwatch.",type:"toggle",defaultValue:true},

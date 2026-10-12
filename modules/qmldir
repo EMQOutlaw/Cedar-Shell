@@ -79,3 +79,4 @@ RelayPages 1.0 RelayPages.qml
 StationTasks 1.0 StationTasks.qml
 
 ApplicationThemingSettings 1.0 ApplicationThemingSettings.qml
+CalendarConnections 1.0 CalendarConnections.qml

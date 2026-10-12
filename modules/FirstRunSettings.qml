@@ -81,7 +81,7 @@ ColumnLayout {
         caption: "External services and sensitive history start off. This is what is currently enabled; each preference is changed in its own page."
         Repeater {
             model: [
-                {title:"Local-only mode", on:Config.localOnly, where:"Desktop", detail:"Blocks CEDAR weather, location and remote artwork requests."},
+                {title:"Local-only mode", on:Config.localOnly, where:"Desktop", detail:"Blocks CEDAR weather, location, calendar and remote artwork requests."},
                 {title:"Weather access", on:Config.saved.weatherEnabled && !Config.localOnly, where:"Desktop", detail:"Open-Meteo forecasts for a saved or approximate location."},
                 {title:"Clipboard history", on:Config.saved.clipboardHistory, where:"CEDAR Core", detail:"Bounded, memory-only, cleared when locked."},
                 {title:"Trails", on:Config.saved.forestTrails, where:"CEDAR Core", detail:"Session-only application and navigation history."}
