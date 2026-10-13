@@ -93,7 +93,7 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   settings stay the profile's (nmtui or the provider's app). Bluetooth rows
   show BlueZ's state or the action in flight for that device (Pairing…,
   Connecting…, Disconnecting…), the battery where reported, and trust.
-- Workspaces (Super+Tab, Go › Workspaces, `canopy flip workspaces`): one column
+- Workspaces (Super+Tab, Applications › CEDAR › Canopy › Workspaces, `canopy flip workspaces`): one column
   per monitor, one chamfered tile per workspace in the monitor's shape with
   each window drawn where it sits, a "new" tile per monitor, and special
   workspaces named but not drawn. Thumbnails come from the compositor's

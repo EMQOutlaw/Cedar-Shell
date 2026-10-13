@@ -6,7 +6,7 @@ closes it. Search accepts actions or combinations such as `Super+Shift+V`.
 
 | Keys | Action |
 | --- | --- |
-| Super+Space | Toggle application launcher |
+| Super+Space | Toggle the Applications drop |
 | Super+T / W / E | Configured terminal / browser / file manager |
 | Super+C / X / V | Copy / cut / paste using the application's shortcut |
 | Super+Shift+V | Toggle clipboard history |

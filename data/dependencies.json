@@ -669,7 +669,7 @@
     },
     {
       "command": "grim",
-      "feature": "Screenshots (Go › Capture)",
+      "feature": "Screenshots (Applications › Capture)",
       "status": "feature-required",
       "archPackage": "grim",
       "whenUnavailable": "The Capture menu is hidden and `cedar:capture` reports that grim is missing; no fake capture.",
@@ -692,7 +692,7 @@
     },
     {
       "command": "slurp",
-      "feature": "Region screenshots (Go › Capture › Region)",
+      "feature": "Region screenshots (Applications › Capture › Region)",
       "status": "feature-required",
       "archPackage": "slurp",
       "whenUnavailable": "Capture › Region is hidden and `cedar:capture region` reports that slurp is missing; window, screen and all-screen captures still work.",
@@ -1021,7 +1021,7 @@
         "modules/NotificationServer.qml",
         "modules/Osd.qml",
         "modules/DefaultAppsSettings.qml",
-        "modules/Menu.qml",
+        "modules/GoCanopy.qml",
         "modules/AudioCanopy.qml",
         "modules/CalendarCanopy.qml",
         "modules/ClipboardCanopy.qml",
@@ -1108,7 +1108,7 @@
         "modules/KeybindSettings.qml",
         "modules/BluetoothSettings.qml",
         "modules/Osd.qml",
-        "modules/Menu.qml",
+        "modules/GoCanopy.qml",
         "modules/SettingsPanel.qml",
         "modules/TrailwatchView.qml",
         "modules/ConnectionSettings.qml",
@@ -1180,7 +1180,8 @@
         "components/trailwatch/LockTerminal.qml",
         "components/trailwatch/Metric.qml",
         "components/trailwatch/Complication.qml",
-        "modules/StationTasks.qml"
+        "modules/StationTasks.qml",
+        "modules/GoCanopy.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1224,7 +1225,7 @@
         "modules/Background.qml",
         "modules/NotificationServer.qml",
         "modules/Osd.qml",
-        "modules/Menu.qml",
+        "modules/GoCanopy.qml",
         "modules/CalendarCanopy.qml",
         "modules/CoreSettings.qml",
         "modules/SettingsPanel.qml",

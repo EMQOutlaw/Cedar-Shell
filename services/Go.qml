@@ -9,6 +9,9 @@ import "../components/StableRows.js" as StableRows
 import "../components/Compass.js" as Compass
 
 // CEDAR owns its menu. Omarchy menus are loaded only by its explicit adapter.
+// The menu has no window of its own: the Applications drop (modules/GoCanopy.qml)
+// shows the tree, its trails and a script's select/input prompts, and this
+// service keeps their state, the rows and the actions.
 Singleton {
     id: root
     readonly property string omarchyPath: Quickshell.env("OMARCHY_PATH") || "/usr/share/omarchy"
@@ -17,7 +20,7 @@ Singleton {
     readonly property string cedarMenuPath: Quickshell.shellPath(Config.omarchyIntegration ? "integrations/omarchy/menu-overlay.jsonc" : "menus/cedar-menu.jsonc")
     readonly property string shimDir: Quickshell.shellPath("scripts/shim")
     readonly property string pluginsScript: Quickshell.shellPath("scripts/plugins.py")
-    readonly property bool visible: ShellState.panel === "menu"
+    readonly property bool visible: Canopy.shown && Canopy.topic === "go"
 
     property var defaultItems: []
     property var userItems: []
@@ -114,7 +117,7 @@ Singleton {
     Connections {
         target: DefaultApps
         function onLaunchErrorChanged() {
-            if (DefaultApps.launchError && !ShellState.locked && ShellState.panel === "") ShellState.open("menu");
+            if (DefaultApps.launchError && !ShellState.locked && ShellState.panel === "") root.present("");
         }
     }
     function launchApp(appId) {
@@ -448,10 +451,16 @@ Singleton {
             return;
         }
         if (index < 0 || index >= root.rows.length) return;
-        const row = root.rows[index];
+        root.activateRow(root.rows[index]);
+    }
+    // A menu row, wherever it was shown: a trail opens in place, an app
+    // launches, an action runs in its own scope, a Compass answer is copied or
+    // opened. Everything but a trail closes the drop.
+    function activateRow(row) {
+        if (!row || !row.kind) return;
         if (row.kind === "calc") { root.hide(); Quickshell.execDetached(["wl-copy", "--", String(row.action)]); return; }
         if (row.kind === "web" || row.kind === "url") { root.hide(); root.openUrl(row.action); return; }
-        Forest.record("go","Go / "+row.label,row.itemId || row.appId || row.label);
+        Forest.record("go","Applications / "+row.label,row.itemId || row.appId || row.label);
         if (row.kind === "menu" || row.kind === "link") root.setActiveMenu(row.target || row.itemId, true);
         else if (row.kind === "app") { root.hide(); root.launchApp(row.appId); }
         else { root.hide(); root.runAction(row.action); }
@@ -477,38 +486,85 @@ Singleton {
         id: replyProc; script: "scripts/menu_reply.py"; timeoutMs: 5000
         onRunningChanged: if (!running) Qt.callLater(root.flushReplies)
     }
-    // Answer first: hiding the panel runs onHidden, which cancels any open request.
+    // Answer first: hiding the drop runs onHidden, which cancels any open request.
     function applyDmenuSelection(value) { root.finishRequest(value); root.hide(); }
-    function hide() { if (root.visible) ShellState.close(); root.filterText = ""; }
+    function hide() { if (root.visible) Canopy.close(); root.filterText = ""; }
     function cancel() { root.finishRequest(null); root.hide(); }
-    function onHidden() { if (root.requestActive) root.finishRequest(null); root.mode = "menu"; root.filterText = ""; }
-    Connections {
-        target: ShellState
-        function onPanelChanged() { if (!root.visible) root.onHidden(); }
-    }
-
-    // ------------------------------------------------------------- entrances
-    function resolveRoute(input) { return MenuModel.resolveRoute(root.items, root.itemOrder, input); }
-    function openRoute(initialMenu) {
-        let id = root.resolveRoute(initialMenu);
-        const entry = root.items[id];
-        if (entry && entry.kind === "action" && entry.action) { root.hide(); root.runAction(entry.action); return; }
-        if (entry && entry.kind === "link" && entry.target) id = entry.target;
+    // The drop closed, whichever way: a waiting script gets no answer, and
+    // the next opening starts at the root with the keyboard on the catalog.
+    function onHidden() {
         if (root.requestActive) root.finishRequest(null);
         root.mode = "menu";
-        root.activeMenu = root.item(id) ? id : "root";
+        root.filterText = "";
+        root.activeMenu = "root";
+        root.navStack = [];
+        root.selectedIndex = 0;
+    }
+    // The drop opened from its bar control or a Canopy call rather than a
+    // route: start at the root, on fresh guard answers and providers.
+    function arrive() {
+        root.mode = "menu";
+        root.activeMenu = "root";
         root.navStack = [];
         root.filterText = "";
         root.selectedIndex = 0;
         root.evaluateGuards();
-        ShellState.open("menu");
+        root.rebuildDisplay();
+        root.invalidateVolatileProvider("root");
+        root.loadProviderForMenu("root");
+    }
+    property bool presenting: false
+    onVisibleChanged: {
+        if (!root.visible) root.onHidden();
+        else if (!root.presenting) root.arrive();
+    }
+    // Show the Applications drop (on `output` when given) and say whether it
+    // is showing: a locked session refuses, and a waiting script then gets
+    // its answer (none) instead of a hang.
+    function present(output) {
+        root.presenting = true;
+        Canopy.pinned = false;
+        if (!root.visible) Canopy.open("go", output || "");
+        root.presenting = false;
+        return root.visible;
+    }
+
+    // ------------------------------------------------------------- entrances
+    function resolveRoute(input) { return MenuModel.resolveRoute(root.items, root.itemOrder, input); }
+    // Where a route lands: a link's target, the root for unknown ids. `apps`
+    // is the root too, since the catalog is the root view of the drop.
+    function routeTarget(input) {
+        let id = root.resolveRoute(input || "root");
+        if (id === "apps" || id === "applications") id = "root";
+        const entry = root.items[id];
+        if (entry && entry.kind === "link" && entry.target) id = entry.target;
+        return root.item(id) ? id : "root";
+    }
+    function openRoute(initialMenu, output = "") {
+        const id = root.resolveRoute(initialMenu);
+        const entry = root.items[id];
+        if (entry && entry.kind === "action" && entry.action) { root.hide(); root.runAction(entry.action); return; }
+        if (root.requestActive) root.finishRequest(null);
+        root.mode = "menu";
+        root.activeMenu = root.routeTarget(initialMenu);
+        root.navStack = [];
+        root.filterText = "";
+        root.selectedIndex = 0;
+        if (!root.present(output)) return;
+        root.evaluateGuards();
         root.rebuildDisplay();
         root.invalidateVolatileProvider(root.activeMenu);
         root.loadProviderForMenu(root.activeMenu);
     }
-    function toggle(route) {
-        if (root.visible && !root.dmenuActive) root.hide();
-        else root.openRoute(route || "root");
+    // The bar control and `menu toggle <route>`: close the drop when it already
+    // shows that route, otherwise open or move it there. A prompt is never
+    // dismissed this way.
+    function toggle(route, output = "") {
+        const id = root.resolveRoute(route || "root");
+        const entry = root.items[id];
+        const runs = entry && entry.kind === "action" && entry.action;
+        if (root.visible && !root.dmenuActive && !runs && root.routeTarget(route) === root.activeMenu) root.hide();
+        else root.openRoute(route || "root", output);
     }
     function summon(payloadJson) {
         let payload = ({});
@@ -537,7 +593,7 @@ Singleton {
         root.navStack = [];
         root.filterText = "";
         root.selectedIndex = 0;
-        ShellState.open("menu");
+        if (!root.present("")) { root.finishRequest(null); root.mode = "menu"; return; }
         root.rebuildDisplay();
     }
 }

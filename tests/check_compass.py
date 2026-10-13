@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offscreen: Compass answers (calculator, address, web search) in the Applications drop and the Go menu.
+"""Offscreen: Compass answers (calculator, address, web search) in the Applications drop and its menu search.
 
 Optional argv[1]: a directory for the two renders. Offscreen only; it opens no browser and copies nothing."""
 from pathlib import Path
@@ -36,7 +36,7 @@ ShellRoot {
             interval: 500; running: true; repeat: true
             onTriggered: {
                 if (window.step === 0) {
-                    Go.refresh(); // start reading the menu files now so the Go step finds a loaded tree
+                    Go.refresh(); // start reading the menu files now so the menu step finds a loaded tree
                     Canopy.open("go");
                     window.step++; return;
                 }
@@ -71,7 +71,7 @@ ShellRoot {
                     Config.set("searchEngine", "brave");
                     panel.grabToImage(r => r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/compass-address.png"));
                 } else if (window.step === 3) {
-                    if (!Go.rowsLoaded) { if (++window.waited > 20) window.check(false, "Go menu never loaded"); return; }
+                    if (!Go.rowsLoaded) { if (++window.waited > 20) window.check(false, "menu never loaded"); return; }
                     field.text = "kitty";
                     window.check(root.answers.length === 0 && root.trailing.length === 1, "A word gets only a web search");
                     window.check(root.isFavourite(root.trailing[0]) === false, "Answers are never favourites");
@@ -79,18 +79,21 @@ ShellRoot {
                     window.check(root.trailing.length === 0 && root.answers.length === 0, "Empty query has no answers");
                     panel.grabToImage(r => r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/compass-empty.png"));
                 } else if (window.step === 4) {
-                    Canopy.close();
-                    // The Go menu: calculator first, web search last, divider between.
-                    Go.openRoute("root");
+                    // The menu search behind the drop: calculator first, web search last, divider between.
+                    Go.openRoute("system");
+                    window.check(Canopy.shown && Canopy.topic === "go" && root.onTrail, "A route opens the drop on its trail");
+                    Go.goBack();
+                    window.check(root.catalog, "Back from the trail is the catalog");
                     Go.setFilter("sqrt(16)*3");
-                    window.check(Go.rows.length >= 2 && Go.rows[0].kind === "calc" && Go.rows[0].label === "= 12", "Go menu leads with the answer (" + JSON.stringify(Go.rows[0]) + ")");
+                    window.check(Go.rows.length >= 2 && Go.rows[0].kind === "calc" && Go.rows[0].label === "= 12", "Menu search leads with the answer (" + JSON.stringify(Go.rows[0]) + ")");
                     const tail = Go.rows[Go.rows.length - 1];
-                    window.check(tail.kind === "web" && tail.action.startsWith("https://search.brave.com/search?q="), "Go menu trails with Brave (" + JSON.stringify(tail) + ")");
+                    window.check(tail.kind === "web" && tail.action.startsWith("https://search.brave.com/search?q="), "Menu search trails with Brave (" + JSON.stringify(tail) + ")");
                     window.check(tail.section === (Go.rows.length > 2 ? "compass" : ""), "Divider only when something was found");
                     Go.setFilter("firef");
-                    window.check(Go.rows[0].kind !== "calc" && Go.rows[Go.rows.length - 1].kind === "web", "A word in Go gets only the web search");
+                    window.check(Go.rows[0].kind !== "calc" && Go.rows[Go.rows.length - 1].kind === "web", "A word in the menu search gets only the web search");
                     Go.hide();
-                    console.log("PASS: Compass answers in Applications and Go");
+                    window.check(!Canopy.shown, "Hiding the menu closes the drop");
+                    console.log("PASS: Compass answers in Applications and its menu");
                     Qt.quit();
                 }
                 window.step++;
@@ -105,6 +108,6 @@ ShellRoot {
     bad = re.search(r'Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign|FAIL:', output)
     if result.returncode or 'PASS: Compass' not in output or bad:
         print(output[-6000:]); raise SystemExit(1)
-    print('PASS: Compass answers in Applications and Go')
+    print('PASS: Compass answers in Applications and its menu')
     warnings = [l for l in output.splitlines() if 'Compass' in l or 'GoCanopy' in l or 'Go.qml' in l or 'MenuContent' in l]
     print('\n'.join(warnings) or '(no warnings mention the changed files)')

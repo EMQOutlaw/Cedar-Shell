@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Omarchy shell plugin registry for CEDAR's Go menu.
+"""Omarchy shell plugin registry for CEDAR's Applications menu.
 
 The Omarchy shell answers `omarchy-shell shell listPlugins|enablePlugin|
 setPluginEnabled` from its in-memory registry. While CEDAR is the selected

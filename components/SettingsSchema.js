@@ -37,7 +37,7 @@ var fields = [
  {page:"power",group:"Trailwatch privacy",key:"lockAgendaDetails",label:"Show agenda details",description:"Show event and reminder titles when lockscreen privacy is off.",type:"toggle",defaultValue:false},
  {page:"power",group:"Trailwatch controls",key:"lockMediaControls",label:"Media controls while locked",description:"Allow playback and volume adjustment without unlocking.",type:"toggle",defaultValue:false},
  {page:"core",group:"Whisper types",key:"whisperDevices",label:"Connected device observations",description:"A quiet reminder about a connected Bluetooth audio output after long inactivity.",type:"toggle",defaultValue:true},
-{"page": "core", "group": "Canopy", "key": "canopyEnabled", "label": "Canopy", "description": "Panels descend beneath the bar.", "type": "toggle", "defaultValue": true},
+{"page": "core", "group": "Canopy", "key": "canopyEnabled", "label": "Canopy", "description": "Panels descend beneath the bar. Applications always drops from its own button.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Canopy", "key": "canopyPeek", "label": "Peek", "description": "Hover or focus a bar control for a compact preview.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Forest", "key": "forestPulse", "label": "Pulse", "description": "Subtle illumination follows real activity and semantic Forest State.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Forest", "key": "forestEchoes", "label": "Echoes", "description": "After a signal recedes, Core\u2019s line lingers faintly for a few seconds.", "type": "toggle", "defaultValue": true},
@@ -82,7 +82,7 @@ var fields = [
  {page:"apps",group:"Quick launch",key:"terminal",label:"Terminal",description:"Launch command. Empty finds your installed terminal; arguments are separated by spaces.",type:"text",defaultValue:"",placeholder:"kitty"},
  {page:"apps",group:"Quick launch",key:"browser",label:"Browser",description:"Launch command. Empty uses your default browser.",type:"text",defaultValue:"",placeholder:"xdg-open https://duckduckgo.com"},
  {page:"apps",group:"Quick launch",key:"files",label:"Files",description:"Launch command. Empty opens your home folder.",type:"text",defaultValue:"",placeholder:"xdg-open ~"},
- {page:"apps",group:"Launcher search",key:"searchEngine",label:"Web search engine",description:"Where the Applications drop and the Go menu send a search you type. Opens in your default browser.",type:"choice",options:[{value:"brave",label:"Brave Search"},{value:"duckduckgo",label:"DuckDuckGo"},{value:"startpage",label:"Startpage"},{value:"kagi",label:"Kagi"},{value:"google",label:"Google"}],defaultValue:"brave",aliases:"search web brave duckduckgo calculator"},
+ {page:"apps",group:"Launcher search",key:"searchEngine",label:"Web search engine",description:"Where the Applications drop sends a search you type. Opens in your default browser.",type:"choice",options:[{value:"brave",label:"Brave Search"},{value:"duckduckgo",label:"DuckDuckGo"},{value:"startpage",label:"Startpage"},{value:"kagi",label:"Kagi"},{value:"google",label:"Google"}],defaultValue:"brave",aliases:"search web brave duckduckgo calculator"},
  {page:"desktop",group:"Field Station weather",key:"weatherAutomatic",label:"Automatic weather location",description:"Find an approximate city from your public IP whenever weather is on and no saved location overrides it. Turn off to use only a chosen city.",type:"toggle",defaultValue:true,aliases:"weather automatic detect IP city location"},
  {page:"desktop",group:"Field Station weather",key:"locationName",label:"Saved location name",description:"A name for the place shown in Field Station.",type:"text",defaultValue:"",placeholder:"Your ridge",aliases:"weather city"},
  {page:"desktop",group:"Field Station weather",key:"latitude",label:"Latitude",description:"Optional manual override. City search fills this automatically.",type:"text",defaultValue:"",placeholder:"36.2",aliases:"weather location"},
@@ -115,7 +115,7 @@ var fields = [
  {page:"time",group:"Top bar",key:"barShowDate",label:"Show date in the bar",description:"Off leaves a time-only bar clock.",type:"toggle",defaultValue:true}
 ];
 var modules = [
- {key:"identity",label:"CEDAR / Field Station"}, {key:"go",label:"Go launcher"}, {key:"workspaces",label:"Workspaces"},
+ {key:"identity",label:"CEDAR / Field Station"}, {key:"go",label:"Applications"}, {key:"workspaces",label:"Workspaces"},
  {key:"activeWindow",label:"Active window"}, {key:"tray",label:"System tray"}, {key:"network",label:"Connections"},
  {key:"audio",label:"Audio (Strata layout)",strataOnly:true},
   {key:"battery",label:"Battery"}, {key:"notifications",label:"Notifications"},

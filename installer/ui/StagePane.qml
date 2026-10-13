@@ -107,7 +107,7 @@ Item {
                 ColumnLayout {
                     visible: root.model.showTechnical; Layout.fillWidth: true; Layout.topMargin: 6; spacing: 4
                     StationToggle { Layout.fillWidth: true; label: "Start CEDAR in this session after installing"; description: "Off: install only, then cedar try when you are ready."; checked: root.model.options.session; onToggled: v => root.model.setOption("session", v) }
-                    StationToggle { Layout.fillWidth: true; label: "Point the application-launcher shortcut at CEDAR Go"; checked: root.model.options.launcher; onToggled: v => root.model.setOption("launcher", v) }
+                    StationToggle { Layout.fillWidth: true; label: "Point the application-launcher shortcut at CEDAR Applications"; checked: root.model.options.launcher; onToggled: v => root.model.setOption("launcher", v) }
                     StationToggle { Layout.fillWidth: true; label: "Use CEDAR Trailwatch as the locker"; description: "Only after a local password test and one real lock/unlock test."; checked: root.model.options.trailwatch === true; onToggled: v => root.model.setOption("trailwatch", v) }
                     StationToggle { Layout.fillWidth: true; label: "Also install the recommended fonts"; checked: root.model.options.fonts; onToggled: v => root.model.setOption("fonts", v) }
                 }
@@ -306,7 +306,7 @@ Item {
                         Layout.fillWidth: true; Layout.topMargin: 12; spacing: 2
                         SectionMark { text: "OPTIONS" }
                         StationToggle { Layout.fillWidth: true; visible: !!root.env.adapter; label: "Start CEDAR in this session"; description: "Keep it after a health check and enable it at login; cedar restore returns your previous desktop."; checked: root.model.options.session; onToggled: v => root.model.setOption("session", v) }
-                        StationToggle { Layout.fillWidth: true; visible: root.env.adapter === "hyprland" || root.env.adapter === "noctalia"; label: "Point the application-launcher shortcut at CEDAR Go"; checked: root.model.options.launcher; onToggled: v => root.model.setOption("launcher", v) }
+                        StationToggle { Layout.fillWidth: true; visible: root.env.adapter === "hyprland" || root.env.adapter === "noctalia"; label: "Point the application-launcher shortcut at CEDAR Applications"; checked: root.model.options.launcher; onToggled: v => root.model.setOption("launcher", v) }
                         StationToggle { Layout.fillWidth: true; visible: !!root.env.adapter; label: "Use CEDAR Trailwatch as the locker"; description: "After a local password test and one real lock/unlock test."; checked: root.model.options.trailwatch; onToggled: v => root.model.setOption("trailwatch", v) }
                         StationToggle { Layout.fillWidth: true; visible: (root.facts.wallpapers || []).length > 0; label: "Point CEDAR at your wallpaper library"; checked: root.model.options.wallpapers; onToggled: v => root.model.setOption("wallpapers", v) }
                         StationToggle { Layout.fillWidth: true; visible: (root.facts.compositor || {}).name === "hyprland"; label: "Use CEDAR’s keybinds"; description: "Super+T terminal, Super+W browser, Super+Q close, Super+1…0 workspaces, Super+K keybind reference, Super+L lock. Loaded through CEDAR’s journaled Hyprland loader; your other bindings stay."; checked: !!root.model.options.keybinds; onToggled: v => root.model.setOption("keybinds", v) }

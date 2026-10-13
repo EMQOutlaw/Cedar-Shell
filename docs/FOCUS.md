@@ -2,7 +2,7 @@
 
 A timed session in which the desktop quiets itself, then puts everything
 back. A sibling to Shield and Gaming Mode: its own window (`cedar focus`,
-Go › Focus, the Focus tile in Quick Controls, Super+Shift+F, `qs -c cedar
+Applications › CEDAR › Focus, the Focus tile in Quick Controls, Super+Shift+F, `qs -c cedar
 ipc call focus open`), a preparation card when a session starts and ends,
 and a persistent row on the Core pill with Pause and End session.
 

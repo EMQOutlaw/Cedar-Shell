@@ -91,7 +91,8 @@ Singleton {
     }
     readonly property real anchorX: anchorRect ? anchorRect.x + anchorRect.width / 2 : -1
     readonly property var screen: Quickshell.screens.find(s => s.name === outputName) || CoreService.hostScreen
-    readonly property bool shown: Config.saved.canopyEnabled && !ShellState.locked && (ShellState.panel === "canopy" || pinned)
+    // Applications is the launcher, so its drop shows even with Canopy off.
+    readonly property bool shown: (Config.saved.canopyEnabled || topic === "go") && !ShellState.locked && (ShellState.panel === "canopy" || pinned)
     function titleFor(value) {
         return ({
             audio: "Audio",
@@ -132,7 +133,7 @@ Singleton {
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
         if (value === "system") { if (ShellState.locked) return; stationPage = "tasks"; value = "station"; }
-        if (!topics.includes(value) || ShellState.locked || !Config.saved.canopyEnabled)
+        if (!topics.includes(value) || ShellState.locked || (!Config.saved.canopyEnabled && value !== "go"))
             return;
         if (peek && (pinned || (ShellState.panel !== "" && !peeking)))
             return;

@@ -264,17 +264,14 @@ ShellRoot {
             ShellState.open("settings");
         }
     }
-    // Go menu: `menu toggle <route>` opens a menu id or alias (root, apps, system,
-    // capture…); `menu summon <json>` takes Omarchy's payloads, including the
-    // select/input prompts relayed by scripts/shim/omarchy-shell.
+    // The menu lives in the Applications drop: `menu toggle <route>` opens it
+    // at a menu id or alias (root, apps, system, capture…); `menu summon <json>`
+    // takes Omarchy's payloads, including the select/input prompts relayed by
+    // scripts/shim/omarchy-shell, which the drop answers.
     IpcHandler {
         target: "menu"
         function toggle(route: string): void {
-            if (Config.stage < 3)
-                return;
-            if (route === "apps" && Config.saved.canopyEnabled)
-                Canopy.toggleTopic("go");
-            else
+            if (Config.stage >= 3)
                 Go.toggle(route);
         }
         function summon(payload: string): void {
@@ -422,9 +419,6 @@ ShellRoot {
             LazyLoader {
                 active: Config.stage >= 3
                 component: Scope {
-                    Menu {
-                        output: modelData
-                    }
                     Settings {
                         output: modelData
                     }

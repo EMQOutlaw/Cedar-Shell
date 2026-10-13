@@ -10,7 +10,6 @@ Hud 1.0 Hud.qml
 InputSettings 1.0 InputSettings.qml
 KeybindSettings 1.0 KeybindSettings.qml
 LockScreen 1.0 LockScreen.qml
-Menu 1.0 Menu.qml
 NotificationServer 1.0 NotificationServer.qml
 Notifications 1.0 Notifications.qml
 Osd 1.0 Osd.qml

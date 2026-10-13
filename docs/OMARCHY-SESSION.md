@@ -43,7 +43,7 @@ After the handoff the bridge bar answers Omarchy's `lock` IPC from `~/.local/sta
 
 ## Boundaries
 
-- Existing keyboard shortcuts remain unchanged. The bridge forwards Omarchy's notification dismissal/history/action and OSD IPC to CEDAR without rebinding keys. Existing Omarchy application/menu shortcuts continue using their original destinations; CEDAR Go is available from its bar.
+- Existing keyboard shortcuts remain unchanged. The bridge forwards Omarchy's notification dismissal/history/action and OSD IPC to CEDAR without rebinding keys. Existing Omarchy application/menu shortcuts continue using their original destinations; CEDAR's Applications drop is available from its bar.
 - Trailwatch stays in the project but does not replace the existing authentication service in this integration. Native authentication handoff needs separate device validation.
 - This is not an authentication sandbox. Omarchy and CEDAR remain trusted local code.
 - Plugins outside the reviewed Omacale providers and companion fingerprints, and prior CEDAR theme-switch hooks, require their own review. The adapter refuses those conflicts.

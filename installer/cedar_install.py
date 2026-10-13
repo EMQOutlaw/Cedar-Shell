@@ -206,7 +206,7 @@ def main(argv=None):
     parser.add_argument('--json', action='store_true', help='print facts and plan as JSON (with --dry-run)')
     parser.add_argument('--verbose', '-v', action='store_true', help='print the technical log while installing')
     parser.add_argument('--no-session', action='store_true', help='install without starting CEDAR in this session')
-    parser.add_argument('--cedar-launcher', action='store_true', help='also point the application-launcher shortcut at CEDAR Go')
+    parser.add_argument('--cedar-launcher', action='store_true', help='also point the application-launcher shortcut at CEDAR Applications')
     parser.add_argument('--trailwatch', action='store_true', help='also select CEDAR Trailwatch as the locker, with its password and lock tests')
     parser.add_argument('--fonts', action='store_true', help='also install the recommended fonts')
     parser.add_argument('--keybinds', dest='keybinds', action='store_true', default=None, help='install CEDAR’s keybinds into the Hyprland configuration')

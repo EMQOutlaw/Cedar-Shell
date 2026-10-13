@@ -63,7 +63,7 @@ ColumnLayout {
         visible: root.step === 1
         heading: "Desktop handoff"
         caption: "Review the actual desktop roles. The existing locker stays in place until Trailwatch passes its local password and secure-unlock tests."
-        StationToggle { Layout.fillWidth:true;label:"Use CEDAR Go";description:"Replace only the reviewed launcher shortcut.";checked:SetupFlow.launcher;onToggled:value=>SetupFlow.launcher=value }
+        StationToggle { Layout.fillWidth:true;label:"Use CEDAR Applications";description:"Replace only the reviewed launcher shortcut.";checked:SetupFlow.launcher;onToggled:value=>SetupFlow.launcher=value }
         StationToggle { Layout.fillWidth:true;label:"Verify and use Trailwatch";description:"Authentication happens in the existing local security window. No password is entered here.";checked:SetupFlow.trailwatch;onToggled:value=>SetupFlow.trailwatch=value }
         StationButton { text:SetupFlow.plan ? "Inspect again" : "Inspect desktop and review plan";enabled:!SetupFlow.busy;onClicked:SetupFlow.run("plan") }
         Repeater {
