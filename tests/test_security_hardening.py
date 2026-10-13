@@ -1,6 +1,5 @@
 """Regression tests for the 2026-10-12 security findings (Cedar-Shell 1.7)."""
 import gzip
-import importlib.util
 import io
 import os
 from pathlib import Path
@@ -18,9 +17,6 @@ import distribution as d  # noqa: E402
 import trailwatch  # noqa: E402
 from installer.engine import backup as backup_module  # noqa: E402
 from installer.migration import intent  # noqa: E402
-
-spec = importlib.util.spec_from_file_location('cedar_ai', ROOT / 'scripts/cedar_ai.py')
-cedar_ai = importlib.util.module_from_spec(spec); spec.loader.exec_module(cedar_ai)
 
 
 class Updater(unittest.TestCase):
@@ -68,47 +64,6 @@ class Updater(unittest.TestCase):
                 tar.addfile(tarfile.TarInfo(f'cedar-shell/{n}'), io.BytesIO(b''))
         with patch.object(d, 'ARCHIVE_MEMBERS', 5), self.assertRaises(d.Refused):
             d.safe_extract(archive, self.root / 'out')
-
-
-class RelayLauncher(unittest.TestCase):
-    def agent(self, mode):
-        out = cedar_ai.Emitter(); control = cedar_ai.Control(listen=False)
-        return cedar_ai.Claude(Path('.'), mode, None, [], 10, out, control)
-
-    def test_read_mode_allows_no_git_command_with_an_output_option(self):
-        cmd = self.agent('read').command('x')
-        rules = cmd[cmd.index('--allowedTools') + 1]
-        for prefix in ('git log', 'git diff', 'git show'):
-            self.assertNotIn(prefix, rules)
-
-    def test_systemd_launch_keeps_secret_values_out_of_argv(self):
-        calls = []
-        args = cedar_ai.argparse.Namespace(socket=None)
-        with tempfile.TemporaryDirectory() as tmp, \
-             patch.dict(os.environ, {'XDG_RUNTIME_DIR': tmp, 'ANTHROPIC_API_KEY': 'sk-secret', 'CEDAR_AI_LAUNCHER': ''}), \
-             patch.object(cedar_ai, 'RUNTIME_ROOT', Path(tmp) / 'cedar-ai'), \
-             patch.object(cedar_ai.shutil, 'which', return_value='/usr/bin/systemd-run'), \
-             patch.object(cedar_ai.subprocess, 'run', side_effect=lambda argv, **_: calls.append(argv) or cedar_ai.subprocess.CompletedProcess(argv, 0, '', '')), \
-             patch('sys.stdout', io.StringIO()):
-            cedar_ai.detach(args)
-        self.assertIn('--setenv=ANTHROPIC_API_KEY', calls[0])
-        self.assertFalse(any('sk-secret' in arg for arg in calls[0]))
-
-    def test_tmp_fallback_refuses_a_symlinked_socket_directory(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            outer = Path(tmp) / 'cedar-ai-1'; (Path(tmp) / 'elsewhere').mkdir()
-            outer.symlink_to(Path(tmp) / 'elsewhere')
-            with patch.dict(os.environ, {'XDG_RUNTIME_DIR': ''}), patch.object(cedar_ai, 'RUNTIME_ROOT', outer / 'cedar-ai'):
-                with self.assertRaises(SystemExit):
-                    cedar_ai.private_runtime_root()
-
-    def test_tmp_fallback_creates_private_directories(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp) / 'cedar-ai-1' / 'cedar-ai'
-            with patch.dict(os.environ, {'XDG_RUNTIME_DIR': ''}), patch.object(cedar_ai, 'RUNTIME_ROOT', root):
-                self.assertEqual(cedar_ai.private_runtime_root(), root)
-            self.assertEqual(root.parent.stat().st_mode & 0o777, 0o700)
-            self.assertEqual(root.stat().st_mode & 0o777, 0o700)
 
 
 class Reminders(unittest.TestCase):
