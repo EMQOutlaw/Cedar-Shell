@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Opt-in, read-only Google/Proton calendar subscriptions; JSON over stdin.
+"""Opt-in, read-only Google/Proton/Nextcloud calendar subscriptions; JSON over stdin.
 
-Secret feed URLs never enter argv, responses, logs or the shared settings file.
+Secret feed URLs and app passwords never enter argv, responses, logs or the
+shared settings file.
 """
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+import base64
 import fcntl
 import json
 import os
@@ -25,7 +27,15 @@ PROVIDERS = {
                'prefix': '/calendar/ical/', 'web': 'https://calendar.google.com/'},
     'proton': {'name': 'Proton Calendar', 'hosts': {'calendar.proton.me', 'calendar.protonmail.com'},
                'prefix': '/api/calendar/', 'web': 'https://calendar.proton.me/'},
+    # Self-hosted: any HTTPS server the user names, but redirects must stay on it.
+    'nextcloud': {'name': 'Nextcloud', 'hosts': None, 'prefix': None, 'web': None},
 }
+# Nextcloud may live under a subpath (https://example.org/cloud/...). Segments are
+# kept to URL-safe characters so the stored path cannot climb with '..'.
+NEXTCLOUD_PATH = re.compile(r'(?P<base>(?:/[A-Za-z0-9._~%+-]+)*?)(?:/index\.php)?'
+                            r'(?:/apps/calendar/p/(?P<share>[A-Za-z0-9]+)(?:/.*)?'
+                            r'|/remote\.php/dav/public-calendars/(?P<public>[A-Za-z0-9]+)/?'
+                            r'|/remote\.php/dav/calendars/(?P<user>[A-Za-z0-9._~%@+-]+)/(?P<calendar>[A-Za-z0-9._~%+-]+)/?)')
 MAX_SOURCES = 8
 REFRESH_SECONDS = 900
 
@@ -60,10 +70,51 @@ def read_json(path, default):
     except (ValueError, OSError): raise CalendarError('Calendar settings could not be read.') from None
 
 
-def validate_url(provider, value):
-    if provider not in PROVIDERS: raise CalendarError('Choose Google Calendar or Proton Calendar.')
+def nextcloud_url(value, origin=None):
+    """Return the ICS export URL for a Nextcloud share link or calendar address."""
+    try:
+        url = urllib.parse.urlsplit(value)
+        match = NEXTCLOUD_PATH.fullmatch(url.path)
+        valid = (len(value) <= 4096 and not any(ord(c) < 33 for c in value) and url.scheme == 'https'
+                 and bool(url.hostname) and not url.username and not url.password and not url.fragment
+                 and match is not None and url.query in ('', 'export')
+                 and not any(part in ('.', '..') for part in url.path.split('/')))
+        if valid and origin is not None:
+            first = urllib.parse.urlsplit(origin)
+            valid = (url.hostname, url.port) == (first.hostname, first.port)
+    except ValueError: valid = False
+    if not valid: raise CalendarError('Paste the Nextcloud calendar share link or calendar address that starts with https://.')
+    base = match['base']
+    if match['user']: path = f"{base}/remote.php/dav/calendars/{match['user']}/{match['calendar']}"
+    else: path = f"{base}/remote.php/dav/public-calendars/{match['share'] or match['public']}"
+    return urllib.parse.urlunsplit(('https', url.netloc, path, 'export', ''))
+
+
+def nextcloud_private(url): return '/remote.php/dav/calendars/' in urllib.parse.urlsplit(url).path
+
+
+def credentials(request):
+    username, password = str(request.get('username', '')).strip(), str(request.get('password', '')).strip()
+    if not username or not password: raise CalendarError('A private Nextcloud calendar needs your username and an app password.')
+    if len(username) > 256 or len(password) > 256 or any(ord(c) < 32 for c in username + password):
+        raise CalendarError('Check the Nextcloud username and app password.')
+    return username, password
+
+
+def web_url(source):
+    if source['provider'] != 'nextcloud': return PROVIDERS[source['provider']]['web']
+    if source.get('kind') == 'import' or not source.get('url'): return ''
+    url = urllib.parse.urlsplit(source['url'])
+    base = url.path.split('/remote.php/', 1)[0]
+    return urllib.parse.urlunsplit(('https', url.netloc, base + '/index.php/apps/calendar/', '', ''))
+
+
+def validate_url(provider, value, origin=None):
+    if provider not in PROVIDERS: raise CalendarError('Choose Google Calendar, Proton Calendar or Nextcloud.')
     value = str(value).strip()
     if value.startswith('webcal://'): value = 'https://' + value[9:]
+    elif value.startswith('webcals://'): value = 'https://' + value[10:]
+    if provider == 'nextcloud': return nextcloud_url(value, origin)
     try:
         url = urllib.parse.urlsplit(value)
         valid = (len(value) <= 4096 and not any(ord(c) < 33 for c in value)
@@ -84,19 +135,24 @@ def network_allowed(request):
 
 
 class CalendarRedirect(urllib.request.HTTPRedirectHandler):
-    def __init__(self, provider): self.provider = provider
+    def __init__(self, provider, origin=None): self.provider, self.origin = provider, origin
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         # Validate before following a redirect, so a feed cannot redirect secrets
-        # to arbitrary sites or local network services.
-        validate_url(self.provider, newurl)
+        # to arbitrary sites or local network services. A Nextcloud redirect must
+        # stay on the server the user chose, since its credentials travel with it.
+        validate_url(self.provider, newurl, self.origin)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def fetch(source):
     url = validate_url(source['provider'], source['url'])
-    request = urllib.request.Request(url, headers={'Accept': 'text/calendar', 'User-Agent': 'CEDAR-Calendar/1'})
+    headers = {'Accept': 'text/calendar', 'User-Agent': 'CEDAR-Calendar/1'}
+    if source.get('username'):
+        token = base64.b64encode(f"{source['username']}:{source.get('password', '')}".encode()).decode()
+        headers['Authorization'] = 'Basic ' + token
+    request = urllib.request.Request(url, headers=headers)
     try:
-        opener = urllib.request.build_opener(CalendarRedirect(source['provider']))
+        opener = urllib.request.build_opener(CalendarRedirect(source['provider'], url if source['provider'] == 'nextcloud' else None))
         with opener.open(request, timeout=8) as response:
             data = response.read(MAX_BYTES + 1)
         if len(data) > MAX_BYTES: raise CalendarError('Calendar is larger than 2 MiB.')
@@ -104,6 +160,8 @@ def fetch(source):
         return data
     except urllib.error.HTTPError as error:
         error.close()
+        if error.code in (401, 403) and source.get('username'):
+            raise CalendarError('Nextcloud did not accept the username and app password. Create a new app password and replace the connection.') from None
         if error.code in (401, 403, 404, 410):
             raise CalendarError('Calendar link is unavailable or revoked. Replace it with a new sharing link.') from None
         raise CalendarError('Calendar provider is unavailable. Try refreshing later.') from None
@@ -127,7 +185,7 @@ def public_source(source, cached, error, allowed):
     status = 'error' if error else 'imported' if imported else 'offline' if not allowed else 'stale' if not updated or time.time() - updated >= REFRESH_SECONDS else 'ready'
     return {'id': source['id'], 'provider': source['provider'], 'name': source['name'], 'enabled': source.get('enabled', True),
             'color': source.get('color', '#62b89a'), 'updatedAt': updated * 1000, 'status': status, 'error': error,
-            'readOnly': True, 'kind': 'import' if imported else 'subscription', 'webUrl': PROVIDERS[source['provider']]['web']}
+            'readOnly': True, 'kind': 'import' if imported else 'subscription', 'webUrl': web_url(source)}
 
 
 def snapshot(sources, request, refresh=False, force_id=None):
@@ -195,6 +253,8 @@ def handle(request):
                       'kind': 'import' if action == 'import' else 'subscription'}
             if action == 'connect':
                 source['url'] = validate_url(provider, request.get('url', ''))
+                if provider == 'nextcloud' and nextcloud_private(source['url']):
+                    source['username'], source['password'] = credentials(request)
                 if any(s.get('url') == source['url'] for s in sources): raise CalendarError('This calendar is already connected.')
                 force_id = source['id']
             else:
@@ -218,6 +278,9 @@ def handle(request):
                 if source['enabled']: force_id = source['id']
             else:
                 source['url'] = validate_url(source['provider'], request.get('url', ''))
+                source.pop('username', None); source.pop('password', None)
+                if source['provider'] == 'nextcloud' and nextcloud_private(source['url']):
+                    source['username'], source['password'] = credentials(request)
                 source['kind'] = 'subscription'; force_id = source['id']
             atomic(path, json.dumps(sources).encode())
             if action in ('disconnect', 'replace'): (cache / (source['id'] + '.json')).unlink(missing_ok=True)

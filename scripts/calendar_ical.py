@@ -1,4 +1,4 @@
-"""Bounded iCalendar reader for Google/Proton subscription feeds.
+"""Bounded iCalendar reader for Google/Proton/Nextcloud subscription feeds.
 
 No scripts, attachments or alarm actions are executed. Unsupported recurrence
 rules/time zones fail explicitly instead of silently omitting appointments.

@@ -11,7 +11,10 @@ ColumnLayout {
     property string editingId: ""
     property string chosenColor: "#62b89a"
     spacing: 10
-    function clearForm() { link.text = ""; filePath.text = ""; editingId = ""; }
+    readonly property var providerNames: ({ google: "Google", proton: "Proton", nextcloud: "Nextcloud" })
+    // Only a calendar's own address (not a public share link) needs an app password.
+    readonly property bool needsLogin: provider === "nextcloud" && !importing && /\/remote\.php\/dav\/calendars\//.test(link.text)
+    function clearForm() { link.text = ""; filePath.text = ""; username.text = ""; appPassword.text = ""; editingId = ""; }
     Connections {
         target: CalendarFeeds
         function onCompleted(action) { if (["connect", "replace", "import"].includes(action)) { root.clearForm(); label.text = ""; } }
@@ -28,7 +31,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Rectangle { width: 7; height: 7; radius: 3; color: parent.parent.modelData.color }
                 GlowText { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: parent.parent.modelData.name; color: Theme.strataText }
-                GlowText { text: parent.parent.modelData.provider === "google" ? "Google" : "Proton"; font.pixelSize: Theme.small; color: Theme.strataMuted }
+                GlowText { text: root.providerNames[parent.parent.modelData.provider] || "Calendar"; font.pixelSize: Theme.small; color: Theme.strataMuted }
             }
             GlowText {
                 Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.small
@@ -51,10 +54,12 @@ ColumnLayout {
         }
     }
     SectionMark { text: root.editingId ? "REPLACE CALENDAR LINK" : "ADD A CALENDAR"; tone: Theme.strataAccent }
-    RowLayout {
-        Layout.fillWidth: true
-        StrataButton { Layout.fillWidth: true; text: "Google Calendar"; checked: root.provider === "google"; enabled: !root.editingId; onClicked: { root.provider = "google"; link.text = ""; } }
-        StrataButton { Layout.fillWidth: true; text: "Proton Calendar"; checked: root.provider === "proton"; enabled: !root.editingId; onClicked: { root.provider = "proton"; link.text = ""; } }
+    // Three providers do not fit a narrow drop on one row; let them wrap.
+    Flow {
+        Layout.fillWidth: true; spacing: 6
+        StrataButton { text: "Google Calendar"; checked: root.provider === "google"; enabled: !root.editingId; onClicked: { root.provider = "google"; link.text = ""; } }
+        StrataButton { text: "Proton Calendar"; checked: root.provider === "proton"; enabled: !root.editingId; onClicked: { root.provider = "proton"; link.text = ""; } }
+        StrataButton { text: "Nextcloud"; checked: root.provider === "nextcloud"; enabled: !root.editingId; onClicked: { root.provider = "nextcloud"; link.text = ""; } }
     }
     RowLayout {
         visible: !root.editingId
@@ -65,16 +70,25 @@ ColumnLayout {
         Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.small; color: Theme.strataMuted
         text: root.importing ? "Import an exported calendar, including from Proton Free. This is a snapshot; import again to get later changes."
             : root.provider === "google" ? "Google Calendar → Settings → your calendar → Integrate calendar → Secret address in iCal format. Copy that address here."
+            : root.provider === "nextcloud" ? "Nextcloud Calendar → your calendar's ⋯ menu → Share link, then Copy subscription link. Or, to keep it private, use Copy private link with your username and an app password from Settings → Security."
             : "Proton Calendar → Settings → Calendars → your calendar → Share with anyone → Create link. Choose Full view for titles, or Limited view for busy times. Creating a link requires a paid Proton plan."
     }
     StrataButton {
         text: "Open setup guide"
-        onClicked: if (!Config.testMode) Qt.openUrlExternally(root.provider === "google" ? "https://support.google.com/calendar/answer/37648" : "https://proton.me/support/share-calendar-via-link")
+        onClicked: if (!Config.testMode) Qt.openUrlExternally(root.provider === "google" ? "https://support.google.com/calendar/answer/37648"
+            : root.provider === "nextcloud" ? "https://docs.nextcloud.com/server/latest/user_manual/en/groupware/calendar.html"
+            : "https://proton.me/support/share-calendar-via-link")
     }
     StrataField { id: label; visible: !root.editingId; Layout.fillWidth: true; placeholderText: "Calendar name, e.g. Personal or Work"; maximumLength: 80; Accessible.name: "Calendar name" }
     StrataField {
         id: link; visible: !root.importing; Layout.fillWidth: true; placeholderText: "Paste private calendar link"
         echoMode: TextInput.Password; maximumLength: 4096; Accessible.name: "Private calendar subscription link"
+        inputMethodHints: Qt.ImhHiddenText | Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
+    }
+    StrataField { id: username; visible: root.needsLogin; Layout.fillWidth: true; placeholderText: "Nextcloud username"; maximumLength: 256; Accessible.name: "Nextcloud username" }
+    StrataField {
+        id: appPassword; visible: root.needsLogin; Layout.fillWidth: true; placeholderText: "Nextcloud app password"
+        echoMode: TextInput.Password; maximumLength: 256; Accessible.name: "Nextcloud app password"
         inputMethodHints: Qt.ImhHiddenText | Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
     }
     StrataField { id: filePath; visible: root.importing; Layout.fillWidth: true; placeholderText: "Path to exported .ics file"; Accessible.name: "Calendar import file path" }
@@ -89,14 +103,16 @@ ColumnLayout {
     GlowText {
         visible: !root.importing
         Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.small; color: Theme.strataMuted
-        text: "Anyone with this link can read the shared calendar. CEDAR saves it in a private file on this device. No calendar password is needed. Events are read-only here."
+        text: root.needsLogin ? "Use an app password, not your login password, so you can revoke it in Nextcloud at any time. CEDAR saves it in a private file on this device. Events are read-only here."
+            : "Anyone with this link can read the shared calendar. CEDAR saves it in a private file on this device. No calendar password is needed. Events are read-only here."
     }
     RowLayout {
         StrataButton {
             text: root.editingId ? "Save new link" : root.importing ? "Import calendar" : "Connect calendar"
-            enabled: !CalendarFeeds.busy && (root.importing ? filePath.text.trim() !== "" : link.text.trim() !== "")
+            enabled: !CalendarFeeds.busy && (root.importing ? filePath.text.trim() !== "" : link.text.trim() !== "" && (!root.needsLogin || username.text.trim() !== "" && appPassword.text !== ""))
             onClicked: CalendarFeeds.request({ action: root.editingId ? "replace" : root.importing ? "import" : "connect", id: root.editingId,
-                provider: root.provider, name: label.text, url: link.text, path: filePath.text, color: root.chosenColor })
+                provider: root.provider, name: label.text, url: link.text, path: filePath.text, color: root.chosenColor,
+                username: root.needsLogin ? username.text : "", password: root.needsLogin ? appPassword.text : "" })
         }
         StrataButton { visible: !!root.editingId; text: "Cancel"; onClicked: root.clearForm() }
     }

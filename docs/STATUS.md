@@ -14,5 +14,5 @@ Rituals, Constellation, general plugins, Home Assistant integration, full deskto
 
 Forest states retain Quiet, Awake, Flow, Hunt, Watch, Ember and Rest. No cloud AI or second assistant identity is introduced.
 
-Read-only Google/Proton calendar subscriptions and ICS file imports are implemented;
+Read-only Google/Proton/Nextcloud calendar subscriptions and ICS file imports are implemented;
 see [CALENDAR.md](CALENDAR.md) for setup and recurrence boundaries.

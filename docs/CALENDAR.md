@@ -1,7 +1,7 @@
 # Connected calendars
 
 Open CEDAR's calendar from the bar, then **Calendars**. Connect up to eight
-Google or Proton calendars, give each a name and color, and select a day to
+Google, Proton or Nextcloud calendars, give each a name and color, and select a day to
 see its events. Dots mark days with events. The existing timer remains below
 the agenda. These connections are **read-only subscriptions**, not account
 sign-in or two-way sync. Use **Open calendar** to create or edit events in
@@ -31,6 +31,28 @@ CalDAV two-way sync; CEDAR uses its supported read-only link. Provider-side
 updates may be delayed. See [Proton's sharing instructions](https://proton.me/support/share-calendar-via-link)
 and [its CalDAV explanation](https://proton.me/support/subscribe-to-external-calendar).
 
+## Nextcloud
+
+Nextcloud is self-hosted, so CEDAR accepts any HTTPS server address you give it,
+including one on your home network. There are two ways to connect:
+
+- **Share link (no password).** In Nextcloud Calendar, open the calendar's ⋯
+  menu → **Share link**, then **Copy subscription link** (or the public link
+  ending in `/apps/calendar/p/…`). Anyone with this link can read the calendar.
+- **Private calendar (app password).** Choose **Copy private link** (an address
+  containing `/remote.php/dav/calendars/<user>/<calendar>`). CEDAR then asks for
+  your username and an app password. Create the app password in Nextcloud under
+  Settings → Security → **Devices & sessions**; it can be revoked there at any time.
+  Do not use your login password, and note that accounts with two-factor
+  authentication require an app password.
+
+CEDAR reads the calendar's `?export` ICS feed. Redirects are followed only on the
+same server, so the app password is never sent elsewhere. Self-signed
+certificates that the system does not trust are rejected. **Replace link** also
+replaces the stored username and app password. See [Nextcloud's calendar guide](https://docs.nextcloud.com/server/latest/user_manual/en/groupware/calendar.html).
+
+## Importing a file
+
 For Proton Free, or to work offline, export a calendar to `.ics`, choose
 **Import .ics file** in CEDAR and enter its path. Imports are local snapshots;
 they do not automatically follow changes. Disconnect and import again to replace
@@ -50,6 +72,9 @@ a snapshot. **Replace link** can turn an imported calendar into a subscription.
 - Network failures retain the last successfully read events, mark them as saved,
   and display the provider's status under Calendars. An empty agenda means no
   saved events for that day, not proof that an inaccessible calendar is empty.
+- Nextcloud app passwords live in the same private file as links, are sent only
+  to your Nextcloud server as HTTP Basic authentication, and are never returned
+  to the UI. Disconnecting deletes them from CEDAR; revoke them in Nextcloud too.
 - A sharing link is a bearer credential: anyone who possesses it can read the
   shared calendar. Paste it only into CEDAR's masked link field. Links are passed
   to the helper over stdin, never command arguments, logs or service responses.
@@ -58,9 +83,11 @@ a snapshot. **Replace link** can turn an imported calendar into a subscription.
   `$XDG_CACHE_HOME/cedar/calendar/`. Directories are mode 0700 and data files are
   mode 0600. These are private plaintext files, not encrypted storage. Include
   them only in backups you trust. CEDAR's shared `settings.json` contains no links.
-- Only HTTPS Google/Proton subscription endpoints are accepted. Redirect targets
-  are validated before following; files, local-network URLs, embedded credentials
-  and ordinary website links are rejected. Links are sent only to the selected
+- Only HTTPS Google/Proton subscription endpoints, and Nextcloud calendar
+  addresses on the server you name, are accepted. Redirect targets are validated
+  before following; files, embedded credentials, ordinary website links and (for
+  Google/Proton) local-network URLs are rejected. A Nextcloud redirect must stay
+  on the original server. Links are sent only to the selected
   provider. No analytics or third-party sync service is involved.
 - Locking clears event details from service memory and pauses requests. The
   private disk cache remains for offline use. Nothing is published to Trailwatch

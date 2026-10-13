@@ -170,5 +170,5 @@ share the Strata palette with Signals and Quick Controls. The retired System
 drop redirects to Field Station’s task page, including its existing IPC and
 menu entry. See [Station](STATION.md) for the task monitor’s data sources.
 
-Calendar now supports opt-in read-only Google and Proton subscription links,
+Calendar now supports opt-in read-only Google, Proton and Nextcloud subscription links,
 local ICS imports, day selection and a cached agenda. See [CALENDAR.md](CALENDAR.md).

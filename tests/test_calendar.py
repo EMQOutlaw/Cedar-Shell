@@ -192,6 +192,48 @@ class CalendarConnections(unittest.TestCase):
         with self.assertRaises(ical.CalendarError):
             service.CalendarRedirect('google').redirect_request(None, None, 302, '', {}, 'https://evil.test/steal')
 
+    def test_nextcloud_links_normalize_to_export_and_stay_on_server(self):
+        for link, expected in [
+                ('https://cloud.example.org/apps/calendar/p/AbC123', 'https://cloud.example.org/remote.php/dav/public-calendars/AbC123?export'),
+                ('https://example.org/nc/index.php/apps/calendar/p/AbC123/dayGridMonth/now', 'https://example.org/nc/remote.php/dav/public-calendars/AbC123?export'),
+                ('webcal://cloud.example.org/remote.php/dav/public-calendars/AbC123?export', 'https://cloud.example.org/remote.php/dav/public-calendars/AbC123?export'),
+                ('https://nextcloud.home.arpa:8443/remote.php/dav/calendars/sam%40example.org/personal/', 'https://nextcloud.home.arpa:8443/remote.php/dav/calendars/sam%40example.org/personal?export')]:
+            self.assertEqual(service.validate_url('nextcloud', link), expected)
+        for link in ['http://cloud.example.org/apps/calendar/p/AbC123', 'https://cloud.example.org/', 'https://cloud.example.org/apps/files/',
+                     'https://user:pass@cloud.example.org/remote.php/dav/public-calendars/AbC123', 'file:///tmp/calendar.ics',
+                     'https://cloud.example.org/../remote.php/dav/public-calendars/AbC123', 'https://cloud.example.org/remote.php/dav/public-calendars/AbC123?x=1']:
+            with self.assertRaises(ical.CalendarError): service.validate_url('nextcloud', link)
+        origin = 'https://cloud.example.org/remote.php/dav/public-calendars/AbC123?export'
+        service.CalendarRedirect('nextcloud', origin).redirect_request(
+            service.urllib.request.Request(origin), None, 302, '', {}, 'https://cloud.example.org/nc/remote.php/dav/public-calendars/AbC123')
+        with self.assertRaises(ical.CalendarError):
+            service.CalendarRedirect('nextcloud', origin).redirect_request(None, None, 302, '', {}, 'https://evil.test/remote.php/dav/public-calendars/AbC123')
+
+    def test_nextcloud_private_calendar_requires_and_hides_app_password(self):
+        request = dict(self.request, provider='nextcloud', url='https://cloud.example.org/remote.php/dav/calendars/sam/personal/')
+        with self.assertRaisesRegex(ical.CalendarError, 'app password'): service.handle(dict(request, action='connect'))
+        with patch.object(service, 'fetch', return_value=self.raw):
+            result = service.handle(dict(request, action='connect', username='sam', password='secret-app-password'))
+        self.assertNotIn('secret-app-password', json.dumps(result))
+        self.assertEqual(result['sources'][0]['webUrl'], 'https://cloud.example.org/index.php/apps/calendar/')
+        saved = json.loads((self.private / 'connections.json').read_text())[0]
+        self.assertEqual((saved['username'], saved['password']), ('sam', 'secret-app-password'))
+        # Switching to a public share link drops the stored credentials.
+        with patch.object(service, 'fetch', return_value=self.raw):
+            service.handle(dict(request, action='replace', id=saved['id'], url='https://cloud.example.org/apps/calendar/p/AbC123'))
+        self.assertNotIn('password', json.loads((self.private / 'connections.json').read_text())[0])
+
+    def test_nextcloud_sends_basic_auth_and_reports_rejected_password(self):
+        source = {'provider': 'nextcloud', 'url': 'https://cloud.example.org/remote.php/dav/calendars/sam/personal?export', 'username': 'sam', 'password': 'secret-app-password'}
+        with patch.object(service.urllib.request, 'build_opener') as opener:
+            opener.return_value.open.return_value.__enter__.return_value.read.return_value = self.raw
+            service.fetch(source)
+            sent = opener.return_value.open.call_args[0][0]
+            self.assertEqual(sent.get_header('Authorization'), 'Basic c2FtOnNlY3JldC1hcHAtcGFzc3dvcmQ=')
+            opener.return_value.open.side_effect = service.urllib.error.HTTPError(source['url'], 401, 'secret-app-password', {}, None)
+            with self.assertRaisesRegex(ical.CalendarError, 'app password') as raised: service.fetch(source)
+        self.assertNotIn('secret-app-password', str(raised.exception))
+
     def test_http_errors_do_not_echo_bearer_url(self):
         error = service.urllib.error.HTTPError(self.request['url'], 403, 'private-fixture', {}, None)
         with patch.object(service.urllib.request, 'build_opener') as opener:

@@ -131,7 +131,7 @@ ColumnLayout {
     GlowText {
         visible: root.agenda.length === 0 && !CalendarFeeds.busy
         Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.small; color: Theme.strataMuted
-        text: !CalendarFeeds.configured ? "Connect Google or Proton to see your events here." : "No saved events for this day."
+        text: !CalendarFeeds.configured ? "Connect Google, Proton or Nextcloud to see your events here." : "No saved events for this day."
     }
     Repeater {
         model: root.agenda
