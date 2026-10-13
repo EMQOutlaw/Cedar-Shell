@@ -41,11 +41,14 @@ def keyboard(paths):
     return result
 
 def watch():
-    previous=None;tick=0;recordings=[];paths={}
+    previous=None;tick=0;recordings=[];paths={};parent=os.getppid()
     # Poll LEDs once per second when present. Without LED paths, sleep
     # until the next recorder scan instead; rediscover hotplugged LEDs every
     # thirty seconds in either case.
     while True:
+        # Output only flows on change, so a shell that died without closing
+        # us never breaks the pipe. Being reparented means it is gone.
+        if os.getppid()!=parent:return
         if tick%30==0:paths={k:list(LEDS.glob('*::'+k+'/brightness')) for k in ('capslock','numlock')}
         if tick%3==0:
             # /proc uptime has limited precision; retain the first observed

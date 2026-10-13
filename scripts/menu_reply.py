@@ -43,11 +43,15 @@ def check_path(value):
 
 
 def write_selection(path, selection):
-    fd = os.open(path, os.O_WRONLY | os.O_TRUNC | os.O_NOFOLLOW | os.O_CLOEXEC)
+    # Truncate only after the checks pass, so a refused file keeps its bytes;
+    # O_NONBLOCK keeps a FIFO from parking the helper until its timeout.
+    fd = os.open(path, os.O_WRONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
     try:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
             raise ValueError('Selection file is not a regular file owned by you.')
+        os.set_blocking(fd, True)
+        os.ftruncate(fd, 0)
         os.write(fd, (selection + '\n').encode())
     finally:
         os.close(fd)

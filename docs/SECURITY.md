@@ -35,8 +35,9 @@ second `mktemp` name to serve as a done marker, and send both paths with the
 prompt. The paths therefore come from the IPC caller. `scripts/menu_reply.py`
 is the only writer and enforces: absolute paths inside a temporary directory,
 an existing selection file that is a regular file owned by the user, opened
-without following symlinks, and a done marker created with `O_EXCL`. No shell
-string is built from either path. Replies are queued in order so a prompt that
+without following symlinks or blocking and truncated only after those checks,
+and a done marker created with `O_EXCL`. No shell string is built from either
+path. Replies are queued in order so a prompt that
 is answered while a previous reply is still being written is never lost.
 
 ## Subprocesses

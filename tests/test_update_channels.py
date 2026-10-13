@@ -193,6 +193,22 @@ class ChannelTests(unittest.TestCase):
                 self.updater().run()
         self.assertEqual(stopped.exception.code, 'busy')
 
+    def test_superseded_snapshots_are_pruned_after_a_day(self):
+        first = self.updater('development').run()
+        old = Path(first['source'])
+        self.advance('newer')
+        fresh = Path(self.updater('development').run()['source'])
+        # A snapshot another installer window may still hold is kept for a day.
+        self.assertTrue(old.is_dir())
+        day_ago = os.path.getmtime(old.with_name(old.name + '.json')) - update.SNAPSHOT_RETENTION - 60
+        os.utime(old.with_name(old.name + '.json'), (day_ago, day_ago))
+        stranger = old.parent / 'notes.txt'; stranger.write_text('not ours')
+        self.advance('newest')
+        newest = Path(self.updater('development').run()['source'])
+        self.assertFalse(old.exists())
+        self.assertFalse(old.with_name(old.name + '.json').exists())
+        self.assertTrue(fresh.is_dir() and newest.is_dir() and stranger.is_file())
+
     def test_snapshot_tamper_blocks_reuse_and_handoff(self):
         updater = self.updater('development')
         result = updater.run()

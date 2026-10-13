@@ -143,6 +143,8 @@ PanelWindow {
     }
     Connections { target: ShellState; function onLockedChanged() { if (ShellState.locked) { closeDelay.stop(); root.mapped = false; } } }
     onWidthChanged: reaim()
+    onHeightChanged: reaim()
+    onBarJoinChanged: reaim()
 
     // ---- the drop ----------------------------------------------------------
     Item {

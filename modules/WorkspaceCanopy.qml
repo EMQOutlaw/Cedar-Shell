@@ -136,6 +136,9 @@ ColumnLayout {
             line: tile.current; lineColor: Theme.green; lineFraction: .5
             // The empty tile is a suggestion: dashed inner outline.
             Canvas { visible: tile.empty; anchors.fill: parent; anchors.margins: 10; onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
+                // Canvas paint handlers do not track theme dependencies.
+                readonly property var paintPalette: [Theme.teal]
+                onPaintPaletteChanged: requestPaint()
                 onPaint: { const c = getContext("2d"); c.reset(); c.strokeStyle = Qt.alpha(Theme.teal, .25); c.lineWidth = 1; c.setLineDash([4, 4]); c.strokeRect(.5, .5, width - 1, height - 1); } }
             GlowText { visible: tile.empty || !tile.toplevels.length; anchors.centerIn: parent; text: tile.empty ? "EMPTY" : "NO WINDOWS"; font.pixelSize: 10; font.letterSpacing: 1.6; color: Theme.muted }
             // Windows where they sit on the monitor, scaled into the tile.
@@ -154,8 +157,10 @@ ColumnLayout {
                         readonly property var size: ipc.size || [0, 0]
                         readonly property string address: modelData.address || ipc.address || ""
                         readonly property string klass: ipc["class"] || ipc.initialClass || ""
-                        x: Math.round(((at[0] || 0) - (tile.monitor ? tile.monitor.x : 0)) * stage.sx)
-                        y: Math.round(((at[1] || 0) - (tile.monitor ? tile.monitor.y : 0)) * stage.sy)
+                        readonly property real homeX: Math.round(((at[0] || 0) - (tile.monitor ? tile.monitor.x : 0)) * stage.sx)
+                        readonly property real homeY: Math.round(((at[1] || 0) - (tile.monitor ? tile.monitor.y : 0)) * stage.sy)
+                        x: homeX
+                        y: homeY
                         width: Math.max(8, Math.round((size[0] || 0) * stage.sx))
                         height: Math.max(8, Math.round((size[1] || 0) * stage.sy))
                         z: modelData.activated ? 2 : 1
@@ -164,6 +169,14 @@ ColumnLayout {
                         Drag.keys: ["cedar-window"]
                         // Attached Drag state is only reachable from the item itself.
                         function finishDrag() { const target = Drag.target; Drag.drop(); return target; }
+                        // MouseArea dragging writes x/y and removes their bindings.
+                        // Always return ownership to compositor geometry, including
+                        // an ignored drop or a canceled pointer grab.
+                        function restorePosition() {
+                            x = Qt.binding(() => win.homeX);
+                            y = Qt.binding(() => win.homeY);
+                        }
+                        function cancelDrag() { Drag.cancel(); restorePosition(); }
                         Rectangle { anchors.fill: parent; radius: 3; color: Qt.alpha(Theme.background, .9); border.width: modelData.activated ? 1.5 : 1; border.color: modelData.activated ? Theme.green : Qt.alpha(Theme.teal, .35) }
                         // The thumbnail: captured once per revision, never live. A refused or absent capture shows the class instead.
                         ScreencopyView {
@@ -193,7 +206,8 @@ ColumnLayout {
                             ToolTip.visible: containsMouse && !drag.active && (win.modelData.title || "") !== ""
                             ToolTip.text: win.modelData.title || ""
                             ToolTip.delay: 500
-                            onReleased: { const ox = win.x, oy = win.y; const target = win.finishDrag(); if (target && target.workspaceId !== undefined && target.workspaceId !== (tile.empty ? -1 : tile.workspace.id)) root.moveWindow(win.address, target.workspaceId); win.x = ox; win.y = oy; }
+                            onReleased: { const target = win.finishDrag(); if (target && target.workspaceId !== undefined && target.workspaceId !== (tile.empty ? -1 : tile.workspace.id)) root.moveWindow(win.address, target.workspaceId); win.restorePosition(); }
+                            onCanceled: win.cancelDrag()
                             onClicked: if (!tile.empty) root.switchTo(tile.workspace.id)
                         }
                     }

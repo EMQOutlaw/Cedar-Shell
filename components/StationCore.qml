@@ -29,6 +29,9 @@ Item {
         }
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // Canvas paint handlers do not track theme dependencies.
+        readonly property var paintPalette: [Theme.strataAccent]
+        onPaintPaletteChanged: requestPaint()
         onPaint: {
             const c = getContext("2d"); c.reset();
             const r = Math.min(width,height)/2;
@@ -43,6 +46,9 @@ Item {
         anchors.fill: parent
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // Canvas paint handlers do not track theme dependencies.
+        readonly property var paintPalette: [Theme.strataAccent]
+        onPaintPaletteChanged: requestPaint()
         onPaint: {
             const c = getContext("2d"); c.reset();
             const x = width / 2, y = height / 2, r = Math.min(x, y) - 12;
@@ -65,6 +71,9 @@ Item {
         anchors.fill: parent
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // Canvas paint handlers do not track theme dependencies.
+        readonly property var paintPalette: [Theme.strataAccent]
+        onPaintPaletteChanged: requestPaint()
         onPaint: {
             const c = getContext("2d"); c.reset();
             const x = width/2, y = height/2, r = Math.min(x,y)-12;

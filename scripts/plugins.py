@@ -16,6 +16,8 @@ Commands: list | rows [enable|disable|clone|remove|all] | enable <id> [placement
 """
 import json
 import os
+import stat
+import tempfile
 from pathlib import Path
 import sys
 
@@ -258,10 +260,22 @@ def set_enabled(plugin_id, value, placement=None, plugins=None, config=None):
 
 
 def save_config(config, path=USER_CONFIG):
+    # Write through a dotfile manager's link instead of replacing it, keep the
+    # file's mode, and give each writer its own temporary so two toggles
+    # cannot rename each other's half-written file into place.
+    path = path.resolve() if path.is_symlink() else path
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + '.cedar-tmp')
-    tmp.write_text(json.dumps(config, indent=2, sort_keys=True) + '\n')
-    tmp.replace(path)
+    try: mode = stat.S_IMODE(path.stat().st_mode)
+    except FileNotFoundError: mode = 0o644
+    fd, tmp = tempfile.mkstemp(prefix='.' + path.name + '.', suffix='.cedar-tmp', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            stream.write(json.dumps(config, indent=2, sort_keys=True) + '\n')
+            stream.flush(); os.fsync(stream.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp): os.unlink(tmp)
 
 
 def rows(filter_name='all'):

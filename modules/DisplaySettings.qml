@@ -158,6 +158,9 @@ ColumnLayout {
         Canvas {
             anchors.fill: parent
             onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
+            // Canvas paint handlers do not track theme dependencies.
+            readonly property var paintPalette: [Theme.grid]
+            onPaintPaletteChanged: requestPaint()
             onPaint: {
                 const ctx = getContext("2d"); ctx.reset();
                 ctx.strokeStyle = Theme.grid; ctx.lineWidth = 1;
