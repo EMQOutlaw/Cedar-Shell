@@ -12,9 +12,9 @@ local function bind(key, description, command, flags)
   o.bind(key, description, command, flags)
 end
 bind("SUPER + ALT + F", "CEDAR HUD", "qs -c cedar ipc call hud toggle")
--- Go menu: Omarchy's menu tree rendered by CEDAR, with apps merged in.
-bind("SUPER + SPACE", "CEDAR Go menu", "qs -c cedar ipc call menu toggle root")
-bind("SUPER + SHIFT + code:201", "CEDAR Go menu", "qs -c cedar ipc call menu toggle root")
+-- Applications menu: Omarchy's menu tree rendered by CEDAR, with apps merged in.
+bind("SUPER + SPACE", "CEDAR applications menu", "qs -c cedar ipc call menu toggle root")
+bind("SUPER + SHIFT + code:201", "CEDAR applications menu", "qs -c cedar ipc call menu toggle root")
 bind("SUPER + ALT + SPACE", "CEDAR apps", "qs -c cedar ipc call menu toggle apps")
 bind("SUPER + CTRL + C", "CEDAR capture menu", "qs -c cedar ipc call menu toggle capture")
 bind("SUPER + CTRL + O", "CEDAR toggle menu", "qs -c cedar ipc call menu toggle toggle")

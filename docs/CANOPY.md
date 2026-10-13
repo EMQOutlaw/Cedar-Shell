@@ -93,7 +93,7 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   settings stay the profile's (nmtui or the provider's app). Bluetooth rows
   show BlueZ's state or the action in flight for that device (Pairing…,
   Connecting…, Disconnecting…), the battery where reported, and trust.
-- Workspaces (Super+Tab, Go › Workspaces, `canopy flip workspaces`): one column
+- Workspaces (Super+Tab, Applications › CEDAR › Canopy › Workspaces, `canopy flip workspaces`): one column
   per monitor, one chamfered tile per workspace in the monitor's shape with
   each window drawn where it sits, a "new" tile per monitor, and special
   workspaces named but not drawn. Thumbnails come from the compositor's
@@ -144,7 +144,7 @@ pretend sliders. Graphical/parametric EQ, preamp, device EQ presets, suppression
 gate/compressor and automatic EQ scene/profile coupling still need an actual DSP
 adapter. Installing EasyEffects alone does not implement that adapter.
 
-Game FPS/1% lows, VRR measurement, calendar accounts, official severe-weather
+Game FPS/1% lows, VRR measurement, calendar OAuth/event editing, official severe-weather
 alerts, kernel-reboot observations and automatic desktop-profile/audio-scene
 coupling need reliable providers. No sample readings are displayed as live data.
 Weather forecasts are model data, not an official severe-weather alert feed.
@@ -169,3 +169,6 @@ Field Station owns performance monitoring: Overview and Tasks & performance
 share the Strata palette with Signals and Quick Controls. The retired System
 drop redirects to Field Station’s task page, including its existing IPC and
 menu entry. See [Station](STATION.md) for the task monitor’s data sources.
+
+Calendar now supports opt-in read-only Google, Proton and Nextcloud subscription links,
+local ICS imports, day selection and a cached agenda. See [CALENDAR.md](CALENDAR.md).

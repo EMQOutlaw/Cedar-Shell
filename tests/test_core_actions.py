@@ -77,6 +77,15 @@ class ProbeCadence(unittest.TestCase):
         self.assertEqual(root.glob.call_count, 4)  # Both LEDs at 0 and 30 seconds.
         self.assertEqual(len(output.splitlines()), 1)
 
+    def test_probe_exits_when_the_shell_that_started_it_is_gone(self):
+        # Output only flows on change, so a killed shell never breaks the pipe;
+        # the probe must notice the reparenting itself rather than poll forever.
+        with patch.object(probe, 'LEDS') as root, patch.object(probe, 'recording', return_value=[]), patch.object(probe, 'keyboard', return_value={}), \
+             patch.object(probe.os, 'getppid', side_effect=[100, 100, 100, 1]), patch.object(probe.time, 'sleep') as sleep, patch('sys.stdout', new_callable=io.StringIO):
+            root.glob.return_value = []
+            probe.watch()
+        self.assertEqual(sleep.call_count, 2)
+
     def test_leds_keep_one_second_responsiveness(self):
         root, recording, sleep, output = self.run_probe([Path('/unused/brightness')])
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [1] * 11)

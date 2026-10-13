@@ -47,7 +47,7 @@ PanelWindow {
 
     // ---- targets -----------------------------------------------------------
     function topicWidth(topic) {
-        const w = Canopy.peeking ? 360 : topic === "workspaces" ? 1040 : topic === "station" ? 760 : topic === "go" ? 480 : topic === "keybinds" ? 700 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "startup" ? 620 : topic === "quick" ? 560 : 520;
+        const w = Canopy.peeking ? 360 : topic === "workspaces" ? 1040 : topic === "station" ? 760 : topic === "go" ? (Go.dmenuActive && Go.dmenuWidth ? Math.max(480, Math.min(720, Math.round(Go.dmenuWidth * 1.15))) : 480) : topic === "keybinds" ? 700 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "startup" ? 620 : topic === "quick" ? 560 : 520;
         return Math.min(width - 24, w);
     }
     function topicHeight(topic) {
@@ -143,6 +143,8 @@ PanelWindow {
     }
     Connections { target: ShellState; function onLockedChanged() { if (ShellState.locked) { closeDelay.stop(); root.mapped = false; } } }
     onWidthChanged: reaim()
+    onHeightChanged: reaim()
+    onBarJoinChanged: reaim()
 
     // ---- the drop ----------------------------------------------------------
     Item {

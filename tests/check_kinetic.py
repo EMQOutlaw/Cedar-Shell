@@ -64,6 +64,23 @@ ShellRoot {
                 window.check(!resolveLabel.transitioning && resolveLabel.shown === "", "Emptying a label is static");
                 break;
             case 3:
+                resolveLabel.text = "BALANCED";
+                resolveLabel.text = "GAMING";
+                window.check(resolveLabel.transitioning, "A visible label still animates");
+                resolveLabel.parent.visible = false;
+                window.check(!resolveLabel.transitioning && resolveLabel.shown === "GAMING", "Hiding an ancestor releases the transition and retains the current text");
+                resolveLabel.parent.visible = true;
+                window.check(!resolveLabel.transitioning, "Showing the label does not replay an old transition");
+                resolveLabel.text = "BALANCED";
+                resolveLabel.animateChanges = false;
+                window.check(!resolveLabel.transitioning, "Disabling Kinetic Type releases an in-flight transition");
+                resolveLabel.animateChanges = true;
+                resolveLabel.text = "GAMING";
+                Theme.reducedMotion = true;
+                window.check(!resolveLabel.transitioning, "Reduced Motion releases an in-flight transition");
+                Theme.reducedMotion = false;
+                break;
+            case 4:
                 console.log("PASS: Kinetic Type resolves, relays, falls back, compresses, rate-limits and rests");
                 Qt.quit();
             }

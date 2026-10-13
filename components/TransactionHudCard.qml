@@ -90,6 +90,9 @@ Item {
         Canvas {
             anchors.fill: parent; anchors.margins: 10
             onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
+            // Canvas paint handlers do not track theme dependencies.
+            readonly property var paintPalette: [Theme.grid]
+            onPaintPaletteChanged: requestPaint()
             onPaint: {
                 const c = getContext("2d"); c.reset(); c.strokeStyle = Theme.grid; c.lineWidth = 1;
                 for (let y = 6; y < height; y += 6) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(width, y + .5); c.stroke(); }

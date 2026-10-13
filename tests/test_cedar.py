@@ -265,5 +265,16 @@ class Plugins(unittest.TestCase):
             self.assertEqual(cli('set', 'omarchy.spacer', 'false').stdout.strip(), 'ok')
             self.assertEqual(json.loads((config_home/'omarchy/shell.json').read_text())['bar']['layout']['right'], [])
             self.assertEqual(cli('toggle', 'omarchy.bar').returncode, 1)
+    def test_save_keeps_a_dotfile_link_and_its_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp); dotfiles = tmp/'dotfiles/shell.json'; dotfiles.parent.mkdir()
+            dotfiles.write_text('{}'); dotfiles.chmod(0o640)
+            link = tmp/'config/omarchy/shell.json'; link.parent.mkdir(parents=True); link.symlink_to(dotfiles)
+            plugins.save_config({'version': 1}, link)
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(json.loads(dotfiles.read_text()), {'version': 1})
+            self.assertEqual(dotfiles.stat().st_mode & 0o777, 0o640)
+            self.assertEqual(sorted(p.name for p in dotfiles.parent.iterdir()), ['shell.json'])
+            self.assertEqual(sorted(p.name for p in link.parent.iterdir()), ['shell.json'])
 
 if __name__ == '__main__': unittest.main()

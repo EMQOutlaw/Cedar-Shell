@@ -10,7 +10,6 @@ Hud 1.0 Hud.qml
 InputSettings 1.0 InputSettings.qml
 KeybindSettings 1.0 KeybindSettings.qml
 LockScreen 1.0 LockScreen.qml
-Menu 1.0 Menu.qml
 NotificationServer 1.0 NotificationServer.qml
 Notifications 1.0 Notifications.qml
 Osd 1.0 Osd.qml
@@ -74,8 +73,7 @@ StationApp 1.0 StationApp.qml
 StationPages 1.0 StationPages.qml
 CompatibilityPage 1.0 CompatibilityPage.qml
 WorkspaceCanopy 1.0 WorkspaceCanopy.qml
-RelayApp 1.0 RelayApp.qml
-RelayPages 1.0 RelayPages.qml
 StationTasks 1.0 StationTasks.qml
 
 ApplicationThemingSettings 1.0 ApplicationThemingSettings.qml
+CalendarConnections 1.0 CalendarConnections.qml

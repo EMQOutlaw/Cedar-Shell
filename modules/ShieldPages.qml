@@ -574,7 +574,7 @@ FocusScope {
         GlowText { text: "LOCK AFTER"; font.pixelSize: 10; font.letterSpacing: 1.4; color: Theme.muted }
         ChoiceChips { options: [{ value: 0, label: "Never" }, { value: 300, label: "5 min" }, { value: 600, label: "10 min" }, { value: 1800, label: "30 min" }]; current: Config.idleLockSeconds; accessibleLabel: "Lock after inactivity"; onChosen: value => Config.set("idleLockSeconds", value) }
         GlowText { visible: ![0, 300, 600, 1800].includes(Config.idleLockSeconds); text: "Currently " + Math.round(Config.idleLockSeconds / 60) + " min, set in Settings › Power."; font.pixelSize: Theme.small; color: Theme.muted } } }
-    Component { id: localControls; StationToggle { label: "Local-only mode"; description: "No weather, location or artwork requests leave this computer."; checked: Config.saved.localOnly; onToggled: Config.set("localOnly", !Config.saved.localOnly) } }
+    Component { id: localControls; StationToggle { label: "Local-only mode"; description: "No weather, location, calendar or artwork requests leave this computer."; checked: Config.saved.localOnly; onToggled: Config.set("localOnly", !Config.saved.localOnly) } }
     Component { id: clipboardControls; StationToggle { label: "Keep clipboard history"; description: "Off means nothing you copy is kept by CEDAR."; checked: Config.saved.clipboardHistory; onToggled: Config.set("clipboardHistory", !Config.saved.clipboardHistory) } }
     Component { id: trailsControls; StationToggle { label: "Record activity trails"; description: "Off means nothing you open is recorded."; checked: Config.saved.forestTrails; onToggled: Config.set("forestTrails", !Config.saved.forestTrails) } }
 

@@ -86,16 +86,6 @@
     "label": "Settings",
     "action": "cedar:settings"
   },
-  "cedar.ai": {
-    "label": "CEDAR AI",
-    "action": "cedar:ai",
-    "aliases": [
-      "ai",
-      "claude",
-      "codex",
-      "agents"
-    ]
-  },
   "cedar.wallpapers": {
     "label": "Wallpapers",
     "action": "cedar:wallpapers"

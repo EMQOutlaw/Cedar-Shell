@@ -128,7 +128,7 @@ class Backup:
         for entry in self.manifest['files']:
             target = entry['path']
             if entry['before']['type'] == 'file' and entry['copy']:
-                lines.append('mkdir -p "$(dirname -- ' + _sh(target) + ')" && cp -p "$here/' + entry['copy'] + '" ' + _sh(target))
+                lines.append('mkdir -p "$(dirname -- ' + _sh(target) + ')" && cp -p "$here"/' + _sh(entry['copy']) + ' ' + _sh(target))
             elif entry['before']['type'] == 'absent':
                 lines.append('rm -f ' + _sh(target) + '  # did not exist before CEDAR')
         for unit in self.manifest['servicesDisabled']:

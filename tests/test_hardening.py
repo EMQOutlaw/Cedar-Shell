@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('menu_reply', ROOT/'scripts/menu_reply.py')
@@ -46,6 +47,21 @@ class MenuReply(unittest.TestCase):
         with self.assertRaises(OSError):
             reply.reply({'selectionFile': str(link), 'doneFile': str(self.done), 'selection': 'x'})
         self.assertEqual(target.read_text(), 'keep')
+        self.assertFalse(self.done.exists())
+
+    def test_refused_selection_file_is_not_truncated_first(self):
+        self.selection.write_text('another user\'s data')
+        with patch.object(reply.os, 'getuid', return_value=os.getuid() + 1):
+            with self.assertRaises(ValueError):
+                reply.reply({'selectionFile': str(self.selection), 'doneFile': str(self.done), 'selection': 'x'})
+        self.assertEqual(self.selection.read_text(), 'another user\'s data')
+        self.assertFalse(self.done.exists())
+
+    def test_fifo_selection_is_refused_without_blocking(self):
+        fifo = self.base/'fifo'; os.mkfifo(fifo)
+        request = json.dumps({'selectionFile': str(fifo), 'doneFile': str(self.done), 'selection': 'x'})
+        result = subprocess.run([sys.executable, str(ROOT/'scripts/menu_reply.py')], input=request+'\n', capture_output=True, text=True, timeout=5)
+        self.assertFalse(json.loads(result.stdout)['ok'])
         self.assertFalse(self.done.exists())
 
     def test_missing_selection_file_is_refused(self):

@@ -11,9 +11,15 @@ Rectangle {
     implicitHeight: 76
     color: Theme.transparent
     readonly property bool holding: active && visible && !Theme.reducedMotion && !Config.testMode
-    onHoldingChanged: holding ? Pulse.hold() : Pulse.release()
-    Component.onCompleted: if (holding) Pulse.hold()
-    Component.onDestruction: if (holding) Pulse.release()
+    property bool feedHeld: false
+    function syncFeed() {
+        if (feedHeld === holding) return;
+        feedHeld = holding;
+        if (feedHeld) Pulse.hold(); else Pulse.release();
+    }
+    onHoldingChanged: syncFeed()
+    Component.onCompleted: syncFeed()
+    Component.onDestruction: if (feedHeld) Pulse.release()
     Row {
         anchors.fill: parent; spacing: 3
         Repeater {

@@ -12,6 +12,9 @@ Item {
         anchors.fill: parent
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // Canvas paint handlers do not track theme dependencies.
+        readonly property var paintPalette: [Theme.green]
+        onPaintPaletteChanged: requestPaint()
         onPaint: {
             const c = getContext("2d"); c.reset(); c.lineWidth = 1;
             for (let i = 0; i < 14; i++) {

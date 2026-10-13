@@ -37,4 +37,4 @@ with log_path.open('w') as log:
 text = log_path.read_text()
 print(text)
 if any(s in text for s in ['ERROR','WARN scene','TypeError','ReferenceError','Binding loop']): raise SystemExit(1)
-print('HUD, Go menu, prompt, settings, history, power, pickers and volume OSD smoke test passed.')
+print('HUD, Applications menu, prompt, settings, history, power, pickers and volume OSD smoke test passed.')

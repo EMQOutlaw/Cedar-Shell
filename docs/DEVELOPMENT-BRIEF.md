@@ -67,7 +67,7 @@ Linux / Wayland / PipeWire / systemd → Hyprland → Quickshell → CEDAR.
 - `services/DesktopSettings.qml`: compositor settings request lifecycle through `scripts/desktop.py`.
 - `services/SystemStats.qml`, `Weather.qml`, `Brightness.qml`: real system/weather readings and backlight control.
 - `services/NoticeStore.qml`: bounded notification history and live objects; DND filtering preserves critical alerts.
-- `services/Go.qml` and `components/MenuModel.js`: Omarchy menu providers plus applications, search, prompts, and shell compatibility shim.
+- `services/Go.qml` and `components/MenuModel.js`: the menu tree, Omarchy menu providers, search, prompts and the shell compatibility shim; `modules/GoCanopy.qml` is the Applications drop that shows all of it.
 
 Reusable station components include `StationButton`, `StationField`, `StationSlider`, `StationToggle`, `StationCombo`, `StationCore`, `CedarAtmosphere`, and `ActivityTrace`. Prefer these over another control family.
 

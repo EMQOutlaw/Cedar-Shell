@@ -5,7 +5,7 @@ or Custom. A profile is a set of typed operations applied through the
 providers CEDAR already drives, verified by reading each provider back, and
 restored exactly when you leave. It is a transaction, not a switch.
 
-Open it from the Profile tile in Quick Controls, Go › Profiles, Super+Shift+P,
+Open it from the Profile tile in Quick Controls, Applications › CEDAR › Profiles, Super+Shift+P,
 `cedar profiles`, or `qs -c cedar ipc call profiles open`. Activate one with
 `cedar profiles work`, `qs -c cedar ipc call profiles activate work`, or
 Ctrl+1…6 inside the window. The Core pill carries a persistent row for the

@@ -216,6 +216,9 @@ Rectangle {
             scale: .55 + .45 * bloom
             onWidthChanged: requestPaint()
             onHeightChanged: requestPaint()
+            // Canvas paint handlers do not track theme dependencies.
+            readonly property var paintPalette: [Theme.green]
+            onPaintPaletteChanged: requestPaint()
             onPaint: {
                 const c = getContext("2d"); c.reset();
                 const r = width / 2, g = c.createRadialGradient(r, r, 0, r, r, r);

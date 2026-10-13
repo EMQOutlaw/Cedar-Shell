@@ -85,7 +85,7 @@ refused fast-forward; resolve that refusal without deleting your work.
 
 ## What the candidates added
 
-- **0.1.0-dev.11** introduced the launcher and lockscreen choices: CEDAR Go
+- **0.1.0-dev.11** introduced the launcher and lockscreen choices: CEDAR Applications (then called CEDAR Go)
   for the application shortcut and, on native Noctalia 5.2.1, Trailwatch as
   the locker. Trailwatch first checks your password in a local window, then
   opens one real lockscreen test; unlock normally to continue. Your previous

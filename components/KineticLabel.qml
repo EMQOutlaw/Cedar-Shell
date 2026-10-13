@@ -36,6 +36,11 @@ Item {
     property alias renderType: label.renderType
     readonly property string shown: label.text
     readonly property bool transitioning: overlay.active
+    // A transition owns temporary labels and animations. Release them as soon
+    // as the label cannot show motion; the static label already has the latest
+    // text, so becoming visible again must not replay the interrupted change.
+    readonly property bool motionAllowed: animateChanges && visible && width > 0 && !Theme.reducedMotion
+    onMotionAllowedChanged: if (!motionAllowed) overlay.active = false
     // Compression is computed, not bound: measuring sets the metrics' text,
     // which would loop a binding. It reruns when the inputs change.
     property string fitted: ""
@@ -69,7 +74,7 @@ Item {
         if (from === "" || next === "") { overlay.active = false; label.text = next; return; }
         const gated = minimumInterval > 0 && !Kinetic.allowed(lastChangeAt, now, minimumInterval);
         lastChangeAt = now;
-        const style = !animateChanges || gated || !root.visible || root.width <= 0 ? "none" : Kinetic.choose(transitionStyle, from, next, maximumAnimatedLength, Theme.reducedMotion || !VisualQuality.decorative && VisualQuality.gaming);
+        const style = !motionAllowed || gated ? "none" : Kinetic.choose(transitionStyle, from, next, maximumAnimatedLength, Theme.reducedMotion || !VisualQuality.decorative && VisualQuality.gaming);
         if (style === "none") { overlay.active = false; label.text = next; return; }
         overlay.from = from; overlay.to = next; overlay.style = style;
         label.text = next;                 // layout takes the new width at once; the overlay draws the motion

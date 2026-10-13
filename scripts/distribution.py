@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CEDAR distribution transactions. Stdlib recovery works without Qt or a display."""
-import argparse, contextlib, fcntl, hashlib, json, os, shutil, signal, stat, subprocess, sys, tarfile, tempfile, time, uuid
+import argparse, contextlib, fcntl, gzip, hashlib, json, os, shutil, signal, stat, subprocess, sys, tarfile, tempfile, time, uuid
 from pathlib import Path
 # The session helper imports this module. Keep one exception class when this
 # file is the installed executable as well as when it is imported by tests.
@@ -430,8 +430,7 @@ def install(root,approved=False,plan_only=False):
         portable_recovery=[paths()['data']/('recovery/'+name) for name in ('portable_session.py','portable_providers.py','portable_controls.py','adoption_plan.py','startup_graph.py')]
         # First-party application entries: a launcher entry and icon for CEDAR Shield, journaled like every other installed file.
         share=paths()['data'].parent
-        launcher_files={share/'applications/cedar-shield.desktop':(root/'data/applications/cedar-shield.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-shield.svg':(root/'data/icons/cedar-shield.svg',0o644),
-                        share/'applications/cedar-ai.desktop':(root/'data/applications/cedar-ai.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-ai.svg':(root/'data/icons/cedar-ai.svg',0o644)}
+        launcher_files={share/'applications/cedar-shield.desktop':(root/'data/applications/cedar-shield.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-shield.svg':(root/'data/icons/cedar-shield.svg',0o644)}
         owner=command_owner(binary)
         if owner=='other':raise Refused('The cedar command at '+str(binary)+' belongs to something other than CEDAR, so it is left alone. Move it aside (for example: mv '+__import__('shlex').quote(str(binary))+' '+__import__('shlex').quote(str(binary)+'.other')+'), then run the installer again.')
         if owner=='source':print('Replacing the cedar command from the local-source registration ('+(os.readlink(binary) if binary.is_symlink() else str(binary))+'); the journal puts it back on uninstall.')
@@ -594,23 +593,64 @@ def doctor(root):
         result['plugins'].append({'id':p['id'],'state':'Needs Setup' if missing or p.get('external') else 'Not Tested','reason':'Live services/hardware and lifecycle not validated' if not missing else 'Missing: '+', '.join(d['id'] for d in missing)})
     print(json.dumps(result,indent=2));return result
 
+ARCHIVE_MEMBERS=10000
+ARCHIVE_PAYLOAD=512*1024*1024
+ARCHIVE_STREAM=ARCHIVE_PAYLOAD+64*1024*1024  # payload plus tar headers and padding
+
+class _BoundedStream:
+    """Refuse a gzip stream as soon as decompression passes the budget, so
+    headers alone cannot make tarfile inflate an unbounded archive."""
+    def __init__(self,raw):self.raw=raw
+    def _check(self,position):
+        if position>ARCHIVE_STREAM:raise Refused('Release archive exceeds limits.')
+        return position
+    def read(self,size=-1):
+        room=ARCHIVE_STREAM+1-self.raw.tell()
+        data=self.raw.read(room if size is None or size<0 or size>room else size)
+        self._check(self.raw.tell());return data
+    def seek(self,offset,whence=0):
+        if whence==1:offset+=self.raw.tell();whence=0
+        if whence==0:self._check(offset)
+        return self._check(self.raw.seek(offset,whence))
+    def tell(self):return self.raw.tell()
+
 def safe_extract(archive,destination):
-    with tarfile.open(archive,'r:gz') as tar:
-        members=tar.getmembers();total=0;seen=set()
-        for member in members:
+    with gzip.open(archive,'rb') as raw,tarfile.open(fileobj=_BoundedStream(raw),mode='r:') as tar:
+        members=[];total=0;seen=set()
+        # Iterate lazily: limits apply before the next header is even read.
+        for member in tar:
+            if len(members)>=ARCHIVE_MEMBERS:raise Refused('Release archive exceeds limits.')
             path=Path(member.name)
             if path.is_absolute() or '..' in path.parts or member.name in seen or not (member.isdir() or member.isfile()):raise Refused('Unsafe release archive entry.')
             seen.add(member.name);total+=member.size
-            if total>512*1024*1024 or len(members)>10000:raise Refused('Release archive exceeds limits.')
-        tar.extractall(destination,filter='data')
+            if total>ARCHIVE_PAYLOAD:raise Refused('Release archive exceeds limits.')
+            members.append(member)
+        tar.extractall(destination,members=members,filter='data')
+
+def private_snapshot(source,directory):
+    """Copy a caller-selected file into updater-owned storage; verification and
+    extraction both read this copy, never the original pathname again."""
+    target=Path(directory).resolve()/'release.tar.gz'
+    try:
+        fd=os.open(source,os.O_RDONLY|os.O_NONBLOCK)
+    except OSError as error:raise Refused('Cannot read the selected archive: '+str(error))
+    with os.fdopen(fd,'rb') as src:
+        info=os.fstat(src.fileno())
+        if not stat.S_ISREG(info.st_mode):raise Refused('The selected archive is not a regular file.')
+        if info.st_size>ARCHIVE_STREAM:raise Refused('Release archive exceeds limits.')
+        with open(os.open(target,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as dst:shutil.copyfileobj(src,dst)
+    return target
 
 def update(archive,signature,key,approved=False):
     # No automatic download, trust-on-first-use or unsigned upgrade.
     if not all((archive,signature,key)):raise Refused('Usage: cedar update ARCHIVE --signature SIGNATURE --trusted-key PUBLIC_KEY. No publisher signing identity is configured yet.')
     if not shutil.which('openssl'):raise Refused('OpenSSL is required to verify the selected publisher key.')
-    command(['openssl','dgst','-sha256','-verify',str(key),'-signature',str(signature),str(archive)])
     with tempfile.TemporaryDirectory(prefix='cedar-update-') as temp:
-        safe_extract(archive,Path(temp));candidate=Path(temp)/'cedar-shell'
+        # Absolute paths cannot be read as OpenSSL options (./-help would be).
+        snapshot=private_snapshot(archive,temp);tree=Path(temp)/'tree';tree.mkdir(mode=0o700)
+        verified=command(['openssl','dgst','-sha256','-verify',str(Path(key).resolve()),'-signature',str(Path(signature).resolve()),str(snapshot)])
+        if 'Verified OK' not in verified:raise Refused('OpenSSL did not confirm the release signature.')
+        safe_extract(snapshot,tree);candidate=tree/'cedar-shell'
         # Caller selects an independently verified public key; checksum alone is insufficient.
         print('Signature verified against the explicitly selected key. Review release notes and new permissions before proceeding.')
         print((candidate/'CHANGELOG.md').read_text())
@@ -679,7 +719,7 @@ def main(argv=None):
         if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
         os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*argv[1:]])
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
-    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','ai','installer','compatibility','migrate','start','stop','restart','history'])
+    parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','installer','compatibility','migrate','start','stop','restart','history'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
     parser.add_argument('--plan',action='store_true');parser.add_argument('--approve-install-only',action='store_true')
     parser.add_argument('--approve-packages',action='store_true');parser.add_argument('--approve-system-upgrade',action='store_true')
@@ -687,7 +727,7 @@ def main(argv=None):
     parser.add_argument('--approve-uninstall',action='store_true');parser.add_argument('--signature',type=Path);parser.add_argument('--trusted-key',type=Path)
     parser.add_argument('--adapter', choices=['auto','hyprland','noctalia','omarchy'], default='auto')
     parser.add_argument('--approve-trial', action='store_true')
-    parser.add_argument('--cedar-launcher', action='store_true', help='Review and redirect application-launcher shortcuts to CEDAR Go.')
+    parser.add_argument('--cedar-launcher', action='store_true', help='Review and redirect application-launcher shortcuts to CEDAR Applications.')
     parser.add_argument('--trailwatch', action='store_true', help='Explicitly select Trailwatch, with local PAM and real secure-unlock tests before replacing the existing locker.')
     parser.add_argument('--suspend', action='store_true', help='With lock, suspend only after compositor lock coverage is confirmed.')
     parser.add_argument('--approve-omarchy-trial',action='store_true');parser.add_argument('--approve-login',action='store_true')
@@ -722,7 +762,6 @@ def main(argv=None):
     elif args.action=='ipc':os.execvp('qs',['qs',*shell_selector(),'ipc','call',*args.arguments])
     elif args.action=='shield':os.execvp('qs',['qs',*shell_selector(),'ipc','call','shield',*(['page',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='station':os.execvp('qs',['qs',*shell_selector(),'ipc','call','station',*(['page',args.arguments[0]] if args.arguments else ['open'])])
-    elif args.action=='ai':os.execvp('qs',['qs',*shell_selector(),'ipc','call','relay',*(['page',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='focus':os.execvp('qs',['qs',*shell_selector(),'ipc','call','focus',*(['start',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='profiles':os.execvp('qs',['qs',*shell_selector(),'ipc','call','profiles',*(['activate',args.arguments[0]] if args.arguments else ['open'])])
     else:

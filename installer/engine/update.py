@@ -228,6 +228,36 @@ def installed_channel(environ=None):
     return ''
 
 
+SNAPSHOT_RETENTION = 86400
+
+
+def prune_snapshots(parent, keep, now=None):
+    """Drop prepared snapshots other than `keep` that are over a day old.
+
+    Each is a full source tree (tens of MB) that the installed release already
+    copied, so without this every update adds another. A younger one may still
+    be held by an open installer window, which re-verifies its digest anyway.
+    Only `<commit>` directories and `<commit>.json` records are touched.
+    """
+    now = time.time() if now is None else now
+    parent = Path(parent)
+    commits = {name[:-5] if name.endswith('.json') else name for name in os.listdir(parent)}
+    for commit in commits:
+        if commit == keep or not re.fullmatch(r'[0-9a-f]{40,64}', commit):
+            continue
+        tree, record = parent / commit, parent / (commit + '.json')
+        try:
+            if tree.is_symlink() or record.is_symlink():
+                continue
+            if now - (record if record.exists() else tree).stat().st_mtime < SNAPSHOT_RETENTION:
+                continue
+            if tree.is_dir():
+                shutil.rmtree(tree)
+            record.unlink(missing_ok=True)
+        except OSError:
+            continue
+
+
 @contextlib.contextmanager
 def update_lock(state_dir):
     """Serialize managed fetches and installations across independent installer windows."""
@@ -573,6 +603,7 @@ class Updater:
                 if temporary.exists():
                     shutil.rmtree(temporary)
         self.result.update({'source': str(target), 'sourceDigest': record['sourceDigest'], 'version': self.version_of(target)})
+        prune_snapshots(parent, commit)
         op.detail = 'Prepared ' + self.branch + ' at ' + commit[:12] + '; installed copy unchanged'
 
     def channel_handoff(self, ctx, op):

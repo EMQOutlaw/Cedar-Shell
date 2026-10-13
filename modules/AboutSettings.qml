@@ -56,7 +56,7 @@ ColumnLayout {
     }
     SettingsSection {
         heading: "Credits and Licenses"
-        ReadingText { text: "Built with Qt, Quickshell, Hyprland, and Linux system services. The Go menu includes MIT-licensed Omarchy menu helpers; the required copyright and license notice is in licenses/Omarchy-MIT.txt. Weather data is provided by Open-Meteo. Fonts are discovered locally and are not bundled." }
+        ReadingText { text: "Built with Qt, Quickshell, Hyprland, and Linux system services. The Applications menu includes MIT-licensed Omarchy menu helpers; the required copyright and license notice is in licenses/Omarchy-MIT.txt. Weather data is provided by Open-Meteo. Fonts are discovered locally and are not bundled." }
         ReadingText { text: "Scripture uses the King James Version (KJV). Scripture attribution is separate from software licensing. Redistribution terms differ by jurisdiction; see docs/LICENSES.md. The inherited project did not declare a license for its original source; no new blanket license is asserted here."; color: Theme.muted }
     }
 }

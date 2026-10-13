@@ -408,8 +408,6 @@ def main(args):
         ipc('settings', 'show', args[1])
     elif name == 'shield':
         ipc('shield', 'open')
-    elif name == 'ai':
-        ipc('relay', 'page', args[1]) if len(args) == 2 else ipc('relay', 'open')
     elif name == 'station':
         ipc('station', 'page', args[1]) if len(args) == 2 else ipc('station', 'open')
     elif name == 'focus':

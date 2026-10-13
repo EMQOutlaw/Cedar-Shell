@@ -27,7 +27,6 @@ Every `qs ipc` target the shell exposes, and what it will refuse:
 | `lock` | `lock`, `testAuthentication` | Refused in test mode; the test window never requests a session lock. |
 | `shell` | `close`, `isLocked`, `sessionInfo`, `stop` | `stop` is refused while locked. |
 | `wallpapers`, `themes`, `control`, `hud`, `power`, `canopy`, `launcher`, `notifications`, `media` | toggles | All route through `ShellState`/`Canopy`, which refuse while locked. |
-| `relay` | `open`, `close`, `toggle`, `page`, `start`, `say`, `stop`, `status` | `start` and `say` are refused while locked and cap their text at 4000 characters; `start` is ignored while a session runs. The goal reaches `scripts/cedar_ai.py` as an argument and messages as JSON lines over the session's Unix socket (mode 0600 in a 0700 directory under `$XDG_RUNTIME_DIR/cedar-ai`), never a shell string; the session runs as a transient user unit of its own, and `kill` through the script sends SIGTERM only to the process named in `running.json`. The agents run with the access level in Settings (read, edit or full). |
 
 ## Prompt replies
 
@@ -36,8 +35,9 @@ second `mktemp` name to serve as a done marker, and send both paths with the
 prompt. The paths therefore come from the IPC caller. `scripts/menu_reply.py`
 is the only writer and enforces: absolute paths inside a temporary directory,
 an existing selection file that is a regular file owned by the user, opened
-without following symlinks, and a done marker created with `O_EXCL`. No shell
-string is built from either path. Replies are queued in order so a prompt that
+without following symlinks or blocking and truncated only after those checks,
+and a done marker created with `O_EXCL`. No shell string is built from either
+path. Replies are queued in order so a prompt that
 is answered while a previous reply is still being written is never lost.
 
 ## Subprocesses

@@ -2,7 +2,7 @@
 # CEDAR stand-in for omarchy-shell. Omarchy's helper scripts (menu select
 # prompts, plugin management, lock) talk to the Omarchy shell through this
 # command. While CEDAR is the selected theme that shell is stopped, so the
-# Go menu prepends this directory to PATH for the actions it launches and
+# Applications drop prepends this directory to PATH for the actions it launches and
 # answers the calls CEDAR can serve itself. Everything else goes to the real
 # omarchy-shell, which keeps its own quiet/failure behaviour.
 

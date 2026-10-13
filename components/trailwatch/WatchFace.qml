@@ -53,6 +53,9 @@ Item {
         anchors.fill: parent
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // Canvas paint handlers do not track theme dependencies.
+        readonly property var paintPalette: [Theme.amber, Theme.border, Theme.green, Theme.muted, Theme.reducedMotion, Theme.teal, Theme.white]
+        onPaintPaletteChanged: requestPaint()
         onPaint: {
             const c = getContext("2d");
             c.reset();

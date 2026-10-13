@@ -3,9 +3,12 @@ import "../.."
 
 Canvas {
     id: root
-    // Decorative contours, not a geographic map. Draw only on resize.
+    // Decorative contours, not a geographic map. Draw on resize or palette change.
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()
+    // Canvas paint handlers do not track theme dependencies.
+    readonly property var paintPalette: [Theme.teal]
+    onPaintPaletteChanged: requestPaint()
     onPaint: {
         const c = getContext("2d");
         c.reset();

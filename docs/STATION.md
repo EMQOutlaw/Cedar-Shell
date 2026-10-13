@@ -1,7 +1,7 @@
 # Station
 
 CEDAR Station is the health of this desktop as a first-party application:
-its own window (`cedar station`, Go › Station, Super+Shift+H, `qs -c cedar
+its own window (`cedar station`, Applications › CEDAR › Station, Super+Shift+H, `qs -c cedar
 ipc call station open`), a rail with Health, Services, Issues, Log and
 Report, and a diagnostics engine that turns real readings into issues that
 say what happened, why it matters, what CEDAR verified, what it can do and

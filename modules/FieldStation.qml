@@ -90,13 +90,13 @@ Rectangle {
             Item {
                 Layout.fillWidth: true
             }
-            // Go already has a bar button; offer it here only when that is hidden.
+            // Applications already has a bar button; offer it here only when that is hidden.
             StrataButton {
                 iconOnly: true
                 visible: Config.stage >= 3 && !Config.moduleEnabled("go")
                 text: "󰀻"
                 hint: "Applications"
-                onClicked: Config.saved.canopyEnabled ? Canopy.toggleTopic("go") : Go.toggle("root")
+                onClicked: Go.toggle("root")
             }
             StrataButton {
                 iconOnly: true

@@ -2,7 +2,7 @@
 
 CEDAR Shield is a first-party application: its own window (a regular
 toplevel that Hyprland tiles or floats), its own launcher entry and icon
-(`cedar shield`, Go › Shield, the Shield tile in Quick Controls, `qs -c cedar
+(`cedar shield`, Applications › CEDAR › Shield, the Shield tile in Quick Controls, `qs -c cedar
 ipc call shield open`), a rail with Overview, Protections, Network,
 Activity and Settings, and a detail view per protection. It is a presentation
 over the Shield service: closing the window or restarting the shell changes

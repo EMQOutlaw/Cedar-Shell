@@ -19,7 +19,7 @@ ShellRoot {
             SettingRow { id: setting; x: 20; y: 130; width: 320; title: "Long setting title"; description: "A longer description wraps naturally when text is scaled and controls move below the label."; StationButton { text: "Change" } }
         }
         Loader { id: page; active:false; asynchronous:true; width:700;height:450;sourceComponent:Component { SettingsPanel { active:true } } }
-        Loader { id: menuPage; active:false; asynchronous:true; anchors.fill:parent; source:Qt.resolvedUrl("modules/MenuContent.qml") }
+        Loader { id: menuPage; active:false; asynchronous:true; width:480; sourceComponent:Component { GoCanopy { active:true } } }
         Loader { id: networkPage; active:false; asynchronous:true; width:500; sourceComponent:Component { ConnectionSettings {} } }
         ListModel { id: rows }
         ServiceRequest { id: bounded; script:"tests/response_limit.py"; maximumResponse:1024; timeoutMs:2000; property string error:""; onFailed:message=>error=message }
@@ -75,7 +75,7 @@ ShellRoot {
                 verify(DesktopSettings.inputDirty);compare(DesktopSettings.inputDraft.sensitivity,0.4);
                 DesktopSettings.editInput("sensitivity",0);verify(!DesktopSettings.inputDirty);
                 verify(!SystemStats.demanded, "Test mode does not start telemetry helpers");
-                for(let i=0;i<100;++i){menuPage.active=true;tryCompare(menuPage,"status",Loader.Ready,3000);menuPage.item.focusMenu();verify(window.activeFocusItem!==null);menuPage.active=false;tryCompare(menuPage,"item",null,1000);}
+                for(let i=0;i<100;++i){menuPage.active=true;tryCompare(menuPage,"status",Loader.Ready,3000);menuPage.item.focusSearch();verify(window.activeFocusItem!==null);menuPage.active=false;tryCompare(menuPage,"item",null,1000);}
             }
             function test_networkDisappears() {
                 networkPage.active=true;tryCompare(networkPage,"status",Loader.Ready,3000);

@@ -18,9 +18,16 @@ Item {
     implicitHeight: 22
     readonly property bool fed: Pulse.available && Pulse.levels.length === 24
     readonly property var profile: [.4, .5, .62, .74, .86, .95, 1, 1, 1, 1, .95, .86, .74, .62, .5, .4]
-    onActiveChanged: active ? Pulse.hold() : Pulse.release()
-    Component.onCompleted: if (active) Pulse.hold()
-    Component.onDestruction: if (active) Pulse.release()
+    readonly property bool holding: active && visible
+    property bool feedHeld: false
+    function syncFeed() {
+        if (feedHeld === holding) return;
+        feedHeld = holding;
+        if (feedHeld) Pulse.hold(); else Pulse.release();
+    }
+    onHoldingChanged: syncFeed()
+    Component.onCompleted: syncFeed()
+    Component.onDestruction: if (feedHeld) Pulse.release()
     function level(i) {
         if (!fed) return 0;
         const k = Math.floor(i * 24 / root.strokes), a = Pulse.levels[k] || 0, b = Pulse.levels[Math.min(23, k + 1)] || 0;

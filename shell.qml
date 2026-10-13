@@ -80,12 +80,6 @@ ShellRoot {
         active: Config.stage >= 3 && Shield.windowOpen
         ShieldApp {}
     }
-    // CEDAR AI: the window over the Relay service (two coding agents working
-    // one goal together). The session keeps running while the window is closed.
-    LazyLoader {
-        active: Config.stage >= 3 && Relay.windowOpen
-        RelayApp {}
-    }
     // Desktop Profiles: the preparation panel while a profile applies or
     // restores, and the Profiles window while it is open.
     LazyLoader {
@@ -192,20 +186,6 @@ ShellRoot {
         target: "permission"
         function status(): string { return JSON.stringify({ enabled: Permission.enabled, registered: Permission.registered, active: Permission.active }); }
     }
-    // CEDAR AI: `relay open|close|toggle|page <session|sessions|settings>`,
-    // `relay start <goal>` (refused while locked or while a session runs),
-    // `relay say <message>`, `relay stop`, `relay status`.
-    IpcHandler {
-        target: "relay"
-        function open(): void { if (Config.stage >= 3) Relay.openApp(); }
-        function page(name: string): void { if (Config.stage >= 3) Relay.openPage(name); }
-        function close(): void { Relay.closeApp(); }
-        function toggle(): void { if (Config.stage >= 3) Relay.toggleApp(); }
-        function start(goal: string): void { if (Config.stage >= 3 && !ShellState.locked && String(goal || "").length <= 4000) { Relay.start(goal); Relay.openApp(); } }
-        function say(message: string): void { if (Config.stage >= 3 && !ShellState.locked && String(message || "").length <= 4000) Relay.say(message); }
-        function stop(): void { if (Config.stage >= 3) Relay.stop(); }
-        function status(): string { return JSON.stringify(Relay.status()); }
-    }
     IpcHandler {
         target: "shield"
         function open(): void { if (Config.stage >= 3) Shield.openApp(); }
@@ -284,17 +264,14 @@ ShellRoot {
             ShellState.open("settings");
         }
     }
-    // Go menu: `menu toggle <route>` opens a menu id or alias (root, apps, system,
-    // capture…); `menu summon <json>` takes Omarchy's payloads, including the
-    // select/input prompts relayed by scripts/shim/omarchy-shell.
+    // The menu lives in the Applications drop: `menu toggle <route>` opens it
+    // at a menu id or alias (root, apps, system, capture…); `menu summon <json>`
+    // takes Omarchy's payloads, including the select/input prompts relayed by
+    // scripts/shim/omarchy-shell, which the drop answers.
     IpcHandler {
         target: "menu"
         function toggle(route: string): void {
-            if (Config.stage < 3)
-                return;
-            if (route === "apps" && Config.saved.canopyEnabled)
-                Canopy.toggleTopic("go");
-            else
+            if (Config.stage >= 3)
                 Go.toggle(route);
         }
         function summon(payload: string): void {
@@ -442,9 +419,6 @@ ShellRoot {
             LazyLoader {
                 active: Config.stage >= 3
                 component: Scope {
-                    Menu {
-                        output: modelData
-                    }
                     Settings {
                         output: modelData
                     }

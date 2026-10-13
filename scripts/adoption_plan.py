@@ -26,7 +26,7 @@ def build_plan(snapshot, selections):
     if not source or not PurePath(source).is_absolute():
         raise ValueError('The candidate needs an explicit absolute source path.')
     roles = {role: 'CEDAR' for role in ('bar', 'notifications', 'osd', 'settings')}
-    roles['launcher'] = 'CEDAR Go' if selections.get('launcher') else 'Existing launcher (retained)'
+    roles['launcher'] = 'CEDAR Applications' if selections.get('launcher') else 'Existing launcher (retained)'
     roles['lock'] = 'Trailwatch after local verification' if selections.get('trailwatch') or snapshot['locker']=='trailwatch' else snapshot['locker']+' (retained)'
     roles['idle'] = 'Existing idle provider (retained)' if snapshot['locker']!='trailwatch' else 'CEDAR'
     roles['wallpaper'] = 'CEDAR' if snapshot['background']=='cedar' else 'Existing wallpaper provider (retained)'
@@ -48,7 +48,7 @@ def build_plan(snapshot, selections):
             {key:process.get(key) for key in ('pid','start','exe','argv','unit')},'paused',
             'Resume only the recorded provider, without enabling its service')
     add('start-cedar',source,{'source':source},'healthy desktop and notification owner','Stop only after known unlock')
-    if selections.get('launcher'):add('bind-launcher','reviewed shortcut',snapshot.get('controls'), 'CEDAR Go','Restore exact previous binding')
+    if selections.get('launcher'):add('bind-launcher','reviewed shortcut',snapshot.get('controls'), 'CEDAR Applications','Restore exact previous binding')
     if selections.get('trailwatch'):add('verify-trailwatch','session lock',snapshot.get('trailwatch'),'secure unlock verified','Restore prior locker before stopping CEDAR')
     result={'format':FORMAT,'adapter':adapter,'roles':roles,'operations':operations,
             'mode':'Adopted Hybrid' if any('(retained)' in value for value in roles.values()) else 'Adopted Complete',
