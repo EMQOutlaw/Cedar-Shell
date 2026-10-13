@@ -22,30 +22,15 @@ CEDAR is a complete desktop shell for Hyprland: a bar, quick controls, a calenda
 
 ## Install
 
-**1. Install the dependencies.**
-
-```bash
-sudo pacman -Syu --needed \
-  git python python-gobject python-dbus \
-  hyprland quickshell qt6-declarative \
-  networkmanager libnm libpulse polkit xdg-utils \
-  brightnessctl power-profiles-daemon lm_sensors \
-  wl-clipboard grim slurp jq cava \
-  hypridle hyprsunset pacman-contrib \
-  ttf-jetbrains-mono-nerd
-```
-
-The first two lines are required. The rest power individual features (network, audio, brightness, screenshots, clipboard, the audio visualizer, idle and night light), and CEDAR tells you if one is missing.
-
-**2. Clone and run the installer.**
-
 ```bash
 git clone https://github.com/EMQOutlaw/Cedar-Shell.git
 cd Cedar-Shell
 ./install.sh
 ```
 
-The installer scans your system, shows a plan, and changes nothing until you approve it. It backs up everything it touches first.
+`install.sh` installs any missing packages with yay (or pacman if you don't have yay), asking before it does, then opens the CEDAR Installer. The installer shows a plan, changes nothing until you approve it, and backs up everything it touches first.
+
+The packages it installs are listed at the top of [install.sh](install.sh). To manage packages yourself, run `CEDAR_SKIP_PACKAGES=1 ./install.sh`.
 
 ## Update
 
