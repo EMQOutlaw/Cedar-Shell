@@ -16,7 +16,7 @@ def module(name, path):
     obj = importlib.util.module_from_spec(spec); spec.loader.exec_module(obj); return obj
 
 telemetry = module('telemetry', 'scripts/telemetry.py')
-sync = module('theme_sync', 'scripts/theme-sync.py')
+session = module('cedar_session', 'scripts/cedar_session.py')
 plugins = module('plugins', 'scripts/plugins.py')
 
 class Palette(unittest.TestCase):
@@ -55,71 +55,98 @@ class Telemetry(unittest.TestCase):
         with patch.object(telemetry,'run',return_value=''):
             self.assertEqual(telemetry.brightness('',5)['error'],'Brightness change failed')
 
-class ThemeLifecycle(unittest.TestCase):
-    def exercise(self, selected, fox=False, normal=True, ready=True, is_locked=False, reconcile_only=False):
+class SessionLifecycle(unittest.TestCase):
+    """CEDAR starts with Hyprland whatever the Omarchy theme; Omarchy's shell is a known overlap."""
+    def exercise(self, action='start', fox=False, normal=True, ready=True, is_locked=False, omarchy_ready=True):
         calls=[]; running={'fox':fox,'normal':normal}
-        def instances(selector): return [1] if running['fox' if '-c' in selector else 'normal'] else []
+        def instances(sel):
+            if '--all' in sel: return []
+            return [{'pid':1,'config_path':'/users/station/.config/quickshell/cedar/shell.qml'}] if running['fox' if '-c' in sel else 'normal'] else []
         def run(args, **kwargs):
             calls.append(args)
-            if 'kill' in args: running['normal']=False
-            if 'stop' in args: running['fox']=False
-            if '--unit=cedar-shell' in args: running['fox']=True
-            return subprocess.CompletedProcess(args,0,'false','')
-        def popen(args, **kwargs):
-            calls.append(args)
-            if args[:2] == ['qs','-n']: running['fox']=True
-        with tempfile.TemporaryDirectory() as tmp, patch.object(sync,'RUNTIME',Path(tmp)), patch.object(sync,'LOG_DIR',Path(tmp)), patch.object(sync,'selected',return_value=selected), patch.object(sync,'locked',return_value=is_locked), patch.object(sync,'instances',side_effect=instances), patch.object(sync,'run',side_effect=run), patch.object(sync,'wait_for',side_effect=lambda predicate,seconds=8: predicate() and (ready if running['fox'] else True)), patch.object(sync.subprocess,'Popen',side_effect=popen), patch.dict(os.environ,{'WAYLAND_DISPLAY':'test'}):
-            result=sync.sync(reconcile_only=reconcile_only)
-        return result,calls
+            if args[:2]==['qs','kill']: running['fox' if ('-c' in args or '--pid' in args) else 'normal']=False
+            if args[:3]==['systemctl','--user','stop']: running['fox']=False
+            if args[0]=='systemd-run' and '--unit=cedar-shell' in args: running['fox']=True
+            if args[0]=='systemd-run' and args[-1]=='omarchy-launch-shell': running['normal']=True
+            if args[-2:]==['shell','ping']: return subprocess.CompletedProcess(args,0 if omarchy_ready else 1,'pong','')
+            if args[-2:]==['shell','isLocked']: return subprocess.CompletedProcess(args,0 if running['fox'] and ready else 1,'false' if running['fox'] and ready else '','')
+            return subprocess.CompletedProcess(args,0,'','')
+        def wait_for(predicate, seconds, step=0.2): return predicate()
+        with tempfile.TemporaryDirectory() as tmp, patch.object(session,'RUNTIME',Path(tmp)), patch.object(session,'LOG',Path(tmp)/'shell.log'), \
+                patch.object(session,'selector',return_value=['-c','cedar']), patch.object(session,'omarchy_shell',return_value=Path('/usr/share/omarchy/shell')), \
+                patch.object(session,'omarchy_locked',return_value=is_locked), patch.object(session,'instances',side_effect=instances), patch.object(session,'run',side_effect=run), \
+                patch.object(session,'wait_for',side_effect=wait_for), patch.object(session,'supervisors',return_value=[]), \
+                patch.object(session.shutil,'which',side_effect=lambda n: '/usr/bin/'+n), patch.dict(os.environ,{'WAYLAND_DISPLAY':'test'}):
+            result=session.main([action])
+        return result,calls,running
+    def launches(self, calls): return [c for c in calls if c[0]=='systemd-run']
     def test_preview_exists_for_graphical_selector(self):
         self.assertTrue((ROOT/'themes/preview.png').is_file())
         self.assertTrue((ROOT/'themes/backgrounds/field-station.png').is_file())
-    def test_other_theme_does_not_start_cedar(self):
-        _,calls=self.exercise('tokyo-night')
-        self.assertEqual(calls,[])
-    def test_enter_handoff(self):
-        result,calls=self.exercise('cedar')
-        self.assertEqual(result,0)
-        self.assertEqual(calls[0][:2],['qs','kill'])
-        self.assertEqual(calls[1][0],'systemd-run')
-        self.assertEqual(calls[1][-4:],['qs','-n','-c','cedar'])
-    def test_leave_restores_normal(self):
-        result,calls=self.exercise('tokyo-night',fox=True,normal=False)
-        self.assertEqual(result,0)
-        self.assertIn(['qs','-c','cedar','ipc','call','shell','stop'],calls)
-        self.assertTrue(any(c[0] == 'systemd-run' and c[-1] == 'omarchy-launch-shell' for c in calls))
-    def test_repeat_selection_idempotent(self):
-        _,calls=self.exercise('cedar',fox=True,normal=False)
-        self.assertEqual(calls,[])
-    def test_existing_cedar_removes_overlapping_normal_shell(self):
-        result,calls=self.exercise('cedar',fox=True,normal=True)
-        self.assertEqual(result,0)
-        self.assertEqual(len(calls),1)
-        self.assertEqual(calls[0][:2],['qs','kill'])
-        self.assertEqual(calls[0][-1],str(sync.OMARCHY))
+    def test_hook_is_theme_independent(self):
+        self.assertNotIn('theme.name', (ROOT/'scripts/theme-sync.py').read_text())
+        self.assertNotIn('theme', (ROOT/'scripts/cedar_session.py').read_text().split('def ')[1:][0])
+    def test_start_retires_omarchy_then_starts_cedar(self):
+        result,calls,running=self.exercise()
+        self.assertEqual(result,0); self.assertEqual(running,{'fox':True,'normal':False})
+        self.assertLess(next(i for i,c in enumerate(calls) if c[-2:]==['shell','ping']), next(i for i,c in enumerate(calls) if c[0]=='systemd-run'))
+        launch=self.launches(calls)[0]
+        self.assertIn('--unit=cedar-shell',launch); self.assertEqual(launch[-4:],['qs','-n','-c','cedar'])
+        self.assertIn('--setenv=WAYLAND_DISPLAY=test',launch)
+    def test_start_without_omarchy_needs_only_hyprland(self):
+        with patch.object(session,'omarchy_shell',return_value=None):
+            result,calls,running=self.exercise(normal=False)
+        self.assertEqual(result,0); self.assertTrue(running['fox'])
+    def test_repeat_start_is_idempotent(self):
+        result,calls,_=self.exercise(fox=True,normal=False)
+        self.assertEqual(result,0); self.assertEqual(self.launches(calls),[])
+    def test_existing_cedar_removes_overlapping_omarchy_shell(self):
+        result,calls,running=self.exercise(fox=True,normal=True)
+        self.assertEqual(result,0); self.assertEqual(running,{'fox':True,'normal':False}); self.assertEqual(self.launches(calls),[])
+    def test_loading_omarchy_shell_is_never_killed(self):
+        result,calls,running=self.exercise(fox=True,normal=True,omarchy_ready=False)
+        self.assertTrue(running['normal']); self.assertFalse(any(c[:2]==['qs','kill'] for c in calls))
     def test_guard_never_launches_a_missing_shell(self):
-        for theme,fox,normal in [('cedar',False,True),('cedar',True,False),('tokyo-night',True,True)]:
-            result,calls=self.exercise(theme,fox=fox,normal=normal,reconcile_only=True)
-            self.assertEqual(result,0)
-            self.assertEqual(calls,[])
-    def test_guard_removes_only_overlap(self):
-        result,calls=self.exercise('cedar',fox=True,normal=True,reconcile_only=True)
-        self.assertEqual(result,0)
-        self.assertEqual(len(calls),1)
-        self.assertEqual(calls[0][:2],['qs','kill'])
+        for fox,normal in [(False,True),(True,False)]:
+            result,calls,_=self.exercise('reconcile',fox=fox,normal=normal)
+            self.assertEqual(result,0); self.assertEqual(self.launches(calls),[])
+            self.assertFalse(any(c[:2]==['qs','kill'] for c in calls))
     def test_guard_keeps_lock_safety_when_deferring(self):
-        result,calls=self.exercise('cedar',fox=True,normal=True,is_locked=True,reconcile_only=True)
-        self.assertEqual(result,75)
-        self.assertEqual(calls,[])
-    def test_locked_handoff_defers_without_killing(self):
-        _,calls=self.exercise('cedar',is_locked=True)
-        self.assertEqual(len(calls),1)
-        self.assertIn('--deferred',calls[0])
-    def test_failed_start_restores_normal(self):
-        result,calls=self.exercise('cedar',ready=False)
+        result,calls,running=self.exercise('reconcile',fox=True,normal=True,is_locked=True)
+        self.assertEqual(result,75); self.assertTrue(running['normal'])
+    def test_failed_start_gives_omarchy_back(self):
+        result,calls,running=self.exercise(ready=False)
         self.assertEqual(result,1)
-        self.assertTrue(any(c[0] == 'systemd-run' and c[-1] == 'omarchy-launch-shell' for c in calls))
-
+        self.assertTrue(any(c[0]=='systemd-run' and c[-1]=='omarchy-launch-shell' for c in calls))
+    def test_restart_refuses_while_locked(self):
+        with self.assertRaises(SystemExit):
+            self.exercise('restart',fox=True,normal=False,ready=False)
+    def test_restart_stops_then_starts(self):
+        result,calls,running=self.exercise('restart',fox=True,normal=False)
+        self.assertEqual(result,0); self.assertTrue(running['fox'])
+        self.assertLess(calls.index(['systemctl','--user','stop','cedar-shell.service']), next(i for i,c in enumerate(calls) if c[0]=='systemd-run'))
+    def test_restart_with_nothing_running_starts(self):
+        result,calls,running=self.exercise('restart',fox=False,normal=False)
+        self.assertEqual(result,0); self.assertTrue(running['fox']); self.assertNotIn(['systemctl','--user','stop','cedar-shell.service'],calls)
+    def test_cedar_is_recognised_by_profile_or_release_store_whatever_launched_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp); config=tmp/'config'; data=tmp/'data'
+            release=data/'cedar/releases/1.9-abc'; release.mkdir(parents=True); (release/'shell.qml').write_text('')
+            (data/'cedar/current').symlink_to(release)
+            checkout=tmp/'checkout'; checkout.mkdir(); (checkout/'shell.qml').write_text('')
+            (config/'quickshell').mkdir(parents=True); (config/'quickshell/cedar').symlink_to(checkout)
+            with patch.object(session,'CONFIG',config), patch.object(session,'DATA',data):
+                self.assertTrue(session.is_cedar(config/'quickshell/cedar/shell.qml'))
+                self.assertTrue(session.is_cedar(checkout/'shell.qml'), 'what the profile points at')
+                self.assertTrue(session.is_cedar(release/'shell.qml'), 'an installed release')
+                self.assertTrue(session.is_cedar(data/'cedar/current/shell.qml'))
+                self.assertFalse(session.is_cedar('/usr/share/omarchy/shell/shell.qml'))
+                self.assertFalse(session.is_cedar(release/'installer.qml'))
+            rows={'-c':[{'pid':1,'config_path':str(config/'quickshell/cedar/shell.qml')}],
+                  '--all':[{'pid':1,'config_path':str(config/'quickshell/cedar/shell.qml')},{'pid':2,'config_path':str(release/'shell.qml')},{'pid':3,'config_path':'/usr/share/omarchy/shell/shell.qml'}]}
+            with patch.object(session,'CONFIG',config), patch.object(session,'DATA',data), patch.object(session,'selector',return_value=['-c','cedar']), \
+                    patch.object(session,'instances',side_effect=lambda sel: rows['--all' if '--all' in sel else '-c']):
+                self.assertEqual(sorted(r['pid'] for r in session.cedar_instances()),[1,2])
 
 def strip_jsonc(raw):
     return re.sub(r',(\s*[}\]])', r'\1', re.sub(r'^\s*//[^\n]*(\n|$)', '', raw, flags=re.M))

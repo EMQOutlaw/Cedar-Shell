@@ -23,8 +23,14 @@ class Values(unittest.TestCase):
             with self.assertRaises((ValueError,TypeError)): d.validate_inputs(data)
     def test_nested_touchpad_is_valid_lua(self):
         text=d.render({'input':{'touchpad:tap-to-click':True,'kb_layout':'us'}})
-        r=subprocess.run(['lua','-'],input='hl={config=function(c) assert(c.input.touchpad["tap-to-click"]==true) end}\n'+text,text=True,capture_output=True)
+        r=subprocess.run(['lua','-'],input='hl={on=function() end,exec_cmd=function() end,config=function(c) assert(c.input.touchpad["tap-to-click"]==true) end}\n'+text,text=True,capture_output=True)
         self.assertEqual(r.returncode,0,r.stderr)
+    def test_cedar_starts_with_hyprland_unless_turned_off(self):
+        script='started=nil hl={config=function() end,exec_cmd=function(c) started=c end,on=function(e,f) if e=="hyprland.start" then f() end end}\n'
+        r=subprocess.run(['lua','-'],input=script+d.render_lua({})+'\nassert(started:find("cedar_session.py start",1,true))',text=True,capture_output=True)
+        self.assertEqual(r.returncode,0,r.stderr)
+        self.assertIn('exec-once = python3 ', d.render_conf({})); self.assertIn('cedar_session.py start', d.render_conf({}))
+        self.assertNotIn('cedar_session', d.render_lua({'sessionStart': False})+d.render_conf({'sessionStart': False}))
     def test_monitors_cannot_drop_output_or_inject_mode(self):
         current=[{'name':'DP-1','width':1920,'height':1080,'refreshRate':60,'availableModes':['1920x1080@60.00Hz']}]
         with self.assertRaises(ValueError): d.validate_monitors([],current)

@@ -249,9 +249,18 @@ class Engine:
             sys.path.insert(0, str(self.source / 'scripts'))
             import distribution as d
             record = d.session_backend().read_record() or {}
-            return record.get('stage', 'not active')
+            stage = record.get('stage', 'not active')
         except Exception:  # noqa: BLE001
-            return 'unknown'
+            stage = 'unknown'
+        if stage in ('not active', 'restored', 'unknown') and self.host.which('qs'):
+            # CEDAR running as its own desktop (cedar_session.py; the session step restarts it).
+            code, out, _ = self.host.run([sys.executable, str(self.source / 'scripts/cedar_session.py'), 'status'], timeout=15)
+            try:
+                if code == 0 and json.loads(out).get('cedar'):
+                    return 'running'
+            except ValueError:
+                pass
+        return stage
 
     # -- update ------------------------------------------------------------
     def selected_channel(self):

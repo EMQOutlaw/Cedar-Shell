@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -307,10 +308,39 @@ class Planning(unittest.TestCase):
         none = facts_module.scan(base, ROOT); none['quickshellInstances'] = []
         warn = next(a for a in plan_module.build(none)['attention'] if a['id'] == 'session')
         self.assertEqual(warn['severity'], 'warn'); self.assertIn('not running', warn['title']); self.assertFalse(plan_module.build(none)['blocked'])
-        dev = facts_module.scan(base, ROOT); dev['quickshellInstances'] = rows('/users/station/.config/quickshell/cedar/shell.qml')
+        dev = facts_module.scan(base, ROOT); dev['quickshellInstances'] = rows('/users/station/Work/cedar-shell/shell.qml')
         warn = next(a for a in plan_module.build(dev)['attention'] if a['id'] == 'session')
         self.assertIn('Another CEDAR', warn['title']); self.assertIn('cedar try', warn['detail'])
         self.assertNotIn('session', [a['id'] for a in plan_module.build(dev, {'session': False})['attention']])
+
+    def test_cedar_running_through_its_profile_is_restarted_not_handed_off(self):
+        base = arch_host(); plan_module.set_check_host(base)
+        facts = facts_module.scan(base, ROOT)
+        for path in (HOME + '/.config/quickshell/cedar/shell.qml', HOME + '/.local/share/cedar/releases/1.8-abc/shell.qml'):
+            facts['quickshellInstances'] = [{'config_path': path, 'pid': 100}]
+            for options in (None, {'session': False}):
+                plan = plan_module.build(facts, options)
+                self.assertNotIn('session', [a['id'] for a in plan['attention']])
+                session = next(op for op in plan['operations'] if op['id'] == 'session')
+                self.assertTrue(session['enabled']); self.assertIn('Restart', session['description'])
+                self.assertTrue(any('Restart the running CEDAR' in r for r in plan['cedar']))
+
+    def test_the_profile_link_is_planned_from_what_it_points_at(self):
+        link = HOME + '/.config/quickshell/cedar'
+        for links, state, words in (({}, 'absent', 'Create the cedar Quickshell profile'),
+                                    ({link: HOME + '/Work/cedar-shell'}, 'other', 'points at ' + HOME + '/Work/cedar-shell'),
+                                    ({link: HOME + '/.local/share/cedar/current'}, 'release', None)):
+            host = arch_host(links=links); plan_module.set_check_host(host)
+            facts = facts_module.scan(host, ROOT)
+            self.assertEqual(facts['existingCedar']['profile']['state'], state)
+            rows = [r for r in plan_module.build(facts)['cedar'] if 'Quickshell profile' in r]
+            if words: self.assertTrue(rows and words in rows[0], rows)
+            else: self.assertEqual(rows, [])
+        folder = arch_host(dirs=arch_host().dirs | {link}); plan_module.set_check_host(folder)
+        facts = facts_module.scan(folder, ROOT)
+        self.assertEqual(facts['existingCedar']['profile']['state'], 'directory')
+        warn = next(a for a in plan_module.build(facts)['attention'] if a['id'] == 'profile')
+        self.assertEqual(warn['severity'], 'warn'); self.assertIn('folder', warn['title'])
 
     def test_cedar_command_ownership_is_known_before_the_install(self):
         base = arch_host()
@@ -692,6 +722,111 @@ class DryRunAndCli(unittest.TestCase):
         payload = json.loads(result.stdout[start:result.stdout.rindex('}') + 1])
         self.assertEqual([op['id'] for op in payload['plan']['operations']], list(plan_module.OPERATIONS))
         self.assertIn('digest', payload['plan'])
+
+
+class SessionRestart(unittest.TestCase):
+    """Every install or update restarts a running CEDAR through its own session launcher."""
+    def run_session(self, running=True, ready=True, options=None, adapter_active=False):
+        from installer.engine import steps
+        calls = []
+        def launcher(argv):
+            calls.append(argv[2:])
+            if argv[2] == 'status':
+                return 0, json.dumps({'cedar': [900] if running else [], 'ready': ready}), ''
+            if argv[2] == 'restart' and not ready:
+                return 1, '', 'CEDAR is locked or not answering; not restarted.'
+            return 0, '', ''
+        host = arch_host(commands={**arch_host().commands, sys.executable: launcher})
+        facts = facts_module.scan(host, ROOT)
+        ctx = steps.Context(host, ROOT, facts, {}, options if options is not None else {'session': False}, None, lambda e, d: None)
+        ctx._modules['distribution'] = type('D', (), {'session_active': staticmethod(lambda: adapter_active)})
+        op = ops.Operation('session', 'Session', '', None)
+        return steps, ctx, op, calls
+
+    def test_running_cedar_is_restarted_whatever_the_options(self):
+        for options in ({'session': False}, {'session': True}):
+            steps, ctx, op, calls = self.run_session(options=options)
+            steps.session_run(ctx, op)
+            self.assertIn(['restart'], calls); self.assertIn('restarted', op.detail)
+            self.assertTrue(steps.session_verify(ctx, op))
+
+    def test_locked_cedar_is_not_restarted_and_says_so(self):
+        steps, ctx, op, calls = self.run_session(ready=False)
+        with self.assertRaises(ops.Warn) as caught:
+            steps.session_run(ctx, op)
+        self.assertIn('locked', str(caught.exception))
+
+    def test_omarchy_selected_starts_cedar_without_a_handoff(self):
+        steps, ctx, op, calls = self.run_session(running=False, options={'session': True})
+        self.assertEqual(ctx.facts['environment']['adapter'], 'omarchy')
+        steps.session_run(ctx, op)
+        self.assertIn(['start'], calls); self.assertIn('starts with Hyprland', op.detail)
+
+    def test_running_cedar_makes_the_runtime_install_live(self):
+        from installer.engine import steps
+        installs = []
+        class D:
+            @staticmethod
+            def session_active(): return False
+            @staticmethod
+            def install(source, approved=False, live=False): installs.append(live)
+            @staticmethod
+            def installed(): return Path('/users/station/.local/share/cedar/releases/x')
+        for running in (True, False):
+            steps_, ctx, op, calls = self.run_session(running=running)
+            ctx._modules['distribution'] = D
+            with patch.object(steps, 'adopt_profile', return_value=''), patch.object(steps, 'reopen_backup', return_value=None):
+                steps.runtime_run(ctx, op)
+        self.assertEqual(installs, [True, False])
+
+
+class ProfileAdoption(unittest.TestCase):
+    """The installer owns ~/.config/quickshell/cedar: it follows the installed release."""
+    def adopt(self, tmp, prepare):
+        from installer.engine import steps
+        from installer.engine.host import Host
+        tmp = Path(tmp)
+        host = Host(home=tmp, environ={'HOME': str(tmp), 'XDG_CONFIG_HOME': str(tmp / 'config'), 'XDG_DATA_HOME': str(tmp / 'data')})
+        link = tmp / 'config/quickshell/cedar'; current = tmp / 'data/cedar/current'
+        (tmp / 'data/cedar').mkdir(parents=True); current.symlink_to(tmp / 'data/cedar/releases/1.9')
+        prepare(link)
+        backup = backup_module.Backup(tmp / 'backups', tmp, '1', '2').create({}, {})
+        ctx = steps.Context(host, ROOT, {}, {}, {}, None, lambda e, d: None)
+        return steps.adopt_profile(ctx, backup), link, current, backup
+
+    def test_a_missing_profile_is_created(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            detail, link, current, backup = self.adopt(tmp, lambda link: None)
+            self.assertTrue(link.is_symlink()); self.assertEqual(Path(os.readlink(link)), current)
+            self.assertIn('follows the installed release', detail)
+            self.assertIn(str(link), backup.manifest['filesCreated'])
+            backup.restore(); self.assertFalse(link.is_symlink() or link.exists())
+
+    def test_a_checkout_link_is_replaced_and_restorable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            def prepare(link):
+                link.parent.mkdir(parents=True); link.symlink_to(Path(tmp) / 'Work/cedar-shell')
+            detail, link, current, backup = self.adopt(tmp, prepare)
+            self.assertEqual(Path(os.readlink(link)), current); self.assertIn('Work/cedar-shell', detail)
+            self.assertIn(str(link), backup.manifest['filesChanged'])
+            self.assertEqual(list((Path(tmp) / 'backups').glob('*/config/**/Work')), [], 'the checkout itself is never copied')
+            backup.restore(); self.assertEqual(os.readlink(link), str(Path(tmp) / 'Work/cedar-shell'))
+
+    def test_a_link_already_on_the_release_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            def prepare(link):
+                link.parent.mkdir(parents=True); link.symlink_to(Path(tmp) / 'data/cedar/current')
+            detail, link, current, backup = self.adopt(tmp, prepare)
+            self.assertEqual(detail, ''); self.assertEqual(backup.manifest['files'], [])
+
+    def test_a_real_folder_is_never_touched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            def prepare(link):
+                link.mkdir(parents=True); (link / 'shell.qml').write_text('mine')
+            with self.assertRaises(ops.Warn) as caught:
+                self.adopt(tmp, prepare)
+            self.assertIn('folder', str(caught.exception))
+            self.assertEqual((Path(tmp) / 'config/quickshell/cedar/shell.qml').read_text(), 'mine')
 
 
 if __name__ == '__main__':

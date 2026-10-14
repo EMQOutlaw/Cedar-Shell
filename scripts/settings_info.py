@@ -42,6 +42,14 @@ def inventory():
     return {'theme': 'CEDAR' if selected == 'cedar' else selected,
             'wallpaper': walls['selected'], 'wallpaperFolder': walls['folder'], 'themes': runtime.themes(), 'wallpapers': walls['items']}
 
+def installation_method():
+    link=CONFIG/'quickshell/cedar'
+    if not link.is_symlink(): return 'Unavailable'
+    try: target=link.resolve()
+    except (OSError,RuntimeError): return 'Local source registration'
+    data=Path(os.environ.get('XDG_DATA_HOME') or Path.home()/'.local/share')
+    return 'Installed release' if target.is_relative_to(data/'cedar/releases') else 'Local source registration'
+
 def snapshot():
     commands={'quickshell':['qs','--version'],'hyprland':['hyprctl','version'], 'qt':['/usr/lib/qt6/bin/qtpaths','--qt-version']}
     with ThreadPoolExecutor(max_workers=6) as pool:
@@ -49,7 +57,7 @@ def snapshot():
         health=list(pool.map(service,SERVICES))
         versions={k:(f.result().splitlines()[0] if f.result() and not f.result().startswith('Unavailable') else 'Unavailable') for k,f in futures.items()}
     return {**inventory(),'hostname':platform.node(),'kernel':platform.release(),'os':platform.freedesktop_os_release().get('PRETTY_NAME',platform.system()),
-      'version':(ROOT/'VERSION').read_text().strip() if (ROOT/'VERSION').exists() else 'Unavailable', 'versions':versions,'services':health,'installationMethod':'Local source registration' if (CONFIG/'quickshell/cedar').is_symlink() else 'Unavailable'}
+      'version':(ROOT/'VERSION').read_text().strip() if (ROOT/'VERSION').exists() else 'Unavailable', 'versions':versions,'services':health,'installationMethod':installation_method()}
 
 def action(req):
     name=req.get('action','snapshot')
