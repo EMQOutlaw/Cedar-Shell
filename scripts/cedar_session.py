@@ -31,6 +31,30 @@ STATE = Path(os.environ.get('XDG_STATE_HOME') or HOME / '.local/state')
 RUNTIME = Path(os.environ.get('XDG_RUNTIME_DIR') or '/run/user/%d' % os.getuid())
 LOG = STATE / 'cedar/shell.log'
 UNIT = 'cedar-shell'
+# Left behind by a pre-1.8 session or by the installer's own probes. CEDAR_SHELL_PATH
+# makes the old `qs` shim answer for one release path; LC_ALL=C is the installer's
+# parsing locale, not the desktop's. Neither may reach the probes or the shell.
+INHERITED_KEYS = ('CEDAR_SHELL_PATH', 'CEDAR_QS_BIN', 'CEDAR_OMARCHY_SESSION', 'CEDAR_SESSION_STATUS', 'CEDAR_SESSION_HELPER',
+                  'CEDAR_OMARCHY_LOCK', 'CEDAR_EXTERNAL_IDLE', 'CEDAR_LOCK_STATE')
+
+
+def shim_dir(entry):
+    path = Path(entry)
+    return path.name == 'shim' and path.parent.name == 'scripts'
+
+
+def scrub_environment(environ):
+    """The caller's environment without another CEDAR's redirections. The updater
+    inherits the running shell's environment (Field Station starts it in a scope);
+    a 1.5 shell carried CEDAR_SHELL_PATH and its release's scripts/shim first on
+    PATH, so `qs -c cedar` was rewritten to a release that was no longer running."""
+    for key in INHERITED_KEYS:
+        environ.pop(key, None)
+    if environ.get('LC_ALL') in ('C', 'POSIX'):
+        environ.pop('LC_ALL')
+    if environ.get('PATH'):
+        environ['PATH'] = os.pathsep.join(e for e in environ['PATH'].split(os.pathsep) if e and not shim_dir(e))
+    return environ
 
 
 def omarchy_shell():
@@ -271,6 +295,7 @@ def main(argv):
     action = argv[0] if argv else 'start'
     if action not in ACTIONS:
         raise SystemExit('usage: cedar_session.py [' + '|'.join(ACTIONS) + ']')
+    scrub_environment(os.environ)
     if action == 'status':
         return status()
     if not os.environ.get('WAYLAND_DISPLAY'):

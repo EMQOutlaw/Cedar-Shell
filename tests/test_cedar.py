@@ -106,6 +106,23 @@ class SessionLifecycle(unittest.TestCase):
     def test_loading_omarchy_shell_is_never_killed(self):
         result,calls,running=self.exercise(fox=True,normal=True,omarchy_ready=False)
         self.assertTrue(running['normal']); self.assertFalse(any(c[:2]==['qs','kill'] for c in calls))
+    def test_inherited_shim_environment_never_reaches_probes_or_shell(self):
+        # Field Station runs the updater in a scope that keeps the 1.5 shell's environment:
+        # its release shim first on PATH and CEDAR_SHELL_PATH pointing at that release.
+        inherited={'CEDAR_SHELL_PATH':'/users/station/.local/share/cedar/releases/1.5-old/shell.qml','CEDAR_QS_BIN':'/usr/bin/qs',
+                   'PATH':'/users/station/.local/share/cedar/releases/1.5-old/scripts/shim:/usr/bin:/usr/local/bin','LC_ALL':'C'}
+        with patch.dict(os.environ,inherited):
+            result,calls,running=self.exercise()
+        self.assertEqual(result,0); self.assertEqual(running,{'fox':True,'normal':False})
+        scrubbed=session.scrub_environment(dict(inherited))
+        self.assertNotIn('CEDAR_SHELL_PATH',scrubbed); self.assertNotIn('CEDAR_QS_BIN',scrubbed); self.assertNotIn('LC_ALL',scrubbed)
+        self.assertEqual(scrubbed['PATH'],'/usr/bin:/usr/local/bin','the shim is no longer in front of qs')
+        launch=self.launches(calls)[0]
+        self.assertIn('--setenv=PATH=/usr/bin:/usr/local/bin',launch)
+        self.assertFalse(any(e.startswith(('--setenv=CEDAR_SHELL_PATH','--setenv=LC_ALL')) for e in launch))
+    def test_scrub_keeps_an_ordinary_environment(self):
+        env={'PATH':'/usr/bin:/users/station/.local/bin','LC_ALL':'en_US.UTF-8','LANG':'en_US.UTF-8','WAYLAND_DISPLAY':'wayland-1'}
+        self.assertEqual(session.scrub_environment(dict(env)),env)
     def test_guard_never_launches_a_missing_shell(self):
         for fox,normal in [(False,True),(True,False)]:
             result,calls,_=self.exercise('reconcile',fox=fox,normal=normal)
