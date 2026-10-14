@@ -202,7 +202,22 @@ def existing_cedar(host):
             # restores the old desktop and replaces this session record.
             result['trailwatch'] = row.get('locker') == 'trailwatch' or bool(row.get('trailwatch'))
     result['config'] = host.is_dir(host.config_home() / 'cedar')
+    result['profile'] = quickshell_profile(host)
     return result
+
+
+def quickshell_profile(host):
+    """What ~/.config/quickshell/cedar is: the installer owns it as a link to the
+    installed release, so the shell on screen is always the installed CEDAR."""
+    link = host.config_home() / 'quickshell/cedar'
+    current = host.data_home() / 'cedar/current'
+    if host.is_symlink(link):
+        target = host.readlink(link)
+        state = 'release' if Path(target) == current or Path(target).parent == host.data_home() / 'cedar/releases' else 'other'
+        return {'state': state, 'target': target}
+    if host.is_dir(link):
+        return {'state': 'directory', 'target': str(link)}
+    return {'state': 'absent', 'target': ''}
 
 
 def scan(host, source, state_dir=None):

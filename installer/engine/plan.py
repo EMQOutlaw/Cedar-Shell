@@ -26,6 +26,12 @@ def default_options(facts):
     return {'session': can_handoff, 'launcher': False, 'trailwatch': bool(facts['existingCedar'].get('trailwatch')), 'fonts': False, 'wallpapers': bool(facts['wallpapers']), 'migrate': True, 'keybinds': keybinds}
 
 
+def profile_shell_running(facts):
+    """CEDAR is already the desktop (its Quickshell profile or an installed release)."""
+    paths = [str(row.get('config_path', '')) for row in facts.get('quickshellInstances', [])]
+    return any(p.endswith(('/quickshell/cedar/shell.qml', '/cedar/current/shell.qml')) or '/cedar/releases/' in p for p in paths)
+
+
 def attention(facts, options):
     """Risky states the installer refuses to walk past silently."""
     rows = []
@@ -51,10 +57,16 @@ def attention(facts, options):
         paths = [str(row.get('config_path', '')) for row in facts.get('quickshellInstances', [])]
         omarchy_shells = [p for p in paths if p.endswith('/omarchy/shell/shell.qml')]
         other_cedar = [p for p in paths if p.endswith('shell.qml') and ('cedar' in p.lower() or 'foxfire' in p.lower())]
-        if other_cedar:
+        # CEDAR as the desktop through its own Quickshell profile needs no
+        # handoff: the session step restarts that shell with the update.
+        if profile_shell_running(facts):
+            pass
+        elif other_cedar:
             add('session', 'Another CEDAR is already running as the desktop', 'A CEDAR shell is running from ' + other_cedar[0] + ', so the session step cannot hand this release the display; CEDAR installs and the session step is skipped with a note. To run the installed release instead, select another Omarchy theme first (that returns the stock shell), then run cedar try and cedar keep.', 'warn')
         elif len(omarchy_shells) != 1:
             add('session', 'The Omarchy shell is not running', 'The session step pauses Omarchy’s own shell and starts CEDAR in its place; with ' + ('no' if not omarchy_shells else str(len(omarchy_shells))) + ' Omarchy shell running it is refused and CEDAR is installed without starting. Start the Omarchy shell (omarchy-restart-shell), or install now and run cedar try later.', 'warn')
+    if facts['existingCedar'].get('profile', {}).get('state') == 'directory':
+        add('profile', 'A folder sits where CEDAR’s Quickshell profile goes', facts['existingCedar']['profile']['target'] + ' is a folder, not a link, so the installed release cannot become the shell on screen. Move it aside (mv ~/.config/quickshell/cedar ~/.config/quickshell/cedar.old), then check again.', 'warn')
     if facts['defaultQuickshellProfile']:
         add('qsdefault', 'A default Quickshell profile masks named shells', '~/.config/quickshell/shell.qml would hide CEDAR’s named profile. Move it aside before installing; the installer will not replace it.')
     disk = facts.get('disk') or {}
@@ -118,13 +130,22 @@ def build(facts, options=None):
     if facts['existingCedar'].get('commandOwner') == 'source':
         cedar.append('Replace the cedar command from the earlier local-source registration (restorable from the journal)')
     cedar.append('Install CEDAR ' + facts['cedarVersion'] + ' as a versioned copy with the cedar command and offline recovery')
+    profile = facts['existingCedar'].get('profile', {})
+    if profile.get('state') == 'other':
+        cedar.append('Point the cedar Quickshell profile at the installed release (it points at ' + profile['target'] + ' now; cedar-install --restore puts that back)')
+    elif profile.get('state') == 'absent':
+        cedar.append('Create the cedar Quickshell profile as a link to the installed release')
     cedar.append('Check that the CEDAR shell loads with this Quickshell and Qt')
     cedar.append('Install CEDAR application entries (Shield)')
     if options.get('migrate'):
         cedar.append('Write CEDAR’s display and input settings from what was imported')
     if options.get('keybinds'):
         cedar.append('Install CEDAR’s keybinds through CEDAR’s journaled Hyprland loader; your other bindings stay')
-    if options.get('session'):
+    if profile_shell_running(facts) and facts['existingCedar']['session'] == 'not active':
+        cedar.append('Restart the running CEDAR shell so this version is on screen at once')
+    elif options.get('session') and env.get('adapter') == 'omarchy':
+        cedar.append('Start CEDAR as the desktop (it starts with Hyprland at login; Omarchy’s shell is retired once it has loaded)')
+    elif options.get('session'):
         cedar.append('Start CEDAR in this session, keep it after a health check, and enable it at login (' + env['name'] + ' providers paused, restorable with cedar restore)')
     elif env.get('adapter'):
         cedar.append('Session handoff later: cedar try, then cedar keep')
@@ -142,7 +163,8 @@ def build(facts, options=None):
     op('runtime', 'CEDAR runtime', 'Install the versioned release, the cedar command and the offline recovery tools')
     op('shell', 'CEDAR shell', 'Load the shell offscreen with the installed Quickshell and Qt to prove it runs here', group='ready')
     op('migrate', 'Configuration', 'Translate monitor, keyboard, application and wallpaper intent into CEDAR’s own settings', enabled=bool(options.get('migrate')), group='ready')
-    op('session', 'Session', 'Start CEDAR, confirm it is healthy, and enable it at login' if options.get('session') else 'Not part of this run', enabled=bool(options.get('session')))
+    restart = profile_shell_running(facts) and not active_session
+    op('session', 'Session', 'Restart the running CEDAR shell with this version' if restart else 'Start CEDAR, confirm it is healthy, and enable it at login' if options.get('session') else 'Not part of this run', enabled=bool(options.get('session')) or restart)
     op('verify', 'Verification', 'Check the installed files, the shell imports, the command and the session')
 
     plan = {'format': 1, 'version': facts['cedarVersion'], 'environment': env, 'options': options, 'system': system, 'migration': migration, 'cedar': cedar,

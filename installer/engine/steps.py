@@ -232,15 +232,50 @@ def runtime_run(ctx, op):
     before = {name: Path(name).exists() for name in (str(ctx.host.home / '.local/bin/cedar'), str(ctx.host.data_home() / 'cedar/current'))}
     # distribution.install validates the shell offscreen (imports plus five
     # rendering checks) before it copies anything, then journals every file.
+    # A CEDAR running as its own desktop keeps running from its (immutable)
+    # release directory while `current` moves; the session step restarts it.
+    live = ctx.host.which('qs') is not None and not d.session_active() and cedar_running(ctx)
     with ctx.capture(op):
-        d.install(ctx.source, approved=True)
+        d.install(ctx.source, approved=True, live=live)
     ctx.installed = d.installed()
     backup = reopen_backup(ctx)
     if backup:
         for name in before:
             backup.changed(name)
+    profile = adopt_profile(ctx, backup)
+    if backup:
         backup.stage('runtime')
-    op.detail = 'CEDAR ' + ctx.facts['cedarVersion'] + ' installed to ' + str(ctx.installed)
+    op.detail = 'CEDAR ' + ctx.facts['cedarVersion'] + ' installed to ' + str(ctx.installed) + (' · ' + profile if profile else '')
+
+
+def adopt_profile(ctx, backup=None):
+    """~/.config/quickshell/cedar follows the installed release.
+
+    Everything addresses the shell through this profile (`qs -c cedar`, the
+    Hyprland start hook, the Omarchy hooks and guard), so whatever it points at
+    is the CEDAR on screen. The installer owns it: a link elsewhere (a source
+    checkout registered for development) is replaced and journaled, so
+    cedar-install --restore puts it back; a real folder is never touched."""
+    link = ctx.host.config_home() / 'quickshell/cedar'
+    target = ctx.host.data_home() / 'cedar/current'
+    if link.is_symlink():
+        before = os.readlink(link)
+        if Path(before) == target:
+            return ''
+    elif link.exists():
+        raise ops.Warn(str(link) + ' is a folder, not a link, so it was left alone and the installed release is not the shell on screen. Move it aside (mv ' + str(link) + ' ' + str(link) + '.old) and run the installer again.')
+    else:
+        before = None
+    if backup: backup.add(link, 'CEDAR Quickshell profile link')
+    link.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = link.with_name('.cedar-profile-' + str(os.getpid()))
+    if temporary.is_symlink() or temporary.exists(): temporary.unlink()
+    temporary.symlink_to(target)
+    os.replace(temporary, link)
+    if backup:
+        backup.changed(link)
+        backup.note('The cedar Quickshell profile now points at the installed release' + (' (it pointed at ' + before + ')' if before else '') + '.')
+    return 'the cedar profile now follows the installed release' + (' (was ' + before + ')' if before else '')
 
 
 def runtime_verify(ctx, op):
@@ -307,9 +342,9 @@ def migrate_run(ctx, op):
             imported.append('keyboard layout')
         except ValueError as error:
             notes.append('Keyboard settings were not imported: ' + str(error))
+    syntax = facts['hyprland'].get('syntax') or 'lua'
     if ctx.options.get('keybinds'):
         ctx.progress(op, 0.6, 'Installing CEDAR’s keybinds')
-        syntax = facts['hyprland'].get('syntax') or 'lua'
         target = config / 'hypr' / ('keybinds.' + syntax)
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         if backup: backup.add(target, 'CEDAR keybinds copy')
@@ -328,19 +363,20 @@ def migrate_run(ctx, op):
         state['keybinds'] = True
     write_private_json(desktop_path, state)
     if backup: backup.changed(desktop_path)
-    if ctx.options.get('keybinds') and facts['compositor']['running'] and facts['hyprland'].get('config') and not facts['hyprland'].get('ambiguous'):
+    if facts['compositor']['running'] and facts['hyprland'].get('config') and not facts['hyprland'].get('ambiguous'):
         # Apply now through CEDAR's loader (journaled marker block in the main
         # config, generated.* beside the copy, hyprctl reload + configerrors;
         # desktop.install restores every file it touched if Hyprland refuses).
-        ctx.progress(op, 0.7, 'Loading the keybinds into Hyprland')
+        # generated.* always carries CEDAR's start with Hyprland at login.
+        ctx.progress(op, 0.7, 'Loading CEDAR into Hyprland' + (' with its keybinds' if ctx.options.get('keybinds') else ''))
         main = Path(facts['hyprland']['config'])
         if backup: backup.add(main, 'Hyprland main configuration (CEDAR loader block)')
         try:
             desktop.install(state)
             if backup: backup.changed(main); backup.changed(config / 'hypr' / ('generated.' + syntax))
-            imported.append('keybinds loaded')
+            imported.append('start with Hyprland' + (', keybinds loaded' if ctx.options.get('keybinds') else ''))
         except (RuntimeError, OSError, ValueError) as error:
-            notes.append('Keybinds were recorded but not loaded into Hyprland: ' + str(error) + ' Apply them from Settings › Displays, or run "cedar ipc settings show keybinds".')
+            notes.append('CEDAR settings were recorded but not loaded into Hyprland: ' + str(error) + ' Apply them from Settings › Displays, or run "cedar ipc settings show keybinds".')
     elif ctx.options.get('keybinds'):
         notes.append('Keybinds are recorded; they load the next time CEDAR applies its Hyprland settings (Settings › Displays › Apply) because the compositor was not running or its main configuration was ambiguous.')
     ctx.progress(op, 0.75, 'Seeding preferred applications')
@@ -371,13 +407,47 @@ def migrate_verify(ctx, op):
 
 
 # --------------------------------------------------------------- session
+def session_launcher(ctx, op, action):
+    """CEDAR's own session launcher (scripts/cedar_session.py, the same one Hyprland runs at login)."""
+    script = ctx.source / 'scripts/cedar_session.py'
+    code, out, err = ctx.host.run([sys.executable, str(script), action], timeout=90)
+    if code:
+        raise ops.Warn('CEDAR is installed but was not ' + ('restarted' if action == 'restart' else 'started') + ': ' + ((err or out).strip().splitlines() or ['the session launcher failed'])[-1].rstrip('.') + '.')
+    op.detail = 'CEDAR restarted with this version and is running' if action == 'restart' else 'CEDAR is running and starts with Hyprland'
+
+
+def session_status(ctx):
+    code, out, _ = ctx.host.run([sys.executable, str(ctx.source / 'scripts/cedar_session.py'), 'status'], timeout=15)
+    try:
+        return json.loads(out) if code == 0 else {}
+    except ValueError:
+        return {}
+
+
+def cedar_running(ctx):
+    return bool(session_status(ctx).get('cedar'))
+
+
+def cedar_ready(ctx):
+    return bool(session_status(ctx).get('ready'))
+
+
 def session_run(ctx, op):
+    d = ctx.module('distribution')
+    # CEDAR is its own desktop: whatever is running it is restarted with the
+    # new version, every time, without a handoff.
+    if not d.session_active() and ctx.host.which('qs') and cedar_running(ctx):
+        ctx.progress(op, 0.2, 'Restarting CEDAR with this version')
+        return session_launcher(ctx, op, 'restart')
     if not ctx.options.get('session'):
-        raise ops.Skip('Not selected: start CEDAR later with cedar try, then cedar keep')
+        raise ops.Skip('Not selected: CEDAR starts with Hyprland at the next login')
     env = ctx.facts['environment']
     if not env.get('adapter'):
         raise ops.Skip('Session handoff for ' + env['name'] + ' is not validated yet; open CEDAR with cedar preview')
-    d = ctx.module('distribution')
+    if env['adapter'] == 'omarchy':
+        # Omarchy is optional: CEDAR starts itself and retires Omarchy's shell cleanly.
+        ctx.progress(op, 0.2, 'Starting CEDAR')
+        return session_launcher(ctx, op, 'start')
     backend = d.session_backend('omarchy' if env['adapter'] == 'omarchy' else 'auto')
     installed = ctx.installed or d.installed()
     ctx.progress(op, 0.1, 'Starting CEDAR beside your applications')
@@ -419,9 +489,11 @@ def session_run(ctx, op):
 
 
 def session_verify(ctx, op):
+    d = ctx.module('distribution')
+    if not d.session_active() and ctx.host.which('qs') and cedar_running(ctx):
+        return cedar_ready(ctx)
     if not ctx.options.get('session') or not ctx.facts['environment'].get('adapter'):
         return True
-    d = ctx.module('distribution')
     backend = d.session_backend()
     record = backend.read_record() or {}
     return record.get('stage') == 'kept' and bool(record.get('login'))
@@ -457,6 +529,11 @@ def verify_run(ctx, op):
         record = d.session_backend().read_record() or {}
         session = record.get('stage', 'unknown')
         checks.append('session ' + session)
+    if session in ('not started', 'unknown', 'restored') and ctx.host.which('qs') and cedar_ready(ctx):
+        session = 'running'
+        checks.append('CEDAR running')
+    profile = ctx.host.config_home() / 'quickshell/cedar'
+    checks.append('cedar profile follows the installed release' if profile.is_symlink() and Path(os.readlink(profile)) == ctx.host.data_home() / 'cedar/current' else 'cedar profile does not follow the installed release')
     record = {'format': 1, 'version': ctx.facts['cedarVersion'], 'installedAt': time.time(), 'runId': ctx.runner.run_id if ctx.runner else '',
               'backup': ctx.runner.backup if ctx.runner else '', 'installer': 'cedar-install ' + ctx.facts['installerVersion'],
               'environment': ctx.facts['environment']['id'], 'session': session, 'log': str(ctx.log.path) if ctx.log else ''}

@@ -417,7 +417,10 @@ def command_owner(binary):
     if COMMAND_SOURCE in head:return 'source'
     return 'other'
 
-def install(root,approved=False,plan_only=False):
+def install(root,approved=False,plan_only=False,live=False):
+    # live: the running CEDAR keeps its (immutable) release directory while
+    # `current` moves; the caller restarts it right after (the installer's session
+    # step). Without it a running release refuses to be switched underneath.
     plan=plan_install(root)
     if plan_only:print(json.dumps(plan,indent=2));return
     approve(plan,approved)
@@ -443,7 +446,7 @@ def install(root,approved=False,plan_only=False):
             return
         if current.is_symlink():
             ensure_unlocked()
-            if release_in_use():raise Refused('This release is in use. Close CEDAR safely before switching versions; current files are preserved.')
+            if release_in_use() and not live:raise Refused('This release is in use. Close CEDAR safely before switching versions; current files are preserved.')
         ancestor=destination.parent
         while not ancestor.exists():ancestor=ancestor.parent
         if shutil.disk_usage(ancestor).free < plan['bytes']*3+16*1024*1024:raise Refused('Insufficient space for staging and recovery.')
@@ -468,7 +471,7 @@ def install(root,approved=False,plan_only=False):
             # refused upgrade must not temporarily overwrite live recovery code.
             if current.is_symlink():
                 ensure_unlocked()
-                if release_in_use():raise Refused('This release is in use. Close CEDAR safely before switching versions; current files are preserved.')
+                if release_in_use() and not live:raise Refused('This release is in use. Close CEDAR safely before switching versions; current files are preserved.')
             for p in portable_recovery: tx.apply_file(entries[str(p)], (root/'scripts'/p.name).read_bytes(), 0o700)
             tx.apply_file(entries[str(provider_recovery)],(root/'scripts/omarchy_providers.py').read_bytes(),0o700)
             tx.apply_file(entries[str(session_recovery)],(root/'scripts/omarchy_session.py').read_bytes(),0o700)

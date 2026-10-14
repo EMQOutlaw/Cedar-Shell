@@ -43,7 +43,7 @@ Item {
     readonly property real progress: operations.length ? doneCount / operations.length : 0
     readonly property var current: operations.find(o => o.state === "running") || null
     readonly property string sessionState: result.sessionState || ""
-    readonly property bool cedarRunning: sessionState === "kept" || sessionState === "trial"
+    readonly property bool cedarRunning: sessionState === "kept" || sessionState === "trial" || sessionState === "running"
     signal stageEntered(string name)
     signal commandSent(var request)
     onStageChanged: stageEntered(stage)

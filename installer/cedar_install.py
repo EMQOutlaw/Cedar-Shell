@@ -305,6 +305,8 @@ def main(argv=None):
     say('  Log: ' + result.get('log', ''))
     if result.get('sessionState') == 'kept':
         say('  CEDAR is running and will start at login. cedar restore returns your previous desktop.')
+    elif result.get('sessionState') == 'running':
+        say('  CEDAR is running with this version and starts with Hyprland at login.')
     else:
         say('  Start CEDAR when you are ready: "$HOME/.local/bin/cedar" try, then cedar keep. Or open the isolated preview: cedar preview.')
     return 0

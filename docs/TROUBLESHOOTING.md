@@ -33,6 +33,27 @@ fixture without installing or changing the desktop:
 python3 tests/check_controls.py
 ```
 
+## The update says "up to date" but the desktop looks old
+
+Everything addresses the shell through the `cedar` Quickshell profile,
+`~/.config/quickshell/cedar`. Before 1.9 the installer never touched that link,
+so on a machine where it pointed at a source checkout, every update installed a
+release under `~/.local/share/cedar/releases/` that nothing loaded: the bar on
+screen stayed whatever the checkout had. Since 1.9 the runtime step makes the
+profile a link to `~/.local/share/cedar/current` (the previous link is in the
+backup; `cedar-install --restore` puts it back) and the session step restarts
+the running CEDAR, so the installed version is on screen when the installer
+finishes. To check:
+
+```bash
+readlink ~/.config/quickshell/cedar     # → ~/.local/share/cedar/current
+python3 ~/.config/quickshell/cedar/scripts/cedar_session.py status
+```
+
+To develop from a checkout again, point the link at it and restart
+(`ln -sfn ~/path/to/checkout ~/.config/quickshell/cedar`, then
+`cedar_session.py restart`); the next install or update takes the link back.
+
 ## Updating a checkout
 
 **Field Station → Update CEDAR** and `cedar installer --update` use the

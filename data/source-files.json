@@ -315,6 +315,7 @@
   "scripts/capabilities.py",
   "scripts/cedar",
   "scripts/cedar_cli.py",
+  "scripts/cedar_session.py",
   "scripts/clipboard_item.py",
   "scripts/compatibility_service.py",
   "scripts/connections.py",

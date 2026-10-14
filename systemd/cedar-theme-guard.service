@@ -1,5 +1,5 @@
 [Unit]
-Description=Reconcile known Omarchy shell overlap while CEDAR is selected
+Description=Keep the Omarchy shell from running beside CEDAR
 
 [Service]
 Type=oneshot
