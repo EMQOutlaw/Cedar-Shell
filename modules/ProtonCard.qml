@@ -9,11 +9,16 @@ import "../services"
 // protections worth a switch. Everything goes through Proton's own CLI.
 // The CLI does not report the account's plan, so nothing is hidden by plan:
 // Proton refuses what the plan lacks and the card shows its reason.
+// Proton and Tailscale never run together (see services/Tailscale.qml): while
+// Tailscale is up the connect buttons wait and the card says why.
 ColumnLayout {
     id: root
     property bool picking: false
     property string filter: ""
     readonly property var status: Proton.data.status
+    // Tailscale holds the tunnel; Proton waits.
+    readonly property bool blocked: Tailscale.up && !Proton.connected
+    readonly property bool canConnect: !Proton.busy && !blocked
     readonly property var matches: Proton.countries.filter(c => !filter || c.name.toLowerCase().includes(filter.toLowerCase()) || c.code.toLowerCase() === filter.toLowerCase()).slice(0, 18)
     spacing: 6
     function go(country) { Proton.connectTo("country", country.code, country.name); picking = false; }
@@ -81,16 +86,16 @@ ColumnLayout {
             StrataButton {
                 text: Proton.connected ? "Disconnect" : "Quick connect"
                 implicitHeight: 28
-                enabled: !Proton.busy
+                enabled: Proton.connected ? !Proton.busy : root.canConnect
                 onClicked: Proton.connected ? Proton.disconnect() : Proton.connectTo("fastest")
             }
         }
         Flow {
             visible: Proton.data.signedIn
             Layout.fillWidth: true; spacing: 6
-            StrataButton { text: "Country"; implicitHeight: 26; checked: root.picking; enabled: !Proton.busy; onClicked: { root.picking = !root.picking; root.filter = ""; } }
-            StrataButton { text: "P2P"; implicitHeight: 26; enabled: !Proton.busy; onClicked: Proton.connectTo("p2p") }
-            StrataButton { text: "Secure Core"; implicitHeight: 26; enabled: !Proton.busy; onClicked: Proton.connectTo("securecore") }
+            StrataButton { text: "Country"; implicitHeight: 26; checked: root.picking; enabled: root.canConnect; onClicked: { root.picking = !root.picking; root.filter = ""; } }
+            StrataButton { text: "P2P"; implicitHeight: 26; enabled: root.canConnect; onClicked: Proton.connectTo("p2p") }
+            StrataButton { text: "Secure Core"; implicitHeight: 26; enabled: root.canConnect; onClicked: Proton.connectTo("securecore") }
             StrataButton { text: Proton.loading ? "…" : "Refresh"; implicitHeight: 26; enabled: !Proton.loading; onClicked: Proton.refresh() }
         }
 
@@ -104,7 +109,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 placeholderText: Proton.countries.length ? "Search " + Proton.countries.length + " countries" : "Loading countries…"
                 onTextChanged: root.filter = text.trim()
-                onAccepted: if (root.matches.length && !Proton.busy) root.go(root.matches[0])
+                onAccepted: if (root.matches.length && root.canConnect) root.go(root.matches[0])
                 onVisibleChanged: { text = ""; if (visible) forceActiveFocus(); }
             }
             Flow {
@@ -115,7 +120,7 @@ ColumnLayout {
                         required property var modelData
                         text: modelData.code + "  " + modelData.name
                         implicitHeight: 26
-                        enabled: !Proton.busy
+                        enabled: root.canConnect
                         onClicked: root.go(modelData)
                     }
                 }
@@ -142,6 +147,15 @@ ColumnLayout {
             busy: Proton.busy
             onToggled: value => Proton.setOption("netshield", value ? "malware-ads-trackers" : "off")
         }
+    }
+    RowLayout {
+        visible: root.blocked && Proton.data.installed && (Proton.data.signedIn || Proton.connected)
+        Layout.fillWidth: true; spacing: 8
+        GlowText {
+            text: "Tailscale is up. Proton waits while it is: the two claim the same routes, and Proton's kill switch would cut the tailnet."
+            font.pixelSize: 10; color: Theme.amber; Layout.fillWidth: true; wrapMode: Text.WordWrap
+        }
+        StrataButton { text: "Tailscale down"; implicitHeight: 28; enabled: !Tailscale.busy; onClicked: Tailscale.bringDown() }
     }
     GlowText {
         visible: Proton.error !== ""

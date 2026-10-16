@@ -90,7 +90,14 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   application may reconnect it. A kill-switch connection an application
   keeps active is reported as that application's; CEDAR offers no kill
   switch of its own because it cannot enforce or verify one. Advanced
-  settings stay the profile's (nmtui or the provider's app). Bluetooth rows
+  settings stay the profile's (nmtui or the provider's app). Above the
+  profiles sit a Proton VPN card (where `protonvpn` is installed) and a
+  Tailscale card (where `tailscale` is), each driven through its own CLI and
+  probed only while the drop is open. The two are never run together: Proton's
+  connect buttons wait while Tailscale is up, Tailscale's Up waits while
+  Proton is connected, each card says why and offers to bring the other down,
+  and scripts/protonvpn.py and scripts/tailscale.py refuse the same way so
+  two surfaces cannot race. Bluetooth rows
   show BlueZ's state or the action in flight for that device (Pairing…,
   Connecting…, Disconnecting…), the battery where reported, and trust.
 - Workspaces (Super+Tab, Applications › CEDAR › Canopy › Workspaces, `canopy flip workspaces`): one column

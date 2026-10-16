@@ -52,6 +52,7 @@ FirstRunSettings 1.0 FirstRunSettings.qml
 LockStatePublisher 1.0 LockStatePublisher.qml
 HotspotSettings 1.0 HotspotSettings.qml
 ProtonCard 1.0 ProtonCard.qml
+TailscaleCard 1.0 TailscaleCard.qml
 ConnectionsPage 1.0 ConnectionsPage.qml
 NotificationSettings 1.0 NotificationSettings.qml
 GoCanopy 1.0 GoCanopy.qml
