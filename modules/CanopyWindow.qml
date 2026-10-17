@@ -50,14 +50,19 @@ PanelWindow {
         const w = Canopy.peeking ? 360 : topic === "workspaces" ? 1040 : topic === "station" ? 760 : topic === "go" ? (Go.dmenuActive && Go.dmenuWidth ? Math.max(480, Math.min(720, Math.round(Go.dmenuWidth * 1.15))) : 480) : topic === "keybinds" ? 700 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "startup" ? 620 : topic === "quick" ? 560 : 520;
         return Math.min(width - 24, w);
     }
-    function topicHeight(topic) {
-        const cap = Math.min(height - barJoin - 16, Canopy.peeking ? 160 : topic === "station" ? 1200 : topic === "workspaces" ? 900 : topic === "go" ? 760 : topic === "keybinds" ? 820 : topic === "quick" ? 660 : 700);
+    // A drop hugs its panel. The only ceiling is what fits under the bar on
+    // this output, so an instrument shows whole wherever the screen allows;
+    // only a panel taller than that (a long Connections list, every keybind)
+    // scrolls inside the drop. A peek stays a glance.
+    function topicHeight() {
+        const available = height - barJoin - 16;
+        const cap = Canopy.peeking ? Math.min(available, 160) : available;
         return Math.max(Canopy.peeking ? 120 : 160, Math.min(cap, panel.preferredHeight));
     }
     // Where the open panel sits: centred on its control, else centred on the
     // screen, decided by the geometry model and then only interpolated.
     function targetFor(topic) {
-        return Strata.target({ barWidth: width, anchor: Canopy.anchorRect, wantedWidth: topicWidth(topic), wantedHeight: topicHeight(topic),
+        return Strata.target({ barWidth: width, anchor: Canopy.anchorRect, wantedWidth: topicWidth(topic), wantedHeight: topicHeight(),
                                availableHeight: height - barJoin - 16, sideInset: sideInset, edge: 12, minimumHeight: Canopy.peeking ? 120 : 160 });
     }
     function topicX(w) { return Strata.panelX(width, Canopy.anchorRect, w, sideInset, 12); }
@@ -120,7 +125,7 @@ PanelWindow {
         else { mapped = false; setState("collapsed"); }
     }
     onRequestedChanged: requested ? open() : shut()
-    Component.onCompleted: if (requested) { mapped = true; drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; drop.reveal = 1; snap(topicX(topicWidth(drop.topic)), topicWidth(drop.topic), topicHeight(drop.topic)); }
+    Component.onCompleted: if (requested) { mapped = true; drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; drop.reveal = 1; snap(topicX(topicWidth(drop.topic)), topicWidth(drop.topic), topicHeight()); }
     // Follow late content heights and anchor moves, but never during a switch
     // or a close: deferred so `requested` has settled before it is read.
     function reaim() { Qt.callLater(root.retargetIfOpen); }

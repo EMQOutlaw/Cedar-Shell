@@ -440,7 +440,9 @@ Item {
         height: root.restingHeight
         volume: root.activity?.type === "volume"
     }
-    ScrollView {
+    // The hub scrolls only when it is taller than the screen allows. When it
+    // fits there is no scroll at all: no bar, no drag, the wheel reaches its rows.
+    Flickable {
         id: fullScroll
         visible: root.signalsOpen || root.reveal > 0
         enabled: root.signalsOpen
@@ -449,14 +451,19 @@ Item {
         opacity: root.reveal
         width: parent.width - 36
         height: Math.max(0, parent.height - y - 18)
-        contentWidth: availableWidth
+        readonly property bool overflowing: contentHeight > height + 1
+        contentWidth: width
+        contentHeight: hubLoader.implicitHeight
         clip: true
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        interactive: overflowing
+        flickableDirection: Flickable.AutoFlickIfNeeded
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: fullScroll.overflowing ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
         Loader {
             id: hubLoader
             objectName: "coreHubLoader"
             active: root.signalsOpen || root.keepHub
-            width: fullScroll.availableWidth
+            width: fullScroll.width
             sourceComponent: CoreHub {}
         }
     }

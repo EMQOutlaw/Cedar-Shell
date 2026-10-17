@@ -32,6 +32,11 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   controller's state: collapsed → opening → expanded → retargeting →
   expanded → closing → collapsed, readable with `qs -c cedar ipc call canopy
   status` together with the aimed rect and the anchor.
+- A drop hugs its panel. It grows to the height the panel wants, up to what
+  fits under the bar on that output, so an instrument shows whole wherever
+  the screen allows. Only a panel taller than that (a long Connections list,
+  every keybind) scrolls inside the drop; one that fits has no scroll at all,
+  no bar and no drag. The Signals hub follows the same rule.
 - Retargeting: a topic that shares the open surface's origin (a tab of the
   same drop) morphs in place from wherever the geometry is: content leaves,
   the surface moves to the next size, the next content arrives. A topic with

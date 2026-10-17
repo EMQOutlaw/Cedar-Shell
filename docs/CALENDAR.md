@@ -1,7 +1,8 @@
 # Connected calendars
 
-Open CEDAR's calendar from the bar, then **Calendars**. Connect up to eight
-Google, Proton or Nextcloud calendars, give each a name and color, and select a day to
+Open CEDAR's calendar from the bar, then **Connect a calendar** (or **Calendars**
+when one is already connected). Choose **Done** to close the connection form.
+Connect up to eight Google, Proton or Nextcloud calendars, give each a name and color, and select a day to
 see its events. Dots mark days with events. The existing timer remains below
 the agenda. These connections are **read-only subscriptions**, not account
 sign-in or two-way sync. Use **Open calendar** to create or edit events in

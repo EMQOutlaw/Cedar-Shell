@@ -109,7 +109,10 @@ ColumnLayout {
         Layout.fillWidth: true
         SectionMark { Layout.fillWidth: true; text: Qt.formatDateTime(root.selectedDate, "ddd, MMM d").toUpperCase(); tone: Theme.strataAccent }
         StrataButton { text: CalendarFeeds.busy ? "Refreshing…" : "Refresh"; enabled: CalendarFeeds.configured && !CalendarFeeds.busy && !Config.localOnly; onClicked: CalendarFeeds.refresh(true) }
-        StrataButton { text: root.manage ? "Done" : "Calendars"; checked: root.manage; onClicked: root.manage = !root.manage }
+        // The setup form opens from here and only from here, so a first-time
+        // user still finds it in one click while the drop stays short enough
+        // to show whole.
+        StrataButton { text: root.manage ? "Done" : CalendarFeeds.configured ? "Calendars" : "Connect a calendar"; checked: root.manage; onClicked: root.manage = !root.manage }
     }
     GlowText {
         visible: Config.localOnly
@@ -163,7 +166,11 @@ ColumnLayout {
         }
     }
     GlowText { visible: CalendarFeeds.truncated; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "This month has more than 5,000 events. Hide calendars to narrow the view."; color: Theme.amber; font.pixelSize: Theme.small }
-    Loader { Layout.fillWidth: true; active: root.manage || !CalendarFeeds.configured; sourceComponent: Component { CalendarConnections {} } }
+    // Connected calendars and the setup form show only while managing; with
+    // nothing connected the empty agenda names the providers instead. Hidden
+    // as well as inactive: an unloaded Loader keeps its last implicit height,
+    // which would hold the drop at the form's height after Done.
+    Loader { Layout.fillWidth: true; visible: root.manage; active: root.manage; sourceComponent: Component { CalendarConnections {} } }
     Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: Qt.alpha(Theme.strataGrain, .6) }
     SectionMark { text: "TIMER"; tone: Theme.strataAccent }
     RowLayout {
