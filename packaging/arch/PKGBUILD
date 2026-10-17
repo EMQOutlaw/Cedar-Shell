@@ -1,23 +1,52 @@
-# Build from a reviewed CEDAR source archive. No install hooks or service changes.
+# Maintainer: CEDAR release automation <41898282+github-actions[bot]@users.noreply.github.com>
+# Ships the reviewed release archive byte-identical under /usr/share/cedar plus
+# the cedar command. No install hooks, services, desktop entries or
+# byte-compiled Python: the per-user activation is `cedar installer`, run by
+# the user. This repository copy keeps sha256sums=('SKIP');
+# scripts/build_packages.py arch injects the archive checksum into the copy it
+# builds and publishes, and scripts/publish_version.py keeps pkgver in step.
 pkgname=cedar-shell
 pkgver=1.8
 pkgrel=1
-pkgdesc='CEDAR shell and reversible Hyprland compatibility tools'
-arch=('x86_64' 'aarch64')
+pkgdesc='CEDAR desktop shell for Hyprland'
+arch=('any')
 url='https://github.com/EMQOutlaw/Cedar-Shell'
+# The first-party code carries no license by the owner's decision (docs/LICENSES.md).
 license=('custom:unlicensed')
-depends=('python' 'quickshell' 'hyprland' 'qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-multimedia' 'qt6-5compat' 'qt6-imageformats' 'systemd')
-optdepends=('brightnessctl: brightness controls' 'wireplumber: audio controls' 'wl-clipboard: Wayland clipboard' 'cliphist: optional clipboard history' 'networkmanager: network controls' 'git: reviewed update channels')
-# Put the exact locally reviewed package_release.py output next to this file.
-source=("cedar-${pkgver}.tar.gz")
-# Generate and review checksums with updpkgsums before distributing a PKGBUILD.
+depends=('python' 'quickshell' 'hyprland' 'qt6-declarative' 'qt6-svg' 'python-gobject' 'systemd')
+optdepends=('networkmanager: network controls'
+            'libnm: Connections introspection'
+            'python-dbus: NetworkManager and BlueZ helpers'
+            'libpulse: audio routing and scenes'
+            'wl-clipboard: clipboard actions and history'
+            'brightnessctl: backlight control'
+            'power-profiles-daemon: power profiles'
+            'polkit: explicit system service restarts'
+            'xdg-utils: open files and URLs'
+            'gtk3: default editor launcher'
+            'glib2: desktop application associations'
+            'jq: Omarchy menu shim'
+            'cava: opt-in audio spectrum'
+            'lm_sensors: temperature fallback'
+            'hypridle: opt-in Trailwatch idle and sleep protection'
+            'hyprsunset: night light'
+            'grim: screenshots'
+            'slurp: region screenshots'
+            'pacman-contrib: update count'
+            'git: stable and development branch updates'
+            'openssl: update verification'
+            'procps-ng: process helpers'
+            'ttf-jetbrains-mono-nerd: recommended data font')
+# Nothing to strip in a QML and Python tree; keep it byte-identical.
+options=('!strip' '!debug' '!purge' '!zipman' 'libtool' 'staticlibs' 'emptydirs')
+source=("cedar-${pkgver}-x86_64.tar.gz::${url}/releases/download/v${pkgver}/cedar-${pkgver}-x86_64.tar.gz")
 sha256sums=('SKIP')
+
 package() {
-    local source_root
-    source_root=$(find "$srcdir" -mindepth 1 -maxdepth 2 -name shell.qml -printf '%h\n' | head -n 1)
-    [[ -n "$source_root" ]] || return 1
     install -d "$pkgdir/usr/share/cedar" "$pkgdir/usr/bin"
-    cp -a "$source_root/." "$pkgdir/usr/share/cedar/"
+    cp -a "$srcdir/cedar-shell/." "$pkgdir/usr/share/cedar/"
     printf '#!/bin/sh\nexec python3 /usr/share/cedar/scripts/distribution.py "$@"\n' > "$pkgdir/usr/bin/cedar"
     chmod 755 "$pkgdir/usr/bin/cedar"
+    install -Dm644 "$srcdir/cedar-shell/licenses/Omarchy-MIT.txt" "$pkgdir/usr/share/licenses/$pkgname/Omarchy-MIT.txt"
+    install -Dm644 "$srcdir/cedar-shell/docs/LICENSES.md" "$pkgdir/usr/share/licenses/$pkgname/LICENSES.md"
 }

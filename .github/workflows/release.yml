@@ -1,36 +1,208 @@
-name: Release assets
-# On a version tag, build the exact release archive the bootstrap downloads
-# (cedar-<version>-x86_64.tar.gz + .sha256) from the reviewed source
-# inventory, test the archive contents, and attach both to the GitHub
-# release. Nothing here installs, signs with a private key or auto-updates.
+name: Release assets and native repositories
+# A GITHUB_TOKEN-created tag does not trigger push workflows. publish-main
+# calls this workflow directly with the newly pushed tag; human tags use push.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing stable tag to rebuild (vMAJOR.MINOR)
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+    secrets:
+      CEDAR_PACKAGE_SIGNING_KEY:
+        required: false
 permissions:
   contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: cedar-release-${{ inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
 jobs:
   assets:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ inputs.release_tag || github.ref_name }}
           persist-credentials: false
-      - name: Verify the inventory and build the assets
+      - name: Validate the tag and package versions
+        id: version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          tag = os.environ['RELEASE_TAG']
+          if not re.fullmatch(r'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', tag):
+              raise SystemExit('Expected a stable vMAJOR.MINOR tag')
+          if Path('VERSION').read_text().strip() != tag[1:]:
+              raise SystemExit('Tag disagrees with VERSION')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('tag=' + tag + '\n')
+          PY
+          python3 scripts/build_packages.py check
+      - name: Verify the inventory and build the one shared archive
         run: |
           python3 scripts/update_source_inventory.py --check
           python3 scripts/audit_public.py
           python3 -m unittest discover -s tests -p test_installer.py
           python3 -m unittest discover -s tests -p test_distribution.py
+          python3 -m unittest discover -s tests -p test_packaging.py
+          python3 -m unittest discover -s tests -p test_packaged_install.py
+          python3 -m unittest discover -s tests -p test_publish_version.py
           python3 scripts/package_release.py --release-assets dist
           python3 tests/check_artifact.py dist/cedar-*-x86_64.tar.gz
           sh -n installer/bootstrap/install.sh
-      - name: Create the release if the tag has none, then attach the assets
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-archive
+          path: dist/*
+          if-no-files-found: error
+      - name: Attach the archive to the release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          if ! gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            awk 'NR==1{next} /^# /{exit} {print}' CHANGELOG.md > notes.md
-            gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "CEDAR ${version}" --notes-file notes.md
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --repo "$GITHUB_REPOSITORY" --title "CEDAR ${RELEASE_TAG#v}" --generate-notes
           fi
-          gh release upload "${GITHUB_REF_NAME}" dist/cedar-*-x86_64.tar.gz dist/cedar-*-x86_64.tar.gz.sha256 --clobber --repo "${GITHUB_REPOSITORY}"
+          gh release upload "$RELEASE_TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+  arch:
+    needs: assets
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    permissions:
+      contents: read
+    steps:
+      - name: Install isolated build tools
+        run: pacman -Syu --noconfirm --needed python libarchive zstd git
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.assets.outputs.tag }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-archive
+          path: archive
+      - name: Build as an unprivileged user and verify exact payload bytes
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -c 'cd "$1" && (cd archive && sha256sum --check *.sha256) && python3 scripts/build_packages.py arch archive/*.tar.gz --out dist' -- "$GITHUB_WORKSPACE"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-arch
+          path: dist/*
+          if-no-files-found: error
+  fedora:
+    needs: assets
+    runs-on: ubuntu-24.04
+    container: fedora:43
+    permissions:
+      contents: read
+    steps:
+      - name: Install isolated build tools
+        run: dnf install -y python3 rpm-build rpmdevtools redhat-rpm-config libarchive git
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.assets.outputs.tag }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-archive
+          path: archive
+      - name: Build as an unprivileged user and verify exact payload bytes
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -c 'cd "$1" && (cd archive && sha256sum --check *.sha256) && python3 scripts/build_packages.py rpm archive/*.tar.gz --out dist' -- "$GITHUB_WORKSPACE"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-fedora
+          path: dist/*
+          if-no-files-found: error
+  native-assets:
+    needs: [assets, arch, fedora]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: native-*
+          merge-multiple: true
+          path: dist
+      - name: Attach both verified native packages and recipes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.assets.outputs.tag }}
+        run: |
+          (cd dist && sha256sum * > native-packages.sha256)
+          gh release upload "$RELEASE_TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+  repositories:
+    needs: [assets, native-assets]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # Serialize collection, indexing AND deployment. Each run collects all
+    # completed releases, so an old-tag retry cannot deploy an older snapshot.
+    concurrency:
+      group: cedar-pages-repositories
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.assets.outputs.tag }}
+          persist-credentials: false
+      - name: Install repository tools on the disposable runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pacman-package-manager createrepo-c rpm libarchive-tools zstd gnupg
+      - name: Read Pages configuration (does not create or enable a site)
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        with:
+          enablement: false
+      - name: Rebuild repositories from all completed stable release pairs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.assets.outputs.tag }}
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+          CEDAR_PACKAGE_SIGNING_KEY: ${{ secrets.CEDAR_PACKAGE_SIGNING_KEY }}
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/cedar-package-gnupg"
+          install -d -m 700 "$GNUPGHOME"
+          trap 'gpgconf --kill gpg-agent || true; rm -rf "$GNUPGHOME"' EXIT
+          signing=()
+          if [[ -n "$CEDAR_PACKAGE_SIGNING_KEY" ]]; then
+            printf '%s\n' "$CEDAR_PACKAGE_SIGNING_KEY" | gpg --batch --import
+            fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')
+            test -n "$fingerprint"
+            signing=(--signing-key "$fingerprint")
+          fi
+          unset CEDAR_PACKAGE_SIGNING_KEY
+          python3 scripts/build_repositories.py --github "$GITHUB_REPOSITORY" --required-tag "$RELEASE_TAG" --out site --base-url "$PAGES_BASE_URL" "${signing[@]}"
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: site
+      - name: Deploy package repositories
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

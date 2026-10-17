@@ -75,16 +75,20 @@ def attention(facts, options):
     if not facts['dataWritable']:
         add('readonly', 'The data directory is read-only', facts['configPaths']['data'] + ' cannot be written. Check the filesystem and permissions.')
     missing = facts['dependencies']['missing']
+    backend = facts['support'].get('backend', '')
     if missing:
         if facts['support']['status'] == 'unsupported':
             add('unsupported', 'Dependencies are missing on an unsupported distribution',
                 'CEDAR has no automatic package setup for ' + facts['distro']['name'] + '. Install these with your package manager, then run the installer again: ' + ', '.join(missing) + '.')
+        elif facts['support']['status'] == 'experimental' and backend == 'dnf':
+            add('experimental', 'Experimental package setup on ' + facts['distro']['name'],
+                'This Fedora-based distribution is not individually reviewed. dnf will be used with your enabled repositories after you confirm; runtime package availability varies by release and CEDAR adds no repository. Or install the packages yourself first: ' + ', '.join(missing) + '.', 'warn')
         elif facts['support']['status'] == 'experimental':
             add('experimental', 'Experimental package setup on ' + facts['distro']['name'],
                 'This Arch-based distribution is not individually reviewed. pacman will be used with your configured repositories after you confirm; or install the packages yourself first: ' + ', '.join(missing) + '.', 'warn')
         if facts['online'] is False:
             add('offline', 'No network connection', 'Packages have to be downloaded: ' + ', '.join(missing) + '. Connect to a network, or install them yourself first.')
-        if facts['packageManager'] == 'pacman' and facts['support']['status'] != 'unsupported' and not privilege.method_name(facts):
+        if backend and facts['packageManager'] == backend and facts['support']['status'] != 'unsupported' and not privilege.method_name(facts):
             add('privilege', 'No way to ask for your password', privilege.describe('') + ' Packages to install: ' + ', '.join(missing) + '.')
     if facts['gpu']['vendor'] == 'NVIDIA' and facts['secureBoot'] == 'enabled' and facts['gpu']['driver'] not in ('nvidia', 'nouveau'):
         add('nvidia', 'NVIDIA with Secure Boot and no loaded driver', 'Secure Boot can keep an unsigned NVIDIA kernel module from loading. CEDAR does not install drivers; a desktop without a loaded GPU driver may not start after a reboot.', 'warn',

@@ -264,7 +264,7 @@ class Engine:
 
     # -- update ------------------------------------------------------------
     def selected_channel(self):
-        return (self._updater.channel if self._updater else None) or self.host.environ.get('CEDAR_INSTALLER_CHANNEL') or update_module.installed_channel(self.host.environ) or 'stable'
+        return (self._updater.channel if self._updater else None) or update_module.default_channel(self.source, self.host.environ)
 
     def updater(self, channel=None):
         channel = self.selected_channel() if channel is None else channel
@@ -468,7 +468,7 @@ def serve(source):
     channel = engine.selected_channel()
     emit('ready', {'source': str(engine.source), 'version': (engine.source / 'VERSION').read_text().strip() if (engine.source / 'VERSION').is_file() else '',
                    'channel': channel, 'branch': update_module.CHANNELS.get(channel, ''), 'installedChannel': update_module.installed_channel(engine.host.environ),
-                   'channels': [{'id': value, 'branch': branch, 'label': 'Stable Branch' if value == 'stable' else 'Development Branch'} for value, branch in update_module.CHANNELS.items()]})
+                   'channels': [{'id': value, 'branch': branch, 'label': update_module.channel_label(value)} for value, branch in update_module.CHANNELS.items()]})
     for line in sys.stdin:
         line = line.strip()
         if not line:

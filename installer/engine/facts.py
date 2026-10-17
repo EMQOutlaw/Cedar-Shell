@@ -118,25 +118,34 @@ def hyprland_main(host, processes):
     return candidates[0], len(candidates) > 1
 
 
-def dependency_report(host, source):
+def manifest_backends(host, source):
     manifest = read_json(host, Path(source) / 'data/dependencies.json') or {}
+    return (manifest.get('packageManagement') or {}).get('backends', [])
+
+
+def dependency_report(host, source, key='archPackage'):
+    """What the manifest needs and what is present; package names from the column `key`
+    (the matched backend's packageKey: archPackage, fedoraPackage). A null entry means the
+    distribution has no equivalent, so the dependency is reported missing but never guessed."""
+    manifest = read_json(host, Path(source) / 'data/dependencies.json') or {}
+    key = key or 'archPackage'
     rows, missing, recommended = [], [], []
     for row in manifest.get('commands', []):
         if row.get('scope') in ('development', 'omarchy-adapter'):
             continue
         present = bool(host.which(row['command']))
-        rows.append({'id': row['command'], 'present': present, 'required': row['status'] == 'required', 'package': row.get('archPackage'), 'feature': row.get('feature', '')})
-        if not present and row['status'] in ('required', 'feature-required') and row.get('autoInstall', True) and row.get('archPackage'):
-            missing.append(row['archPackage'])
+        rows.append({'id': row['command'], 'present': present, 'required': row['status'] == 'required', 'package': row.get(key), 'feature': row.get('feature', '')})
+        if not present and row['status'] in ('required', 'feature-required') and row.get('autoInstall', True) and row.get(key):
+            missing.append(row[key])
     for row in manifest.get('pythonModules', []):
         code, _, _ = host.run(['python3', '-c', row.get('probe', 'import ' + row['name'])], timeout=10)
         present = code == 0
-        rows.append({'id': row['name'], 'present': present, 'required': row['status'] == 'required', 'package': row.get('archPackage'), 'feature': row.get('feature', '')})
-        if not present and row['status'] in ('required', 'feature-required') and row.get('archPackage'):
-            missing.append(row['archPackage'])
+        rows.append({'id': row['name'], 'present': present, 'required': row['status'] == 'required', 'package': row.get(key), 'feature': row.get('feature', '')})
+        if not present and row['status'] in ('required', 'feature-required') and row.get(key):
+            missing.append(row[key])
     if not host.which('qs'):
         for row in manifest.get('modules', []) + manifest.get('imageFormats', []):
-            package = row.get('archPackage') or row.get('package')
+            package = row.get(key) or (row.get('package') if key == 'archPackage' else None)
             if package:
                 missing.append(package)
     for row in manifest.get('fonts', []):
@@ -144,22 +153,28 @@ def dependency_report(host, source):
         if host.which('fc-match'):
             code, out, _ = host.run(['fc-match', '--format=%{family}', row['family']], timeout=5)
             present = code == 0 and row['family'].lower() in out.lower()
-        rows.append({'id': row['family'], 'present': present, 'required': False, 'package': row.get('archPackage'), 'feature': 'Display font; fallback ' + row.get('fallback', '')})
-        if not present and row.get('archPackage'):
-            recommended.append(row['archPackage'])
-    return {'rows': rows, 'missing': sorted(set(missing)), 'recommendedMissing': sorted(set(recommended)),
+        rows.append({'id': row['family'], 'present': present, 'required': False, 'package': row.get(key), 'feature': 'Display font; fallback ' + row.get('fallback', '')})
+        if not present and row.get(key):
+            recommended.append(row[key])
+    return {'rows': rows, 'missing': sorted(set(missing)), 'recommendedMissing': sorted(set(recommended)), 'packageKey': key,
             'backends': (manifest.get('packageManagement') or {}).get('backends', [])}
 
 
 def support(distro, architecture, backends):
+    """How far package setup is reviewed here. `packageKey` names the manifest column to read
+    package names from; `upgradeRequired` says whether the backend upgrades the whole system."""
     for backend in backends:
         if distro['id'] in backend.get('distributions', {}) and architecture in backend.get('architectures', []):
-            return {'status': 'supported', 'backend': backend['id'], 'label': backend['distributions'][distro['id']],
+            return {'status': 'supported', 'backend': backend['id'], 'packageKey': backend.get('packageKey', 'archPackage'),
+                    'upgradeRequired': bool(backend.get('upgradeRequired', True)), 'label': backend['distributions'][distro['id']],
                     'note': 'Automatic package setup is ' + backend.get('status', 'reviewed').lower() + ' on ' + backend['distributions'][distro['id']] + '.'}
     if 'arch' in distro['like'] or distro['id'] == 'arch':
-        return {'status': 'experimental', 'backend': 'pacman', 'label': distro['name'],
+        return {'status': 'experimental', 'backend': 'pacman', 'packageKey': 'archPackage', 'upgradeRequired': True, 'label': distro['name'],
                 'note': 'Arch-based but not individually reviewed; CEDAR installs when its dependencies are present and can use pacman only after you confirm.'}
-    return {'status': 'unsupported', 'backend': '', 'label': distro['name'],
+    if 'fedora' in distro['like']:
+        return {'status': 'experimental', 'backend': 'dnf', 'packageKey': 'fedoraPackage', 'upgradeRequired': False, 'label': distro['name'],
+                'note': 'Fedora-based but not individually reviewed; CEDAR installs when its dependencies are present and can use dnf with the repositories you enabled only after you confirm.'}
+    return {'status': 'unsupported', 'backend': '', 'packageKey': 'archPackage', 'upgradeRequired': True, 'label': distro['name'],
             'note': 'No automatic package setup for this distribution. CEDAR installs when its dependencies are already present.'}
 
 
@@ -275,8 +290,9 @@ def scan(host, source, state_dir=None):
             facts['locked'] = any('LOCK' in (m.get('solitaryBlockedBy') or []) for m in monitors if isinstance(m, dict))
         except ValueError:
             pass
-    facts['dependencies'] = dependency_report(host, source)
-    facts['support'] = support(facts['distro'], facts['architecture'], facts['dependencies']['backends'])
+    # The backend is chosen first so the dependency report reads that backend's package names.
+    facts['support'] = support(facts['distro'], facts['architecture'], manifest_backends(host, source))
+    facts['dependencies'] = dependency_report(host, source, facts['support']['packageKey'])
     detected = providers.detect(facts, host)
     provider = providers.by_id(detected['chosen'])
     chosen = next((r for r in detected['results'] if r['id'] == detected['chosen']), {'evidence': []})

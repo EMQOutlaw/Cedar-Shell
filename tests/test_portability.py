@@ -265,6 +265,25 @@ sys.stdin.buffer.read(1)
     def missing_font(self):
         return {'id':'JetBrainsMono Nerd Font', 'status':'Needs Setup', 'scope':'font', 'package':'ttf-jetbrains-mono-nerd'}
 
+    def test_fedora_wizard_discloses_dnf_without_a_system_upgrade(self):
+        import setup
+        plan = {'packages': ['quickshell'], 'distribution': 'Fedora Linux', 'backend': 'dnf', 'upgradeRequired': False}
+        output = io.StringIO()
+        with patch.object(d.os, 'getuid', return_value=1000), patch.object(sys.stdin, 'isatty', return_value=True), \
+             patch.object(d.shutil, 'which', return_value='/fixture/hyprctl'), patch.object(d, 'capabilities', return_value=[]), \
+             patch.object(d, 'package_plan', return_value=plan), patch('builtins.input', return_value='y') as prompt, \
+             patch.object(d, 'install_packages') as packages, patch.object(d, 'install') as install, \
+             patch.object(d, 'plan_install', side_effect=d.Refused('Fixture stop after package consent')), contextlib.redirect_stdout(output):
+            with self.assertRaisesRegex(d.Refused, 'Fixture stop after package consent'):
+                setup.main([])
+        self.assertIn("Review dnf's transaction", output.getvalue())
+        self.assertIn('no full system upgrade', output.getvalue())
+        self.assertNotIn('performs a full system upgrade', output.getvalue())
+        self.assertNotIn('pacman', output.getvalue())
+        prompt.assert_called_once_with('Install these packages? [y/N] ')
+        packages.assert_called_once_with(plan, approve_upgrade=False)
+        install.assert_not_called()
+
     def test_recommended_font_is_explicit_opt_in_not_a_dependency_blocker(self):
         with patch.object(d, 'capabilities', return_value=[self.missing_font()]), patch.object(d.shutil, 'which', return_value='/fixture/qs'), patch.object(d, 'validate_imports'):
             self.assertEqual(d.missing_packages(d.ROOT), [])
@@ -275,10 +294,11 @@ sys.stdin.buffer.read(1)
         with patch.object(d, 'capabilities', return_value=missing), patch.object(d.shutil, 'which', return_value='/fixture/qs'), patch.object(d, 'validate_imports'):
             self.assertEqual(d.missing_packages(d.ROOT), ['libnm', 'wl-clipboard'])
 
-    def package_fixture(self, packages=None, distro='cachyos', result=0):
+    def package_fixture(self, packages=None, distro='cachyos', result=0, like='arch'):
         stack = contextlib.ExitStack()
         self.addCleanup(stack.close)
-        stack.enter_context(patch.object(platform, 'freedesktop_os_release', return_value={'ID':distro, 'ID_LIKE':'arch'}))
+        release = {'ID': distro, **({'ID_LIKE': like} if like else {})}
+        stack.enter_context(patch.object(platform, 'freedesktop_os_release', return_value=release))
         stack.enter_context(patch.object(platform, 'machine', return_value='x86_64'))
         stack.enter_context(patch.object(d, 'missing_packages', return_value=['quickshell'] if packages is None else packages))
         stack.enter_context(patch.object(d.shutil, 'which', return_value='/fixture/tool'))
@@ -299,6 +319,62 @@ sys.stdin.buffer.read(1)
         records = list((d.paths()['state']/'transactions').glob('*/journal.json'))
         self.assertEqual(len(records), 1)
         self.assertEqual(d.read_json(records[0])['packages'][0]['result'], 'succeeded')
+
+    def test_fedora_package_install_uses_dnf_without_upgrade_consent(self):
+        command, spawn = self.package_fixture(distro='fedora', like=None)
+        host = d.package_host(d.ROOT)
+        self.assertEqual((host['id'], host['displayName'], host['packageKey'], host['upgradeRequired']), ('dnf', 'Fedora Linux', 'fedoraPackage', False))
+        self.assertEqual(d.package_key(d.ROOT), 'fedoraPackage')
+        plan = d.package_plan(d.ROOT)
+        self.assertEqual((plan['backend'], plan['distribution'], plan['packageKey'], plan['upgradeRequired']), ('dnf', 'Fedora Linux', 'fedoraPackage', False))
+        self.assertIn('sudo dnf install', plan['operation']); self.assertIn('no system upgrade', plan['operation']); self.assertIn('only your enabled repositories', plan['providerChanges'])
+        command.assert_called_once_with(['dnf', '-q', 'info', 'quickshell'], timeout=120)
+        spawn.assert_not_called()
+        # dnf install adds only the listed packages, so the separate system-upgrade consent is not required.
+        with patch.object(d, 'missing_packages', side_effect=AssertionError('Unexpected second scan')):
+            d.install_packages(plan)
+        spawn.assert_called_once_with(['sudo', 'dnf', 'install', 'quickshell'])
+        records = list((d.paths()['state']/'transactions').glob('*/journal.json'))
+        self.assertEqual(len(records), 1)
+        record = d.read_json(records[0])
+        self.assertEqual(record['packages'][0], {'command': ['dnf', 'install', 'quickshell'], 'result': 'succeeded', 'reversible': False})
+        self.assertEqual(record['stage'], 'commit')
+
+    def test_failed_dnf_transaction_is_recorded_and_stops(self):
+        _, spawn = self.package_fixture(distro='fedora', like=None, result=1)
+        with self.assertRaisesRegex(d.Refused, 'failed/canceled'): d.package_plan(d.ROOT, True)
+        spawn.assert_called_once_with(['sudo', 'dnf', 'install', 'quickshell'])
+        records = list((d.paths()['state']/'transactions').glob('*/journal.json'))
+        self.assertEqual(len(records), 1)
+        record = d.read_json(records[0])
+        self.assertEqual(record['packages'][0]['result'], 'failed')
+        self.assertNotEqual(record['stage'], 'commit')
+
+    def test_fedora_package_outside_enabled_repositories_stops_with_provider_guidance(self):
+        command, spawn = self.package_fixture(distro='fedora', like=None)
+        command.side_effect = d.Refused('Command failed: dnf (exit 1). Error: No matching Packages to list')
+        with self.assertRaisesRegex(d.Refused, 'could not be verified.*availability varies by Fedora release') as refused: d.package_plan(d.ROOT, True)
+        self.assertIn('quickshell', str(refused.exception)); spawn.assert_not_called()
+        with patch.object(d.shutil, 'which', side_effect=lambda name: None if name == 'dnf' else '/fixture/tool'):
+            with self.assertRaisesRegex(d.Refused, 'needs dnf and sudo'): d.check_package_plan({'backend': 'dnf', 'packages': ['quickshell']})
+        with self.assertRaisesRegex(d.Refused, 'Unrecognized package backend'): d.check_package_plan({'backend': 'apt', 'packages': ['quickshell']})
+
+    def test_fedora_dependency_names_come_from_the_manifest_column(self):
+        with patch.object(platform, 'freedesktop_os_release', return_value={'ID': 'fedora'}), patch.object(platform, 'machine', return_value='x86_64'), patch.object(d.shutil, 'which', return_value=None):
+            packages = d.missing_packages(d.ROOT)
+            caps = {row['id']: row for row in d.capabilities(d.ROOT)}
+        for name in ('quickshell', 'qt6-qtdeclarative', 'qt6-qtbase', 'qt6-qtsvg', 'wl-clipboard', 'procps-ng', 'systemd', 'glib2'):
+            self.assertIn(name, packages, name)
+        for name in ('qt6-declarative', 'qt6-base', 'qt6-svg', 'pacman-contrib', 'python-gobject', 'libnm', 'hyprland', 'omarchy', 'nvidia-utils', 'xorg-x11-drv-nvidia-cuda'):
+            self.assertNotIn(name, packages, name)
+        self.assertIsNone(caps['checkupdates']['package'], 'no Fedora equivalent is guessed')
+        self.assertEqual(caps['pactl']['package'], 'pulseaudio-utils'); self.assertEqual(caps['JetBrainsMono Nerd Font']['package'], None)
+        # An unreviewed distribution still lists Arch names, as before.
+        with patch.object(platform, 'freedesktop_os_release', return_value={'ID': 'debian'}), patch.object(platform, 'machine', return_value='x86_64'), patch.object(d.shutil, 'which', return_value=None):
+            self.assertEqual(d.package_key(d.ROOT), 'archPackage')
+            self.assertIn('qt6-declarative', d.missing_packages(d.ROOT))
+            self.assertIn('qt6-base', d.missing_packages(d.ROOT))
+            self.assertIn('qt6-svg', d.missing_packages(d.ROOT))
 
     def test_unknown_arch_derivative_is_not_guessed_from_id_like(self):
         command, spawn = self.package_fixture(distro='unreviewed-distro')

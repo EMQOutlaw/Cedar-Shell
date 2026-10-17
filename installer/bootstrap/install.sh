@@ -44,7 +44,8 @@ else
 fi
 if ! command -v python3 >/dev/null 2>&1 || ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)'; then
     say "CEDAR needs Python 3.11 or newer before its installer can run."
-    if command -v pacman >/dev/null 2>&1; then say "  sudo pacman -S --needed python"; fi
+    if command -v pacman >/dev/null 2>&1; then say "  sudo pacman -S --needed python"
+    elif command -v dnf >/dev/null 2>&1; then say "  sudo dnf install python3"; fi
     fail "Install Python with your package manager, then run this command again."
 fi
 

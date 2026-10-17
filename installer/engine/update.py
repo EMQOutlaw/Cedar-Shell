@@ -2,7 +2,10 @@
 
 The desktop and CLI choose an allowlisted branch, fetch into CEDAR-owned
 bare caches, and export immutable commit snapshots. They never change the
-user's checkout. Installed channel provenance is written only after final
+user's checkout. The package channel needs neither Git nor the network: it
+verifies the tree a system package installed under /usr/share/cedar and
+snapshots it the same way, with the inventory digest standing in for the
+commit. Installed channel provenance is written only after final
 installation verification and is tied to the installed release's bytes.
 
 The channel=None API retains the original checkout/release updater for
@@ -148,15 +151,38 @@ def _listed_files(text):
 
 
 # Public channels deliberately do not accept arbitrary refs or repositories.
-CHANNELS = {'stable': 'main', 'development': 'dev'}
+# The package channel has no branch: it compares the CEDAR tree a system
+# package installed (SYSTEM_SOURCE) with the installed per-user copy.
+CHANNELS = {'stable': 'main', 'development': 'dev', 'package': 'system package'}
+LABELS = {'stable': 'Stable Branch', 'development': 'Development Branch', 'package': 'System package'}
 REPOSITORY = 'https://github.com/EMQOutlaw/Cedar-Shell.git'
+SYSTEM_SOURCE = '/usr/share/cedar'
 
 
 def channel_branch(channel):
     if not isinstance(channel, str) or channel not in CHANNELS:
-        raise Guidance('Unknown update branch', 'Choose Stable Branch or Development Branch.',
+        raise Guidance('Unknown update branch', 'Choose Stable Branch, Development Branch or System package.',
                        retry=False, code='channel')
     return CHANNELS[channel]
+
+
+def channel_label(channel):
+    return LABELS.get(channel, 'Stable Branch' if channel == 'stable' else 'Development Branch')
+
+
+def system_source(environ=None):
+    """Where a system package put the CEDAR tree (/usr/share/cedar; CEDAR_SYSTEM_SOURCE for fixtures)."""
+    environ = os.environ if environ is None else environ
+    return Path(environ.get('CEDAR_SYSTEM_SOURCE') or SYSTEM_SOURCE)
+
+
+def default_channel(source, environ=None):
+    """Keep the installed channel; a first run from the system tree stays offline."""
+    environ = os.environ if environ is None else environ
+    selected = environ.get('CEDAR_INSTALLER_CHANNEL') or installed_channel(environ)
+    if selected:
+        return selected
+    return 'package' if Path(source).resolve() == system_source(environ).resolve() else 'stable'
 
 
 def _home_path(environ, kind, default):
@@ -288,11 +314,27 @@ def verify_update_source(source, environ):
                        ['Close this installer and check for updates again.'], retry=False, code='source-changed')
 
 
+def package_provenance(source, installed, environ):
+    """A first installation started straight from the system package tree (`cedar installer`
+    with nothing installed yet) is on the package channel; any other source records nothing."""
+    tree = system_source(environ)
+    try:
+        if not (tree / 'data/source-files.json').is_file() or Path(source).resolve() != tree.resolve():
+            return {}
+        digest = content_digest(tree)
+    except (OSError, ValueError, RuntimeError):
+        return {}
+    if content_digest(installed) != digest:
+        raise RuntimeError('The installed release does not match the system package.')
+    return {'channel': 'package', 'branch': channel_branch('package'), 'commit': digest, 'sourceDigest': digest,
+            'installedRelease': str(Path(installed).resolve())}
+
+
 def install_provenance(source, installed, environ):
     """Called by the final verification step, never by fetching or choosing a tab."""
     channel = environ.get('CEDAR_INSTALLER_CHANNEL')
     if channel is None:
-        return {}
+        return package_provenance(source, installed, environ)
     branch = channel_branch(channel)
     if not environ.get('CEDAR_INSTALLER_SOURCE_DIGEST') or not environ.get('CEDAR_INSTALLER_COMMIT'):
         raise RuntimeError('A branch selection must come from a checked update.')
@@ -525,7 +567,7 @@ class Updater:
     def channel_locate(self, ctx, op):
         self.check_cancelled()
         self.result['previousVersion'] = self.installed_version()
-        op.detail = ('Stable Branch' if self.channel == 'stable' else 'Development Branch') + ' · ' + self.branch
+        op.detail = channel_label(self.channel) + ' · ' + self.branch
         self.say(op.id, op.detail)
 
     def channel_inspect(self, ctx, op):
@@ -553,9 +595,9 @@ class Updater:
         self.result['commit'] = commit
         op.detail = self.branch + ' · ' + commit[:12]
 
-    def channel_prepare(self, ctx, op):
-        self.check_cancelled()
-        commit = self.result['commit']
+    def prepare_snapshot(self, commit, build):
+        """The immutable snapshot `update-sources/<channel>/<commit>`: reuse it when its record
+        and digest still match, otherwise build it with `build(temporary)`. Returns the record."""
         parent = self.state_dir / 'update-sources' / self.channel
         from scripts.distribution import private_directory
         private_directory(parent)
@@ -571,28 +613,16 @@ class Updater:
                 raise Guidance('The prepared update changed', 'A cached update no longer matches its verified source. It was not installed.',
                                ['Move ' + str(target) + ' aside and check for updates again.'], code='source-changed') from None
         else:
-            raw = self.managed_git('archive', '--format=tar', commit, binary=True)
-            self.check_cancelled()
             temporary = Path(tempfile.mkdtemp(prefix='.prepare-', dir=parent))
             try:
-                with tarfile.open(fileobj=io.BytesIO(raw), mode='r:') as archive:
-                    for member in archive:
-                        self.check_cancelled()
-                        rel = Path(member.name)
-                        if (rel.is_absolute() or '..' in rel.parts or '.git' in rel.parts
-                                or not (member.isfile() or member.isdir())):
-                            raise Guidance('The source archive is unsafe', 'The branch contains a link or an unsafe archive path.', retry=False, code='archive')
-                        destination = temporary / rel
-                        if member.isdir():
-                            destination.mkdir(parents=True, exist_ok=True)
-                        else:
-                            destination.parent.mkdir(parents=True, exist_ok=True)
-                            with archive.extractfile(member) as src, destination.open('xb') as dest:
-                                shutil.copyfileobj(src, dest)
-                            os.chmod(destination, member.mode & 0o777)
+                build(temporary)
                 if not (temporary / 'installer/cedar_install.py').is_file():
-                    raise Guidance('The branch has no installer', 'The selected branch does not contain the CEDAR installer.', retry=False, code='handoff')
+                    what = 'system package' if self.channel == 'package' else 'branch'
+                    raise Guidance('The ' + what + ' has no installer', 'The selected ' + what + ' does not contain the CEDAR installer.', retry=False, code='handoff')
                 digest = content_digest(temporary)
+                if self.channel == 'package' and digest != commit:
+                    raise Guidance('The system package changed while it was being copied', 'The package tree no longer matches what was verified a moment ago. Nothing was installed.',
+                                   ['Let your package manager finish, then check for updates again.'], code='source-changed')
                 self.check_cancelled()
                 os.replace(temporary, target)
                 record = {'commit': commit, 'channel': self.channel, 'sourceDigest': digest}
@@ -604,6 +634,31 @@ class Updater:
                     shutil.rmtree(temporary)
         self.result.update({'source': str(target), 'sourceDigest': record['sourceDigest'], 'version': self.version_of(target)})
         prune_snapshots(parent, commit)
+        return record
+
+    def channel_prepare(self, ctx, op):
+        self.check_cancelled()
+        commit = self.result['commit']
+
+        def build(temporary):
+            raw = self.managed_git('archive', '--format=tar', commit, binary=True)
+            self.check_cancelled()
+            with tarfile.open(fileobj=io.BytesIO(raw), mode='r:') as archive:
+                for member in archive:
+                    self.check_cancelled()
+                    rel = Path(member.name)
+                    if (rel.is_absolute() or '..' in rel.parts or '.git' in rel.parts
+                            or not (member.isfile() or member.isdir())):
+                        raise Guidance('The source archive is unsafe', 'The branch contains a link or an unsafe archive path.', retry=False, code='archive')
+                    destination = temporary / rel
+                    if member.isdir():
+                        destination.mkdir(parents=True, exist_ok=True)
+                    else:
+                        destination.parent.mkdir(parents=True, exist_ok=True)
+                        with archive.extractfile(member) as src, destination.open('xb') as dest:
+                            shutil.copyfileobj(src, dest)
+                        os.chmod(destination, member.mode & 0o777)
+        self.prepare_snapshot(commit, build)
         op.detail = 'Prepared ' + self.branch + ' at ' + commit[:12] + '; installed copy unchanged'
 
     def channel_handoff(self, ctx, op):
@@ -618,8 +673,58 @@ class Updater:
         self.result['changed'] = not same_contents
         self.result['summary'] = [] if same_contents else basic_update_summary(current.resolve(), Path(self.result['source']))
         self.prepared = True
-        op.detail = ('CEDAR is up to date on ' + self.branch if self.result['current'] else
-                     'Ready to install from ' + self.branch + ' · ' + self.result['commit'][:12])
+        if self.channel == 'package':
+            op.detail = ('CEDAR is up to date with the system package' if self.result['current'] else
+                         'Ready to install the system package · ' + self.result['commit'][:12])
+        else:
+            op.detail = ('CEDAR is up to date on ' + self.branch if self.result['current'] else
+                         'Ready to install from ' + self.branch + ' · ' + self.result['commit'][:12])
+
+    # -- the system package ------------------------------------------------
+    def package_locate(self, ctx, op):
+        """The tree a system package installed (pacman or dnf), read in place and never modified."""
+        self.check_cancelled()
+        self.result['previousVersion'] = self.installed_version()
+        tree = system_source(self.environ)
+        if not (tree / 'data/source-files.json').is_file() or not (tree / 'VERSION').is_file():
+            raise Guidance('No CEDAR system package is installed', 'There is no CEDAR package tree at ' + str(tree) + ', so there is nothing to compare the installed CEDAR with. Nothing was changed.',
+                           ['Arch Linux: install or update the package: `sudo pacman -Syu cedar-shell`.',
+                            'Fedora: install or update the package: `sudo dnf install cedar-shell`.',
+                            'Or choose Stable Branch to update from GitHub instead.'], retry=True, code='package-missing')
+        op.detail = str(tree) + ' · CEDAR ' + (self.version_of(tree) or '?')
+        self.say(op.id, op.detail)
+
+    def package_inspect(self, ctx, op):
+        """Verify the package inventory in place (regular files only, no links) and fingerprint it."""
+        self.check_cancelled()
+        tree = system_source(self.environ)
+        from scripts.distribution import files
+        try:
+            count = len(files(tree))
+            if not (tree / 'installer/cedar_install.py').is_file():
+                raise RuntimeError('The package tree has no installer/cedar_install.py.')
+            digest = content_digest(tree)
+        except (OSError, ValueError, RuntimeError) as error:
+            raise Guidance('The CEDAR system package is incomplete', str(error) + ' Nothing was changed.',
+                           ['Reinstall the CEDAR package with your package manager, then try again.'], retry=True, code='package-invalid') from error
+        self.check_cancelled()
+        self.result['commit'] = digest
+        op.detail = str(count) + ' files verified · ' + digest[:12]
+
+    def package_prepare(self, ctx, op):
+        self.check_cancelled()
+        digest = self.result['commit']
+        tree = system_source(self.environ)
+
+        def build(temporary):
+            from scripts.distribution import files
+            for path, rel in files(tree):
+                self.check_cancelled()
+                destination = temporary / rel
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, destination)
+        self.prepare_snapshot(digest, build)
+        op.detail = 'Prepared the system package at ' + digest[:12] + '; installed copy unchanged'
 
     def run_channel(self):
         self.cancelled.clear()
@@ -629,11 +734,18 @@ class Updater:
         self.result = {'kind': 'channel', 'channel': self.channel, 'branch': self.branch,
                        'installedChannel': installed_channel(self.environ), 'source': '', 'sourceDigest': '',
                        'commit': '', 'version': '', 'previousVersion': '', 'current': False, 'notes': [], 'changed': False}
-        rows = [('locate', 'Branch', 'The CEDAR branch you selected', self.channel_locate),
-                ('inspect', 'Prepare', 'Use an isolated update cache', self.channel_inspect),
-                ('fetch', 'Check', 'Fetch the latest branch revision', self.channel_fetch),
-                ('apply', 'Prepare source', 'Verify an immutable copy of the selected revision', self.channel_prepare),
-                ('handoff', 'Installer', 'Compare the prepared source with your installed CEDAR', self.channel_handoff)]
+        if self.channel == 'package':
+            # No Git and no network: the package manager delivered the tree.
+            rows = [('locate', 'Source', 'The CEDAR system package', self.package_locate),
+                    ('inspect', 'Prepare', 'Verify the package tree in place', self.package_inspect),
+                    ('apply', 'Prepare source', 'Copy an immutable snapshot of the package tree', self.package_prepare),
+                    ('handoff', 'Installer', 'Compare the snapshot with your installed CEDAR', self.channel_handoff)]
+        else:
+            rows = [('locate', 'Branch', 'The CEDAR branch you selected', self.channel_locate),
+                    ('inspect', 'Prepare', 'Use an isolated update cache', self.channel_inspect),
+                    ('fetch', 'Check', 'Fetch the latest branch revision', self.channel_fetch),
+                    ('apply', 'Prepare source', 'Verify an immutable copy of the selected revision', self.channel_prepare),
+                    ('handoff', 'Installer', 'Compare the prepared source with your installed CEDAR', self.channel_handoff)]
         runner = ops.Runner([ops.Operation(*row) for row in rows], self.state_dir / 'update-state.json',
                             self.log, self.emit, version=self.version_of(self.source), run_id='update-' + uuid.uuid4().hex)
         try:
