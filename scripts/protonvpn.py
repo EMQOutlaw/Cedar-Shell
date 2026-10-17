@@ -5,6 +5,11 @@ The CLI has no machine-readable output, so every parser here is tolerant:
 unknown lines are skipped, and a renamed field shows up as a missing value
 rather than an error. Sign-in is never handled here; the password and 2FA go
 to Proton's own prompt in a terminal. Every subprocess is an argv list.
+
+Proton and Tailscale are not allowed up together (each claims routes and DNS
+the other wants; Proton's kill switch cuts the tailnet), so `connect` first
+asks tailscaled, locally and cheaply, whether Tailscale is running. The card
+holds the same guard; this one stops two surfaces racing.
 """
 import json
 import os
@@ -92,6 +97,17 @@ def cli(*args, timeout=12):
         return 124, '', 'The Proton CLI timed out (it may be waiting on the keyring).'
 
 
+def tailscale_up():
+    """Whether Tailscale is running, from its own local status. Absent or silent counts as down."""
+    if shutil.which('tailscale') is None:
+        return False
+    try:
+        done = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, timeout=8, stdin=subprocess.DEVNULL)
+        return json.loads(done.stdout or '{}').get('BackendState') == 'Running'
+    except (OSError, subprocess.TimeoutExpired, ValueError, AttributeError):
+        return False
+
+
 def failure(stderr, stdout, fallback):
     text = strip(stderr).strip() or strip(stdout).strip()
     lines = [line for line in text.splitlines() if line.strip()]
@@ -161,7 +177,10 @@ def action(req):
     if shutil.which(CLI) is None:
         raise RuntimeError('The Proton VPN CLI is not installed.')
     if kind == 'connect':
-        code, out, err = cli('connect', *connect_args(req), timeout=90)
+        args = connect_args(req)
+        if tailscale_up():
+            raise RuntimeError('Tailscale is up. Bring it down before connecting Proton VPN; the two are not run together here.')
+        code, out, err = cli('connect', *args, timeout=90)
         if code != 0:
             raise RuntimeError(failure(err, out, 'Proton could not connect.'))
     elif kind == 'disconnect':

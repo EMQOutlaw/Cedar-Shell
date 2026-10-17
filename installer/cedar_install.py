@@ -60,6 +60,27 @@ def ask(question, default=False):
     return reply in ('y', 'yes')
 
 
+def scrub_environment(environ):
+    """Drop another CEDAR's redirections before anything here resolves `qs`.
+
+    Field Station starts the updater in a systemd scope, which keeps the running
+    shell's environment. A pre-1.8 shell carried CEDAR_SHELL_PATH and its
+    release's scripts/shim first on PATH: that shim rewrites `qs -c cedar` to one
+    release path, so the probes here and in cedar_session.py asked a release that
+    was no longer running and the desktop was handed back to Omarchy beside a
+    healthy CEDAR. LC_ALL=C is a parsing locale, never the desktop's.
+    Mirrors scrub_environment in scripts/cedar_session.py."""
+    for key in ('CEDAR_SHELL_PATH', 'CEDAR_QS_BIN', 'CEDAR_OMARCHY_SESSION', 'CEDAR_SESSION_STATUS', 'CEDAR_SESSION_HELPER',
+                'CEDAR_OMARCHY_LOCK', 'CEDAR_EXTERNAL_IDLE', 'CEDAR_LOCK_STATE'):
+        environ.pop(key, None)
+    if environ.get('LC_ALL') in ('C', 'POSIX'):
+        environ.pop('LC_ALL')
+    if environ.get('PATH'):
+        entries = [e for e in environ['PATH'].split(os.pathsep) if e and not (Path(e).name == 'shim' and Path(e).parent.name == 'scripts')]
+        environ['PATH'] = os.pathsep.join(entries)
+    return environ
+
+
 def update_plan(source, environ=None):
     """Where the newest CEDAR comes from: a Git checkout to pull, or the published release.
 
@@ -216,6 +237,7 @@ def main(argv=None):
     parser.add_argument('--version', action='store_true', help='print the installer version')
     args = parser.parse_args(argv)
     source = args.source.resolve()
+    scrub_environment(os.environ)
     if args.channel and not args.update:
         parser.error('--channel must be used with --update')
     if args.channel:
@@ -305,6 +327,8 @@ def main(argv=None):
     say('  Log: ' + result.get('log', ''))
     if result.get('sessionState') == 'kept':
         say('  CEDAR is running and will start at login. cedar restore returns your previous desktop.')
+    elif result.get('sessionState') == 'running':
+        say('  CEDAR is running with this version and starts with Hyprland at login.')
     else:
         say('  Start CEDAR when you are ready: "$HOME/.local/bin/cedar" try, then cedar keep. Or open the isolated preview: cedar preview.')
     return 0

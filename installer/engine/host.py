@@ -37,6 +37,9 @@ class Host:
     def is_file(self, path): return Path(path).is_file()
     def is_dir(self, path): return Path(path).is_dir()
     def is_symlink(self, path): return Path(path).is_symlink()
+    def readlink(self, path):
+        try: return os.readlink(path)
+        except OSError: return ''
 
     def read(self, path, limit=MAX_READ):
         try:
@@ -197,10 +200,11 @@ class FakeHost(Host):
 
     def __init__(self, home='/home/station', environ=None, files=None, dirs=None, commands=None,
                  processes=None, units=None, packages=None, which=None, release=None, machine='x86_64',
-                 free=200 * 1024 ** 3, tty=True, python=(3, 12, 0)):
+                 free=200 * 1024 ** 3, tty=True, python=(3, 12, 0), links=None):
         super().__init__(home=home, environ={'HOME': home, **(environ or {})})
         self.files = {str(Path(k)): v for k, v in (files or {}).items()}
         self.dirs = {str(Path(d)) for d in (dirs or [])}
+        self.links = {str(Path(k)): v for k, v in (links or {}).items()}
         for path in self.files:
             parent = Path(path).parent
             while str(parent) not in self.dirs and parent != parent.parent:
@@ -220,7 +224,8 @@ class FakeHost(Host):
     def exists(self, path): return str(Path(path)) in self.files or str(Path(path)) in self.dirs
     def is_file(self, path): return str(Path(path)) in self.files
     def is_dir(self, path): return str(Path(path)) in self.dirs
-    def is_symlink(self, path): return False
+    def is_symlink(self, path): return str(Path(path)) in self.links
+    def readlink(self, path): return self.links.get(str(Path(path)), '')
     def read(self, path, limit=MAX_READ):
         value = self.files.get(str(Path(path)))
         return None if value is None else str(value)

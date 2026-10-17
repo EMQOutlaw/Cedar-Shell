@@ -97,6 +97,13 @@ class Distribution(unittest.TestCase):
             with self.assertRaisesRegex(d.Refused,'Fixture lock began'):d.install(source,approved=True)
         write.assert_not_called()
         self.assertEqual({path:d.info(path) for path in before},before)
+    def test_live_install_switches_under_a_running_release_once_unlocked(self):
+        source,before=self.upgrade_fixture()
+        with patch.object(d,'ensure_unlocked') as unlocked,patch.object(d,'release_in_use',return_value=True),patch.object(d,'validate',return_value='Fixture validation'):
+            d.install(source,approved=True,live=True)
+        self.assertEqual((d.installed()/'VERSION').read_text().strip(),'0.1.0-dev.fixture');self.assertGreaterEqual(unlocked.call_count,2)
+        with patch.object(d,'ensure_unlocked',side_effect=d.Refused('Fixture locked')),patch.object(d,'release_in_use',return_value=True),patch.object(d,'validate',return_value='Fixture validation'):
+            with self.assertRaisesRegex(d.Refused,'Fixture locked'):d.install(d.ROOT,approved=True,live=True)
     def test_running_release_blocks_upgrade_before_helpers_or_validation(self):
         source,before=self.upgrade_fixture()
         with patch.object(d,'ensure_unlocked'),patch.object(d,'release_in_use',return_value=True),patch.object(d.Transaction,'apply_file') as write,patch.object(d,'validate') as validate:
