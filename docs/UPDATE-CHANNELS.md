@@ -1,17 +1,19 @@
-# Stable and Development
+# Update channels: System package, Stable and Development
 
 Open **CEDAR → Field Station → Update CEDAR**.
 
-| Choice | Git branch | Purpose |
+| Choice | Source | Purpose |
 | --- | --- | --- |
-| Stable Branch | `main` | The normal update path |
+| System package | `/usr/share/cedar` | Apply the CEDAR version installed by pacman or dnf to your per-user copy |
+| Stable Branch | `main` | Follow the stable source branch on GitHub |
 | Development Branch | `dev` | The latest integrated work before promotion to main |
 
-The up-to-date screen still offers **Development Branch** when Stable is
-selected, and **Stable Branch** when Development is selected. Clicking the
-other branch checks that branch immediately. The same choice remains
-available after a failed check; **Try again** retries the selected branch.
-The window distinguishes the installed branch from a new selection until
+The update screen offers **Development Branch** when Stable is selected,
+**Stable Branch** when Development or System package is selected, and
+**System package** when either branch is selected. Clicking a choice checks
+it immediately. The choices remain available when up to date and after a
+failed check; **Try again** retries the selected channel.
+The window distinguishes the installed channel from a new selection until
 installation succeeds.
 
 Normal updates follow the last successfully installed channel. A failed
@@ -23,6 +25,7 @@ installer and migration rules.
 Terminal equivalents:
 
 ```sh
+cedar installer --update --channel package
 cedar installer --update --channel development
 cedar installer --update --channel stable
 ```
@@ -30,7 +33,45 @@ cedar installer --update --channel stable
 Add `--no-gui` to use the terminal installer. Installation still requires
 the existing plan approval; choosing a channel does not bypass it.
 
-## How the check works
+## System package
+
+A first successful installation started with `cedar installer` from the
+system package records the package channel. Adding a package beside an
+existing branch installation does not switch its remembered channel; use the
+explicit command above to switch.
+If the existing installer predates package-channel support, use the
+[direct package-installer migration command](INSTALLATION.md#native-packages-arch-and-fedora)
+once.
+
+Package delivery and per-user installation are separate steps:
+
+1. Update the `cedar-shell` system package: `sudo pacman -Syu` on Arch/CachyOS,
+   `omarchy update` on Omarchy, or `sudo dnf upgrade cedar-shell` on Fedora.
+2. Run `cedar installer --update` as your normal desktop user, review the
+   plan, and apply the system copy to your own installed CEDAR.
+
+The check reads `/usr/share/cedar`, validates its inventory, copies a verified
+snapshot into CEDAR's private update store, and compares actual contents with
+`~/.local/share/cedar/current`. It does not run a package manager, download a
+release, fetch Git, or modify the system package. A missing or incomplete
+package stops the check with guidance. “Up to date” means the per-user copy
+matches the system package, not that the package manager has checked for a
+newer release. Missing runtime dependencies can still require a package
+transaction during the later approved installation stage.
+
+On the remembered package channel, `cedar update` is shorthand for the same
+installer update flow. The existing
+`cedar update ARCHIVE --signature SIGNATURE --trusted-key PUBLIC_KEY` command
+still uses the signed local-archive path. Use `cedar installer --update` for
+branch updates.
+
+Switching to Stable or Development changes only the per-user installation;
+pacman or dnf continues to own `/usr/share/cedar`. Switch back to **System
+package** to use that copy again, even if its version is older. See
+[Packages and repositories](PACKAGING.md) for repository setup and the
+distinction between a package upgrade and desktop activation.
+
+## Stable and Development checks
 
 The updater fetches an allowlisted branch from the CEDAR repository into
 its own Git store and prepares a source snapshot for the resolved commit.

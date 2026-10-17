@@ -141,9 +141,9 @@ def update(source, args, argv):
             return code
         start_updated(record, passthrough)
     state = {'verbose': args.verbose}
-    say('CEDAR update — fetching the newest CEDAR')
+    channel = args.channel or update_module.default_channel(source)
+    say('CEDAR update — ' + ('checking the system package' if channel == 'package' else 'fetching the newest CEDAR'))
     say()
-    channel = args.channel or os.environ.get('CEDAR_INSTALLER_CHANNEL') or update_module.installed_channel() or 'stable'
     updater = update_module.Updater(source, emit=terminal_listener(state), state_dir=state_dir, channel=channel)
     try:
         result = updater.run()
@@ -152,7 +152,7 @@ def update(source, args, argv):
         return 1
     say()
     if result['current']:
-        say('CEDAR is up to date on ' + result['branch'] + ' (' + result['commit'][:12] + ').')
+        say('CEDAR is up to date ' + ('with the system package' if result['channel'] == 'package' else 'on ' + result['branch']) + ' (' + result['commit'][:12] + ').')
         return 0
     say("What's updating:")
     for item in result.get('summary', ['CEDAR desktop and maintenance updates']):
@@ -222,7 +222,7 @@ def main(argv=None):
     parser.add_argument('--repair', action='store_true', help='verify the installed copy and reinstall what does not match')
     parser.add_argument('--last-log', action='store_true', help='print the path of the most recent installer log')
     parser.add_argument('--update', action='store_true', help='check the selected branch in an isolated cache and run its installer')
-    parser.add_argument('--channel', choices=tuple(update_module.CHANNELS), help='update from stable (main) or development (dev)')
+    parser.add_argument('--channel', choices=tuple(update_module.CHANNELS), help='update from stable (main), development (dev) or package (the CEDAR tree your system package installed)')
     parser.add_argument('--updated', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--json', action='store_true', help='print facts and plan as JSON (with --dry-run)')
     parser.add_argument('--verbose', '-v', action='store_true', help='print the technical log while installing')

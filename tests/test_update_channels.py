@@ -45,6 +45,10 @@ class ChannelTests(unittest.TestCase):
         for key in ('CEDAR_INSTALLER_CHANNEL', 'CEDAR_INSTALLER_SOURCE_DIGEST', 'CEDAR_INSTALLER_COMMIT', 'CEDAR_INSTALLER_UPDATE_ID'):
             self.env.pop(key, None)
         self.state = self.home / 'state/cedar/installer'
+        # The tree a distribution package would put under /usr/share/cedar, redirected into the fixture home.
+        self.system = self.root / 'usr share cedar'
+        self.write_system_tree('package\n')
+        self.env['CEDAR_SYSTEM_SOURCE'] = str(self.system)
         self.origin = self.root / 'origin.git'
         self.git(self.root, 'init', '--bare', '--quiet', '--initial-branch=main', str(self.origin))
         self.seed = self.root / 'seed'
@@ -68,6 +72,14 @@ class ChannelTests(unittest.TestCase):
 
     def git(self, cwd, *args):
         return subprocess.run(['git', '-C', str(cwd), *args], check=True, capture_output=True, text=True, env=self.env).stdout.strip()
+
+    def write_system_tree(self, shell, version='1.0.0\n'):
+        (self.system / 'installer').mkdir(parents=True, exist_ok=True)
+        (self.system / 'data').mkdir(exist_ok=True)
+        (self.system / 'installer/cedar_install.py').write_text('# fixture installer\n')
+        (self.system / 'VERSION').write_text(version)
+        (self.system / 'shell.qml').write_text(shell)
+        (self.system / 'data/source-files.json').write_text(json.dumps(['VERSION', 'shell.qml', 'installer/cedar_install.py', 'data/source-files.json']))
 
     def advance(self, text, branch='dev'):
         self.git(self.seed, 'switch', '--quiet', branch)
@@ -322,6 +334,157 @@ class ChannelTests(unittest.TestCase):
         result = self.updater().run()
         with self.assertRaisesRegex(RuntimeError, 'checked update'):
             update.install_provenance(result['source'], result['source'], {**self.env, 'CEDAR_INSTALLER_CHANNEL': 'development'})
+
+    # -- the system package channel -----------------------------------------
+    def test_first_package_update_defaults_offline_and_remembers_explicit_branch_installs(self):
+        self.assertEqual(update.default_channel(self.system, self.env), 'package')
+        self.assertEqual(update.default_channel(self.source, self.env), 'stable')
+        engine = Engine(self.system, Host(environ=self.env))
+        self.assertEqual(engine.selected_channel(), 'package')
+        with mock.patch.object(update.Updater, 'managed_git', side_effect=AssertionError('Git is forbidden')):
+            self.assertEqual(engine.updater().run()['channel'], 'package')
+        if engine.log: engine.log.close()
+        self.install(self.updater().run())
+        self.assertEqual(update.default_channel(self.system, self.env), 'stable')
+        self.assertEqual(engine.selected_channel(), 'package', 'the current explicit GUI selection is preserved')
+        self.assertEqual(Engine(self.system, Host(environ=self.env)).selected_channel(), 'stable')
+
+    def test_package_channel_compares_the_system_tree_without_git(self):
+        self.assertEqual(update.channel_branch('package'), 'system package')
+        self.assertEqual([update.channel_label(c) for c in update.CHANNELS], ['Stable Branch', 'Development Branch', 'System package'])
+        result = self.updater('package').run()
+        self.assertEqual((result['channel'], result['branch'], result['kind']), ('package', 'system package', 'channel'))
+        self.assertRegex(result['commit'], r'^[0-9a-f]{64}$')
+        self.assertEqual(result['commit'], result['sourceDigest']); self.assertEqual(result['commit'], update.content_digest(self.system))
+        self.assertEqual(result['version'], '1.0.0'); self.assertFalse(result['current']); self.assertTrue(result['changed'])
+        self.assertEqual(Path(result['source']), self.state / 'update-sources/package' / result['commit'])
+        self.assertEqual(json.loads((self.state / 'update-sources/package' / (result['commit'] + '.json')).read_text()),
+                         {'commit': result['commit'], 'channel': 'package', 'sourceDigest': result['commit']})
+        self.assertFalse((self.state / 'update-cache').exists(), 'no Git cache is created for the package channel')
+        states = {d['id']: (d['state'], d['detail']) for e, d in self.events if e == 'operation'}
+        self.assertEqual(sorted(states), ['apply', 'handoff', 'inspect', 'locate'])
+        self.assertIn(str(self.system), states['locate'][1]); self.assertIn('4 files verified', states['inspect'][1])
+        self.assertEqual(states['handoff'][0], 'complete'); self.assertIn('Ready to install the system package', states['handoff'][1])
+        self.install(result)
+        self.assertEqual(update.installed_channel(self.env), 'package')
+        self.events.clear()
+        again = self.updater('package').run()
+        self.assertTrue(again['current']); self.assertFalse(again['changed']); self.assertEqual(again['summary'], [])
+        self.assertEqual(Path(again['source']), Path(result['source']), 'the matching snapshot is reused')
+        self.assertIn('up to date with the system package', [d for e, d in self.events if e == 'operation' and d['id'] == 'handoff'][-1]['detail'])
+        with mock.patch.object(update.Updater, 'managed_git', side_effect=AssertionError('git must not run for the package channel')):
+            self.assertTrue(self.updater('package').run()['current'])
+
+    def test_package_channel_changes_when_the_package_tree_changes(self):
+        first = self.updater('package').run()
+        self.install(first)
+        self.assertTrue(self.updater('package').run()['current'])
+        self.write_system_tree('package update\n')
+        later = self.updater('package').run()
+        self.assertNotEqual(later['commit'], first['commit'])
+        self.assertFalse(later['current']); self.assertTrue(later['changed'])
+        self.assertEqual(later['summary'], ['Desktop panels and controls'])
+        self.assertTrue(Path(later['source']).is_dir()); self.assertEqual((Path(later['source']) / 'shell.qml').read_text(), 'package update\n')
+        self.install(later)
+        self.assertTrue(self.updater('package').run()['current'])
+        # Returning to a Git branch records that branch; the package tree is no longer "installed".
+        self.install(self.updater().run())
+        self.assertEqual(update.installed_channel(self.env), 'stable')
+        self.assertFalse(self.updater('package').run()['current'])
+
+    def test_missing_package_tree_gives_guidance_and_leaves_installed_state(self):
+        self.install(self.updater().run())
+        self.env['CEDAR_SYSTEM_SOURCE'] = str(self.root / 'no package here')
+        with self.assertRaises(update.Guidance) as stopped:
+            self.updater('package').run()
+        self.assertEqual(stopped.exception.code, 'package-missing')
+        self.assertEqual(stopped.exception.title, 'No CEDAR system package is installed')
+        self.assertTrue(any('pacman' in step for step in stopped.exception.steps) and any('dnf' in step for step in stopped.exception.steps))
+        self.assertEqual(update.installed_channel(self.env), 'stable')
+        self.assertEqual(self.events[-1][0], 'update-error')
+        self.assertEqual((self.events[-1][1]['channel'], self.events[-1][1]['branch'], self.events[-1][1]['installedChannel']), ('package', 'system package', 'stable'))
+        # A tree that is present but incomplete is refused the same way, before any copy.
+        self.env['CEDAR_SYSTEM_SOURCE'] = str(self.system)
+        (self.system / 'shell.qml').unlink()
+        with self.assertRaises(update.Guidance) as stopped:
+            self.updater('package').run()
+        self.assertEqual(stopped.exception.code, 'package-invalid')
+        self.assertEqual(list((self.state / 'update-sources').glob('package/*')) if (self.state / 'update-sources').exists() else [], [])
+        self.assertEqual(update.installed_channel(self.env), 'stable')
+
+    def test_direct_install_from_the_package_tree_records_package_provenance(self):
+        digest = update.content_digest(self.system)
+        destination = self.home / 'data/cedar/releases/from-package'
+        shutil.copytree(self.system, destination)
+        current = self.home / 'data/cedar/current'
+        current.symlink_to(destination)
+        self.assertNotIn('CEDAR_INSTALLER_CHANNEL', self.env)
+        provenance = update.install_provenance(self.system, destination, self.env)
+        self.assertEqual(provenance, {'channel': 'package', 'branch': 'system package', 'commit': digest, 'sourceDigest': digest, 'installedRelease': str(destination.resolve())})
+        marker = self.home / 'config/cedar/installation.json'
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({'update': provenance}))
+        self.assertEqual(update.installed_channel(self.env), 'package')
+        engine = Engine(self.source, Host(environ=self.env))
+        self.addCleanup(lambda: engine.log.close() if engine.log else None)
+        self.assertEqual(engine.selected_channel(), 'package')
+        self.assertTrue(self.updater('package').run()['current'])
+        # The same bytes from any other directory are an arbitrary source: no provenance.
+        elsewhere = self.root / 'a copy of the tree'
+        shutil.copytree(self.system, elsewhere)
+        self.assertEqual(update.install_provenance(elsewhere, destination, self.env), {})
+        self.assertEqual(update.install_provenance(self.source, destination, self.env), {})
+        # An installed copy that does not match the tree is a verification failure, never a record.
+        (destination / 'shell.qml').write_text('tampered\n')
+        with self.assertRaisesRegex(RuntimeError, 'does not match the system package'):
+            update.install_provenance(self.system, destination, self.env)
+        # Without a package tree nothing is recorded for any source.
+        self.env['CEDAR_SYSTEM_SOURCE'] = str(self.root / 'absent')
+        self.assertEqual(update.install_provenance(self.system, destination, self.env), {})
+
+    def test_package_snapshot_tamper_is_detected(self):
+        updater = self.updater('package')
+        result = updater.run()
+        (Path(result['source']) / 'shell.qml').write_text('changed after preparation\n')
+        with self.assertRaises(update.Guidance) as stopped:
+            updater.proceed()
+        self.assertEqual(stopped.exception.code, 'source-changed')
+        with self.assertRaises(update.Guidance) as stopped:
+            self.updater('package').run()
+        self.assertEqual(stopped.exception.code, 'source-changed')
+        self.assertEqual(update.installed_channel(self.env), '')
+        # A handoff record for the package channel is bound to the snapshot digest like a branch record.
+        shutil.rmtree(result['source']); Path(result['source'] + '.json').unlink()
+        self.env['CEDAR_INSTALLER_UPDATE_ID'] = 'c' * 32
+        fresh = self.updater('package')
+        record = fresh.run(); fresh.proceed(['--yes'])
+        taken = update.take_handoff(self.state, session_id='c' * 32)
+        self.assertEqual((taken['channel'], taken['branch'], taken['commit'], taken['sourceDigest']), ('package', 'system package', record['commit'], record['commit']))
+        with mock.patch.object(os, 'execve') as execute:
+            cedar_install.start_updated(taken, ['--yes'])
+        _, argv, env = execute.call_args.args
+        self.assertEqual(argv[argv.index('--source') + 1], record['source'])
+        self.assertEqual((env['CEDAR_INSTALLER_CHANNEL'], env['CEDAR_INSTALLER_COMMIT'], env['CEDAR_INSTALLER_SOURCE_DIGEST']), ('package', record['commit'], record['commit']))
+
+    def test_git_channels_ignore_the_system_source(self):
+        for system in (str(self.system), str(self.root / 'absent')):
+            self.env['CEDAR_SYSTEM_SOURCE'] = system
+            stable = self.updater().run()
+            self.assertEqual((stable['channel'], stable['branch']), ('stable', 'main'))
+            self.install(stable)
+            self.assertEqual(update.installed_channel(self.env), 'stable')
+            self.assertTrue(self.updater().run()['current'])
+            development = self.updater('development').run()
+            self.assertEqual(development['branch'], 'dev'); self.assertFalse(development['current'])
+            self.assertEqual(update.install_provenance(self.source, stable['source'], self.env), {})
+
+    def test_cli_accepts_the_package_channel_with_an_update(self):
+        with mock.patch('sys.stderr', new_callable=lambda: __import__('io').StringIO()) as stderr:
+            with self.assertRaises(SystemExit) as stopped:
+                cedar_install.main(['--channel', 'package', '--no-gui'])
+        self.assertEqual(stopped.exception.code, 2)
+        self.assertIn('--channel must be used with --update', stderr.getvalue())
+        self.assertNotIn('invalid choice', stderr.getvalue())
 
     def test_mode_only_update_gets_its_own_release_and_verifies_permissions(self):
         from scripts import distribution

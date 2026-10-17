@@ -48,8 +48,8 @@ ShellRoot {
             for (const child of item.children || []) { const found = named(child, name); if (found) return found; }
             return null;
         }
-        function channelButton(label) {
-            const button = named(pane, "updateChannelSwitch");
+        function channelButton(label, name) {
+            const button = named(pane, name || "updateChannelSwitch");
             check(button !== null && button.text === label && button.enabled && button.activeFocusOnTab, label + " is available to pointer and keyboard");
             const point = button.mapToItem(body, 0, 0);
             check(point.x >= 0 && point.y >= 0 && point.x + button.width <= body.width && point.y + button.height <= body.height, label + " stays inside the window");
@@ -154,6 +154,25 @@ ShellRoot {
                     window.shot("update-error-small"); break;
                 }
                 case 43:
+                    model.pendingStartupUpdate = true;
+                    model.receive(JSON.stringify({ event: "ready", data: { version: "0.1.2", channel: "package", branch: "system package", installedChannel: "package" } }));
+                    window.check(!model.pendingStartupUpdate && window.lastCommand.channel === "package", "Startup preserves the installed package channel");
+                    model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: true, channel: "package", branch: "system package", installedChannel: "package" } })); break;
+                case 44: {
+                    const button = window.channelButton("Stable Branch");
+                    window.check(window.named(pane, "updatePackageChannel") === null, "Package selection hides its redundant action");
+                    button.forceActiveFocus(Qt.TabFocusReason); keyboard.keyClick(Qt.Key_Space);
+                    window.check(window.lastCommand.channel === "stable" && model.installedChannel === "package", "Package installation can review stable without changing provenance");
+                    model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: false, channel: "stable", branch: "main", installedChannel: "package" } })); break;
+                }
+                case 45: {
+                    const button = window.channelButton("System package", "updatePackageChannel");
+                    button.forceActiveFocus(Qt.TabFocusReason); keyboard.keyClick(Qt.Key_Space);
+                    window.check(window.lastCommand.cmd === "update" && window.lastCommand.channel === "package", "Keyboard switches directly back to the system package");
+                    model.receive(JSON.stringify({ event: "updated", data: { version: "0.1.2", current: true, channel: "package", branch: "system package", installedChannel: "package" } })); break;
+                }
+                case 46: window.shot("update-package-small"); break;
+                case 47:
                     console.log("PASS: CEDAR Installer stages"); Qt.quit();
                 }
             }

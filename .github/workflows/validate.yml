@@ -14,6 +14,10 @@ jobs:
           persist-credentials: false
       - name: Stdlib recovery, privacy and archive failure tests
         run: |
+          python3 scripts/build_packages.py check
+          python3 -m unittest discover -s tests -p test_packaging.py
+          python3 -m unittest discover -s tests -p test_packaged_install.py
+          python3 -m unittest discover -s tests -p test_publish_version.py
           python3 -m unittest discover -s tests -p test_distribution.py
           python3 -m unittest discover -s tests -p test_omarchy_session.py
           python3 -m unittest discover -s tests -p test_omacale_providers.py
@@ -43,7 +47,92 @@ jobs:
         run: |
           python3 scripts/package_release.py /tmp/cedar-shell-development.tar.gz
           python3 tests/check_artifact.py /tmp/cedar-shell-development.tar.gz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: candidate-archive
+          path: /tmp/cedar-shell-development.tar.gz*
+          if-no-files-found: error
       - name: Record untested gates
         run: |
           echo 'Native Quickshell, Hyprland, PAM, GPU and full desktop handoff require separate controlled runners. These jobs do not certify them.' >> "$GITHUB_STEP_SUMMARY"
+  native-packages:
+    needs: source-and-recovery
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: arch
+            container: archlinux:base-devel
+            install: pacman -Syu --noconfirm --needed python libarchive zstd git
+          - kind: rpm
+            container: fedora:43
+            install: dnf install -y python3 rpm-build rpmdevtools redhat-rpm-config libarchive git
+    container: ${{ matrix.container }}
+    steps:
+      - name: Install isolated build tools
+        run: ${{ matrix.install }}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: candidate-archive
+          path: archive
+      - name: Build native package and verify exact candidate payload
+        env:
+          PACKAGE_KIND: ${{ matrix.kind }}
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- bash -c 'cd "$1" && (cd archive && sha256sum --check *.sha256) && python3 scripts/build_packages.py "$2" archive/*.tar.gz --out dist' -- "$GITHUB_WORKSPACE" "$PACKAGE_KIND"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: candidate-native-${{ matrix.kind }}
+          path: |
+            dist/*.pkg.tar.zst
+            dist/*.noarch.rpm
+          if-no-files-found: error
+  native-repositories:
+    needs: native-packages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install repository tools on the disposable runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pacman-package-manager createrepo-c rpm libarchive-tools zstd gnupg
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: candidate-native-*
+          merge-multiple: true
+          path: packages
+      - name: Build fresh indexes without publishing
+        run: |
+          python3 scripts/build_repositories.py --packages packages --out site --base-url https://example.invalid/cedar
+          test -s site/arch/x86_64/cedar.db
+          test -s site/fedora/noarch/repodata/repomd.xml
+      - name: Verify signing with a disposable test key (no repository secret)
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/cedar-test-gnupg"
+          install -d -m 700 "$GNUPGHOME"
+          trap 'gpgconf --kill gpg-agent || true; rm -rf "$GNUPGHOME"' EXIT
+          gpg --batch --pinentry-mode loopback --passphrase '' --quick-generate-key 'CEDAR disposable CI key <noreply@example.invalid>' rsa2048 sign 1d
+          fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')
+          test -n "$fingerprint"
+          python3 scripts/build_repositories.py --packages packages --out signed-site --base-url https://example.invalid/cedar --signing-key "$fingerprint"
+          for signature in signed-site/arch/x86_64/*.sig; do
+            gpg --batch --verify "$signature" "${signature%.sig}"
+          done
+          gpg --batch --verify signed-site/fedora/noarch/repodata/repomd.xml.asc signed-site/fedora/noarch/repodata/repomd.xml
+          rpm --dbpath "$RUNNER_TEMP/cedar-test-rpmdb" --initdb
+          rpm --dbpath "$RUNNER_TEMP/cedar-test-rpmdb" --import signed-site/cedar-signing-key.asc
+          rpm --dbpath "$RUNNER_TEMP/cedar-test-rpmdb" --checksig signed-site/fedora/noarch/*.rpm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: candidate-repositories
+          path: site
+          if-no-files-found: error
 # No release publishing, secrets, elevated pull_request_target workflow, or user auto-update.

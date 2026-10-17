@@ -1,6 +1,66 @@
 # Installing CEDAR
 
-One command, one window, one plan you approve before anything changes.
+Choose a native package, a published release, or a source checkout. Each leads
+to the same installer and a plan you approve before your desktop changes.
+
+## Native packages: Arch and Fedora
+
+The `cedar-shell` packages are project-owned, not official Arch Linux or Fedora
+repository inclusion. The hosted repositories require activation; see
+[Packages and repositories](PACKAGING.md) for status, repository configuration
+and signing-key setup. Once configured:
+
+```bash
+# Arch Linux / CachyOS
+sudo pacman -Syu cedar-shell
+
+# Fedora
+sudo dnf install cedar-shell
+```
+
+On Omarchy, use `omarchy update` for system updates, then
+`sudo pacman -S --needed cedar-shell`; its package guard reserves system
+upgrades for Omarchy's own updater.
+
+Fedora needs Hyprland, Quickshell and their dependencies available from
+repositories you enabled yourself. Check the providers for your Fedora
+release before installing; CEDAR does not enable COPR or any other dependency
+repository. The reviewed dnf backend is experimental and stops if a required
+package cannot be found. The native package is built in Fedora 43; that does
+not certify a desktop installation on Fedora 43 or other releases.
+
+Both native packages put the same release payload under `/usr/share/cedar`
+and install `/usr/bin/cedar`. They have no install hooks or RPM scriptlets that
+change your session, login configuration or home directory. Installing the
+package alone does not start CEDAR. As your normal desktop user, run:
+
+```bash
+cedar installer
+# Or use the same installer in the terminal:
+cedar installer --no-gui
+```
+
+Review the plan. The installer makes a versioned per-user copy under
+`~/.local/share/cedar/releases/`, selects it through
+`~/.local/share/cedar/current`, and records the **System package** update
+channel after successful first installation from the system tree. Do not run
+the installer with sudo. Package upgrades refresh `/usr/share/cedar` only;
+each user applies that update through the installer when ready.
+
+If CEDAR was already installed from a checkout or release, adding the package
+does not silently switch its remembered channel. Use
+`cedar installer --update --channel package` to switch explicitly.
+
+If an older per-user installation does not recognize the package channel,
+start the newly installed package's installer directly once:
+
+```bash
+python3 /usr/share/cedar/installer/cedar_install.py --update --channel package
+```
+
+This still runs as your user and shows the normal installation plan.
+
+## Published release or source checkout
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/main/installer/bootstrap/install.sh | sh
@@ -35,9 +95,12 @@ Nothing in it installs packages or touches your configuration.
 
 Release assets are built by `scripts/package_release.py --release-assets`
 from the reviewed source inventory and attached by the release workflow
-(`.github/workflows/release.yml`) on a `v*` tag. They are SHA-256 verified;
-signed release metadata is not published yet (see `cedar update` for the
-signature-verified update path).
+(`.github/workflows/release.yml`) for a stable `vMAJOR.MINOR` tag matching
+`VERSION`. That workflow also builds native packages from the same archive
+and synchronizes the package repositories after both builds succeed. The
+bootstrap verifies SHA-256 checksums, not signatures. Optional repository
+signing is separate from these release assets; see [Packaging](PACKAGING.md).
+The existing signed local-archive update command remains available.
 
 ## The installer
 
@@ -72,7 +135,8 @@ output to guess progress.
 | `--uninstall` | undo CEDAR-owned changes; keep packages and your data |
 | `--repair` | verify the installed copy and reinstall what does not match |
 | `--last-log` | print the most recent installer log |
-| `--update` | the Update stage in the installer window (or terminal with `--no-gui`): find the newest CEDAR (fast-forward of the checkout when one exists, else the latest verified release), fetch it with visible steps, explain any stop with what to do, then run its installer; an active CEDAR session is handed back and re-entered by the plan itself. See Updating below |
+| `--update` | check the remembered channel, prepare its source and open its installation plan; the package channel checks the system copy without downloading, while Stable and Development fetch an isolated branch snapshot. See Updating below |
+| `--channel stable` / `--channel development` / `--channel package` | select the source explicitly; requires `--update` and remembers the choice only after successful installation |
 | `--no-session`, `--cedar-launcher`, `--trailwatch`, `--fonts`, `--keybinds` / `--no-keybinds` | plan options |
 
 After installation the same tool is available as `cedar installer …`.
@@ -112,7 +176,42 @@ After installation the same tool is available as `cedar installer …`.
 **Field Station → Update CEDAR** and `cedar installer --update` open the
 CEDAR Installer window on an **Update** stage (`installer/engine/update.py`)
 before anything else. It runs the same operation list the install stage
-renders, one visible step at a time:
+renders, one visible step at a time. Normal updates follow the last
+successfully installed channel.
+
+### System package
+
+Update the system copy with your package manager first:
+
+```bash
+# Arch Linux / CachyOS
+sudo pacman -Syu
+
+# Fedora
+sudo dnf upgrade cedar-shell
+```
+
+On Omarchy, use `omarchy update` instead. Then, as your normal user:
+
+```bash
+cedar installer --update --channel package
+```
+
+The updater checks `/usr/share/cedar`, prepares a verified snapshot, compares
+it with your per-user copy, and hands it to the normal installer. It does not
+run pacman or dnf, query the hosted repositories, or need Git or the network
+for that check. “Up to date” means your copy matches the installed system
+package, not necessarily the newest hosted release. The installation plan
+may still need network access if runtime dependencies are missing.
+
+Once the package channel is remembered, `cedar installer --update`,
+**Field Station → Update CEDAR**, and `cedar update` use it by default.
+`--no-gui` selects the terminal flow. See [Update channels](UPDATE-CHANNELS.md)
+for switching between packages and branches.
+
+### Stable and Development
+
+These channels use GitHub source branches, not the package repository:
 
 | Step | What it does |
 | --- | --- |
@@ -141,7 +240,7 @@ check. A failed check never appears as “up to date.” In a terminal
 | --- | --- | --- |
 | System backup | copies the configuration the plan may touch into `~/.local/state/cedar/installations/<timestamp>/` with `manifest.json`, `restore.sh`, `config/`, `services.json`, `packages.json` | manifest and restore script present |
 | Hand back the desktop | only when a CEDAR session is running: `cedar restore` returns the previous desktop (applications stay open) so the release can change; the session step starts CEDAR again at the end | the session record reads restored |
-| Dependencies | `pacman -Syu --needed` for the missing manifest packages (on Omarchy `pacman -S --needed`, the way `omarchy pkg add` does, because Omarchy's pacman guard refuses a direct system upgrade and keeps those for `omarchy update`), through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer; a failed transaction is explained (guard, stale databases, lock, file conflict, mirror, dismissed prompt, signature) | each package's command present afterwards |
+| Dependencies | missing manifest packages with `pacman -Syu --needed` on Arch/CachyOS, `pacman -S --needed` on Omarchy (system upgrades stay with `omarchy update`), or `dnf install` on Fedora (no system upgrade); through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer. Only enabled repositories are used, and failures are explained | each package's command present afterwards |
 | CEDAR runtime | `scripts/distribution.py install`: the versioned copy under `~/.local/share/cedar/releases/`, the `cedar` command, offline recovery, launcher entries, all journaled; then `~/.config/quickshell/cedar` is made a link to `~/.local/share/cedar/current`, so the shell on screen is always the installed release (a link to a source checkout is replaced and recorded in the backup; a real folder there is left alone and reported) | release tree checksums; the profile link |
 | CEDAR shell | loads the required QML imports and renders five offscreen checks with the installed Quickshell and Qt | the checks pass |
 | Configuration | translates monitor rules (`monitor`, `monitorv2`, `hl.monitor`), keyboard layout, preferred applications and the wallpaper library into `~/.config/cedar/hypr/settings.json` and `settings.json`; existing CEDAR settings win; with the keybinds option, copies CEDAR's keybinds (`docs/KEYBINDS.md`) beside them and loads them through CEDAR's journaled Hyprland loader | CEDAR's own validators; `hyprctl configerrors` |
@@ -188,6 +287,13 @@ entries, copied configuration. It never removes PipeWire, NetworkManager,
 Quickshell or anything else installed as a dependency, and keeps your
 preferences, wallpapers, backups and release files for review.
 
+The native `cedar-shell` package is separate. Per-user uninstall does not
+remove `/usr/share/cedar` or `/usr/bin/cedar`; removing the system package does
+not undo your per-user desktop setup. To remove both, run
+`cedar installer --uninstall` first, then use `sudo pacman -R cedar-shell` or
+`sudo dnf remove cedar-shell` and review the package manager's proposed
+transaction.
+
 ## Privilege and logs
 
 The window and the engine run as you. Only the package transaction is
@@ -200,12 +306,13 @@ redacted; environment variables are never written.
 
 | | |
 | --- | --- |
-| Supported | Arch Linux, CachyOS, Omarchy on x86_64 (pacman; package setup experimental per `data/dependencies.json`) |
-| Experimental | other Arch-based distributions |
-| Unsupported | everything else: CEDAR installs when its dependencies are already present; no package automation |
+| Reviewed package backends, experimental | Arch Linux, CachyOS and Omarchy on x86_64 (pacman); Fedora on x86_64 (dnf, with runtime providers configured by the user) |
+| No reviewed package automation | other distributions and architectures: install dependencies yourself; this does not imply native desktop certification |
 
-The package abstraction (`installer/providers/packages.py`) has apt, dnf
-and zypper entries that say "unsupported" instead of guessing.
+The package abstraction (`installer/providers/packages.py`) implements pacman
+and dnf. apt and zypper remain unsupported. `data/dependencies.json` records
+backend scope and evidence; [Release readiness](RELEASE-READINESS.md) lists
+the outstanding native acceptance gates.
 
 ## Tests
 

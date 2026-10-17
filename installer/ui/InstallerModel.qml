@@ -118,15 +118,17 @@ Item {
     }
 
     // ---------------------------------------------------------------- actions
-    function channelLabel(channel) { return channel === "development" ? "Development" : "Stable"; }
-    function channelBranch(channel) { return channel === "development" ? "dev" : "main"; }
+    // Channels the engine knows: the two Git branches and the system package (pacman or dnf delivered the tree).
+    readonly property var channels: ["stable", "development", "package"]
+    function channelLabel(channel) { return channel === "development" ? "Development" : channel === "package" ? "System package" : "Stable"; }
+    function channelBranch(channel) { return channel === "development" ? "dev" : channel === "package" ? "package manager" : "main"; }
     function receiveChannel(data) {
-        if (["stable", "development"].includes(data.channel)) {
+        if (channels.includes(data.channel)) {
             updateChannel = data.channel;
             updateBranch = data.branch || channelBranch(data.channel);
         }
         if (Object.prototype.hasOwnProperty.call(data, "installedChannel"))
-            installedChannel = ["stable", "development"].includes(data.installedChannel) ? data.installedChannel : "";
+            installedChannel = channels.includes(data.installedChannel) ? data.installedChannel : "";
     }
     function begin() { stage = "scan"; busy = true; send({ cmd: "scan" }); }
     function rescan() { busy = true; stage = "scan"; send({ cmd: "scan" }); }
@@ -151,7 +153,7 @@ Item {
     // arrives as guidance. On success the window closes and the process that owns it starts
     // the updated installer, which continues here as "updated".
     function startUpdate(channel) {
-        if (["stable", "development"].includes(channel)) {
+        if (channels.includes(channel)) {
             updateChannel = channel;
             updateBranch = channelBranch(channel);
         }

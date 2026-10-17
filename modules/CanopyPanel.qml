@@ -188,18 +188,27 @@ Rectangle {
             text: root.topic === "audio" ? (Audio.sink?.description || "No output") + " · " + Audio.label : root.topic === "network" ? Network.label : root.topic === "bluetooth" ? (BluetoothService.adapter?.enabled ? "Bluetooth on" : "Bluetooth off") : Forest.phrase
             color: Theme.strataText
         }
-        ScrollView {
+        // The instrument itself. The drop grows to fit it, so this scrolls only
+        // when the panel is taller than the screen allows. A panel that fits has
+        // no scroll at all: no bar, no drag, and the wheel reaches its controls.
+        Flickable {
+            id: flick
             visible: !Canopy.peeking
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: loader.implicitHeight
-            contentWidth: availableWidth
+            readonly property bool overflowing: contentHeight > height + 1
+            contentWidth: width
+            contentHeight: loader.implicitHeight
             clip: true
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            interactive: overflowing
+            flickableDirection: Flickable.AutoFlickIfNeeded
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { policy: flick.overflowing ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
             Loader {
                 id: loader
                 asynchronous: true
-                width: parent.width
+                width: flick.width
                 active: root.active && !Canopy.peeking
                 sourceComponent: ({
                         audio: audio,
