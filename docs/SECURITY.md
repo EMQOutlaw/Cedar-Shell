@@ -27,6 +27,7 @@ Every `qs ipc` target the shell exposes, and what it will refuse:
 | `lock` | `lock`, `testAuthentication` | Refused in test mode; the test window never requests a session lock. |
 | `shell` | `close`, `isLocked`, `sessionInfo`, `stop` | `stop` is refused while locked. |
 | `wallpapers`, `themes`, `control`, `hud`, `power`, `canopy`, `launcher`, `notifications`, `media` | toggles | All route through `ShellState`/`Canopy`, which refuse while locked. |
+| `notes` | `status`, `open`, `openOn`, `close`, `toggle`, `newSheet`, `selectSheet`, `setTitle`, `setPaper`, `setSize`, `setTool`, `setPenWidth`, `clear`, `center`, `undo`, `redo`, `draw`, `stopDrawing`, `addNote`, `copy` | Everything but `status` is refused while locked. String arguments above 64 KiB are refused; titles are cut at 60 characters, notes at 4096, a stroke at 8192 points, and every edit is held to the notebook's load limits so nothing saved is lost. Output names must match `^[A-Za-z][A-Za-z0-9_.:-]{0,127}$`. `copy` writes only under the configured export folder; the folder itself is a protected setting. |
 
 ## Prompt replies
 

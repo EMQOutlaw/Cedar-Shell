@@ -10,6 +10,7 @@ closes it. Search accepts actions or combinations such as `Super+Shift+V`.
 | Super+T / W / E | Configured terminal / browser / file manager |
 | Super+C / X / V | Copy / cut / paste using the application's shortcut |
 | Super+Shift+V | Toggle clipboard history |
+| Super+Alt+N | Toggle Field Notes |
 | Super+Q | Close the focused window normally |
 | Super+F | Toggle fullscreen |
 | Super+Alt+Space | Toggle floating / tiled |

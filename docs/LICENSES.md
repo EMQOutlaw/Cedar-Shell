@@ -4,6 +4,8 @@ The inherited source snapshot has no original-source license declaration. This m
 
 `components/MenuModel.js` includes adapted Omarchy menu helpers under MIT. The full upstream notice is retained in `licenses/Omarchy-MIT.txt`; source: https://github.com/basecamp/omarchy/blob/master/LICENSE. Required copyright attribution is not private developer biography and must remain.
 
+Field Notes (`components/notes/*.js`, `components/Notes*.qml`, `modules/FieldNotesBoard.qml`, `services/FieldNotes.qml`, `tests/notes/`) is derived from OldJobobo's Field Notes plugin for the Omarchy shell, under MIT. The JavaScript modules are carried unchanged; the QML was rewritten for CEDAR's tokens, surfaces and IPC. The full upstream notice is retained in `licenses/Field-Notes-MIT.txt`; source: https://github.com/OldJobobo/field-notes. The copyright attribution must remain.
+
 Qt, Quickshell, Hyprland, Linux services, fonts and optional tools are dependencies with their own licenses; their binaries and fonts are not bundled. Rajdhani is preferred for interface text, JetBrainsMono Nerd Font for data; readable system sans-serif/monospace fallbacks are used when unavailable. Inspect the selected font distributor's license before adding font files to a future release.
 
 Weather comes from Open-Meteo and retains on-screen attribution. Existing woodland artwork is carried forward without a new licensing assertion. Screenshots used for tests contain synthetic fixtures, never exports of private desktop data.

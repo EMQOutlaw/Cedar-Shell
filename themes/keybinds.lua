@@ -50,6 +50,7 @@ bind("SUPER + V", clipboard("paste"), "Unified paste (Ctrl+V, or Ctrl+Shift+V in
 bind("SUPER + SHIFT + V", ipc("canopy flip clipboard"), "Toggle clipboard history")
 bind("SUPER + SHIFT + K", ipc("keymap show"), "Show the searchable active keymap")
 bind("SUPER + CTRL + ALT + SPACE", ipc("wallpapers toggle"), "Choose a wallpaper from the rounded preview grid")
+bind("SUPER + ALT + N", ipc("notes toggle"), "Toggle Field Notes, the floating sheet for sketches and typed notes")
 
 -- Windows
 bind("SUPER + Q", hl.dsp.window.close(), "Close the focused window")

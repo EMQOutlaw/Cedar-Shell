@@ -34,6 +34,16 @@ Singleton {
     readonly property color ember: token("ember", "#E58B73")
     readonly property color text: token("text", "#E3F2E9")
     readonly property color muted: token("muted", "#A0B9AD")
+    // Field Notes' paper: a cream sheet under the dark shell, graphite ink,
+    // blue-grey ruling and a red margin. Paper stays paper whatever the theme.
+    readonly property color paper: token("paper", "#DED7C5")
+    readonly property color paperEdge: token("paperEdge", "#B8AD96")
+    readonly property color paperUnder: token("paperUnder", "#CDC5B1")
+    readonly property color ink: token("ink", "#423E38")
+    readonly property color inkSelection: token("inkSelection", "#B18D52")
+    readonly property color rule: token("rule", "#7898A8")
+    readonly property color ruleMajor: token("ruleMajor", "#5F8394")
+    readonly property color marginRule: token("marginRule", "#C0736A")
     readonly property color blue: "#89BFCB"
     readonly property color violet: "#BBA9D6"
     readonly property color brightEmber: "#FFAB91"

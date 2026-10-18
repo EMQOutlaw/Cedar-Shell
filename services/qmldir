@@ -46,3 +46,5 @@ singleton Proton 1.0 Proton.qml
 singleton Tailscale 1.0 Tailscale.qml
 
 singleton CalendarFeeds 1.0 CalendarFeeds.qml
+
+singleton FieldNotes 1.0 FieldNotes.qml

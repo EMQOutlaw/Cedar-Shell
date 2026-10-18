@@ -401,7 +401,8 @@ def main(args):
     surfaces = {'settings': ('settings', 'toggle'), 'field-station': ('hud', 'toggle'),
                 'quick': ('control', 'toggle'), 'power': ('power', 'toggle'),
                 'lock': ('lock', 'lock'), 'wallpapers': ('wallpapers', 'toggle'),
-                'themes': ('themes', 'toggle'), 'signals': ('core', 'toggle')}
+                'themes': ('themes', 'toggle'), 'signals': ('core', 'toggle'),
+                'notes': ('notes', 'toggle')}
     if name in surfaces:
         ipc(*surfaces[name])
     elif name == 'settings' and len(args) == 2:

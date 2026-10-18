@@ -43,6 +43,7 @@ jobs:
         run: |
           node tests/core/strata_test.js
           node tests/core/canopy_transition_test.js
+          node --test tests/notes/
       - name: Build and test exact candidate contents
         run: |
           python3 scripts/package_release.py /tmp/cedar-shell-development.tar.gz

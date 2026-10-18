@@ -82,6 +82,17 @@
       "volume"
     ]
   },
+  "cedar.notes": {
+    "label": "Field Notes",
+    "description": "A floating sheet for sketches and typed notes",
+    "action": "cedar:notes",
+    "aliases": [
+      "notebook",
+      "sketch",
+      "draw",
+      "paper"
+    ]
+  },
   "cedar.settings": {
     "label": "Settings",
     "action": "cedar:settings"

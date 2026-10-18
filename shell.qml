@@ -10,6 +10,8 @@ import "services"
 
 ShellRoot {
     readonly property bool applicationThemingEnabled: ApplicationTheming.enabled
+    // The longest string argument the notes IPC target accepts (titles, notes and strokes are bounded further by the model).
+    readonly property int notesArgumentLimit: 65536
 
     LazyLoader {
         active: Config.externalSession
@@ -104,6 +106,13 @@ ShellRoot {
     LazyLoader {
         active: Config.stage >= 3 && Station.windowOpen
         StationApp {}
+    }
+    // Field Notes: the floating notebook. It is kept loaded so each sheet's undo
+    // history survives putting the notes away, and so scripts can draw before
+    // the first open; its layer surface exists only while the notes show.
+    LazyLoader {
+        active: Config.stage >= 3
+        FieldNotesBoard {}
     }
     // One Canopy on its chosen output. Output changes replace the host safely.
     Variants {
@@ -227,6 +236,34 @@ ShellRoot {
         function status(): string { return JSON.stringify({ current: Profiles.current, active: Profiles.active, busy: Profiles.anyBusy, summary: Profiles.summary, steps: Profiles.steps, held: Overrides.keysHeldBy("profile"), profiles: Profiles.definitions.map(d => d.id) }); }
     }
     // Gaming Mode: `gaming toggle|activate|deactivate|status` (Super+G).
+    // Field Notes: `notes status|open|openOn <output>|close|toggle|newSheet|selectSheet <n>|
+    // setTitle <text>|setPaper <graph|dots|ruled|plain>|setSize <small|medium|large>|
+    // setTool <select|pen|eraser|text>|setPenWidth <1-12>|clear|center|undo|redo|
+    // draw "<x y x y …>" <ms>|stopDrawing|addNote <x> <y> <text>|copy <path|image|"">`.
+    // Actions answer "ok" or "error: <reason>"; everything but status is refused while locked.
+    IpcHandler {
+        target: "notes"
+        function status(): string { return FieldNotes.script("status", []); }
+        function open(): string { return FieldNotes.script("open", []); }
+        function openOn(screen: string): string { return screen.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("openOn", [screen]); }
+        function close(): string { return FieldNotes.script("close", []); }
+        function toggle(): string { return FieldNotes.script("toggle", []); }
+        function newSheet(): string { return FieldNotes.script("newSheet", []); }
+        function selectSheet(number: int): string { return FieldNotes.script("selectSheet", [number]); }
+        function setTitle(title: string): string { return title.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setTitle", [title]); }
+        function setPaper(name: string): string { return name.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setPaper", [name]); }
+        function setSize(name: string): string { return name.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setSize", [name]); }
+        function setTool(name: string): string { return name.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setTool", [name]); }
+        function setPenWidth(width: real): string { return FieldNotes.script("setPenWidth", [width]); }
+        function clear(): string { return FieldNotes.script("clear", []); }
+        function center(): string { return FieldNotes.script("center", []); }
+        function undo(): string { return FieldNotes.script("undo", []); }
+        function redo(): string { return FieldNotes.script("redo", []); }
+        function draw(points: string, durationMs: int): string { return points.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("draw", [points, durationMs]); }
+        function stopDrawing(): string { return FieldNotes.script("stopDrawing", []); }
+        function addNote(x: real, y: real, text: string): string { return text.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("addNote", [x, y, text]); }
+        function copy(mode: string): string { return mode.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("copy", [mode]); }
+    }
     IpcHandler {
         target: "gaming"
         function toggle(): void { if (Config.stage >= 3) Gaming.toggle(); }

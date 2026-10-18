@@ -18,6 +18,7 @@ var pages = [
  {id:"notifications",label:"Notifications",icon:"◌",group:"",description:"Choose when CEDAR asks for your attention."},
  {id:"power",label:"Power & Lock",icon:"⏻",group:"",description:"Energy, brightness, and session security."},
  {id:"time",label:"Time & Date",icon:"◷",group:"",description:"A familiar clock across every CEDAR surface."},
+ {id:"notes",label:"Field Notes",icon:"✎",group:"",description:"A sheet of paper that floats over the desktop: sketches, typed notes, and a copy that pastes anywhere."},
  // The page id remains "system" for existing IPC, Go and search routes.
  {id:"system",label:"Health",icon:"✚",group:"Station",description:"Service health, diagnostics, updates, and useful error details."},
  {id:"about",label:"About CEDAR",icon:"✧",group:"",description:"A quiet, living forest interface with the precision of a personal command station."}
@@ -112,14 +113,21 @@ var fields = [
  {page:"time",group:"Clock",key:"clock24",label:"24-hour clock",description:"Off uses a 12-hour clock with AM / PM. Updates every CEDAR clock.",type:"toggle",defaultValue:true,aliases:"12hr 24hr twelve hour twenty four time format"},
  {page:"time",group:"Date",key:"dateStyle",label:"Date format",description:"Choose the order of month, day, and year.",type:"choice",options:[{value:"month-first",label:"Month first"},{value:"day-first",label:"Day first"},{value:"iso",label:"Year first · ISO"}],defaultValue:"month-first",aliases:"calendar"},
  {page:"time",group:"Date",key:"showWeekday",label:"Show weekday",description:"Include the day name beside the date.",type:"toggle",defaultValue:true},
- {page:"time",group:"Top bar",key:"barShowDate",label:"Show date in the bar",description:"Off leaves a time-only bar clock.",type:"toggle",defaultValue:true}
+ {page:"time",group:"Top bar",key:"barShowDate",label:"Show date in the bar",description:"Off leaves a time-only bar clock.",type:"toggle",defaultValue:true},
+ {page:"notes",group:"Paper",key:"notesTilt",label:"Tilted paper",description:"Rest the sheet at a slight angle, like paper on a desk.",type:"toggle",defaultValue:true,aliases:"angle rotate straight"},
+ {page:"notes",group:"Paper",key:"notesToolbar",label:"Toolbar side",description:"Which side of the paper the tools dock to. Dragging the toolbar by its grip moves it too.",type:"choice",options:[{value:"left",label:"Left"},{value:"top",label:"Top"},{value:"bottom",label:"Bottom"},{value:"right",label:"Right"}],defaultValue:"right",aliases:"dock tools position"},
+ {page:"notes",group:"Paper",key:"notesFadeToolbar",label:"Fade toolbar",description:"Fade the tools away while you work in another window. They return when the notes have focus or you point at them.",type:"toggle",defaultValue:true},
+ {page:"notes",group:"Drawing",key:"notesSmoothing",label:"Mouse smoothing",description:"Steadies strokes from a mouse or touchpad; sharp corners and stroke ends stay put. Pen tablets are left exactly as drawn.",type:"choice",options:[{value:"off",label:"Off"},{value:"light",label:"Light"},{value:"medium",label:"Medium"},{value:"strong",label:"Strong"}],defaultValue:"medium",aliases:"steady wobble pen"},
+ {page:"notes",group:"Drawing",key:"notesEraser",label:"Eraser size",description:"The eraser ring cuts strokes at its edge and removes any note it touches.",type:"choice",options:[{value:"small",label:"Small"},{value:"medium",label:"Medium"},{value:"large",label:"Large"}],defaultValue:"medium"},
+ {page:"notes",group:"Export",key:"notesClipboard",label:"Ctrl+C copies",description:"Ctrl+Shift+C copies the other one. Both save the sheet as a PNG first.",type:"choice",options:[{value:"path",label:"File path"},{value:"image",label:"Image"}],defaultValue:"path",aliases:"copy clipboard png export"},
+ {page:"notes",group:"Export",key:"notesExportDir",label:"Export folder",description:"Where copied sheets are saved, one new PNG per copy. Empty uses ~/Pictures/field-notes; ~ is your home folder.",type:"text",defaultValue:"",placeholder:"~/Pictures/field-notes",aliases:"save directory pictures"}
 ];
 var modules = [
  {key:"identity",label:"CEDAR / Field Station"}, {key:"go",label:"Applications"}, {key:"workspaces",label:"Workspaces"},
  {key:"activeWindow",label:"Active window"}, {key:"tray",label:"System tray"}, {key:"network",label:"Connections"},
  {key:"audio",label:"Audio (Strata layout)",strataOnly:true},
   {key:"battery",label:"Battery"}, {key:"notifications",label:"Notifications"},
-  {key:"clock",label:"Clock"}
+  {key:"clock",label:"Clock"}, {key:"notes",label:"Field Notes"}
 ];
 function search(entries, text) {
     var words=text.toLowerCase().trim().split(/\s+/).filter(Boolean);

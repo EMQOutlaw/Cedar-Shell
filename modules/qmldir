@@ -29,6 +29,8 @@ SettingsOverview 1.0 SettingsOverview.qml
 SystemSettings 1.0 SystemSettings.qml
 CedarCore 1.0 CedarCore.qml
 CoreSettings 1.0 CoreSettings.qml
+FieldNotesBoard 1.0 FieldNotesBoard.qml
+FieldNotesSettings 1.0 FieldNotesSettings.qml
 StrataBarContents 1.0 StrataBarContents.qml
 CoreWindow 1.0 CoreWindow.qml
 DefaultAppsSettings 1.0 DefaultAppsSettings.qml

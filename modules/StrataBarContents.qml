@@ -33,7 +33,8 @@ Item {
     readonly property bool clockShown: Config.moduleEnabled("clock")
     readonly property string calendarCompactText: nerdIcons ? "󰃭" : "Cal"
     readonly property string calendarDateText: Config.saved.barShowDate ? Config.formatDate(clock.date, true) : calendarCompactText
-    readonly property int statusCount: 1 + Number(networkShown) + Number(audioShown) + Number(powerShown) + Number(clockShown)
+    readonly property bool notesShown: Config.stage >= 3 && Config.moduleEnabled("notes")
+    readonly property int statusCount: 1 + Number(networkShown) + Number(audioShown) + Number(powerShown) + Number(clockShown) + Number(notesShown)
     readonly property real networkWidth: Network.vpnActive ? 46 : 32
     readonly property real compactClockWidth: Math.ceil(compactClockMetrics.advanceWidth) + 12
     readonly property real normalClockWidth: Math.ceil(normalClockMetrics.advanceWidth) + 14
@@ -41,7 +42,7 @@ Item {
     readonly property real audioTextWidth: Math.max(26, Math.ceil(audioMetrics.advanceWidth) + 14)
     readonly property real powerTextWidth: Math.max(26, Math.ceil(powerMetrics.advanceWidth) + 14)
     readonly property real minimumStatusWidth: (networkShown ? networkWidth : 0) + (audioShown ? 26 : 0) + (powerShown ? 26 : 0)
-        + (clockShown ? compactClockWidth : 0) + 30 + railGap * (statusCount - 1)
+        + (clockShown ? compactClockWidth : 0) + (notesShown ? 26 : 0) + 30 + railGap * (statusCount - 1)
     readonly property real statusLabelExtra: (audioShown ? audioTextWidth - 26 : 0) + (powerShown ? powerTextWidth - 26 : 0)
     // Measured text, rather than screen-width breakpoints, keeps enlarged fonts
     // inside the rail. The calendar yields to an icon while the time stays centered.
@@ -431,6 +432,28 @@ Item {
                 canopyOutput: root.outputName
                 checked: root.selected("calendar")
                 onClicked: root.openCalendar()
+            }
+            // Field Notes: the floating sheet opens on this bar's display; a
+            // right-click goes to its Settings page without closing the notes.
+            BarButton {
+                objectName: "strataNotes"
+                visible: root.notesShown
+                width: 26
+                height: root.controlHeight
+                text: root.nerdIcons ? "󰈙" : "N"
+                iconOnly: true
+                quiet: true
+                enabled: !ShellState.locked
+                hint: "Field Notes · Right-click for its settings"
+                accent: Theme.strataAccent
+                anchorsCanopy: false
+                checked: FieldNotes.opened && FieldNotes.screenName === root.outputName
+                onClicked: FieldNotes.summon({ toggle: true, screen: root.outputName })
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.RightButton
+                    onClicked: FieldNotes.openSettings()
+                }
             }
             // No bell: notifications unfold from the Core pill and gather in Signals.
             BarButton {

@@ -29,5 +29,5 @@ with tempfile.TemporaryDirectory(prefix='cedar-ui-') as tmp:
     if 'PASS: Settings search, scoped reset, external changes, and draft navigation' not in output or result.returncode or re.search(r'Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign',output):
         print(output); raise SystemExit(1)
     images=list(shots.glob('*.png'))
-    if len(images)<35: print(output); raise SystemExit('Missing rendered pages')
-    print('PASS: 17 Settings pages at wide and narrow sizes, 3 Control Center tabs, and Settings interaction checks passed')
+    if len(images)<37: print(output); raise SystemExit('Missing rendered pages')
+    print('PASS: 18 Settings pages at wide and narrow sizes, 3 Control Center tabs, and Settings interaction checks passed')

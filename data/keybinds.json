@@ -90,6 +90,14 @@
           "description": "Choose a wallpaper from the rounded preview grid",
           "lua": "ipc(\"wallpapers toggle\")",
           "conf": "exec, $cedarShell wallpapers toggle"
+        },
+        {
+          "keys": [
+            "SUPER + ALT + N"
+          ],
+          "description": "Toggle Field Notes, the floating sheet for sketches and typed notes",
+          "lua": "ipc(\"notes toggle\")",
+          "conf": "exec, $cedarShell notes toggle"
         }
       ],
       "note": "Unified copy, cut and paste send the application's own shortcut: Ctrl+C, Ctrl+X and Ctrl+V in most windows, Ctrl+Shift+C and Ctrl+Shift+V in terminals, where cut does not exist."
