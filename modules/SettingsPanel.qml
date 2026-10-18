@@ -75,37 +75,42 @@ Rectangle {
             Layout.fillWidth:true; implicitHeight:root.narrow ? 100:54
             ColumnLayout {
                 anchors.left:parent.left; anchors.top:parent.top; spacing:4
-                Text { text:"CEDAR"; font.family:Theme.labelFont; font.pixelSize:26; font.letterSpacing:4; color:Theme.text }
+                Text { text:"CEDAR"; font.family:Theme.labelFont; font.pixelSize:26; font.letterSpacing:4; color:Theme.strataText }
                 Text { text:"SETTINGS"; font.family:Theme.labelFont; font.pixelSize:11; color:Theme.strataAccent }
             }
             StationField {
                 id:search; objectName:"settingsSearch"
-                anchors.right:parent.right; anchors.rightMargin:root.narrow ? 0:52
+                anchors.right:closeBtn.left; anchors.rightMargin:8
                 anchors.top:parent.top; anchors.topMargin:root.narrow ? 60:2
-                width:root.narrow ? parent.width:Math.min(420,parent.width-205)
+                width:root.narrow ? parent.width - 40 : Math.min(420,parent.width-260)
                 placeholderText:"Search settings…"; Accessible.name:"Search Settings"
                 onTextChanged:resultsList.currentIndex=0
                 Keys.onDownPressed:{if(root.results.length){resultsList.forceActiveFocus();resultsList.currentIndex=0;}}
                 Keys.onReturnPressed:if(root.results.length)root.navigate(root.results[0].page,root.results[0].key || "")
                 Keys.onEscapePressed:{text="";focus=false;}
             }
-            StationButton { anchors.right:parent.right; anchors.top:parent.top; text:"×"; iconOnly:true; hint:"Close Settings"; onClicked:SettingsService.closeApp() }
+            StrataButton {
+                id:closeBtn
+                anchors.right:parent.right; anchors.top:parent.top
+                text:"×"; iconOnly:true; implicitWidth:32; implicitHeight:28
+                hint:"Close Settings"; onClicked:SettingsService.closeApp()
+            }
         }
         Rectangle { Layout.fillWidth:true; implicitHeight:1; color:Qt.alpha(Theme.strataAccent,.15) }
         RowLayout {
             Layout.fillWidth:true
-            StationButton { text:"← Back"; enabled:SettingsService.canGoBack; onClicked:SettingsService.back() }
+            StrataButton { text:"← Back"; enabled:SettingsService.canGoBack; onClicked:SettingsService.back() }
             GlowText { Layout.fillWidth:true; text:SettingsService.advanced ? "All settings, including advanced options":"Everyday settings · Search also finds advanced options"; font.pixelSize:Theme.small; color:Theme.strataMuted; wrapMode:Text.WordWrap }
-            StationButton { text:SettingsService.advanced ? "Advanced":"Simple"; hint:"Switch between everyday and all settings"; checked:SettingsService.advanced; onClicked:SettingsService.toggleLevel() }
+            StrataButton { text:SettingsService.advanced ? "Advanced":"Simple"; hint:"Switch between everyday and all settings"; checked:SettingsService.advanced; onClicked:SettingsService.toggleLevel() }
         }
         Flow {
             Layout.fillWidth:true; spacing:6
             Repeater {
                 model:SettingsService.menu
-                StationButton { required property var modelData; text:modelData.label; checked:root.category.id===modelData.id; onClicked:root.navigate(modelData.pages[0].id) }
+                StrataButton { required property var modelData; text:modelData.label; checked:root.category.id===modelData.id; onClicked:root.navigate(modelData.pages[0].id) }
             }
         }
-        StationButton { visible:root.narrow; text:(root.navigationOpen ? "←  Back to ":"☰  ")+root.page.label; checked:root.navigationOpen; onClicked:root.navigationOpen=!root.navigationOpen }
+        StrataButton { visible:root.narrow; text:(root.navigationOpen ? "←  Back to ":"☰  ")+root.page.label; checked:root.navigationOpen; onClicked:root.navigationOpen=!root.navigationOpen }
         RowLayout {
             Layout.fillWidth:true; Layout.fillHeight:true; spacing:24
             ScrollView {
@@ -126,14 +131,14 @@ Rectangle {
                                 Accessible.name:modelData.label
                                 background:Rectangle {
                                     radius:Theme.controlRadius
-                                    color:navItem.checked ? Qt.alpha(Theme.teal,.10):navItem.hovered ? Qt.alpha(Theme.teal,.045):Theme.transparent
+                                    color:navItem.checked ? Qt.alpha(Theme.strataAccent,.10):navItem.hovered ? Qt.alpha(Theme.strataAccent,.045):Theme.transparent
                                     border.width:navItem.visualFocus ? Theme.focusWidth:0; border.color:Theme.green
-                                    Rectangle { visible:navItem.checked; x:0; anchors.verticalCenter:parent.verticalCenter; width:3; height:18; radius:2; color:Theme.green }
+                                    Rectangle { visible:navItem.checked; x:0; anchors.verticalCenter:parent.verticalCenter; width:3; height:18; radius:2; color:Theme.strataAccent }
                                 }
                                 contentItem:Row {
                                     spacing:10; leftPadding:8
-                                    Text { width:16; anchors.verticalCenter:parent.verticalCenter; horizontalAlignment:Text.AlignHCenter; text:modelData.icon; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:navItem.checked ? Theme.green:Theme.muted }
-                                    Text { anchors.verticalCenter:parent.verticalCenter; text:modelData.label; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:navItem.checked ? Theme.green:Theme.text }
+                                    Text { width:16; anchors.verticalCenter:parent.verticalCenter; horizontalAlignment:Text.AlignHCenter; text:modelData.icon; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:navItem.checked ? Theme.strataAccent:Theme.strataMuted }
+                                    Text { anchors.verticalCenter:parent.verticalCenter; text:modelData.label; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:navItem.checked ? Theme.strataAccent:Theme.strataText }
                                 }
                                 onClicked:root.navigate(modelData.id)
                             }
@@ -178,10 +183,10 @@ Rectangle {
                         id:content; width:scroll.availableWidth; spacing:16
                         ColumnLayout {
                             Layout.fillWidth:true; spacing:6
-                            GlowText { text:root.groupLabel.toUpperCase()+"  /  "+root.page.label.toUpperCase(); color:Theme.teal; font.pixelSize:10; font.letterSpacing:1.6 }
-                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round(24*Theme.fontScale); Layout.fillWidth:true }
-                            GlowText { text:root.page.description; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
-                            Rectangle { Layout.fillWidth:true; Layout.topMargin:10; implicitHeight:1; gradient:Gradient { orientation:Gradient.Horizontal; GradientStop { position:0; color:Qt.alpha(Theme.teal,.35) } GradientStop { position:1; color:Qt.alpha(Theme.teal,0) } } }
+                            SectionMark { text:root.groupLabel.toUpperCase()+"  /  "+root.page.label.toUpperCase(); tone:Theme.strataAccent; size:10; Layout.fillWidth:true; elide:Text.ElideRight }
+                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round(24*Theme.fontScale); Layout.fillWidth:true; color:Theme.strataText }
+                            GlowText { text:root.page.description; color:Theme.strataMuted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
+                            Rectangle { Layout.fillWidth:true; Layout.topMargin:10; implicitHeight:1; gradient:Gradient { orientation:Gradient.Horizontal; GradientStop { position:0; color:Qt.alpha(Theme.strataAccent,.35) } GradientStop { position:1; color:Qt.alpha(Theme.strataAccent,0) } } }
                         }
                         GlowText {
                             visible:["displays","input","keybinds"].includes(root.section) && (DesktopSettings.busy || DesktopSettings.error!=="" || DesktopSettings.message!=="")
@@ -201,9 +206,9 @@ Rectangle {
                         Flow {
                             Layout.fillWidth:true; spacing:8; Layout.topMargin:20; Layout.bottomMargin:16
                             visible:Schema.fields.some(f=>f.page===root.section)
-                            StationButton { text:root.resetConfirm ? "Confirm reset":"Reset "+root.page.label; accent:root.resetConfirm ? Theme.amber:Theme.teal; onClicked:root.resetConfirm ? root.resetPage():root.resetConfirm=true }
-                            StationButton { visible:root.resetConfirm; text:"Cancel"; onClicked:root.resetConfirm=false }
-                            GlowText { visible:root.resetConfirm; text:"Only this page’s CEDAR preferences will reset."; color:Theme.muted; font.pixelSize:Theme.small; width:Math.min(360,parent.width); wrapMode:Text.WordWrap }
+                            StrataButton { text:root.resetConfirm ? "Confirm reset":"Reset "+root.page.label; accent:root.resetConfirm ? Theme.amber:Theme.strataAccent; onClicked:root.resetConfirm ? root.resetPage():root.resetConfirm=true }
+                            StrataButton { visible:root.resetConfirm; text:"Cancel"; onClicked:root.resetConfirm=false }
+                            GlowText { visible:root.resetConfirm; text:"Only this page’s CEDAR preferences will reset."; color:Theme.strataMuted; font.pixelSize:Theme.small; width:Math.min(360,parent.width); wrapMode:Text.WordWrap }
                         }
                     }
                 }
