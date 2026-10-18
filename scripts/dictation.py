@@ -10,6 +10,7 @@ in KEYS, Voxtype's everyday choices, are accepted; the rest stay in Voxtype's
 own TUI (`voxtype configure`). Nothing here reads audio or transcripts.
 """
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -122,27 +123,35 @@ def render(key, value):
     """The string `voxtype config set` receives, after CEDAR's own check; Voxtype checks again."""
     kind, constraint = KEYS[key]
     if kind == 'bool':
-        if isinstance(value, str):
-            value = value.lower() == 'true'
-        return 'true' if bool(value) else 'false'
+        if not isinstance(value, bool):
+            raise ValueError(key + ' must be true or false')
+        return 'true' if value else 'false'
     if kind == 'int':
-        number = int(round(float(value)))
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or int(value) != value:
+            raise ValueError(key + ' must be a whole number')
+        number = int(value)
         if not constraint[0] <= number <= constraint[1]:
             raise ValueError(key + ' must be between ' + str(constraint[0]) + ' and ' + str(constraint[1]))
         return str(number)
     if kind == 'float':
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError(key + ' must be a number')
+        if not constraint[0] <= value <= constraint[1]:
+            raise ValueError(key + ' must be between ' + str(constraint[0]) + ' and ' + str(constraint[1]))
         number = round(float(value), 2)
         if not constraint[0] <= number <= constraint[1]:
             raise ValueError(key + ' must be between ' + str(constraint[0]) + ' and ' + str(constraint[1]))
         return str(number)
-    text = str(value)
+    if not isinstance(value, str):
+        raise ValueError(key + ' must be text')
+    text = value
     if kind == 'choice' and text not in constraint:
         raise ValueError(key + ' must be one of ' + ', '.join(constraint))
-    if kind == 'text' and not re.match(constraint, text):
+    if kind == 'text' and not re.fullmatch(constraint, text):
         raise ValueError(key + ' is not a valid value')
-    if kind == 'model' and not MODEL_NAME.match(text):
+    if kind == 'model' and not MODEL_NAME.fullmatch(text):
         raise ValueError('That is not a model name')
-    if kind == 'device' and not DEVICE_NAME.match(text):
+    if kind == 'device' and not DEVICE_NAME.fullmatch(text):
         raise ValueError('That is not a device name')
     return text
 

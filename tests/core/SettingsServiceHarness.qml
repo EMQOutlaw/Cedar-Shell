@@ -34,6 +34,8 @@ ShellRoot {
         check(s.navigate("", "barOpacity") && s.page === "bar" && s.anchor === "barOpacity", "a key alone resolves its page");
         s.clearAnchor();
         check(s.anchor === "", "the window can clear the anchor after the highlight");
+        ShellState.settingsAnchor = "barOpacity"; ShellState.toggle("settings");
+        check(s.windowOpen && s.page === "bar" && s.anchor === "barOpacity", "anchor-only routes navigate without toggling the window closed");
 
         // A draft holds navigation until the user decides.
         s.blocked = true;
@@ -77,6 +79,7 @@ ShellRoot {
         // Window size and recent pages.
         check(s.windowSize.width >= s.minimumWidth && s.windowSize.height >= s.minimumHeight, "a default size is ready before any save");
         check(!s.rememberWindow(100, 100) && s.windowSize.width !== 100, "sizes below the minimum are ignored");
+        check(!s.rememberWindow(Infinity, 900) && !s.rememberWindow(1300, NaN), "non-finite sizes cannot corrupt persisted geometry");
         check(s.rememberWindow(1300, 900) && s.windowSize.width === 1300 && s.windowSize.height === 900, "a settled size is remembered");
         s.navigate("bar", "");
         check(s.recent.length > 0 && s.recent[0].page === "bar" && s.recent.length <= 6 && !s.recent.some(r => r.page === "overview"), "recent pages are bounded, lead with the current page and skip Overview");

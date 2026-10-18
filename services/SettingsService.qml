@@ -28,9 +28,9 @@ Singleton {
     // asked for (ShellState.settingsPage), or nothing for "where I left off".
     function route(page, anchor, toggle) {
         if (ShellState.locked || Config.stage < 3) return;
-        if (toggle && windowOpen && !page) { closeApp(); return; }
+        if (toggle && windowOpen && !page && !anchor) { closeApp(); return; }
         windowOpen = true;
-        if (page) navigate(page, anchor || "");
+        if (page || anchor) navigate(page, anchor || "");
     }
     function openPage(page, anchor) { route(page, anchor, false); }
     Connections { target: ShellState; function onLockedChanged() { if (ShellState.locked) root.windowOpen = false; } }
@@ -141,7 +141,7 @@ Singleton {
                 const saved = JSON.parse(text() || "{}");
                 if (saved && typeof saved === "object") {
                     const w = saved.window || {};
-                    if (Number(w.width) >= root.minimumWidth && Number(w.height) >= root.minimumHeight) store.window = { width: Math.round(w.width), height: Math.round(w.height) };
+                    if (isFinite(w.width) && isFinite(w.height) && Number(w.width) >= root.minimumWidth && Number(w.height) >= root.minimumHeight) store.window = { width: Math.round(w.width), height: Math.round(w.height) };
                     if (Array.isArray(saved.recent)) store.recent = saved.recent.filter(r => r && root.pageIds.includes(r.page)).slice(0, 6);
                 }
             } catch (_) {}
@@ -149,7 +149,7 @@ Singleton {
     }
     readonly property var windowSize: store.window
     function rememberWindow(width, height) {
-        if (!(width >= minimumWidth && height >= minimumHeight)) return false;
+        if (!(isFinite(width) && isFinite(height) && width >= minimumWidth && height >= minimumHeight)) return false;
         if (store.window.width === Math.round(width) && store.window.height === Math.round(height)) return true;
         store.window = { width: Math.round(width), height: Math.round(height) }; store.save();
         return true;

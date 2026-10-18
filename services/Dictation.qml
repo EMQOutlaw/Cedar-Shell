@@ -34,6 +34,7 @@ Singleton {
     property string backend: ""
     property string error: ""
     property bool wasActive: false
+    onDaemonChanged: if (!daemon) state = ""
     readonly property bool recording: state === "recording"
     readonly property bool transcribing: state === "transcribing"
     readonly property bool active: recording || transcribing
@@ -90,7 +91,7 @@ Singleton {
         if (data.config !== undefined) { config = data.config; models = data.models || []; devices = data.devices || []; configRead = true; }
         if (data.version !== undefined) version = String(data.version || "");
         if (data.daemon !== undefined) daemon = !!data.daemon;
-        if (data.installed === false) installed = false;
+        if (data.installed !== undefined) installed = !!data.installed;
         message = String(data.message || "");
         generation += 1;
         refresh();
@@ -150,7 +151,13 @@ Singleton {
     function applyState(text) {
         const next = String(text || "").trim();
         if (["idle", "recording", "transcribing"].includes(next)) { state = next; daemon = true; }
-        else if (next === "") { daemon = false; state = ""; }
+        else { daemon = false; state = ""; }
+    }
+    function cancelForLock() {
+        // A start may still be in flight when the lock arrives. Use a separate
+        // process, then cancel again after that command exits if still locked.
+        if (ShellState.locked && installed && (active || recorder.running) && !lockCancel.running)
+            lockCancel.running = true;
     }
     function publishRow() {
         if (!Config.saved.coreDictation || Config.stage < 3) { if (wasActive) CoreService.remove("dictation", false); wasActive = false; return; }
@@ -172,12 +179,12 @@ Singleton {
             wasActive = false;
         }
     }
-    onActiveChanged: publishRow()
+    onActiveChanged: { publishRow(); cancelForLock(); }
     onRecordingChanged: if (active) publishRow()
     Connections { target: Config.saved; function onCoreDictationChanged() { root.publishRow(); } }
     Connections {
         target: ShellState
-        function onLockedChanged() { if (ShellState.locked && root.active && root.installed) { recorder.command = ["voxtype", "record", "cancel"]; recorder.running = true; } }
+        function onLockedChanged() { root.cancelForLock(); }
     }
 
     // Is voxtype on PATH? exit 0 means yes; nothing else is read from it.
@@ -188,7 +195,7 @@ Singleton {
             root.installed = code === 0;
             root.checked = true;
             if (root.installed) { root.readState(); info.running = true; }
-            else { root.daemon = false; root.state = ""; }
+            else { root.daemon = false; root.state = ""; root.configRead = false; root.config = ({}); root.models = []; root.devices = []; }
         }
     }
     // The daemon's own summary: state plus model, device and backend.
@@ -204,20 +211,29 @@ Singleton {
                     root.backend = String(data.backend || "");
                     const reported = String(data.alt || data.class || "");
                     if (["idle", "recording", "transcribing"].includes(reported)) { root.state = reported; root.daemon = true; }
-                    else root.daemon = false;
+                    else { root.daemon = false; root.state = ""; }
                     root.error = "";
                 } catch (e) {
-                    root.daemon = false;
+                    root.daemon = false; root.state = "";
                 }
             }
         }
-        onExited: function(code) { if (code !== 0) root.daemon = false; }
+        onExited: function(code) { if (code !== 0) { root.daemon = false; root.state = ""; } }
     }
     Process {
         id: recorder
         onExited: function(code) {
             if (code !== 0) root.error = "voxtype record failed (" + code + ")";
             else root.error = "";
+            root.cancelForLock();
+            settle.restart();
+        }
+    }
+    Process {
+        id: lockCancel
+        command: ["voxtype", "record", "cancel"]
+        onExited: function(code) {
+            if (code !== 0) root.error = "voxtype cancel on lock failed (" + code + ")";
             settle.restart();
         }
     }

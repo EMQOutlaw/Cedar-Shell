@@ -2,13 +2,58 @@ import QtQuick
 import Quickshell
 import "../.."
 import "../../services"
+import "../../modules"
 
 // Settings window furniture: open/close, lock, reopen, advanced routes,
 // search, and size persistence through the real SettingsService + FloatingWindow
 // path. This exercises the actual modules/Settings.qml window in offscreen mode.
 ShellRoot {
+    Settings { id: settingsWindow }
     function check(ok, label) { if (!ok) { console.error("FAIL: " + label); Qt.exit(1); } }
     Timer { id: finish; interval: 200; onTriggered: Qt.quit() }
+    Timer {
+        id: rendered; interval: 100
+        onTriggered: {
+            check(settingsWindow.visible && settingsWindow.width >= SettingsService.minimumWidth,
+                  "the real floating window is visible after event delivery");
+            settingsWindow.width = 1000; settingsWindow.height = 700;
+            resized.start();
+        }
+    }
+    Timer {
+        id: resized; interval: 600
+        onTriggered: {
+            check(SettingsService.windowSize.width === 1000 && SettingsService.windowSize.height === 700,
+                  "actual window resize is persisted after settling");
+            SettingsService.closeApp();
+            reopened.start();
+        }
+    }
+    Timer {
+        id: reopened; interval: 100
+        onTriggered: {
+            check(!settingsWindow.visible, "service close hides the actual window");
+            ShellState.open("settings");
+            relocked.start();
+        }
+    }
+    Timer {
+        id: relocked; interval: 100
+        onTriggered: {
+            check(settingsWindow.visible && settingsWindow.width === 1000 && settingsWindow.height === 700,
+                  "actual window reopens at remembered size");
+            ShellState.locked = true;
+            hidden.start();
+        }
+    }
+    Timer {
+        id: hidden; interval: 100
+        onTriggered: {
+            check(!settingsWindow.visible && !SettingsService.windowOpen, "lock hides the actual window");
+            console.log("PASS: Settings floating window routes, resize persistence, reopen, lock and search");
+            finish.start();
+        }
+    }
 
     Component.onCompleted: {
         const s = SettingsService;
@@ -50,7 +95,7 @@ ShellRoot {
         check(s.back(), "history back works");
         check(s.page === "appearance", "back returns to previous page");
 
-        console.log("PASS: Settings floating window routes, size persistence, reopen, lock and search");
-        finish.start();
+        ShellState.open("settings");
+        rendered.start();
     }
 }

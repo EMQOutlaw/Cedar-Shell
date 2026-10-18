@@ -23,8 +23,12 @@ Rectangle {
     readonly property var results:SettingsService.search(search.text)
     readonly property var category:SettingsService.menu.find(m => m.pages.some(p => p.id === root.section)) || SettingsService.menu[0]
     property alias searchText:search.text
-    color:Qt.alpha(Theme.background,Config.panelOpacity); radius:Config.panelRadius
-    border.color:Qt.alpha(Theme.teal,.22); border.width:1
+    color:Theme.transparent; radius:0; border.width:0
+    ChamferFrame {
+        anchors.fill:parent; cut:Theme.strataCut
+        fill:Qt.alpha(Theme.strataFoundation, Math.max(.96, Config.panelOpacity))
+        stroke:Qt.alpha(Theme.strataAccent, .25)
+    }
     clip:true
     function navigate(page,anchor="") {
         SettingsService.navigate(page,anchor);
@@ -68,11 +72,11 @@ Rectangle {
     ColumnLayout {
         anchors.fill:parent; anchors.margins:root.narrow ? 16:24; spacing:16
         Item {
-            Layout.fillWidth:true; implicitHeight:root.narrow ? 100:50
+            Layout.fillWidth:true; implicitHeight:root.narrow ? 100:54
             ColumnLayout {
-                anchors.left:parent.left; anchors.top:parent.top; spacing:3
-                GlowText { text:"CEDAR"; font.family:Theme.labelFont; font.pixelSize:25; color:Theme.green }
-                GlowText { text:"Settings"; color:Theme.muted; font.pixelSize:Theme.small }
+                anchors.left:parent.left; anchors.top:parent.top; spacing:4
+                Text { text:"CEDAR"; font.family:Theme.labelFont; font.pixelSize:26; font.letterSpacing:4; color:Theme.text }
+                Text { text:"SETTINGS"; font.family:Theme.labelFont; font.pixelSize:11; color:Theme.strataAccent }
             }
             StationField {
                 id:search; objectName:"settingsSearch"
@@ -87,11 +91,11 @@ Rectangle {
             }
             StationButton { anchors.right:parent.right; anchors.top:parent.top; text:"×"; iconOnly:true; hint:"Close Settings"; onClicked:SettingsService.closeApp() }
         }
-        Rectangle { Layout.fillWidth:true; implicitHeight:1; color:Qt.alpha(Theme.teal,.15) }
+        Rectangle { Layout.fillWidth:true; implicitHeight:1; color:Qt.alpha(Theme.strataAccent,.15) }
         RowLayout {
             Layout.fillWidth:true
             StationButton { text:"← Back"; enabled:SettingsService.canGoBack; onClicked:SettingsService.back() }
-            GlowText { Layout.fillWidth:true; text:SettingsService.advanced ? "All settings, including advanced options":"Everyday settings · Search also finds advanced options"; font.pixelSize:Theme.small; color:Theme.muted; wrapMode:Text.WordWrap }
+            GlowText { Layout.fillWidth:true; text:SettingsService.advanced ? "All settings, including advanced options":"Everyday settings · Search also finds advanced options"; font.pixelSize:Theme.small; color:Theme.strataMuted; wrapMode:Text.WordWrap }
             StationButton { text:SettingsService.advanced ? "Advanced":"Simple"; hint:"Switch between everyday and all settings"; checked:SettingsService.advanced; onClicked:SettingsService.toggleLevel() }
         }
         Flow {

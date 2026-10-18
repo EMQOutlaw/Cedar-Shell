@@ -5,8 +5,13 @@ import re
 import shutil
 import subprocess
 import unittest
+import importlib.util
+from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 SCHEMA=ROOT/'components/SettingsSchema.js'
+_spec = importlib.util.spec_from_file_location('settings_dictation', ROOT/'scripts/dictation.py')
+dictation = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(dictation)
 def evaluate(expression):
     script=SCHEMA.read_text().replace('.pragma library','')+'\nconsole.log(JSON.stringify('+expression+'));'
     return json.loads(subprocess.run(['node','-e',script],capture_output=True,text=True,check=True,timeout=20).stdout)
@@ -94,6 +99,73 @@ class ServiceRoute(unittest.TestCase):
         self.assertIn('services/SettingsService.qml',bundle['releaseArtifacts'])
         self.assertIn('tests/test_settings_schema.py',bundle['tests'])
         self.assertIn('tests/check_settings_service.py',bundle['tests'])
+
+class DictationSettings(unittest.TestCase):
+    """No hardware: validate requests and inspect exact Voxtype argv with mocks."""
+    def test_every_supported_key_renders_a_valid_value(self):
+        for key, (kind, constraint) in dictation.KEYS.items():
+            value = {'bool': True, 'model': 'base.en', 'device': 'default', 'text': 'auto'}.get(kind)
+            if kind in ('int', 'float'): value = constraint[0]
+            if kind == 'choice': value = constraint[0]
+            with self.subTest(key=key):
+                self.assertIsInstance(dictation.render(key, value), str)
+
+    def test_wrong_types_nonfinite_and_out_of_range_values_are_rejected(self):
+        invalid = {
+            'whisper.translate': [None, 'false', 'yes', 0, 1, []],
+            'audio.max_duration_secs': [True, '60', None, 5.5, 4, 3601, float('inf'), float('nan')],
+            'vad.threshold': [False, '0.5', None, -0.001, 1.001, float('inf'), float('nan')],
+            'whisper.language': [None, 42, 'english', 'en\n'],
+            'whisper.model': [None, '-base', '../base', 'base\n'],
+            'audio.device': [None, '-default', 'default\n'],
+            'output.append_text': [None, 1, 'a\nb', 'x' * 81],
+            'output.mode': [None, 'shell'],
+        }
+        for key, values in invalid.items():
+            for value in values:
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                    dictation.render(key, value)
+
+    def test_set_and_unset_restart_only_after_success(self):
+        with patch.object(dictation, 'installed', return_value=True), \
+             patch.object(dictation, 'run') as run, \
+             patch.object(dictation, 'snapshot', return_value={'config': {}}):
+            dictation.action({'action': 'set', 'key': 'whisper.translate', 'value': False})
+            self.assertEqual(run.call_args_list[0].args[0], ['voxtype', 'config', 'set', 'whisper.translate', 'false'])
+            self.assertEqual(run.call_args_list[1].args[0], ['systemctl', '--user', 'restart', 'voxtype'])
+            run.reset_mock()
+            dictation.action({'action': 'unset', 'key': 'audio.device'})
+            self.assertEqual(run.call_args_list[0].args[0], ['voxtype', 'config', 'unset', 'audio.device'])
+            self.assertEqual(run.call_count, 2)
+            run.reset_mock(); run.side_effect = RuntimeError('rejected')
+            with self.assertRaises(RuntimeError):
+                dictation.action({'action': 'set', 'key': 'whisper.model', 'value': 'base'})
+            self.assertEqual(run.call_count, 1)
+
+    def test_invalid_requests_never_run_commands(self):
+        with patch.object(dictation, 'installed', return_value=True), patch.object(dictation, 'run') as run:
+            for req in ({'action': 'set', 'key': 'output.auto_submit', 'value': 'yes'},
+                        {'action': 'unset', 'key': 'unknown'}, {'action': 'unknown'}):
+                with self.assertRaises(ValueError): dictation.action(req)
+            run.assert_not_called()
+
+    def test_absent_voxtype_returns_complete_empty_snapshot(self):
+        with patch.object(dictation, 'installed', return_value=False), patch.object(dictation, 'run') as run:
+            data = dictation.action({'action': 'read'})
+            self.assertFalse(data['installed']); self.assertFalse(data['daemon'])
+            self.assertEqual(data['config'], {}); self.assertEqual(data['models'], [])
+            run.assert_not_called()
+
+    def test_download_uses_only_catalog_and_does_not_restart(self):
+        catalog = [{'name': 'base.en', 'download': 'base.en', 'downloadable': True, 'installed': False}]
+        with patch.object(dictation, 'installed', return_value=True), \
+             patch.object(dictation, 'models', return_value=catalog), \
+             patch.object(dictation, 'snapshot', return_value={}), patch.object(dictation, 'run') as run:
+            with self.assertRaises(ValueError): dictation.action({'action': 'download', 'model': '../untrusted'})
+            run.assert_not_called()
+            dictation.action({'action': 'download', 'model': 'base.en'})
+            self.assertEqual(run.call_args.args[0], ['voxtype', 'setup', '--download', '--model', 'base.en', '--quiet', '--no-post-install'])
+            self.assertEqual(run.call_count, 1)
 
 if __name__=='__main__':
     unittest.main()
