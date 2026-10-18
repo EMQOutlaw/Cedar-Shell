@@ -227,6 +227,7 @@ Rectangle {
     Component { id:power; PowerSettings { highlightKey:root.highlightKey } }
     Component { id:time; TimeSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:notesPage; FieldNotesSettings { highlightKey:root.highlightKey } }
+    Component { id:dictationPage; DictationSettings { highlightKey:root.highlightKey } }
     Component { id:system; SystemSettings {} }
     Component { id:about; AboutSettings {} }
 }
