@@ -239,6 +239,16 @@ ShellRoot {
         function close(): void { Profiles.closeApp(); }
         function status(): string { return JSON.stringify({ current: Profiles.current, active: Profiles.active, busy: Profiles.anyBusy, summary: Profiles.summary, steps: Profiles.steps, held: Overrides.keysHeldBy("profile"), profiles: Profiles.definitions.map(d => d.id) }); }
     }
+    // Dictation: `dictation start|stop|toggle|cancel|status` (Super+Ctrl+X toggles,
+    // hold F9 to talk). All actions answer "ok" or "error: <reason>".
+    IpcHandler {
+        target: "dictation"
+        function start(): string { return Dictation.start() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function stop(): string { return Dictation.stop() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function toggle(): string { return Dictation.toggle() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function cancel(): string { return Dictation.cancel() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function status(): string { return JSON.stringify(Dictation.status()); }
+    }
     // Gaming Mode: `gaming toggle|activate|deactivate|status` (Super+G).
     // Field Notes: `notes status|open|openOn <output>|close|toggle|newSheet|selectSheet <n>|
     // setTitle <text>|setPaper <graph|dots|ruled|plain>|setSize <small|medium|large>|

@@ -34,7 +34,8 @@ Item {
     readonly property string calendarCompactText: nerdIcons ? "󰃭" : "Cal"
     readonly property string calendarDateText: Config.saved.barShowDate ? Config.formatDate(clock.date, true) : calendarCompactText
     readonly property bool notesShown: Config.stage >= 3 && Config.moduleEnabled("notes")
-    readonly property int statusCount: 1 + Number(networkShown) + Number(audioShown) + Number(powerShown) + Number(clockShown) + Number(notesShown)
+    readonly property bool dictationShown: Config.stage >= 3 && Dictation.installed && Config.moduleEnabled("dictation")
+    readonly property int statusCount: 1 + Number(networkShown) + Number(audioShown) + Number(powerShown) + Number(clockShown) + Number(notesShown) + Number(dictationShown)
     readonly property real networkWidth: Network.vpnActive ? 46 : 32
     readonly property real compactClockWidth: Math.ceil(compactClockMetrics.advanceWidth) + 12
     readonly property real normalClockWidth: Math.ceil(normalClockMetrics.advanceWidth) + 14
@@ -42,7 +43,7 @@ Item {
     readonly property real audioTextWidth: Math.max(26, Math.ceil(audioMetrics.advanceWidth) + 14)
     readonly property real powerTextWidth: Math.max(26, Math.ceil(powerMetrics.advanceWidth) + 14)
     readonly property real minimumStatusWidth: (networkShown ? networkWidth : 0) + (audioShown ? 26 : 0) + (powerShown ? 26 : 0)
-        + (clockShown ? compactClockWidth : 0) + (notesShown ? 26 : 0) + 30 + railGap * (statusCount - 1)
+        + (clockShown ? compactClockWidth : 0) + (notesShown ? 26 : 0) + (dictationShown ? 26 : 0) + 30 + railGap * (statusCount - 1)
     readonly property real statusLabelExtra: (audioShown ? audioTextWidth - 26 : 0) + (powerShown ? powerTextWidth - 26 : 0)
     // Measured text, rather than screen-width breakpoints, keeps enlarged fonts
     // inside the rail. The calendar yields to an icon while the time stays centered.
@@ -453,6 +454,28 @@ Item {
                     anchors.fill: parent
                     acceptedButtons: Qt.RightButton
                     onClicked: FieldNotes.openSettings()
+                }
+            }
+            // Dictation: Voxtype's microphone. Ember while it listens, amber while
+            // it transcribes; a click toggles, a right-click opens Settings › Dictation.
+            BarButton {
+                objectName: "strataDictation"
+                visible: root.dictationShown
+                width: 26
+                height: root.controlHeight
+                text: root.nerdIcons ? (Dictation.transcribing ? "󰔟" : "󰍬") : (Dictation.transcribing ? "…" : "M")
+                iconOnly: true
+                quiet: !Dictation.active
+                enabled: !ShellState.locked && Dictation.available
+                hint: "Dictation · " + Dictation.label + " · Super+Ctrl+X toggles, hold F9 to talk"
+                accent: Dictation.recording ? Theme.ember : Dictation.transcribing ? Theme.amber : Theme.strataAccent
+                anchorsCanopy: false
+                checked: Dictation.active
+                onClicked: Dictation.toggle()
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.RightButton
+                    onClicked: Dictation.openSettings()
                 }
             }
             // No bell: notifications unfold from the Core pill and gather in Signals.

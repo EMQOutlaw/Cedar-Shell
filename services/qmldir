@@ -49,3 +49,4 @@ singleton Tailscale 1.0 Tailscale.qml
 singleton CalendarFeeds 1.0 CalendarFeeds.qml
 
 singleton FieldNotes 1.0 FieldNotes.qml
+singleton Dictation 1.0 Dictation.qml

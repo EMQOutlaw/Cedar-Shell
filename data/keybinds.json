@@ -103,6 +103,36 @@
       "note": "Unified copy, cut and paste send the application's own shortcut: Ctrl+C, Ctrl+X and Ctrl+V in most windows, Ctrl+Shift+C and Ctrl+Shift+V in terminals, where cut does not exist."
     },
     {
+      "id": "dictation",
+      "title": "Dictation",
+      "entries": [
+        {
+          "keys": [
+            "SUPER + CTRL + X"
+          ],
+          "description": "Toggle dictation: Voxtype listens, then types what you said",
+          "lua": "ipc(\"dictation toggle\")",
+          "conf": "exec, $cedarShell dictation toggle"
+        },
+        {
+          "keys": [
+            "F9"
+          ],
+          "description": "Hold to talk; release to stop and let Voxtype type",
+          "lua": "ipc(\"dictation start\")",
+          "conf": "exec, $cedarShell dictation start",
+          "flags": [
+            "release",
+            "repeating"
+          ],
+          "release": {
+            "lua": "ipc(\"dictation stop\")",
+            "conf": "exec, $cedarShell dictation stop"
+          }
+        }
+      ]
+    },
+    {
       "id": "windows",
       "title": "Windows",
       "note": "Super+Shift+arrows move a tiled window within the layout (it swaps places with its neighbour in that direction) and snap a floating window to that edge of the monitor's usable area, keeping its size and clearing the bar.",

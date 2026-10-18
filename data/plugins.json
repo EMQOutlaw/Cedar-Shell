@@ -64,13 +64,16 @@
         "modules/Osd.qml",
         "scripts/core_actions.py",
         "scripts/core_probe.py",
+        "scripts/dictation.py",
         "services/CoreActivityModel.qml",
         "services/CoreProbe.qml",
         "services/CoreService.qml",
         "services/CoreSources.qml",
         "services/CoreTimer.qml",
         "services/Permission.qml",
-        "modules/PermissionPrompt.qml"
+        "modules/PermissionPrompt.qml",
+        "services/Dictation.qml",
+        "modules/DictationSettings.qml"
       ],
       "dependencies": [
         "qs",
@@ -110,7 +113,9 @@
         "services/CoreSources.qml",
         "services/CoreTimer.qml",
         "services/Permission.qml",
-        "modules/PermissionPrompt.qml"
+        "modules/PermissionPrompt.qml",
+        "services/Dictation.qml",
+        "modules/DictationSettings.qml"
       ]
     },
     {

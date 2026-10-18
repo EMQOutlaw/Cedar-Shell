@@ -19,6 +19,7 @@ var pages = [
  {id:"power",label:"Power & Lock",icon:"⏻",group:"",description:"Energy, brightness, and session security."},
  {id:"time",label:"Time & Date",icon:"◷",group:"",description:"A familiar clock across every CEDAR surface."},
  {id:"notes",label:"Field Notes",icon:"✎",group:"",description:"A sheet of paper that floats over the desktop: sketches, typed notes, and a copy that pastes anywhere."},
+ {id:"dictation",label:"Dictation",icon:"󰍬",group:"",description:"Voxtype voice typing: hold a key, speak, and the words are typed. Model, language, microphone and how the text is delivered."},
  // The page id remains "system" for existing IPC, Go and search routes.
  {id:"system",label:"Health",icon:"✚",group:"Station",description:"Service health, diagnostics, updates, and useful error details."},
  {id:"about",label:"About CEDAR",icon:"✧",group:"",description:"A quiet, living forest interface with the precision of a personal command station."}
@@ -34,7 +35,7 @@ function groupOf(id) {
 var menu = [
  {id:"home",label:"Home",description:"Your desktop at a glance.",pages:["overview"]},
  {id:"look",label:"Look & Feel",description:"How CEDAR looks and moves.",pages:["appearance","bar","desktop","application-theming"]},
- {id:"daily",label:"Daily Use",description:"The things you touch every day.",pages:["notifications","time","audio","connections","apps","notes"]},
+ {id:"daily",label:"Daily Use",description:"The things you touch every day.",pages:["notifications","time","audio","connections","apps","notes","dictation"]},
  {id:"system",label:"System",description:"Displays, input, shortcuts and power.",pages:["displays","input","keybinds","power"]},
  {id:"cedar",label:"CEDAR",description:"The Core pill, setup, health and about.",pages:["core","setup","system","about"]}
 ];
@@ -107,6 +108,7 @@ var fields = [
 {"page": "core", "group": "Activities", "key": "coreNotifications", "label": "Notifications", "description": "Notifications unfold from the Core pill and gather in Signals. Off: they appear as cards at the top right instead.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreScreenshots", "label": "Screenshot actions", "description": "Show Open, Copy and Reveal for saved Omarchy screenshot notifications.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreConnections", "label": "Connections", "description": "Bluetooth changes in Core; network and VPN changes on the network button.", "type": "toggle", "defaultValue": true},
+{"page": "core", "group": "Activities", "key": "coreDictation", "label": "Dictation", "description": "A row with Stop and Cancel while Voxtype is listening or transcribing. The bar button and keybinds work either way.", "type": "toggle", "defaultValue": true, "aliases": "voxtype voice speech"},
 {"page": "core", "group": "Activities", "key": "corePower", "label": "Power", "description": "Battery warnings, power connection and system profile changes.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "corePrivacy", "label": "Privacy indicators", "description": "Active PipeWire links from identifiable microphones and cameras. Direct hardware access outside PipeWire is not monitored.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreWorkspaces", "label": "Workspace changes", "description": "Brief feedback when the focused workspace changes.", "type": "toggle", "defaultValue": false},
@@ -179,7 +181,7 @@ var modules = [
  {key:"activeWindow",label:"Active window"}, {key:"tray",label:"System tray"}, {key:"network",label:"Connections"},
  {key:"audio",label:"Audio (Strata layout)",strataOnly:true},
   {key:"battery",label:"Battery"}, {key:"notifications",label:"Notifications"},
-  {key:"clock",label:"Clock"}, {key:"notes",label:"Field Notes"}
+  {key:"clock",label:"Clock"}, {key:"notes",label:"Field Notes"}, {key:"dictation",label:"Dictation (when Voxtype is installed)"}
 ];
 function search(entries, text) {
     var words=text.toLowerCase().trim().split(/\s+/).filter(Boolean);
