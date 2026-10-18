@@ -195,7 +195,7 @@ Rectangle {
                             asynchronous:true
                             // Retain the page while hidden; deriving active from item creates a teardown loop.
                             active:root.active || root.hasOpened
-                            sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,system:system,about:about})[root.section] || overview
+                            sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,about:about})[root.section] || overview
                             onLoaded:Qt.callLater(reveal.restart)
                         }
                         Flow {
