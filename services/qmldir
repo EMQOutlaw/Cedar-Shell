@@ -10,6 +10,7 @@ singleton DesktopSettings 1.0 DesktopSettings.qml
 singleton Controls 1.0 Controls.qml
 singleton BluetoothService 1.0 BluetoothService.qml
 singleton SettingsInfo 1.0 SettingsInfo.qml
+singleton SettingsService 1.0 SettingsService.qml
 CoreActivityModel 1.0 CoreActivityModel.qml
 CoreProbe 1.0 CoreProbe.qml
 singleton CoreService 1.0 CoreService.qml

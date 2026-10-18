@@ -108,10 +108,16 @@ Singleton {
         if (ipcProtected.includes(key)) return "protected setting: " + key + " (use Settings)";
         if (ShellState.locked) return "locked";
         const current = saved[key];
-        if (typeof current === "boolean") { if (value !== "true" && value !== "false") return "expected true or false"; set(key, value === "true"); }
-        else if (typeof current === "number") { const n = Number(value); if (!isFinite(n)) return "expected a number"; set(key, n); }
-        else if (typeof current === "string") set(key, String(value).slice(0, 1000));
+        let next;
+        if (typeof current === "boolean") { if (value !== "true" && value !== "false") return "expected true or false"; next = value === "true"; }
+        else if (typeof current === "number") { next = Number(value); if (!isFinite(next)) return "expected a number"; }
+        else if (typeof current === "string") next = String(value).slice(0, 1000);
         else return "unsupported setting type: " + key;
+        // The schema knows each row's range and choices; a scripted write
+        // obeys them like the window does.
+        const problem = SettingsSchema.validate(key, next);
+        if (problem) return problem;
+        set(key, next);
         return "ok";
     }
     function ipcGet(key) {
@@ -138,7 +144,7 @@ Singleton {
         try { document = JSON.parse(store.text() || "{}"); }
         catch (error) { persistenceMessage = "Preferences contain invalid JSON. Repair the file before saving."; return; }
         if (!document || typeof document !== "object" || Array.isArray(document)) return;
-        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "focusDnd", "focusWhispers", "focusTrails", "focusQuiet", "focusAllowedApps", "focusMinutes", "barHeartwood", "barRootlines", "barKinetic", "barWhispers", "barPulse", "effectIntensity", "motionPreset", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin", "notesTilt", "notesToolbar", "notesFadeToolbar", "notesSmoothing", "notesEraser", "notesClipboard", "notesExportDir"];
+        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "focusDnd", "focusWhispers", "focusTrails", "focusQuiet", "focusAllowedApps", "focusMinutes", "barHeartwood", "barRootlines", "barKinetic", "barWhispers", "barPulse", "effectIntensity", "motionPreset", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin", "notesTilt", "notesToolbar", "notesFadeToolbar", "notesSmoothing", "notesEraser", "notesClipboard", "notesExportDir", "settingsLevel"];
         keys.forEach(key => document[key] = saved[key]);
         document.barStyle = "cedar";
         store.setText(JSON.stringify(document, null, 2) + "\n");
@@ -188,6 +194,8 @@ Singleton {
             property real panelOpacity: .97
             property int panelRadius: 16
             property real ambientIntensity: .45
+            // Settings window depth: "simple" shows the everyday rows, "advanced" every row and page.
+            property string settingsLevel: "simple"
             property string wallpaperMode: "crop"
             property string wallpaperFolder: ""
             property bool desktopSignature: true

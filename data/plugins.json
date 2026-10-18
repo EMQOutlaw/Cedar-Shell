@@ -262,6 +262,7 @@
         "components/StatusPill.qml",
         "modules/AboutSettings.qml",
         "modules/AppearanceSettings.qml",
+        "modules/ApplicationThemingSettings.qml",
         "modules/AudioSettings.qml",
         "modules/BluetoothSettings.qml",
         "modules/ConnectionSettings.qml",
@@ -296,7 +297,9 @@
         "modules/ShieldApp.qml",
         "modules/ShieldPages.qml",
         "data/applications/cedar-shield.desktop",
-        "data/icons/cedar-shield.svg"
+        "data/icons/cedar-shield.svg",
+        "services/SettingsService.qml",
+        "services/ApplicationTheming.qml"
       ],
       "dependencies": [
         "qs",
@@ -311,13 +314,16 @@
       "external": false,
       "settings": "Config.qml and components/SettingsSchema.js",
       "dataSources": "Changes use existing services; explicit Apply for system edits",
-      "lifecycle": "Changes use existing services; explicit Apply for system edits",
+      "lifecycle": "One regular resizable Settings window, retained while hidden to preserve unapplied drafts; service owns navigation, view depth and remembered size.",
       "tests": [
         "tests/check_controls.py",
         "tests/check_desktop_ui.py",
         "tests/test_desktop.py",
         "tests/test_master_changes.py",
-        "tests/test_settings_remaster.py"
+        "tests/test_settings_remaster.py",
+        "tests/check_settings_service.py",
+        "tests/test_settings_schema.py",
+        "tests/check_settings_window.py"
       ],
       "releaseArtifacts": [
         "Branding.qml",
@@ -338,6 +344,7 @@
         "components/StatusPill.qml",
         "modules/AboutSettings.qml",
         "modules/AppearanceSettings.qml",
+        "modules/ApplicationThemingSettings.qml",
         "modules/AudioSettings.qml",
         "modules/BluetoothSettings.qml",
         "modules/ConnectionSettings.qml",
@@ -372,7 +379,9 @@
         "modules/ShieldApp.qml",
         "modules/ShieldPages.qml",
         "data/applications/cedar-shield.desktop",
-        "data/icons/cedar-shield.svg"
+        "data/icons/cedar-shield.svg",
+        "services/SettingsService.qml",
+        "services/ApplicationTheming.qml"
       ]
     },
     {

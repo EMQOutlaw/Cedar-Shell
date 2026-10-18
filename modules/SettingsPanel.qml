@@ -9,27 +9,38 @@ import "../services"
 Rectangle {
     id: root
     property bool active:false
-    property string section:"overview"
-    property string highlightKey:""
+    property bool hasOpened:false
+    property string section:SettingsService.page
+    property string highlightKey:SettingsService.anchor
     property bool navigationOpen:false
-    property string pendingPage:""
-    property string pendingAnchor:""
+    readonly property string pendingPage:SettingsService.pendingPage
+    readonly property string pendingAnchor:SettingsService.pendingAnchor
     property bool resetConfirm:false
     readonly property bool dirty:loader.item?.dirty === true
     readonly property bool narrow:width<760
     readonly property var page:Schema.pages.find(p=>p.id===section) || Schema.pages[0]
     readonly property string groupLabel:Schema.groupOf(page.id)
-    readonly property var searchEntries:Schema.fields.concat(DefaultApps.data.roles.map(r=>({page:"apps",key:r.id,label:r.label,description:r.description,aliases:"default applications"})),Schema.pages.map(p=>({page:p.id,key:"",label:p.label,description:p.description})),Schema.extras.filter(e=>e.key!=="vrr" || DesktopSettings.data.monitors.some(m=>"vrr" in m)),Schema.inputFields.filter(f=>f.key in DesktopSettings.data.input && (!f.key.startsWith("touchpad:") || DesktopSettings.data.hasTouchpad===true)).map(f=>Object.assign({page:"input"},f)))
-    readonly property var results:Schema.search(searchEntries,search.text)
+    readonly property var results:SettingsService.search(search.text)
+    readonly property var category:SettingsService.menu.find(m => m.pages.some(p => p.id === root.section)) || SettingsService.menu[0]
     property alias searchText:search.text
     color:Qt.alpha(Theme.background,Config.panelOpacity); radius:Config.panelRadius
     border.color:Qt.alpha(Theme.teal,.22); border.width:1
     clip:true
     function navigate(page,anchor="") {
-        if(loader.item && loader.item.dirty && section!==page) {pendingPage=page;pendingAnchor=anchor;return;}
-        Forest.record("settings","Settings / "+(Schema.pages.find(p=>p.id===page)?.label || page),page);
-        section=page;highlightKey=anchor;search.text="";navigationOpen=false;resetConfirm=false;
-        Qt.callLater(reveal.restart);
+        SettingsService.navigate(page,anchor);
+    }
+    Connections {
+        target: SettingsService
+        function onGenerationChanged() {
+            root.section=SettingsService.page; root.highlightKey=SettingsService.anchor;
+            search.text="";root.navigationOpen=false;root.resetConfirm=false;Qt.callLater(reveal.restart);
+        }
+    }
+    Binding { target: SettingsService; property: "blocked"; value: root.dirty }
+    function discardPending() {
+        if(root.section==="input")DesktopSettings.loadInput();
+        if(root.section==="displays" && loader.item)loader.item.load();
+        SettingsService.confirmPending();
     }
     function findItem(item,name) {
         if(!item) return null;
@@ -44,13 +55,10 @@ Rectangle {
         highlightTimer.restart();
     }
     function resetPage() {
-        if(section==="bar") Config.resetBar();
-        else Schema.fields.filter(f=>f.page===section).forEach(f=>Config.set(f.key,f.defaultValue));
-        if(section==="core")Config.set("coreMonitor","");
-        resetConfirm=false;
+        SettingsService.resetPage(section); resetConfirm=false;
     }
     onSectionChanged:{if(active)ShellState.settingsSection=section;highlightKey="";resetConfirm=false;Qt.callLater(()=>scroll.contentItem.contentY=0);}
-    onActiveChanged:if(active){ShellState.settingsSection=section;SettingsInfo.refresh();DefaultApps.refresh();DesktopSettings.refresh();Controls.refresh();if(ShellState.settingsPage){root.navigate(ShellState.settingsPage, ShellState.settingsAnchor);ShellState.settingsPage="";ShellState.settingsAnchor="";}}
+    onActiveChanged:if(active){hasOpened=true;ShellState.settingsSection=section;SettingsInfo.refresh();DefaultApps.refresh();DesktopSettings.refresh();Controls.refresh();if(ShellState.settingsPage){root.navigate(ShellState.settingsPage, ShellState.settingsAnchor);ShellState.settingsPage="";ShellState.settingsAnchor="";}}
     Component.onCompleted:if(active){SettingsInfo.refresh();DefaultApps.refresh();DesktopSettings.refresh();}
     Timer { id:reveal; interval:120; onTriggered:root.revealSetting() }
     Timer { id:highlightTimer; interval:4000; onTriggered:root.highlightKey="" }
@@ -77,9 +85,22 @@ Rectangle {
                 Keys.onReturnPressed:if(root.results.length)root.navigate(root.results[0].page,root.results[0].key || "")
                 Keys.onEscapePressed:{text="";focus=false;}
             }
-            StationButton { anchors.right:parent.right; anchors.top:parent.top; text:"×"; iconOnly:true; hint:"Close Settings"; onClicked:ShellState.close() }
+            StationButton { anchors.right:parent.right; anchors.top:parent.top; text:"×"; iconOnly:true; hint:"Close Settings"; onClicked:SettingsService.closeApp() }
         }
         Rectangle { Layout.fillWidth:true; implicitHeight:1; color:Qt.alpha(Theme.teal,.15) }
+        RowLayout {
+            Layout.fillWidth:true
+            StationButton { text:"← Back"; enabled:SettingsService.canGoBack; onClicked:SettingsService.back() }
+            GlowText { Layout.fillWidth:true; text:SettingsService.advanced ? "All settings, including advanced options":"Everyday settings · Search also finds advanced options"; font.pixelSize:Theme.small; color:Theme.muted; wrapMode:Text.WordWrap }
+            StationButton { text:SettingsService.advanced ? "Advanced":"Simple"; hint:"Switch between everyday and all settings"; checked:SettingsService.advanced; onClicked:SettingsService.toggleLevel() }
+        }
+        Flow {
+            Layout.fillWidth:true; spacing:6
+            Repeater {
+                model:SettingsService.menu
+                StationButton { required property var modelData; text:modelData.label; checked:root.category.id===modelData.id; onClicked:root.navigate(modelData.pages[0].id) }
+            }
+        }
         StationButton { visible:root.narrow; text:(root.navigationOpen ? "←  Back to ":"☰  ")+root.page.label; checked:root.navigationOpen; onClicked:root.navigationOpen=!root.navigationOpen }
         RowLayout {
             Layout.fillWidth:true; Layout.fillHeight:true; spacing:24
@@ -90,11 +111,10 @@ Rectangle {
                 ColumnLayout {
                     width:nav.availableWidth; spacing:3
                     Repeater {
-                        model:Schema.pages
+                        model:root.category.pages
                         ColumnLayout {
                             required property var modelData
                             Layout.fillWidth:true; spacing:4
-                            GlowText { visible:modelData.group!==""; text:modelData.group.toUpperCase(); font.pixelSize:9; font.letterSpacing:1.8; color:Qt.alpha(Theme.muted,.85); Layout.topMargin:16; Layout.bottomMargin:2; Layout.leftMargin:14 }
                             StationButton {
                                 id:navItem
                                 Layout.fillWidth:true; implicitHeight:38; checked:root.section===modelData.id
@@ -123,8 +143,8 @@ Rectangle {
                     visible:root.pendingPage!==""; Layout.fillWidth:true; padding:12
                     GlowText { text:"You have unapplied changes on this page."; Layout.fillWidth:true; wrapMode:Text.WordWrap; color:Theme.amber }
                     Flow { Layout.fillWidth:true; spacing:8
-                        StationButton { text:"Discard and continue"; onClicked:{if(root.section==="input")DesktopSettings.loadInput();const p=root.pendingPage,a=root.pendingAnchor;root.pendingPage="";root.section=p;root.navigate(p,a);} }
-                        StationButton { text:"Keep editing"; onClicked:root.pendingPage="" }
+                        StationButton { text:"Discard and continue"; onClicked:root.discardPending() }
+                        StationButton { text:"Keep editing"; onClicked:SettingsService.cancelPending() }
                     }
                 }
                 ListView {
@@ -155,7 +175,7 @@ Rectangle {
                         ColumnLayout {
                             Layout.fillWidth:true; spacing:6
                             GlowText { text:root.groupLabel.toUpperCase()+"  /  "+root.page.label.toUpperCase(); color:Theme.teal; font.pixelSize:10; font.letterSpacing:1.6 }
-                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round(30*Theme.fontScale); Layout.fillWidth:true }
+                            GlowText { text:root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round(24*Theme.fontScale); Layout.fillWidth:true }
                             GlowText { text:root.page.description; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
                             Rectangle { Layout.fillWidth:true; Layout.topMargin:10; implicitHeight:1; gradient:Gradient { orientation:Gradient.Horizontal; GradientStop { position:0; color:Qt.alpha(Theme.teal,.35) } GradientStop { position:1; color:Qt.alpha(Theme.teal,0) } } }
                         }
@@ -169,7 +189,8 @@ Rectangle {
                         Loader {
                             id:loader; Layout.fillWidth:true
                             asynchronous:true
-                            active:root.active || !!item?.dirty
+                            // Retain the page while hidden; deriving active from item creates a teardown loop.
+                            active:root.active || root.hasOpened
                             sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,system:system,about:about})[root.section] || overview
                             onLoaded:Qt.callLater(reveal.restart)
                         }

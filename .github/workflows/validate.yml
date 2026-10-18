@@ -39,6 +39,11 @@ jobs:
           bash -n installer/bootstrap/install.sh
           python3 scripts/audit_public.py
           python3 scripts/update_source_inventory.py --check
+      - name: Settings window harnesses
+        run: |
+          PYTHONPATH=scripts python -m unittest discover -s tests -p 'test_settings*.py'
+          python3 tests/check_settings_service.py
+          python3 tests/check_settings_window.py
       - name: Bar geometry and interruptible transitions
         run: |
           node tests/core/strata_test.js

@@ -102,6 +102,10 @@ ShellRoot {
         active: Config.stage >= 3 && Focus.windowOpen
         FocusApp {}
     }
+    LazyLoader {
+        active: Config.stage >= 3
+        Settings {}
+    }
     // CEDAR Station: the health application, created when opened and released when closed.
     LazyLoader {
         active: Config.stage >= 3 && Station.windowOpen
@@ -271,35 +275,41 @@ ShellRoot {
         function deactivate(): void { if (Config.stage >= 3) Gaming.deactivate(); }
         function status(): string { return JSON.stringify({ active: Gaming.active, busy: Gaming.busy, summary: Gaming.summary, steps: Gaming.steps, trigger: Gaming.trigger, game: Gaming.gameName, progress: Gaming.progress, hud: Gaming.hudShown ? Gaming.hudMode : "hidden" }); }
     }
+    // Settings: `settings toggle|open <page>|close|level <simple|advanced>|status|search <text>|set <key> <value>|get <key>`.
+    // The window belongs to SettingsService; every route still enters through ShellState.
     IpcHandler {
         target: "settings"
         function toggle(): void {
             if (Config.stage >= 3)
                 ShellState.toggle("settings");
         }
-        // `settings set barStyle islands`: scriptable edits of presentation
+        // `settings set barHeight 48`: scriptable edits of presentation
         // settings. Command, network, location and lock settings are refused
-        // here (Config.ipcProtected); the file and the Settings panel own them.
+        // here (Config.ipcProtected); the file and the Settings window own them.
+        // Values must fit the schema's ranges and choices.
         function set(key: string, value: string): string {
             return Config.ipcSet(key, value);
         }
         function get(key: string): string {
             return Config.ipcGet(key);
         }
-        // `settings show shield`: open Settings on a page (ids from SettingsSchema.pages).
-        function show(page: string): void {
-            if (Config.stage < 3 || ShellState.locked) return;
-            ShellState.settingsPage = page;
-            if (ShellState.panel === "settings") ShellState.close();
-            ShellState.open("settings");
-        }
         // `qs ipc call settings show …` is swallowed by the CLI, like canopy show; `open` reaches the shell.
+        function show(page: string): void { open(page); }
+        // `settings open power`: open the window on a page (ids from SettingsSchema.pages).
         function open(page: string): void {
             if (Config.stage < 3 || ShellState.locked) return;
             ShellState.settingsPage = page;
-            if (ShellState.panel === "settings") ShellState.close();
             ShellState.open("settings");
         }
+        function close(): void { SettingsService.closeApp(); }
+        function level(value: string): string {
+            if (ShellState.locked) return "locked";
+            if (value !== "simple" && value !== "advanced") return "expected simple or advanced";
+            return SettingsService.setLevel(value);
+        }
+        function status(): string { return SettingsService.status(); }
+        // Up to ten matching rows as JSON (page, key, label, group); the query is capped.
+        function search(text: string): string { return SettingsService.searchJson(String(text || "").slice(0, 200), 10); }
     }
     // The menu lives in the Applications drop: `menu toggle <route>` opens it
     // at a menu id or alias (root, apps, system, capture…); `menu summon <json>`
@@ -456,9 +466,6 @@ ShellRoot {
             LazyLoader {
                 active: Config.stage >= 3
                 component: Scope {
-                    Settings {
-                        output: modelData
-                    }
                     ControlCenter {
                         output: modelData
                     }

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../services"
 import "SettingsSchema.js" as Schema
 // Schema-driven preferences. With cards, each schema group becomes a section;
 // without, the chosen groups render as bare rows inside a caller's section.
@@ -12,9 +13,9 @@ ColumnLayout {
     property var exclude: []
     property bool cards: true
     property var captions: ({})
-    readonly property var fields: Schema.fields.filter(f => f.page === page && (!groups.length || groups.includes(f.group)) && !exclude.includes(f.group))
+    readonly property var fields: Schema.fields.filter(f => f.page === page && (!groups.length || groups.includes(f.group)) && !exclude.includes(f.group) && (SettingsService.shows(f) || f.key === highlightKey))
     readonly property var groupNames: fields.map(f => f.group).filter((g, i, all) => all.indexOf(g) === i).sort((a, b) => (a === "Advanced") - (b === "Advanced"))
-    property bool advanced: highlightKey !== "" && fields.some(f => f.key === highlightKey && f.group === "Advanced")
+    property bool advanced: SettingsService.advanced || highlightKey !== "" && fields.some(f => f.key === highlightKey && f.group === "Advanced")
     spacing: cards ? 16 : 0
     Repeater {
         model: root.cards ? root.groupNames : []

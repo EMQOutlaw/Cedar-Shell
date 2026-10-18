@@ -2,14 +2,14 @@
 
 // These descriptors render the controls AND build the search index.
 var pages = [
- {id:"setup",label:"Desktop Setup",icon:"◇",group:"",description:"Review desktop ownership, privacy, applications and recovery."},
+ {id:"setup",label:"Desktop Setup",icon:"◇",group:"",advanced:true,description:"Review desktop ownership, privacy, applications and recovery."},
  {id:"overview",label:"Overview",icon:"◈",group:"",description:"Your desktop at a glance."},
  {id:"appearance",label:"Appearance",icon:"◐",group:"Personalize",description:"The light, texture, and character of your interface."},
- {id:"application-theming",label:"Application Theming",icon:"◐",group:"",description:"Synchronize native application palettes, coverage, ownership and recovery."},
+ {id:"application-theming",label:"Application Theming",icon:"◐",group:"",advanced:true,description:"Synchronize native application palettes, coverage, ownership and recovery."},
  {id:"apps",label:"Default Apps",icon:"▦",group:"",description:"Choose the apps that open your links, files, and everyday tasks."},
  {id:"desktop",label:"Desktop",icon:"▧",group:"",description:"Wallpaper and Field Station preferences."},
  {id:"bar",label:"Top Bar",icon:"━",group:"",description:"Shape a bar that fits the way you work."},
- {id:"core",label:"CEDAR Core",icon:"◈",group:"",description:"A quiet awareness center for the things happening now."},
+ {id:"core",label:"CEDAR Core",icon:"◈",group:"",advanced:true,description:"A quiet awareness center for the things happening now."},
  {id:"displays",label:"Displays",icon:"▣",group:"System",description:"Detect and arrange monitors: resolution, scale, rotation, mirroring, and saved layout profiles."},
  {id:"input",label:"Input",icon:"⌨",group:"",description:"Keyboard layout, pointer feel, touchpad behavior, and key repeat."},
  {id:"keybinds",label:"Keybinds",icon:"⌘",group:"",description:"Every shortcut, read live from your Hyprland config, plus your own custom binds."},
@@ -29,7 +29,59 @@ function groupOf(id) {
     for (var i = 0; i < pages.length; ++i) { if (pages[i].group) group = pages[i].group; if (pages[i].id === id) return pages[i].group || (i < 2 ? "CEDAR" : group); }
     return "CEDAR";
 }
+// The window's menu: a few plain-language categories, each holding pages. Every
+// page sits in exactly one category (tests/test_settings_schema.py checks).
+var menu = [
+ {id:"home",label:"Home",description:"Your desktop at a glance.",pages:["overview"]},
+ {id:"look",label:"Look & Feel",description:"How CEDAR looks and moves.",pages:["appearance","bar","desktop","application-theming"]},
+ {id:"daily",label:"Daily Use",description:"The things you touch every day.",pages:["notifications","time","audio","connections","apps","notes"]},
+ {id:"system",label:"System",description:"Displays, input, shortcuts and power.",pages:["displays","input","keybinds","power"]},
+ {id:"cedar",label:"CEDAR",description:"The Core pill, setup, health and about.",pages:["core","setup","system","about"]}
+];
+function menuOf(id) {
+    for (var i = 0; i < menu.length; ++i) if (menu[i].pages.indexOf(id) !== -1) return menu[i].id;
+    return "";
+}
+// Rows the Simple view folds away. Everything else is basic; the "Advanced"
+// group is advanced wherever it appears. A row's own `level` wins.
+var advancedKeys = ["remoteArtwork","lockMediaDetails","lockAgendaDetails","whisperDevices","whisperQuiet","whisperBattery","forestEchoes","canopyPeek","audioSpectrum","editor","terminal","browser","files","coreScreenshots","coreConnections","coreWorkspaces","coreKeyboard","coreClipboard","coreTemperatureLimit","coreDiskLimit","panelRadius","panelOpacity","effectIntensity","barPulse","barKinetic","latitude","longitude","gamingBlur","gamingAnimations","gamingAutoGameMode","focusTrails","focusAllowedApps","notesFadeToolbar","notesSmoothing","notesExportDir"];
+function levelOf(field) {
+    if (!field) return "basic";
+    if (field.level === "advanced" || field.level === "basic") return field.level;
+    return field.group === "Advanced" || advancedKeys.indexOf(field.key) !== -1 ? "advanced" : "basic";
+}
+function visibleFields(page, level) {
+    return fields.filter(function(f) { return f.page === page && (level === "advanced" || levelOf(f) === "basic"); });
+}
+// The page a key lives on: a preference, a page's own control (extras) or an input row.
+function pageOf(key) {
+    var all = fields.concat(extras);
+    for (var i = 0; i < all.length; ++i) if (all[i].key === key) return all[i].page;
+    for (var j = 0; j < inputFields.length; ++j) if (inputFields[j].key === key) return "input";
+    return "";
+}
+// Does a value fit its descriptor? Empty string means yes; otherwise the
+// reason. Keys the schema does not describe are left to Config's type check.
+function validate(key, value) {
+    var field = null;
+    for (var i = 0; i < fields.length; ++i) if (fields[i].key === key) { field = fields[i]; break; }
+    if (!field) return "";
+    if (field.type === "toggle") return typeof value === "boolean" ? "" : "expected true or false";
+    if (field.type === "slider" || field.type === "number") {
+        if (typeof value !== "number" || !isFinite(value)) return "expected a number";
+        if (field.min !== undefined && value < field.min) return "below the minimum of " + field.min;
+        if (field.max !== undefined && value > field.max) return "above the maximum of " + field.max;
+        return "";
+    }
+    if (field.type === "choice") {
+        for (var k = 0; k < field.options.length; ++k) if (field.options[k].value === value) return "";
+        return "not one of the choices: " + field.options.map(function(o) { return o.value; }).join(", ");
+    }
+    if (field.type === "text" || field.type === "font") return typeof value === "string" ? "" : "expected text";
+    return "";
+}
 var fields = [
+ {page:"overview",group:"View",key:"settingsLevel",label:"Settings depth",description:"Simple shows what most people change. Advanced shows every page and every row.",type:"choice",options:[{value:"simple",label:"Simple"},{value:"advanced",label:"Advanced"}],defaultValue:"simple",aliases:"advanced mode expert basic level show all"},
  {page:"desktop",group:"Privacy",key:"localOnly",label:"Local-only mode",description:"Block CEDAR external weather, location, calendar and artwork requests.",type:"toggle",defaultValue:true},
  {page:"desktop",group:"Privacy",key:"weatherEnabled",label:"Weather access",description:"Allow Open-Meteo forecasts, IP-based location and explicitly requested city search when local-only is off.",type:"toggle",defaultValue:false},
  {page:"desktop",group:"Privacy",key:"remoteArtwork",label:"Remote artwork",description:"Allow media artwork hosts when local-only is off.",type:"toggle",defaultValue:false},

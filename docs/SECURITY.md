@@ -20,7 +20,7 @@ Every `qs ipc` target the shell exposes, and what it will refuse:
 
 | Target | Methods | Guarded by |
 |---|---|---|
-| `settings` | `toggle`, `set`, `get` | `set` and `get` consult `Config.ipcProtected`: application commands, network and location switches, lock privacy, clipboard history, trails and the whisper ledger are refused. Values are type-checked and strings capped at 1000 characters. `set` is refused while locked. |
+| `settings` | `toggle`, `open`, `show`, `close`, `level`, `status`, `search`, `set`, `get` | `set` and `get` consult `Config.ipcProtected`: application commands, network and location switches, lock privacy, clipboard history, trails, the whisper ledger and the notes export folder are refused. `set` values are type-checked, held to the schema's ranges and choices (`SettingsSchema.validate`), and strings are capped at 1000 characters. `set`, `open`, `toggle` and `level` are refused while locked. `search` answers at most ten rows (page, key, label, group) for a query capped at 200 characters; `status` reports the window, page, depth and remembered size, never a preference value. |
 | `menu` | `toggle`, `summon`, `refresh` | Refused while locked. `summon` payloads above 256 KiB are ignored; prompts, option counts and option lengths are capped. Reply files are answered only through `scripts/menu_reply.py` (below). |
 | `core` | `publish`, `withdraw`, `timer`, … | Payloads above 16 KiB are refused. Provider identities are validated by regular expression; titles and subtitles are control-character stripped and capped; providers cannot attach actions. |
 | `osd` | `fromOmarchy`, `volume`, … | Payloads above 4 KiB are ignored; numeric fields are range-checked. |

@@ -140,7 +140,7 @@ class SingleEntryPoints(unittest.TestCase):
     def test_sidebar_is_the_only_page_navigation(self):
         panel=(ROOT/'modules/SettingsPanel.qml').read_text()
         self.assertNotIn('family-',panel)
-        self.assertEqual(panel.count('onClicked:root.navigate('),2)  # sidebar item, search result
+        self.assertEqual(panel.count('onClicked:root.navigate('),3)  # sidebar item, search result
 
 
 class DesktopSingleRoutes(unittest.TestCase):
@@ -149,13 +149,14 @@ class DesktopSingleRoutes(unittest.TestCase):
         return {f.relative_to(ROOT).as_posix():f.read_text() for d in ('modules','components') for f in (ROOT/d).rglob('*.qml')}
     def test_settings_has_one_button(self):
         import re
-        route=re.compile(r'ShellState\.(open|toggle)\("settings"\)|settingsPage *=')
+        # The window is owned by SettingsService; reaching it directly is the same route as ShellState.open("settings").
+        route=re.compile(r'ShellState\.(open|toggle)\("settings"\)|settingsPage *=|SettingsService\.(openApp|openPage|toggleApp|route)\(')
         # Canopy's Full Settings; the legacy Control Center replaces Canopy when it is disabled;
         # The network indicator and Strata's audio/calendar controls fall back only
         # when Canopy is disabled; Trails replays history. Strata's exact fallback
         # branches are executed below, so this exception cannot become another
         # always-visible Full Settings entry.
-        allowed={'modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml','modules/StrataBarContents.qml'}
+        allowed={'modules/CalendarCanopy.qml','modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml','modules/StrataBarContents.qml'}
         found={name for name,text in self.sources().items() if route.search(text) and not name.startswith('modules/Settings')}
         self.assertEqual(found-allowed,set())
         self.assertEqual(len(route.findall(self.sources()['modules/StrataBarContents.qml'])),4,

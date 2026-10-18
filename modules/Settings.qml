@@ -1,33 +1,20 @@
 import QtQuick
+import Quickshell
 import ".."
-import "../components"
+import "../services"
 
-Overlay {
+// One normal, compositor-resizable window. Keep drafts alive when it is hidden.
+FloatingWindow {
     id: root
-    panelName: "settings"
-    Loader {
-        id: loader
-        anchors.centerIn: parent
-        width: Math.min(root.width - 32, 1000)
-        height: Math.min(root.height - 40, 700)
-        // Input drafts live in the shared controller. Other existing editors
-        // retain their one dirty view until explicitly applied/discarded.
-        // `draft` is set from the page's signal, not bound through `item`:
-        // a binding on item?.dirty re-enters `active` while the item unloads.
-        property bool draft: false
-        active: root.visible || draft
-        asynchronous: true
-        sourceComponent: Component {
-            SettingsPanel { section: ShellState.settingsSection }
-        }
-        onLoaded: {
-            item.active = Qt.binding(() => root.visible);
-            loader.draft = item.dirty === true;
-        }
-        Connections {
-            target: loader.item
-            ignoreUnknownSignals: true
-            function onDirtyChanged() { loader.draft = loader.item.dirty === true; }
-        }
-    }
+    title: "CEDAR Settings"
+    color: Theme.background
+    minimumSize: Qt.size(SettingsService.minimumWidth, SettingsService.minimumHeight)
+    implicitWidth: SettingsService.windowSize.width
+    implicitHeight: SettingsService.windowSize.height
+    visible: SettingsService.open
+    onVisibleChanged: if (!visible) SettingsService.closeApp()
+    onWidthChanged: if (visible) remember.restart()
+    onHeightChanged: if (visible) remember.restart()
+    Timer { id: remember; interval: 400; onTriggered: SettingsService.rememberWindow(root.width, root.height) }
+    SettingsPanel { anchors.fill: parent; active: root.visible }
 }
