@@ -139,8 +139,6 @@ def render(key, value):
         if not constraint[0] <= value <= constraint[1]:
             raise ValueError(key + ' must be between ' + str(constraint[0]) + ' and ' + str(constraint[1]))
         number = round(float(value), 2)
-        if not constraint[0] <= number <= constraint[1]:
-            raise ValueError(key + ' must be between ' + str(constraint[0]) + ' and ' + str(constraint[1]))
         return str(number)
     if not isinstance(value, str):
         raise ValueError(key + ' must be text')

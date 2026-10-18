@@ -3,6 +3,7 @@
 reopen, advanced routes, lock hide, and page persistence via SettingsService.
 """
 from pathlib import Path
+import json
 import os
 import re
 import shutil
@@ -53,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-settings-window-') as tmp:
         print(output)
         raise SystemExit(1)
     state = p / 'state/cedar/settings-window.json'
-    if not state.is_file() or '"width": 1000' not in state.read_text().replace('"width":1000', '"width": 1000'):
+    if not state.is_file() or json.loads(state.read_text()).get('window') != {'width': 1100, 'height': 760}:
         print(output)
         raise SystemExit('The remembered window size was not written to the private state directory')
     print('PASS: Settings floating window resize, routes, levels, reopen and lock')

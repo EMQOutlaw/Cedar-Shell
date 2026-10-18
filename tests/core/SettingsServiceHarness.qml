@@ -9,10 +9,16 @@ import "../../components/SettingsSchema.js" as Schema
 // draws the pages.
 ShellRoot {
     id: window
+    property var service: SettingsService
     function check(ok, label) { if (!ok) { console.error("FAIL: " + label); Qt.exit(1); } }
     Timer { id: finish; interval: 300; onTriggered: Qt.quit() }
-    Component.onCompleted: {
-        const s = SettingsService;
+    Timer { interval: 100; running: true; onTriggered: window.runChecks() }
+    function runChecks() {
+        const s = service;
+        if (Quickshell.env("CEDAR_TEST_RESTORE") === "1") {
+            check(s.windowSize.width === 1300 && s.windowSize.height === 900 && s.recent.length > 0,
+                  "a fresh service restores the saved geometry and recent pages");
+        }
         check(!s.windowOpen && s.page === "overview" && !s.blocked && s.level === "simple" && !s.canGoBack, "starts closed on Overview in the Simple view");
 
         // Routes from ShellState land in the service, never in a panel.

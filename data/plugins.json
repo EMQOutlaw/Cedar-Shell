@@ -304,7 +304,10 @@
         "data/applications/cedar-shield.desktop",
         "data/icons/cedar-shield.svg",
         "services/SettingsService.qml",
-        "services/ApplicationTheming.qml"
+        "services/ApplicationTheming.qml",
+        "modules/DictationSettings.qml",
+        "services/Dictation.qml",
+        "scripts/dictation.py"
       ],
       "dependencies": [
         "qs",
@@ -386,7 +389,10 @@
         "data/applications/cedar-shield.desktop",
         "data/icons/cedar-shield.svg",
         "services/SettingsService.qml",
-        "services/ApplicationTheming.qml"
+        "services/ApplicationTheming.qml",
+        "modules/DictationSettings.qml",
+        "services/Dictation.qml",
+        "scripts/dictation.py"
       ]
     },
     {

@@ -32,6 +32,14 @@ class SchemaIntegrity(unittest.TestCase):
         for key in keys:
             self.assertRegex(self.config,r'property \w+ '+re.escape(key)+r'\s*:',key+' has no default in Config.qml')
             self.assertIn('"'+key+'"',saved,key+' is not written by savePreferences')
+    def test_schema_defaults_match_config_and_validate(self):
+        for field in self.schema['fields']:
+            key = field['key']
+            literal = re.search(r'property (?:bool|int|real|string) '+re.escape(key)+r'\s*:\s*([^\n]+)', self.config.split('JsonAdapter {', 1)[1]).group(1).strip()
+            try: default = json.loads(literal)
+            except ValueError: default = float(literal)
+            self.assertEqual(field['defaultValue'], default, key)
+        self.assertEqual(evaluate('fields.filter(function(f){return validate(f.key,f.defaultValue)!=="";}).map(function(f){return f.key;})'), [])
     def test_every_page_is_in_exactly_one_menu_category(self):
         ids=[p['id'] for p in self.schema['pages']]
         placed=[pid for m in self.schema['menu'] for pid in m['pages']]

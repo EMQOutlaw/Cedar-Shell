@@ -34,6 +34,7 @@ Singleton {
     property string backend: ""
     property string error: ""
     property bool wasActive: false
+    property bool lockCancelQueued: false
     onDaemonChanged: if (!daemon) state = ""
     readonly property bool recording: state === "recording"
     readonly property bool transcribing: state === "transcribing"
@@ -153,11 +154,12 @@ Singleton {
         if (["idle", "recording", "transcribing"].includes(next)) { state = next; daemon = true; }
         else { daemon = false; state = ""; }
     }
-    function cancelForLock() {
+    function cancelForLock(force = false) {
         // A start may still be in flight when the lock arrives. Use a separate
         // process, then cancel again after that command exits if still locked.
-        if (ShellState.locked && installed && (active || recorder.running) && !lockCancel.running)
-            lockCancel.running = true;
+        if (!ShellState.locked || !installed || !(force || active || recorder.running)) return;
+        if (lockCancel.running) lockCancelQueued = true;
+        else lockCancel.running = true;
     }
     function publishRow() {
         if (!Config.saved.coreDictation || Config.stage < 3) { if (wasActive) CoreService.remove("dictation", false); wasActive = false; return; }
@@ -225,7 +227,7 @@ Singleton {
         onExited: function(code) {
             if (code !== 0) root.error = "voxtype record failed (" + code + ")";
             else root.error = "";
-            root.cancelForLock();
+            root.cancelForLock(true);
             settle.restart();
         }
     }
@@ -234,6 +236,10 @@ Singleton {
         command: ["voxtype", "record", "cancel"]
         onExited: function(code) {
             if (code !== 0) root.error = "voxtype cancel on lock failed (" + code + ")";
+            if (root.lockCancelQueued) {
+                root.lockCancelQueued = false;
+                Qt.callLater(() => root.cancelForLock(true));
+            }
             settle.restart();
         }
     }

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import Quickshell
 import "../.."
 import "../../services"
@@ -16,15 +17,19 @@ ShellRoot {
         onTriggered: {
             check(settingsWindow.visible && settingsWindow.width >= SettingsService.minimumWidth,
                   "the real floating window is visible after event delivery");
-            settingsWindow.width = 1000; settingsWindow.height = 700;
+            // implicitSize is an initial hint for FloatingWindow. Resize its
+            // real QWindow to simulate the compositor delivering a resize.
+            const nativeWindow = settingsWindow.contentItem.Window.window;
+            check(nativeWindow !== null, "the floating window has a native QWindow");
+            nativeWindow.width = 1100; nativeWindow.height = 760;
             resized.start();
         }
     }
     Timer {
         id: resized; interval: 600
         onTriggered: {
-            check(SettingsService.windowSize.width === 1000 && SettingsService.windowSize.height === 700,
-                  "actual window resize is persisted after settling");
+            check(SettingsService.windowSize.width === 1100 && SettingsService.windowSize.height === 760,
+                  "actual window resize is persisted after settling: " + settingsWindow.width + "x" + settingsWindow.height + " saved " + JSON.stringify(SettingsService.windowSize));
             SettingsService.closeApp();
             reopened.start();
         }
@@ -40,7 +45,7 @@ ShellRoot {
     Timer {
         id: relocked; interval: 100
         onTriggered: {
-            check(settingsWindow.visible && settingsWindow.width === 1000 && settingsWindow.height === 700,
+            check(settingsWindow.visible && settingsWindow.width === 1100 && settingsWindow.height === 760,
                   "actual window reopens at remembered size");
             ShellState.locked = true;
             hidden.start();
