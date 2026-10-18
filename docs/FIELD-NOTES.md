@@ -133,7 +133,7 @@ down a scripted stroke, which stops when the stroke commits.
 ## Tests
 
 ```bash
-node --test tests/notes/          # model, geometry, history, notebook, layout, state safety, CEDAR contract
+node --test tests/notes/*.test.js # model, geometry, history, notebook, layout, state safety, CEDAR contract
 python3 tests/check_desktop_ui.py # renders Settings › Field Notes
 python3 tests/check_strata_bar.py # the bar with its Field Notes button
 ```
