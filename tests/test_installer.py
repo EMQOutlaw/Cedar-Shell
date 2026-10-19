@@ -72,26 +72,6 @@ def arch_host(**overrides):
     return FakeHost(**base)
 
 
-def fedora_host(**overrides):
-    """Plain Hyprland on Fedora: dnf and sudo, no pacman, no Omarchy, Quickshell and the Python
-    GObject bindings not installed yet, so the plan has packages to name."""
-    files = {HOME + '/.config/hypr/hyprland.conf': HYPR_CONF, '/sys/class/drm/card0/device/vendor': '0x1002\n',
-             ROOT / 'VERSION': (ROOT / 'VERSION').read_text(), ROOT / 'data/dependencies.json': (ROOT / 'data/dependencies.json').read_text()}
-    def python(argv):
-        return (1, '', "ModuleNotFoundError: No module named 'gi'") if 'gi' in argv[-1] else (0, '', '')
-    commands = {'hyprctl -j monitors': '[]', 'hyprctl version': 'Hyprland 0.56.2 built from branch v0.56.2', 'qs list --all -j': 'No running instances.',
-                'systemctl show display-manager.service -p Id --value': 'gdm.service\n', 'systemctl is-active NetworkManager': 'active\n',
-                'nmcli -t -f CONNECTIVITY general': 'full\n', 'python3': python, 'fc-match': 'Rajdhani', 'dnf -q info': (0, 'Name         : ok', '')}
-    processes = [{'pid': 1, 'exe': '/usr/bin/Hyprland', 'argv': ['Hyprland']},
-                 {'pid': 600, 'exe': '/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1', 'argv': ['polkit-gnome-authentication-agent-1']}]
-    which = [w for w in arch_host().available if w not in ('qs', 'pacman', 'omarchy')] + ['dnf', 'rpm']
-    base = dict(home=HOME, environ={'TERMINAL': 'kitty', 'WAYLAND_DISPLAY': 'wayland-1', 'XDG_SESSION_TYPE': 'wayland'}, files=files, dirs=['/sys/module/amdgpu'],
-                commands=commands, processes=processes, which=which, packages={},
-                release={'ID': 'fedora', 'PRETTY_NAME': 'Fedora Linux 42 (Workstation Edition)', 'VERSION_ID': '42'})
-    base.update(overrides)
-    return FakeHost(**base)
-
-
 class Intent(unittest.TestCase):
     def test_lua_monitors_and_keyboard(self):
         rows = intent.parse_monitors(HYPR_LUA, 'lua')
@@ -222,7 +202,6 @@ class Planning(unittest.TestCase):
         facts = facts_module.scan(host, ROOT)
         plan = plan_module.build(facts)
         self.assertIn('quickshell', plan['packages']); self.assertEqual(plan['packageProvider'], 'pacman')
-        self.assertIn('qt6-base', plan['packages']); self.assertIn('qt6-svg', plan['packages'])
         self.assertEqual(plan['privilege'], 'pkexec')
         # The fixture host is Omarchy: packages are added the way omarchy pkg add does, never a direct -Syu.
         self.assertEqual(facts['environment']['id'], 'omarchy')
@@ -241,83 +220,13 @@ class Planning(unittest.TestCase):
         self.assertEqual(packages.explain(['something new']), '')
 
     def test_unsupported_distribution_with_missing_dependencies_needs_attention(self):
-        host = arch_host(which=[w for w in arch_host().available if w not in ('qs', 'pacman')], release={'ID': 'debian', 'PRETTY_NAME': 'Debian GNU/Linux 13 (trixie)'}, packages={})
+        host = arch_host(which=[w for w in arch_host().available if w not in ('qs', 'pacman')], release={'ID': 'fedora', 'PRETTY_NAME': 'Fedora 42'}, packages={})
         plan_module.set_check_host(host)
         facts = facts_module.scan(host, ROOT)
-        self.assertEqual(facts['support']['status'], 'unsupported'); self.assertEqual(facts['support']['backend'], '')
+        self.assertEqual(facts['support']['status'], 'unsupported')
         plan = plan_module.build(facts)
         self.assertTrue(plan['blocked'])
         self.assertIn('unsupported', [a['id'] for a in plan['attention']])
-        self.assertEqual(plan['packageProvider'], 'none')
-
-    def test_fedora_uses_dnf_with_fedora_package_names(self):
-        from installer.providers import packages
-        host = fedora_host()
-        plan_module.set_check_host(host)
-        facts = facts_module.scan(host, ROOT)
-        self.assertEqual(facts['environment']['id'], 'plain-hyprland'); self.assertEqual(facts['packageManager'], 'dnf')
-        self.assertEqual((facts['support']['status'], facts['support']['backend'], facts['support']['packageKey'], facts['support']['upgradeRequired']),
-                         ('supported', 'dnf', 'fedoraPackage', False))
-        self.assertEqual(facts['dependencies']['packageKey'], 'fedoraPackage')
-        plan = plan_module.build(facts)
-        self.assertFalse(plan['blocked'], plan['attention'])
-        self.assertEqual(plan['packageProvider'], 'dnf'); self.assertEqual(plan['privilege'], 'pkexec')
-        # Fedora names, taken from the fedoraPackage column; no Arch name slips through, and a
-        # dependency Fedora does not package (checkupdates → pacman-contrib) is not guessed.
-        for name in ('quickshell', 'qt6-qtdeclarative', 'qt6-qtbase', 'qt6-qtsvg', 'python3-gobject', 'NetworkManager-libnm'):
-            self.assertIn(name, plan['packages'], name)
-        for name in ('qt6-declarative', 'qt6-base', 'qt6-svg', 'python-gobject', 'libnm', 'pacman-contrib', 'hyprland', 'omarchy'):
-            self.assertNotIn(name, plan['packages'], name)
-        rows = {row['id']: row for row in facts['dependencies']['rows']}
-        self.assertIsNone(rows['checkupdates']['package']); self.assertEqual(rows['nmcli']['package'], 'NetworkManager')
-        self.assertEqual(facts['dependencies']['recommendedMissing'], [], 'Fedora does not package the Nerd font; the readable fallback applies')
-        self.assertTrue(any('configured dnf repositories' in n and 'no repository or COPR is added' in n for n in plan['packageNotes']), plan['packageNotes'])
-        self.assertTrue(any('no system upgrade is run' in n for n in plan['packageNotes']))
-        self.assertIn('with dnf (no system upgrade)', next(op for op in plan['operations'] if op['id'] == 'dependencies')['description'])
-        self.assertTrue(any(c[:3] == ['dnf', '-q', 'info'] for c in host.calls), 'each package is verified with dnf info')
-        provider = packages.select(facts)
-        self.assertEqual(provider.id, 'dnf'); self.assertEqual(provider.status, 'supported')
-        self.assertEqual(provider.argv(['quickshell', 'python3-gobject']), ['dnf', 'install', '-y', 'quickshell', 'python3-gobject'])
-        self.assertIn('availability varies by Fedora release', packages.explain(['No match for argument: quickshell', 'Error: Unable to find a match: quickshell']))
-        self.assertIn('could not be reached', packages.explain(['Errors during downloading metadata for repository \'fedora\':', 'Error: Failed to download metadata for repo \'fedora\'']))
-        self.assertIn('Another package manager', packages.explain(['Waiting for process with pid 4242 to finish.']))
-        self.assertIn('repository key', packages.explain(['Public key for quickshell-0.3.2.fc42.x86_64.rpm is not installed', 'GPG check FAILED']))
-        self.assertIn('dnf', packages.explain(['Transaction test error:', '  file /usr/bin/qs conflicts between attempted installs of a and b']))
-        self.assertIn('pacman', packages.explain(['error: failed to commit transaction (conflicting files)', 'x: /usr/bin/y exists in filesystem']))
-        # A package outside the enabled repositories stops the plan without guessing its origin.
-        absent = fedora_host(commands={**fedora_host().commands, 'dnf -q info': (1, '', 'Error: No matching Packages to list')})
-        plan_module.set_check_host(absent)
-        blocked = plan_module.build(facts_module.scan(absent, ROOT))
-        self.assertTrue(blocked['blocked']); self.assertIn('availability varies by Fedora release', blocked['packageError'])
-        self.assertIn('packages', [a['id'] for a in blocked['attention']])
-        # Verification after the transaction reads the same column.
-        from installer.engine import steps
-        report = facts_module.dependency_report(host, ROOT, facts['support']['packageKey'])
-        self.assertEqual(report['missing'], facts['dependencies']['missing'])
-        ctx = steps.Context(host, ROOT, facts, plan, plan['options'], None, lambda e, d: None)
-        op = ops.Operation('dependencies', 'Dependencies', '', None)
-        self.assertFalse(steps.dependencies_verify(ctx, op)); self.assertIn('quickshell', op.error)
-
-    def test_fedora_like_distribution_is_experimental_with_dnf(self):
-        host = fedora_host(release={'ID': 'nobara', 'ID_LIKE': 'fedora', 'PRETTY_NAME': 'Nobara Linux 42'})
-        plan_module.set_check_host(host)
-        facts = facts_module.scan(host, ROOT)
-        self.assertEqual((facts['support']['status'], facts['support']['backend'], facts['support']['packageKey']), ('experimental', 'dnf', 'fedoraPackage'))
-        self.assertIn('Fedora-based', facts['support']['note'])
-        plan = plan_module.build(facts)
-        self.assertFalse(plan['blocked']); self.assertEqual(plan['packageProvider'], 'dnf')
-        self.assertIn('quickshell', plan['packages']); self.assertIn('python3-gobject', plan['packages'])
-        warn = next(a for a in plan['attention'] if a['id'] == 'experimental')
-        self.assertEqual(warn['severity'], 'warn'); self.assertIn('Fedora-based', warn['detail']); self.assertIn('dnf', warn['detail']); self.assertNotIn('pacman', warn['detail'])
-        # The Arch-based sentence is unchanged.
-        arch_like = arch_host(which=[w for w in arch_host().available if w not in ('qs', 'omarchy')], release={'ID': 'endeavouros', 'ID_LIKE': 'arch', 'PRETTY_NAME': 'EndeavourOS'}, packages={},
-                              files={k: v for k, v in arch_host().files.items() if 'omarchy' not in k}, dirs=['/sys/module/nvidia'])
-        plan_module.set_check_host(arch_like)
-        experimental = facts_module.scan(arch_like, ROOT)
-        self.assertEqual((experimental['support']['status'], experimental['support']['backend'], experimental['support']['packageKey']), ('experimental', 'pacman', 'archPackage'))
-        warn = next(a for a in plan_module.build(experimental)['attention'] if a['id'] == 'experimental')
-        self.assertIn('This Arch-based distribution is not individually reviewed. pacman will be used with your configured repositories after you confirm; or install the packages yourself first: ', warn['detail'])
-        self.assertIn('quickshell', warn['detail']); self.assertIn('qt6-declarative', warn['detail'])
 
     def test_safety_states_stop_the_plan(self):
         host = arch_host(free=100 * 1024 * 1024, commands={**arch_host().commands, 'hyprctl -j monitors': json.dumps([{**LIVE[0], 'solitaryBlockedBy': ['LOCK']}])})

@@ -215,7 +215,7 @@ def dependencies_run(ctx, op):
 def dependencies_verify(ctx, op):
     if not ctx.plan['packages']:
         return True
-    report = facts_module.dependency_report(ctx.host, ctx.source, ctx.facts['support'].get('packageKey', 'archPackage'))
+    report = facts_module.dependency_report(ctx.host, ctx.source)
     ctx.facts['dependencies'] = report
     ctx.facts['quickshellInstalled'] = bool(ctx.host.which('qs'))
     still = [p for p in report['missing'] if p in ctx.plan['packages']]
