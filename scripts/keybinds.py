@@ -8,11 +8,12 @@ what each key does, in both Hyprland syntaxes. This script renders it to
 installer ships and the reference the shell shows never drift apart.
 
   python3 scripts/keybinds.py --check   files match the definition (exit 1 otherwise)
-  python3 scripts/keybinds.py --write   regenerate both files
+  python3 scripts/keybinds.py --write   regenerate both files and record them as shipped
   python3 scripts/keybinds.py --list    the expanded set, one line per key
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -21,6 +22,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFINITION = ROOT / 'data' / 'keybinds.json'
 TARGETS = {'lua': ROOT / 'themes' / 'keybinds.lua', 'conf': ROOT / 'themes' / 'keybinds.conf'}
+# Every version of TARGETS that has shipped, so the installer can tell an
+# untouched old copy (replace it) from one the user edited (keep it).
+SHIPPED = ROOT / 'data' / 'keybinds-shipped.json'
 MODS = ('SUPER', 'CTRL', 'ALT', 'SHIFT')
 FLAGS = ('locked', 'repeating', 'mouse', 'release')
 
@@ -195,6 +199,29 @@ def check(spec: dict | None = None) -> list[str]:
     return [name for name, path in TARGETS.items() if not path.is_file() or path.read_text(encoding='utf-8') != render(spec, name)]
 
 
+def digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def shipped(path: Path = SHIPPED) -> dict:
+    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
+
+
+def unrecorded(path: Path = SHIPPED) -> list[str]:
+    """Rendered files whose digest is missing from data/keybinds-shipped.json."""
+    known = shipped(path)
+    return [name for name, target in TARGETS.items() if not target.is_file() or digest(target) not in known.get(name, [])]
+
+
+def record(path: Path = SHIPPED) -> None:
+    known = shipped(path)
+    for name, target in TARGETS.items():
+        versions = known.setdefault(name, [])
+        if digest(target) not in versions:
+            versions.append(digest(target))
+    path.write_text(json.dumps(known, indent=2) + '\n', encoding='utf-8')
+
+
 def duplicates(spec: dict) -> list[str]:
     seen, out = {}, []
     for row in rows(spec):
@@ -219,10 +246,15 @@ def main(argv: list[str]) -> int:
         for name, path in TARGETS.items():
             path.write_text(render(spec, name), encoding='utf-8')
             print('wrote ' + str(path.relative_to(ROOT)))
+        record()
         return 0
     stale = check(spec)
     if stale:
         print('out of date: ' + ', '.join(str(TARGETS[n].relative_to(ROOT)) for n in stale) + ' (run scripts/keybinds.py --write)', file=sys.stderr)
+        return 1
+    missing = unrecorded()
+    if missing:
+        print('not in data/keybinds-shipped.json: ' + ', '.join(missing) + ' (run scripts/keybinds.py --write)', file=sys.stderr)
         return 1
     print('themes/keybinds.lua and themes/keybinds.conf match data/keybinds.json')
     return 0

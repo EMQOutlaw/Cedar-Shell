@@ -523,6 +523,27 @@ class Keybinds(unittest.TestCase):
             missing = tmp / 'none' / 'keybinds.lua'
             self.assertEqual(steps.refresh_keybinds_copy(target, shipped, missing, state), 'kept')
 
+    def test_a_keybinds_copy_from_any_shipped_version_is_updated(self):
+        from installer.engine import steps
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            shipped = tmp / 'new.lua'; shipped.write_text('-- new set\n')
+            previous = tmp / 'previous.lua'; previous.write_text('-- previous set\n')
+            target = tmp / 'keybinds.lua'; target.write_text('-- set from three releases ago\n')
+            old = steps.file_digest(target)
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, previous, {}), 'kept')
+            state = {}
+            self.assertEqual(steps.refresh_keybinds_copy(target, shipped, previous, state, history=[old]), 'updated')
+            self.assertEqual(target.read_text(), '-- new set\n'); self.assertEqual(state['keybindsDigest'], steps.file_digest(shipped))
+
+    def test_every_shipped_keybinds_file_is_recorded(self):
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import keybinds
+        from installer.engine import steps
+        self.assertEqual(keybinds.unrecorded(), [], 'run scripts/keybinds.py --write to record the shipped keybinds')
+        for syntax in ('lua', 'conf'):
+            self.assertIn(steps.file_digest(ROOT / 'themes' / ('keybinds.' + syntax)), steps.shipped_keybinds(ROOT, syntax))
+
     def test_keybind_migration_uses_pre_switch_digest_on_resume(self):
         from installer.engine import steps
         with tempfile.TemporaryDirectory() as tmp:

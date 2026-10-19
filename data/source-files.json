@@ -132,6 +132,7 @@
   "data/icons/cedar-profiles.svg",
   "data/icons/cedar-shield.svg",
   "data/icons/cedar-station.svg",
+  "data/keybinds-shipped.json",
   "data/keybinds.json",
   "data/legacy-allowlist.json",
   "data/plugins.json",
