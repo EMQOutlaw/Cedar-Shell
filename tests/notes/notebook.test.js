@@ -3,6 +3,9 @@ const assert = require("node:assert/strict")
 const Notebook = require("../../components/notes/Notebook.js")
 const History = require("../../components/notes/History.js")
 const Model = require("../../components/notes/DocumentModel.js")
+const fs = require("node:fs")
+const path = require("node:path")
+const vm = require("node:vm")
 
 const blank = () => History.create(Model.createDocument(760, 560))
 const inked = () => History.create(Model.addStroke(Model.createDocument(760, 560), [[1, 1], [2, 2]], 2))
@@ -30,6 +33,31 @@ test("adds a sheet only when the open one has something on it", () => {
 
   let full = Notebook.create(Array.from({ length: Notebook.MAX_SHEETS }, inked), 0)
   assert.equal(Notebook.canAdd(full), false)
+})
+
+test("newSheet IPC reports blank and full notebooks without claiming a sheet was added", () => {
+  const board = fs.readFileSync(path.resolve(__dirname, "../../modules/FieldNotesBoard.qml"), "utf8")
+  const script = /    function script\(method, args\) \{[\s\S]*?\n    \}/.exec(board)[0]
+  const context = {
+    Notebook, DocumentModel: Model, notebook: Notebook.create([blank()], 0),
+    addSheet() { context.notebook = Notebook.add(context.notebook, blank()) }
+  }
+  vm.createContext(context)
+  vm.runInContext(script, context)
+  const initial = context.notebook
+  assert.equal(context.script("newSheet", []), "error: the open sheet is blank")
+  assert.equal(context.notebook, initial)
+  for (const history of [inked(), History.create(Model.setTitle(Model.createDocument(760, 560), "Ideas"))]) {
+    context.notebook = Notebook.create([history], 0)
+    assert.equal(context.script("newSheet", []), "ok")
+    assert.equal(context.notebook.sheets.length, 2)
+    assert.equal(context.script("newSheet", []), "error: the open sheet is blank")
+    assert.equal(context.notebook.sheets.length, 2)
+  }
+  context.notebook = Notebook.create(Array.from({ length: Model.MAX_SHEETS }, blank), 0)
+  const full = context.notebook
+  assert.equal(context.script("newSheet", []), "error: the notebook is full")
+  assert.equal(context.notebook, full)
 })
 
 test("drops a blank sheet when it is left, and keeps written ones", () => {

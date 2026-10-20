@@ -586,6 +586,8 @@ Item {
         case "newSheet":
             if (notebook.sheets.length >= DocumentModel.MAX_SHEETS)
                 return "error: the notebook is full"
+            if (!Notebook.canAdd(notebook))
+                return "error: the open sheet is blank"
             addSheet()
             return "ok"
         case "selectSheet": {

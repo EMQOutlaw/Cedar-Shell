@@ -31,11 +31,12 @@ local function ipc(args) return hl.dsp.exec_cmd(qs .. " ipc call " .. args) end
 local function launch(kind) return hl.dsp.exec_cmd("python3 " .. runtime .. " launch " .. kind) end
 local function clipboard(kind) return hl.dsp.exec_cmd("python3 " .. runtime .. " clipboard " .. kind) end
 
+local bound = {}
 local function bind(keys, action, description, flags)
   local options = {}
   for key, value in pairs(flags or {}) do options[key] = value end
   options.description = description
-  hl.unbind(keys)
+  if not bound[keys] then hl.unbind(keys); bound[keys] = true end
   hl.bind(keys, action, options)
 end
 
@@ -51,6 +52,11 @@ bind("SUPER + SHIFT + V", ipc("canopy flip clipboard"), "Toggle clipboard histor
 bind("SUPER + SHIFT + K", ipc("keymap show"), "Show the searchable active keymap")
 bind("SUPER + CTRL + ALT + SPACE", ipc("wallpapers toggle"), "Choose a wallpaper from the rounded preview grid")
 bind("SUPER + ALT + N", ipc("notes toggle"), "Toggle Field Notes, the floating sheet for sketches and typed notes")
+
+-- Dictation
+bind("SUPER + CTRL + X", ipc("dictation toggle"), "Toggle dictation: Voxtype listens, then types what you said")
+bind("F9", ipc("dictation start"), "Hold to talk; release to stop and let Voxtype type")
+bind("F9", ipc("dictation stop"), "Hold to talk; release to stop and let Voxtype type", { release = true })
 
 -- Windows
 bind("SUPER + Q", hl.dsp.window.close(), "Close the focused window")

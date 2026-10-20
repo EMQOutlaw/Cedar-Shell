@@ -35,6 +35,9 @@ jobs:
           bash -n installer/bootstrap/install.sh
           python3 scripts/audit_public.py
           python3 scripts/update_source_inventory.py --check
+      - name: Settings schema and helper unit tests
+        run: |
+          PYTHONPATH=scripts python3 -m unittest discover -s tests -p 'test_settings*.py'
       - name: Bar geometry and interruptible transitions
         run: |
           node tests/core/strata_test.js
@@ -46,5 +49,19 @@ jobs:
           python3 tests/check_artifact.py /tmp/cedar-shell-development.tar.gz
       - name: Record untested gates
         run: |
-          echo 'Native Quickshell, Hyprland, PAM, GPU and full desktop handoff require separate controlled runners. These jobs do not certify them.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Settings Quickshell harnesses run offscreen in a separate job. Live Hyprland, PAM, GPU and full desktop handoff still require controlled runners; these jobs do not certify them.' >> "$GITHUB_STEP_SUMMARY"
+  settings-offscreen:
+    needs: source-and-recovery
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - name: Provide Quickshell on the disposable offscreen runner
+        run: pacman -Syu --noconfirm --needed git python quickshell qt6-5compat ttf-dejavu
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Settings service, Dictation and actual floating window harnesses
+        run: |
+          python3 tests/check_settings_service.py
+          python3 tests/check_settings_window.py
 # No release publishing, secrets, elevated pull_request_target workflow, or user auto-update.

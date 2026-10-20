@@ -64,7 +64,6 @@ Singleton {
     function openSettings() {
         if (ShellState.locked || Config.stage < 3) return;
         ShellState.settingsPage = "notes";
-        if (ShellState.panel === "settings") ShellState.close();
         ShellState.open("settings");
     }
     // Opens the export folder in the file manager, detached from the shell. The

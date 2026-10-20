@@ -37,7 +37,7 @@ ColumnLayout {
         caption: "The paper floats where you left it on each display. Everything around it is click-through."
         Flow {
             Layout.fillWidth: true; spacing: 8
-            StationButton { text: FieldNotes.opened ? "Put the notes away" : "Open Field Notes"; onClicked: FieldNotes.toggle() }
+            StationButton { text: FieldNotes.opened ? "Put the notes away" : "Open Field Notes"; onClicked: FieldNotes.opened ? FieldNotes.close() : FieldNotes.open() }
             StationButton { text: "Center the board"; enabled: FieldNotes.loaded; onClicked: FieldNotes.center() }
             StationButton { text: "Open export folder"; hint: root.tilde(FieldNotes.exportDir); onClicked: FieldNotes.openExportFolder() }
         }

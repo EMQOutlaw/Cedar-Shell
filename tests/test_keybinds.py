@@ -63,12 +63,38 @@ class Definition(unittest.TestCase):
 
     def test_no_combination_is_bound_twice(self):
         self.assertEqual(keybinds.duplicates(self.spec), [])
-        seen = [keybinds.normalize(r['keys']) for r in keybinds.rows(self.spec)]
-        self.assertEqual(len(seen), len(set(seen)), 'every key combination appears once')
+        seen = [(keybinds.normalize(r['keys']), 'release' in r['flags']) for r in keybinds.rows(self.spec)]
+        self.assertEqual(len(seen), len(set(seen)), 'every key combination and event appears once')
 
-    def test_groups_are_the_seven_reference_sections(self):
-        self.assertEqual([g['id'] for g in self.spec['groups']], ['applications', 'windows', 'workspaces', 'scratchpad', 'capture', 'session', 'media'])
+    def test_groups_are_the_reference_sections(self):
+        self.assertEqual([g['id'] for g in self.spec['groups']], ['applications', 'dictation', 'windows', 'workspaces', 'scratchpad', 'capture', 'session', 'media'])
         self.assertEqual([g['title'] for g in self.spec['groups']][-1], 'Media and hardware')
+
+    def test_hold_to_talk_has_nonrepeating_press_and_release_actions(self):
+        rows = [r for r in keybinds.rows(self.spec) if r['keys'] == 'F9']
+        self.assertEqual([r['flags'] for r in rows], [[], ['release']])
+        self.assertEqual([r['lua'] for r in rows], ['ipc("dictation start")', 'ipc("dictation stop")'])
+        lua = keybinds.render_lua(self.spec)
+        self.assertIn('bind("F9", ipc("dictation start"), "' + rows[0]['description'] + '")', lua)
+        self.assertIn('bind("F9", ipc("dictation stop"), "' + rows[1]['description'] + '", { release = true })', lua)
+        conf = keybinds.render_conf(self.spec)
+        bindings = [line for line in conf.splitlines() if ', F9,' in line]
+        self.assertEqual(bindings, [
+            'bindd = , F9, ' + rows[0]['description'] + ', exec, $cedarShell dictation start',
+            'bindrd = , F9, ' + rows[1]['description'] + ', exec, $cedarShell dictation stop',
+        ])
+        self.assertEqual(conf.splitlines().count('unbind = , F9'), 1)
+
+    def test_duplicate_detection_distinguishes_press_and_release(self):
+        entry = {'keys': ['F9'], 'description': 'Talk', 'lua': 'start', 'conf': 'start',
+                 'release': {'lua': 'stop', 'conf': 'stop'}}
+        spec = {'groups': [{'id': 'dictation', 'entries': [entry]}]}
+        self.assertEqual(keybinds.duplicates(spec), [])
+        for flags in ([], ['release']):
+            with self.subTest(flags=flags):
+                duplicate = {**entry, 'keys': ['f9'], 'release': None, 'flags': flags}
+                spec['groups'][0]['entries'] = [entry, duplicate]
+                self.assertEqual(keybinds.duplicates(spec), ['F9'])
 
     def test_the_approved_set_is_present_with_its_actions(self):
         combos = self.combos()

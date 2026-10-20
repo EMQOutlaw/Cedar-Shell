@@ -12,8 +12,8 @@ service, Settings, bar and IPC conventions.
 
 ## Opening
 
-- The Field Notes button on the bar's right rail (hide it under Settings › Top
-  Bar › Bar modules). Left click toggles the notes on that display; right click
+- The Field Notes button on the bar's right rail (hide it under Settings › Shell & Bar ›
+  Modules). Left click toggles the notes on that display; right click
   opens Settings › Field Notes without closing them.
 - `Super+Alt+N` (the managed keybind set), Applications › CEDAR › Field Notes,
   or `qs -c cedar ipc call notes toggle`.

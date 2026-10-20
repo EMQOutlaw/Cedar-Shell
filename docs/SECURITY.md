@@ -20,12 +20,13 @@ Every `qs ipc` target the shell exposes, and what it will refuse:
 
 | Target | Methods | Guarded by |
 |---|---|---|
-| `settings` | `toggle`, `set`, `get` | `set` and `get` consult `Config.ipcProtected`: application commands, network and location switches, lock privacy, clipboard history, trails and the whisper ledger are refused. Values are type-checked and strings capped at 1000 characters. `set` is refused while locked. |
+| `settings` | `toggle`, `open`, `show`, `close`, `level`, `status`, `search`, `set`, `get` | `set` and `get` consult `Config.ipcProtected`: application commands, network and location switches, lock privacy, clipboard history, trails, the whisper ledger and the notes export folder are refused. `set` values are type-checked, held to the schema's ranges and choices (`SettingsSchema.validate`), and strings are capped at 1000 characters. `set`, `open`, `toggle` and `level` are refused while locked. `search` answers at most ten rows (page, key, label, group) for a query capped at 200 characters; `status` reports the window, page, depth and remembered size, never a preference value. |
 | `menu` | `toggle`, `summon`, `refresh` | Refused while locked. `summon` payloads above 256 KiB are ignored; prompts, option counts and option lengths are capped. Reply files are answered only through `scripts/menu_reply.py` (below). |
 | `core` | `publish`, `withdraw`, `timer`, … | Payloads above 16 KiB are refused. Provider identities are validated by regular expression; titles and subtitles are control-character stripped and capped; providers cannot attach actions. |
 | `osd` | `fromOmarchy`, `volume`, … | Payloads above 4 KiB are ignored; numeric fields are range-checked. |
 | `lock` | `lock`, `testAuthentication` | Refused in test mode; the test window never requests a session lock. |
 | `shell` | `close`, `isLocked`, `sessionInfo`, `stop` | `stop` is refused while locked. |
+| `dictation` | `start`, `stop`, `toggle`, `cancel`, `status` | Recording commands (`start`, `stop`, `toggle`, `cancel`) are refused when `ShellState.locked`. `status` remains available and reports dictation and lock state. |
 | `wallpapers`, `themes`, `control`, `hud`, `power`, `canopy`, `launcher`, `notifications`, `media` | toggles | All route through `ShellState`/`Canopy`, which refuse while locked. |
 | `notes` | `status`, `open`, `openOn`, `close`, `toggle`, `newSheet`, `selectSheet`, `setTitle`, `setPaper`, `setSize`, `setTool`, `setPenWidth`, `clear`, `center`, `undo`, `redo`, `draw`, `stopDrawing`, `addNote`, `copy` | Everything but `status` is refused while locked. String arguments above 64 KiB are refused; titles are cut at 60 characters, notes at 4096, a stroke at 8192 points, and every edit is held to the notebook's load limits so nothing saved is lost. Output names must match `^[A-Za-z][A-Za-z0-9_.:-]{0,127}$`. `copy` writes only under the configured export folder; the folder itself is a protected setting. |
 

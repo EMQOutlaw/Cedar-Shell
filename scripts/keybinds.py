@@ -45,7 +45,7 @@ def fill(text: str, var: dict) -> str:
 
 
 def rows(spec: dict) -> list[dict]:
-    """The expanded set: one row per key combination, in definition order."""
+    """The expanded set: one row per press or release, in definition order."""
     out = []
     for group in spec['groups']:
         for entry in group['entries']:
@@ -58,6 +58,10 @@ def rows(spec: dict) -> list[dict]:
                 for keys in entry['keys']:
                     out.append({'group': group['id'], 'keys': fill(keys, var), 'description': description,
                                 'lua': fill(entry['lua'], var), 'conf': fill(entry['conf'], var), 'flags': list(flags)})
+                    if entry.get('release'):
+                        out.append({**out[-1], 'lua': fill(entry['release']['lua'], var),
+                                    'conf': fill(entry['release']['conf'], var),
+                                    'flags': [f for f in flags if f not in ('repeating', 'release')] + ['release']})
     return out
 
 
@@ -116,11 +120,12 @@ local function ipc(args) return hl.dsp.exec_cmd(qs .. " ipc call " .. args) end
 local function launch(kind) return hl.dsp.exec_cmd("python3 " .. runtime .. " launch " .. kind) end
 local function clipboard(kind) return hl.dsp.exec_cmd("python3 " .. runtime .. " clipboard " .. kind) end
 
+local bound = {}
 local function bind(keys, action, description, flags)
   local options = {}
   for key, value in pairs(flags or {}) do options[key] = value end
   options.description = description
-  hl.unbind(keys)
+  if not bound[keys] then hl.unbind(keys); bound[keys] = true end
   hl.bind(keys, action, options)
 end
 '''
@@ -170,13 +175,17 @@ def conf_keys(keys: str) -> str:
 
 def render_conf(spec: dict) -> str:
     lines = [CONF_HEAD]
+    bound = set()
     for group in spec['groups']:
         lines.append('# ' + group['title'])
         for row in rows(spec):
             if row['group'] != group['id']:
                 continue
             keys = conf_keys(row['keys'])
-            lines.append('unbind = ' + keys)
+            combo = normalize(row['keys'])
+            if combo not in bound:
+                lines.append('unbind = ' + keys)
+                bound.add(combo)
             if 'mouse' in row['flags']:
                 lines.append('bindm = ' + keys + ', ' + row['conf'])
                 continue
@@ -226,9 +235,10 @@ def duplicates(spec: dict) -> list[str]:
     seen, out = {}, []
     for row in rows(spec):
         combo = normalize(row['keys'])
-        if combo in seen:
+        binding = (combo, 'release' in row['flags'])
+        if binding in seen:
             out.append(combo)
-        seen.setdefault(combo, row['description'])
+        seen.setdefault(binding, row['description'])
     return out
 
 

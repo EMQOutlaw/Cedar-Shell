@@ -71,6 +71,12 @@ Singleton {
                 Canopy.open("power");
             return;
         }
+        // Settings is a window owned by its service; the requested page travels with the call.
+        if (name === "settings") {
+            SettingsService.route(settingsPage, settingsAnchor, true);
+            settingsPage = ""; settingsAnchor = "";
+            return;
+        }
         const target = preferredOutput();
         panel = panel === name && output === target ? "" : name;
         output = target;
@@ -84,6 +90,11 @@ Singleton {
         }
         if (name === "power" && Config.saved.canopyEnabled) {
             Canopy.open("power");
+            return;
+        }
+        if (name === "settings") {
+            SettingsService.route(settingsPage, settingsAnchor, false);
+            settingsPage = ""; settingsAnchor = "";
             return;
         }
         panel = name;

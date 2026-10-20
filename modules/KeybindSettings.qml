@@ -100,6 +100,7 @@ ColumnLayout {
     }
 
     // Your binds
+    SettingsTabs { tabs:["Input","Keybinds"];current:"Keybinds";onChosen:tab=>{if(tab!=="Keybinds")SettingsService.navigate("input", "");} }
     SettingsSection {
         objectName: "customBinds"; accent: Theme.green
         heading: "Your shortcuts"; badge: root.owned.length ? root.owned.length + " added" : ""; badgeColor: Theme.green

@@ -50,6 +50,7 @@ ColumnLayout {
         StationButton { text: "Refresh"; enabled: !DefaultApps.busy; onClicked: DefaultApps.refresh() }
     }
 
+    SettingsTabs { tabs:["Default apps","Application theming","Dictation"];current:"Default apps";onChosen:tab=>{if(tab!=="Default apps")SettingsService.navigate(tab==="Dictation" ? "dictation":"application-theming", "");} }
     SettingsSection {
         heading: "Everyday apps"; caption: "What opens your links, folders and text. Terminal also sets CEDAR’s quick launch."
         Repeater {

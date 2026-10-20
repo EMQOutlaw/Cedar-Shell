@@ -129,12 +129,13 @@ def set_wallpaper(value):
 
 
 def themes():
-    items = [{'name': 'cedar', 'label': 'CEDAR', 'preview': (ROOT / 'themes/backgrounds/field-station.png').as_uri()}]
+    base = read_json(ROOT / 'themes/palettes/cedar.json')['colors']
+    items = [{'name': 'cedar', 'label': 'CEDAR', 'preview': (ROOT / 'themes/backgrounds/field-station.png').as_uri(), 'palette': base}]
     for path in sorted((config() / 'themes').glob('*.json')):
         try:
             value = read_json(path)
             validate_palette(value)
-            items.append({'name': path.stem, 'label': str(value.get('name', path.stem))[:80], 'preview': ''})
+            items.append({'name': path.stem, 'label': str(value.get('name', path.stem))[:80], 'preview': '', 'palette': {**base, **value['colors']}})
         except (OSError, ValueError, TypeError):
             continue
     return items

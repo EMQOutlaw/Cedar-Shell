@@ -8,6 +8,8 @@ import platform
 import subprocess
 import sys
 import desktop_runtime as runtime
+import settings_theme
+import settings_updates
 
 ROOT=Path(__file__).resolve().parents[1]
 HOME=Path.home()
@@ -40,7 +42,8 @@ def inventory():
     try: selected = json.loads((runtime.config()/'theme.json').read_text()).get('name', 'cedar')
     except (OSError, ValueError): selected = 'cedar'
     return {'theme': 'CEDAR' if selected == 'cedar' else selected,
-            'wallpaper': walls['selected'], 'wallpaperFolder': walls['folder'], 'themes': runtime.themes(), 'wallpapers': walls['items']}
+            'wallpaper': walls['selected'], 'wallpaperFolder': walls['folder'], 'themes': runtime.themes(), 'wallpapers': walls['items'],
+            'themeRestoreAvailable': settings_theme.can_restore()}
 
 def installation_method():
     link=CONFIG/'quickshell/cedar'
@@ -51,17 +54,27 @@ def installation_method():
     return 'Installed release' if target.is_relative_to(data/'cedar/releases') else 'Local source registration'
 
 def snapshot():
+    sys.path.insert(0, str(ROOT))
+    from installer.engine.update import installed_channel
     commands={'quickshell':['qs','--version'],'hyprland':['hyprctl','version'], 'qt':['/usr/lib/qt6/bin/qtpaths','--qt-version']}
     with ThreadPoolExecutor(max_workers=6) as pool:
         futures={key:pool.submit(probe,args) for key,args in commands.items()}
         health=list(pool.map(service,SERVICES))
         versions={k:(f.result().splitlines()[0] if f.result() and not f.result().startswith('Unavailable') else 'Unavailable') for k,f in futures.items()}
     return {**inventory(),'hostname':platform.node(),'kernel':platform.release(),'os':platform.freedesktop_os_release().get('PRETTY_NAME',platform.system()),
-      'version':(ROOT/'VERSION').read_text().strip() if (ROOT/'VERSION').exists() else 'Unavailable', 'versions':versions,'services':health,'installationMethod':installation_method()}
+      'version':(ROOT/'VERSION').read_text().strip() if (ROOT/'VERSION').exists() else 'Unavailable', 'versions':versions,'services':health,'installationMethod':installation_method(), 'channel':installed_channel() or 'Local source', 'updateStatus':settings_updates.status()}
 
 def action(req):
     name=req.get('action','snapshot')
     if name=='snapshot': return snapshot()
+    if name=='update-check':
+        return {'updateStatus':settings_updates.check()}
+    if name=='theme-preview':
+        return {'themePreview': settings_theme.preview(req.get('name'), req.get('accent', ''))}
+    if name=='theme-apply':
+        return {**settings_theme.apply(req), **inventory()}
+    if name=='theme-restore':
+        return {**settings_theme.restore(), **inventory()}
     if name in ('restart','logs'):
         row=next((r for r in SERVICES if r[1]==req.get('unit')),None)
         if row is None: raise ValueError('Unsupported service')
