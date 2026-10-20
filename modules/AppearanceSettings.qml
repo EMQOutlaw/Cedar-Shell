@@ -26,7 +26,9 @@ ColumnLayout {
         visible:root.tab==="Themes" || root.tab==="Colors"
         GlowText { text:root.tab==="Themes" ? "Installed themes":"Theme accents";font.family:Theme.labelFont;font.pixelSize:Theme.title }
         GridLayout {
-            visible:root.tab==="Themes";Layout.fillWidth:true;columns:root.width<600 ? 2:3;columnSpacing:10;rowSpacing:10
+            objectName:"settingsThemeGrid"
+            visible:root.tab==="Themes";Layout.fillWidth:true;Layout.minimumWidth:0
+            columns:Math.max(1,Math.min(4,Math.floor((width+10)/(230*Math.max(1,Theme.fontScale)+10))));columnSpacing:10;rowSpacing:10
             Repeater {
                 model:root.themes
                 StationButton {
@@ -34,7 +36,8 @@ ColumnLayout {
                     required property var modelData
                     readonly property bool selected:(root.preview?.name || root.current)===modelData.name
                     readonly property var palette:modelData.palette || ({})
-                    Layout.fillWidth:true;Layout.minimumWidth:0;implicitHeight:140
+                    Layout.fillWidth:true;Layout.minimumWidth:0;Layout.preferredWidth:1
+                    implicitHeight:Math.max(140,contentItem.implicitHeight+24)
                     text:modelData.label;checked:selected;enabled:!SettingsInfo.busy
                     onClicked:root.selectTheme(modelData.name)
                     background:ChamferFrame {cut:7;fill:tile.palette.background || Theme.background;stroke:tile.visualFocus ? Theme.green:Qt.alpha(Theme.strataAccent,tile.selected ? .7:.2);topLine:tile.selected;topLineColor:Theme.strataAccent}

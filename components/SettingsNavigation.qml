@@ -28,7 +28,7 @@ ScrollView {
                         id: row
                         required property var modelData
                         objectName: "settingsNav-" + modelData.id
-                        Layout.fillWidth: true; implicitHeight: 28
+                        Layout.fillWidth: true; implicitHeight: Math.max(28, Theme.normal + 12)
                         text: modelData.label; checked: (({keybinds:"input",core:"bar","application-theming":"apps",setup:"advanced",time:"input",notes:"input",dictation:"apps"})[SettingsService.page] || SettingsService.page) === modelData.id
                         onClicked: root.chosen(modelData.id)
                         background: ChamferFrame {

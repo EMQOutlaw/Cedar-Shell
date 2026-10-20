@@ -17,7 +17,7 @@ ColumnLayout {
         property string detail: ""
         property string symbol: ""
         property string destination: ""
-        Layout.fillWidth: true; Layout.minimumWidth: 0
+        Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
         implicitHeight: Math.max(108, summaryBody.implicitHeight+28)
         text: heading; hint: "Open " + heading
         onClicked: SettingsService.navigate(destination, "")
@@ -39,24 +39,26 @@ ColumnLayout {
         }
     }
     GridLayout {
-        Layout.fillWidth:true; columns:root.width<700 ? 2:4; columnSpacing:10; rowSpacing:10
+        objectName:"settingsSummaryGrid"
+        Layout.fillWidth:true; columns:Math.max(1,Math.min(4,Math.floor((width+10)/(220*Math.max(1,Theme.fontScale)+10)))); columnSpacing:10; rowSpacing:10
         Summary { heading:"Desktop Profile"; value:Profiles.current ? Profiles.currentLabel:"No profile"; detail:Profiles.anyBusy ? "Applying changes…":Profiles.settingsFailure || Profiles.failures.length || Gaming.failures.length ? "Needs attention":Profiles.current ? "Active":"Your current preferences"; symbol:"△"; destination:"profiles" }
         Summary { heading:"Appearance"; value:SettingsInfo.data.theme || "Unknown"; detail:"CEDAR palette · "+(Config.saved.reducedMotion ? "Reduced motion":"Shared materials"); symbol:"◐"; destination:"appearance" }
         Summary { heading:"System Version"; value:SettingsInfo.data.version || "Unavailable"; detail:SettingsInfo.data.channel || "Channel unavailable"; symbol:"♧"; destination:"about" }
         Summary { heading:"Update Status"; value:SettingsInfo.action==="update-check" && SettingsInfo.busy ? "Checking…":({current:"Verified current",available:"Update available",error:"Check failed"})[SettingsInfo.data.updateStatus?.state] || "Not checked"; detail:SettingsInfo.data.updateStatus?.checkedAt ? "Checked "+Qt.formatDateTime(new Date(SettingsInfo.data.updateStatus.checkedAt*1000),"MMM d, HH:mm"):"Open Updates to verify"; symbol:"↻"; destination:"system" }
     }
     GridLayout {
-        Layout.fillWidth:true; columns:root.width<850 ? 1:2; columnSpacing:16; rowSpacing:16
+        id:details
+        Layout.fillWidth:true; columns:width<900*Math.max(1,Theme.fontScale) ? 1:2; columnSpacing:16; rowSpacing:16
         SettingsSurface {
             padding:18; selected:true
-            Layout.preferredWidth:Math.max(420,root.width*.68)
+            Layout.preferredWidth:details.columns===1 ? 1:2
             GlowText { text:"System at a glance"; font.family:Theme.labelFont; font.pixelSize:Theme.title }
             Item {
                 Layout.fillWidth:true; implicitHeight:Math.max(160,Math.min(270,width*.34))
                 SettingsBackdrop { anchors.fill:parent; strength:.95 }
             }
             GridLayout {
-                Layout.fillWidth:true; columns:width<600 ? 2:4; columnSpacing:14; rowSpacing:14
+                Layout.fillWidth:true; columns:Math.max(1,Math.min(4,Math.floor((width+14)/(170*Math.max(1,Theme.fontScale)+14)))); columnSpacing:14; rowSpacing:14
                 Repeater {
                     model:[
                         {label:"Displays",value:root.monitors.length ? root.monitors.length+" connected":"Unavailable",detail:root.monitors.map(m=>m.width+"×"+m.height).join(" · "),icon:"▣"},
@@ -74,7 +76,7 @@ ColumnLayout {
             }
         }
         SettingsSurface {
-            Layout.preferredWidth:250; Layout.alignment:Qt.AlignTop
+            Layout.preferredWidth:1; Layout.alignment:Qt.AlignTop
             GlowText { text:"Quick actions"; font.family:Theme.labelFont; font.pixelSize:Theme.title }
             Repeater {
                 model:[{label:"Change wallpaper",page:"desktop",icon:"▧"},{label:"Adjust bar settings",page:"bar",icon:"━"},{label:"Manage keybinds",page:"keybinds",icon:"⌘"},{label:"Check for updates",page:"system",icon:"↻"}]

@@ -6,7 +6,7 @@ Item {
     property string title: ""
     property string description: ""
     property bool highlighted: false
-    property bool compact: width < 560
+    property bool compact: width < 620 * Math.max(1, Theme.fontScale)
     default property alias controls: slot.data
     implicitHeight: Math.max(Theme.settingRowHeight, layout.implicitHeight + 2 * Theme.spaceMd)
     Rectangle { anchors.fill: parent; radius: 7; color: root.highlighted ? Qt.alpha(Theme.green,.09) : Theme.transparent; border.width: root.highlighted ? 1:0; border.color: Qt.alpha(Theme.green,.45) }
@@ -16,11 +16,11 @@ Item {
         anchors.margins: 12
         columns: root.compact ? 1:2; columnSpacing: 24; rowSpacing: 10
         ColumnLayout {
-            Layout.fillWidth: true; spacing: 5
-            GlowText { text: root.title; font.pixelSize: Theme.normal; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: root.enabled ? Theme.text:Theme.muted }
-            GlowText { text: root.description; visible: text!==""; color: Theme.muted; font.pixelSize: Theme.small-1; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+            Layout.fillWidth: true; Layout.minimumWidth: 0; spacing: 5
+            GlowText { text: root.title; font.pixelSize: Theme.normal; Layout.fillWidth: true; wrapMode: Text.Wrap; color: root.enabled ? Theme.text:Theme.muted }
+            GlowText { text: root.description; visible: text!==""; color: Theme.muted; font.pixelSize: Theme.small-1; Layout.fillWidth: true; wrapMode: Text.Wrap }
         }
-        RowLayout { id: slot; Layout.fillWidth: root.compact; Layout.preferredWidth: root.compact ? -1 : 240; spacing: 8 }
+        RowLayout { id: slot; Layout.minimumWidth:0; Layout.fillWidth: root.compact; Layout.preferredWidth: root.compact ? -1 : Math.min(320 * Theme.fontScale, root.width * .46); spacing: 8 }
     }
     Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 12; anchors.rightMargin: 12; height: 1; color: Qt.alpha(Theme.teal,.10) }
 }

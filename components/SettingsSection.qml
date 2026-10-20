@@ -13,6 +13,7 @@ Item {
     property bool emphasis: false
     property int padding: 18
     Layout.fillWidth: true
+    Layout.minimumWidth: 0
     implicitHeight: body.implicitHeight + padding * 2
     Rectangle {
         anchors.fill: parent; radius: Theme.cardRadius

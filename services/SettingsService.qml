@@ -19,8 +19,8 @@ Singleton {
     // ------------------------------------------------------------ the window
     property bool windowOpen: false
     readonly property bool open: windowOpen && !ShellState.locked
-    readonly property int minimumWidth: 760
-    readonly property int minimumHeight: 540
+    readonly property int minimumWidth: 480
+    readonly property int minimumHeight: 360
     function openApp() { if (ShellState.locked || Config.stage < 3) return; windowOpen = true; }
     function closeApp() { windowOpen = false; cancelPending(); }
     function toggleApp() { if (windowOpen) closeApp(); else openApp(); }

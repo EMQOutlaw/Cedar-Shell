@@ -9,6 +9,7 @@ Item {
     property color accent: Theme.strataAccent
     implicitHeight: body.implicitHeight + padding * 2
     Layout.fillWidth: true
+    Layout.minimumWidth: 0
     ChamferFrame {
         anchors.fill: parent; cut: Theme.strataCut
         fill: Qt.alpha(Theme.strataSurface, .78)

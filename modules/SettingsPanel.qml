@@ -9,6 +9,7 @@ import "../components/SettingsSchema.js" as Schema
 import "../services"
 Rectangle {
     id: root
+    objectName: "settingsPanel"
     property bool active: false
     property bool hasOpened: false
     readonly property string section: SettingsService.page
@@ -18,13 +19,18 @@ Rectangle {
     readonly property string pendingAnchor: SettingsService.pendingAnchor
     property bool resetConfirm: false
     readonly property bool dirty: loader.item?.dirty === true
-    readonly property bool narrow: width < 980
-    readonly property real railWidth: narrow ? 0 : Math.max(220, Math.min(280, width * .205))
+    readonly property real layoutScale: Math.max(1, Theme.fontScale)
+    readonly property bool narrow: width < 980 * layoutScale
+    readonly property real railWidth: narrow ? 0 : Math.max(220 * layoutScale, Math.min(280 * layoutScale, width * .205))
+    readonly property real pageMargin: narrow ? 16 : 28
+    readonly property real pageSpace: Math.max(0, width - railWidth - pageMargin * 2)
+    readonly property real pageWidth: Math.min(1400 * layoutScale, pageSpace)
     readonly property var page: Schema.pages.find(p => p.id === section) || Schema.pages[0]
     readonly property string groupLabel: Schema.groupOf(page.id)
     readonly property var results: SettingsService.search(search.text)
     property alias searchText: search.text
     color: Theme.background; clip: true
+    onNarrowChanged: navigationOpen = false
     function navigate(page, anchor="") { SettingsService.navigate(page, anchor); }
     Connections {
         target: SettingsService
@@ -101,29 +107,17 @@ Rectangle {
         onChosen:page=>root.navigate(page)
     }
     ColumnLayout {
+        objectName: "settingsPageArea"
         visible:!root.narrow || !root.navigationOpen
-        x:root.narrow ? 16 : root.railWidth+28
+        x:root.railWidth+root.pageMargin+(root.pageSpace-root.pageWidth)/2
         y:root.narrow ? 132 : 86
-        width:Math.min(1400,root.width-x-(root.narrow ? 16:28))
-        height:root.height-y-20; spacing:14
+        width:root.pageWidth
+        height:Math.max(0,root.height-y-20); spacing:14
         RowLayout {
             Layout.fillWidth:true
             StrataButton { text:"←"; iconOnly:true; hint:"Back · Alt+Left"; enabled:SettingsService.canGoBack; onClicked:SettingsService.back() }
-            SectionMark { Layout.fillWidth:true; text:Schema.indexOf(root.section)+" / "+(root.section==="overview" ? "OVERVIEW":root.groupLabel.toUpperCase()); tone:Theme.strataAccent; size:10 }
+            SectionMark { Layout.fillWidth:true; Layout.minimumWidth:0; elide:Text.ElideRight; text:Schema.indexOf(root.section)+" / "+(root.section==="overview" ? "OVERVIEW":root.groupLabel.toUpperCase()); tone:Theme.strataAccent; size:10 }
             StrataButton { text:SettingsService.advanced ? "Advanced: on":"Show advanced"; checked:SettingsService.advanced; hint:"Reveal advanced controls"; onClicked:SettingsService.toggleLevel() }
-        }
-        ColumnLayout {
-            visible:!search.text.trim(); Layout.fillWidth:true; spacing:4
-            GlowText { text:root.section==="overview" ? "Welcome to CEDAR":root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round((root.narrow ? 29:36)*Theme.fontScale); Layout.fillWidth:true; wrapMode:Text.WordWrap; color:Theme.strataText }
-            GlowText { text:root.page.description; color:Theme.strataMuted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
-        }
-        SettingsSurface {
-            visible:root.pendingPage!==""; padding:12; accent:Theme.amber
-            GlowText { text:"You have unapplied changes on this page."; Layout.fillWidth:true; wrapMode:Text.WordWrap; color:Theme.amber }
-            Flow { Layout.fillWidth:true; spacing:8
-                StationButton { text:"Discard and continue"; onClicked:root.discardPending() }
-                StationButton { text:"Keep editing"; onClicked:SettingsService.cancelPending() }
-            }
         }
         ListView {
             id:resultsList; visible:search.text.trim()!==""; Layout.fillWidth:true; Layout.fillHeight:true
@@ -134,22 +128,38 @@ Rectangle {
             delegate:StationButton {
                 required property var modelData
                 required property int index
-                width:ListView.view.width; implicitHeight:82; checked:ListView.isCurrentItem
+                width:ListView.view.width; implicitHeight:Math.max(82,contentItem.implicitHeight+24); checked:ListView.isCurrentItem
                 onClicked:root.navigate(modelData.page,modelData.key || "")
                 contentItem:ColumnLayout {
                     spacing:4
                     GlowText { text:modelData.label; Layout.fillWidth:true; elide:Text.ElideRight }
-                    GlowText { text:(Schema.pages.find(p=>p.id===modelData.page)?.label || "")+(modelData.group ? " → "+modelData.group:""); color:Theme.strataAccent; font.pixelSize:Theme.small }
+                    GlowText { text:(Schema.pages.find(p=>p.id===modelData.page)?.label || "")+(modelData.group ? " → "+modelData.group:""); color:Theme.strataAccent; font.pixelSize:Theme.small; Layout.fillWidth:true; elide:Text.ElideRight }
                     GlowText { text:modelData.description || ""; color:Theme.muted; font.pixelSize:Theme.small; Layout.fillWidth:true; elide:Text.ElideRight }
                 }
             }
             GlowText { visible:!root.results.length; width:parent.width; wrapMode:Text.WordWrap; text:"No settings match. Try a device or category name."; color:Theme.muted }
         }
         ScrollView {
-            id:scroll; visible:!search.text.trim(); Layout.fillWidth:true; Layout.fillHeight:true
+            id:scroll; objectName:"settingsScroll"; visible:!search.text.trim(); Layout.fillWidth:true; Layout.fillHeight:true
+            Layout.minimumWidth:0; Layout.minimumHeight:0
             contentWidth:availableWidth; clip:true; ScrollBar.horizontal.policy:ScrollBar.AlwaysOff
             ColumnLayout {
-                id:content; width:scroll.availableWidth; spacing:16
+                id:content; objectName:"settingsContent"; width:scroll.availableWidth; spacing:16
+                // Headings and draft notices scroll with the page, leaving a
+                // usable viewport even in a short window or with larger text.
+                ColumnLayout {
+                    Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
+                    GlowText { text:root.section==="overview" ? "Welcome to CEDAR":root.page.label; font.family:Theme.labelFont; font.pixelSize:Math.round((root.narrow ? 29:36)*Theme.fontScale); Layout.fillWidth:true; wrapMode:Text.Wrap; color:Theme.strataText }
+                    GlowText { text:root.page.description; color:Theme.strataMuted; Layout.fillWidth:true; wrapMode:Text.Wrap; font.pixelSize:Theme.small }
+                }
+                SettingsSurface {
+                    visible:root.pendingPage!==""; padding:12; accent:Theme.amber
+                    GlowText { text:"You have unapplied changes on this page."; Layout.fillWidth:true; wrapMode:Text.WordWrap; color:Theme.amber }
+                    Flow { Layout.fillWidth:true; spacing:8
+                        StationButton { text:"Discard and continue"; onClicked:root.discardPending() }
+                        StationButton { text:"Keep editing"; onClicked:SettingsService.cancelPending() }
+                    }
+                }
                 GlowText {
                     visible:["displays","input","keybinds"].includes(root.section) && (DesktopSettings.busy || DesktopSettings.error!=="" || DesktopSettings.message!=="")
                     text:DesktopSettings.busy ? "Reading your desktop…":DesktopSettings.error || DesktopSettings.message
@@ -158,7 +168,7 @@ Rectangle {
                 GlowText { visible:SettingsInfo.error!=="" || SettingsInfo.message!==""; text:SettingsInfo.error || SettingsInfo.message; color:SettingsInfo.error ? Theme.amber:Theme.teal; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
                 GlowText { visible:Config.persistenceMessage!==""; text:Config.persistenceMessage; color:Theme.amber; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
                 Loader {
-                    id:loader; objectName:"settingsPageLoader"; Layout.fillWidth:true
+                    id:loader; objectName:"settingsPageLoader"; Layout.fillWidth:true; Layout.minimumWidth:0
                     asynchronous:true; active:root.active || root.hasOpened
                     sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,about:about,animations:animations,windows:windows,profiles:profiles,privacy:privacy,security:security,advanced:advanced})[root.section] || overview
                     onLoaded:Qt.callLater(reveal.restart)

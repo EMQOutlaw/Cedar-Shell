@@ -17,6 +17,10 @@ ShellRoot {
         onTriggered: {
             check(settingsWindow.visible && settingsWindow.width >= SettingsService.minimumWidth,
                   "the real floating window is visible after event delivery");
+            check(settingsWindow.implicitWidth <= Math.max(SettingsService.minimumWidth, settingsWindow.screen.width) &&
+                  settingsWindow.implicitHeight <= Math.max(SettingsService.minimumHeight, settingsWindow.screen.height),
+                  "remembered size is clamped to the logical screen");
+            SettingsInfo.themePreview = { name:"catppuccin-mocha", palette:{background:"#1e1e2e"} };
             // implicitSize is an initial hint for FloatingWindow. Resize its
             // real QWindow to simulate the compositor delivering a resize.
             const nativeWindow = settingsWindow.contentItem.Window.window;
@@ -30,6 +34,8 @@ ShellRoot {
         onTriggered: {
             check(SettingsService.windowSize.width === 1100 && SettingsService.windowSize.height === 760,
                   "actual window resize is persisted after settling: " + settingsWindow.width + "x" + settingsWindow.height + " saved " + JSON.stringify(SettingsService.windowSize));
+            check(SettingsInfo.themePreview?.name === "catppuccin-mocha" && SettingsService.blocked,
+                  "resizing preserves the unapplied theme and its navigation guard");
             SettingsService.closeApp();
             reopened.start();
         }
@@ -47,6 +53,8 @@ ShellRoot {
         onTriggered: {
             check(settingsWindow.visible && settingsWindow.width === 1100 && settingsWindow.height === 760,
                   "actual window reopens at remembered size");
+            check(SettingsInfo.themePreview?.name === "catppuccin-mocha", "reopening preserves the theme draft");
+            SettingsInfo.themePreview = null;
             ShellState.locked = true;
             hidden.start();
         }
@@ -100,6 +108,9 @@ ShellRoot {
         check(s.back(), "history back works");
         check(s.page === "appearance", "back returns to previous page");
 
+        // The earlier locked-open test left a power route queued; choose the
+        // page whose theme draft the resize/reopen sequence exercises.
+        ShellState.settingsPage = "appearance";
         ShellState.open("settings");
         rendered.start();
     }

@@ -62,7 +62,7 @@ Item {
     }
     // Catch pointer input; preview buttons below own all simulation.
     MouseArea { anchors.fill:parent; acceptedButtons:Qt.AllButtons; onWheel:event=>event.accepted=true }
-    GlowText { anchors.left:parent.left; anchors.bottom:parent.bottom; anchors.margins:10; text:"CEDAR preview · system controls are inactive"; font.pixelSize:Theme.small-1; color:Theme.muted }
+    GlowText { anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; anchors.margins:10; text:"CEDAR preview · system controls are inactive"; font.pixelSize:Theme.small-1; color:Theme.muted; wrapMode:Text.WordWrap }
     function play() { root.expanded=!root.expanded; if(root.active)heart.pulse(); }
     onActiveChanged:if(!active)expanded=false
 }

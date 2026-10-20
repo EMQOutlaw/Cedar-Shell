@@ -64,5 +64,6 @@ jobs:
         run: |
           python3 tests/check_settings_service.py
           python3 tests/check_settings_window.py
+          python3 tests/check_settings_responsive.py
           python3 tests/check_theme_palettes.py
 # No release publishing, secrets, elevated pull_request_target workflow, or user auto-update.

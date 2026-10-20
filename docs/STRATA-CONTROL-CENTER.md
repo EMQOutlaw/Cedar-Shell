@@ -1,5 +1,23 @@
 # Strata Control Center architecture and implementation
 
+## Responsive Settings window
+
+Settings can resize down to 480×360 logical pixels. The sidebar folds into a
+navigation button when space is limited; its breakpoint accounts for the chosen
+text size. Theme and overview cards choose their column count from the available
+width, and preference rows stack labels above controls in narrower layouts.
+The page heading and draft notice scroll with the content, keeping controls
+reachable in short windows. Wide windows center the content within the main pane.
+
+Remembered window dimensions are clamped to the current screen's logical size
+when opening. Qt handles display scaling; the layout does not multiply output
+scale a second time. Resizing preserves the current page and unapplied drafts.
+
+`tests/check_settings_responsive.py` resizes the real Settings window through
+eight size/text combinations and all 26 pages, checks horizontal control bounds
+and vertical scrolling, and can retain screenshots via an output-directory
+argument. It also runs under `QT_SCALE_FACTOR=1.5` for local HiDPI validation.
+
 ## Phase zero: verified architecture
 
 The supplied showcase defines composition, not new shell primitives. The Settings
