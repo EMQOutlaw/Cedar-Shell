@@ -1,6 +1,6 @@
 # Build from a reviewed CEDAR source archive. No install hooks or service changes.
 pkgname=cedar-shell
-pkgver=1.11
+pkgver=1.12
 pkgrel=1
 pkgdesc='CEDAR shell and reversible Hyprland compatibility tools'
 arch=('x86_64' 'aarch64')
