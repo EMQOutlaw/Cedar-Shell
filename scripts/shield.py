@@ -237,16 +237,26 @@ def apply_dns(request, caps):
         spec = DOT_PROVIDERS[provider]
         wanted = {'connection.dns-over-tls': 'yes' if mode == 'strict' else 'opportunistic',
                   'ipv4.dns': ','.join(spec['v4']), 'ipv4.ignore-auto-dns': 'yes', 'ipv6.dns': ','.join(spec['v6']), 'ipv6.ignore-auto-dns': 'yes'}
-    modify(wanted)
-    verified = dns(caps)
-    ok = (mode == 'off' and verified['mode'] == 'off') or (mode != 'off' and verified['mode'] == mode and verified['provider'] == provider)
-    if not ok:
+    try:
+        modify(wanted)
+        verified = dns(caps)
+        ok = (mode == 'off' and verified['mode'] == 'off') or (mode != 'off' and verified['mode'] == mode and verified['provider'] == provider)
+        if not ok:
+            raise RuntimeError('Encrypted DNS did not verify through systemd-resolved.')
+    except (RuntimeError, OSError, subprocess.SubprocessError) as failure:
+        # A successful profile write followed by a reapply/activation timeout
+        # is still a change. Restore it when either application or verification
+        # fails, not only when verification returns an unexpected value.
         restore = {k: (v if v not in ('', '-1') else ('default' if k == 'connection.dns-over-tls' else v)) for k, v in captured.items()}
         try:
             modify(restore)
-        except RuntimeError as error:
-            raise RuntimeError('Encrypted DNS did not verify and the previous settings could not be restored: ' + str(error))
-        raise RuntimeError('Encrypted DNS did not verify through systemd-resolved; the previous DNS settings were restored.')
+            restored = nm_fields(uuid, DNS_FIELDS)
+            restored = {k: (v if v not in ('', '-1') else ('default' if k == 'connection.dns-over-tls' else v)) for k, v in restored.items()}
+            if restored != restore:
+                raise RuntimeError('The restored connection profile did not verify.')
+        except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+            raise RuntimeError('Encrypted DNS could not be applied and the previous settings could not be restored: ' + str(error)) from failure
+        raise RuntimeError('Encrypted DNS could not be applied; the previous DNS settings were restored.') from failure
     return verified
 
 
