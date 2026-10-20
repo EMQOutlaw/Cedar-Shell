@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=CEDAR Task Manager
+GenericName=System Monitor
+Comment=Inspect system resources and manage processes
+Exec=cedar-task-manager
+Icon=cedar-shield
+Terminal=false
+Categories=System;Monitor;
+Keywords=process;CPU;memory;GPU;performance;
+StartupNotify=true
+StartupWMClass=cedar-task-manager

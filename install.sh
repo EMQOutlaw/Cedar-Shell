@@ -7,7 +7,7 @@ here="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 # Everything CEDAR uses, all from the official Arch repositories. Keep in step
 # with data/dependencies.json and the README.
-packages="git python python-gobject python-dbus
+packages="git python python-gobject python-dbus gcc pkgconf qt6-base
 hyprland quickshell qt6-declarative
 networkmanager libnm libpulse polkit xdg-utils
 brightnessctl power-profiles-daemon lm_sensors

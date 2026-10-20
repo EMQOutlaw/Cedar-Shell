@@ -569,5 +569,14 @@
         }
       ]
     }
+  ],
+  "optionalShortcuts": [
+    {
+      "id": "task-manager",
+      "keys": "SUPER + SHIFT + Escape",
+      "command": "cedar-task-manager",
+      "description": "Open CEDAR Task Manager",
+      "policy": "Installer adds only after a successful live conflict check; existing shortcuts win."
+    }
   ]
 }

@@ -232,7 +232,7 @@ FocusScope {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop
                     SectionMark { text: "FIELD STATION"; tone: Theme.strataAccent }
                     GlowText { text: "Performance readings, processes and application windows live in Field Station."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.strataMuted }
-                    StrataButton { text: "Open tasks & performance"; onClicked: { Station.closeApp(); Canopy.openStation("tasks"); } }
+                    StrataButton { text: "Open Task Manager"; onClicked: { Station.closeApp(); TaskManager.launch(); } }
                 }
             }
             Frame {

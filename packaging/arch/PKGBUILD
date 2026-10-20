@@ -7,11 +7,17 @@ arch=('x86_64' 'aarch64')
 url='https://github.com/EMQOutlaw/Cedar-Shell'
 license=('custom:unlicensed')
 depends=('python' 'quickshell' 'hyprland' 'qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-multimedia' 'qt6-5compat' 'qt6-imageformats' 'systemd')
+makedepends=('gcc' 'pkgconf')
 optdepends=('brightnessctl: brightness controls' 'wireplumber: audio controls' 'wl-clipboard: Wayland clipboard' 'cliphist: optional clipboard history' 'networkmanager: network controls' 'git: reviewed update channels')
 # Put the exact locally reviewed package_release.py output next to this file.
 source=("cedar-${pkgver}.tar.gz")
 # Generate and review checksums with updpkgsums before distributing a PKGBUILD.
 sha256sums=('SKIP')
+build() {
+    local source_root
+    source_root=$(find "$srcdir" -mindepth 1 -maxdepth 2 -name shell.qml -printf '%h\n' | head -n 1)
+    python "$source_root/scripts/build_task_manager.py" "$srcdir/task-manager-build"
+}
 package() {
     local source_root
     source_root=$(find "$srcdir" -mindepth 1 -maxdepth 2 -name shell.qml -printf '%h\n' | head -n 1)
@@ -20,4 +26,10 @@ package() {
     cp -a "$source_root/." "$pkgdir/usr/share/cedar/"
     printf '#!/bin/sh\nexec python3 /usr/share/cedar/scripts/distribution.py "$@"\n' > "$pkgdir/usr/bin/cedar"
     chmod 755 "$pkgdir/usr/bin/cedar"
+    install -Dm755 "$srcdir/task-manager-build/cedar-taskd" "$pkgdir/usr/share/cedar/libexec/cedar-taskd"
+    install -Dm755 "$srcdir/task-manager-build/cedar-task-manager" "$pkgdir/usr/share/cedar/libexec/cedar-task-manager"
+    printf '#!/bin/sh\nexec python3 /usr/share/cedar/scripts/task_manager.py "$@"\n' > "$pkgdir/usr/bin/cedar-task-manager"
+    chmod 755 "$pkgdir/usr/bin/cedar-task-manager"
+    install -Dm644 "$source_root/data/applications/cedar-task-manager.desktop" "$pkgdir/usr/share/applications/cedar-task-manager.desktop"
+    install -Dm644 "$source_root/data/icons/cedar-shield.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/cedar-shield.svg"
 }

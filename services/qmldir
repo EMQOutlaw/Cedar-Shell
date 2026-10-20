@@ -50,3 +50,5 @@ singleton CalendarFeeds 1.0 CalendarFeeds.qml
 
 singleton FieldNotes 1.0 FieldNotes.qml
 singleton Dictation 1.0 Dictation.qml
+
+singleton TaskManager 1.0 TaskManager.qml

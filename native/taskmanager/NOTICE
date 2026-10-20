@@ -1,0 +1,11 @@
+CEDAR Task Manager Linux collection reference
+
+btop by Aristocratos and contributors
+https://github.com/aristocratos/btop
+Reference revision: 4792b0700e617cb2ee5ffbced50c1e52528b912a
+Reviewed: src/linux/btop_collect.cpp, src/btop_shared.hpp, src/btop_shared.cpp.
+Upstream is Apache License 2.0; its license is preserved in
+licenses/btop-Apache-2.0.txt. No upstream source file is compiled or linked.
+CEDAR collectors are independently implemented from Linux kernel interfaces,
+using the accounting techniques described in docs/TASK-MANAGER.md.
+This notice does not relicense the rest of CEDAR.

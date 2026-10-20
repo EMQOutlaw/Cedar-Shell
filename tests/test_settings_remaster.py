@@ -151,7 +151,7 @@ class SingleEntryPoints(unittest.TestCase):
             if name in ('SettingsOverview', 'SystemSettings'):
                 self.assertNotIn('SystemStats.cpu', text)
                 self.assertNotIn('SystemStats.ram', text)
-                text = text.replace('Canopy.openStation("tasks")', '')
+                text = text.replace('TaskManager.launch()', '')
             for route in routes.get(name, ()):
                 self.assertEqual(text.count(route), 1, f'{name}: reviewed route changed: {route}')
                 text = text.replace(route, '')

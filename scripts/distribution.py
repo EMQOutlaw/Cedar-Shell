@@ -432,6 +432,14 @@ def selected_source(current):
     except (OSError,RuntimeError):
         return False
 
+def prepare_task_manager(root):
+    """Build from reviewed release source before switching any installed entry point."""
+    if not (root/'native/taskmanager/frontend.cpp').is_file(): return None
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('cedar_native_build',root/'scripts/build_task_manager.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    return module.build(root,xdg('CACHE','.cache')/'cedar/task-manager-build')
+
 def install(root,approved=False,plan_only=False,live=False):
     # live: the running CEDAR keeps its (immutable) release directory while
     # `current` moves; the caller restarts it right after (the installer's session
@@ -449,6 +457,15 @@ def install(root,approved=False,plan_only=False,live=False):
         # First-party application entries: a launcher entry and icon for CEDAR Shield, journaled like every other installed file.
         share=paths()['data'].parent
         launcher_files={share/'applications/cedar-shield.desktop':(root/'data/applications/cedar-shield.desktop',0o644),share/'icons/hicolor/scalable/apps/cedar-shield.svg':(root/'data/icons/cedar-shield.svg',0o644)}
+        native_source=(root/'scripts/task_manager.py').is_file()
+        task_command=binary.with_name('cedar-task-manager')
+        if native_source:
+            if task_command.exists() or task_command.is_symlink():
+                existing=task_command.read_text(errors='replace')
+                if 'CEDAR distribution task manager launcher' not in existing and 'CEDAR-owned standalone Task Manager' not in existing:
+                    raise Refused('Existing task-manager command is owned by another application; it was preserved.')
+            launcher_files[share/'applications/cedar-task-manager.desktop']=(root/'data/applications/cedar-task-manager.desktop',0o644)
+            launcher_files[task_command]=(root/'scripts/cedar-task-manager',0o700)
         owner=command_owner(binary)
         if owner=='other':raise Refused('The cedar command at '+str(binary)+' belongs to something other than CEDAR, so it is left alone. Move it aside (for example: mv '+__import__('shlex').quote(str(binary))+' '+__import__('shlex').quote(str(binary)+'.other')+'), then run the installer again.')
         if owner=='source':print('Replacing the cedar command from the local-source registration ('+(os.readlink(binary) if binary.is_symlink() else str(binary))+'); the journal puts it back on uninstall.')
@@ -467,6 +484,7 @@ def install(root,approved=False,plan_only=False,live=False):
         ancestor=destination.parent
         while not ancestor.exists():ancestor=ancestor.parent
         if shutil.disk_usage(ancestor).free < plan['bytes']*3+16*1024*1024:raise Refused('Insufficient space for staging and recovery.')
+        native=prepare_task_manager(root)
         validation=validate(root)
         tx=Transaction('install')
         try:
@@ -480,6 +498,11 @@ def install(root,approved=False,plan_only=False,live=False):
                 for file,rel in files(root):
                     target=temporary/rel;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(file,target)
                     inventory[str(rel)]={'sha256':digest(target),'mode':stat.S_IMODE(target.stat().st_mode)}
+                if native:
+                    for name in ('cedar-taskd','cedar-task-manager'):
+                        target=temporary/'libexec'/name;target.parent.mkdir(exist_ok=True)
+                        shutil.copy2(native/name,target)
+                        inventory['libexec/'+name]={'sha256':digest(target),'mode':stat.S_IMODE(target.stat().st_mode)}
                 write_json(temporary/'release-files.json',inventory);verify_tree(temporary,inventory)
                 tx.record['release']=str(destination);tx.save();tx.stage('prepare');os.replace(temporary,destination)
             else:verify_tree(destination,read_json(destination/'release-files.json'))
@@ -496,7 +519,11 @@ def install(root,approved=False,plan_only=False,live=False):
             launcher='#!/bin/sh\n# CEDAR distribution launcher\nexec python3 '+__import__('shlex').quote(str(recovery))+' "$@"\n'
             tx.apply_file(entries[str(binary)],launcher.encode(),0o700)
             for target,(source,mode) in launcher_files.items():
+                if native_source and target == task_command: continue
                 if source.is_file(): tx.apply_file(entries[str(target)],source.read_bytes(),mode)
+            if native_source:
+                task_launcher='#!/bin/sh\n# CEDAR distribution task manager launcher\nexec python3 '+__import__('shlex').quote(str(current/'scripts/task_manager.py'))+' "$@"\n'
+                tx.apply_file(entries[str(task_command)],task_launcher.encode(),0o700)
             tx.apply_link(entries[str(current)],destination)
             tx.stage('confirm');tx.commit()
             print('Files installed and verified. '+validation+' Desktop activation: not performed.')
@@ -735,6 +762,8 @@ def main(argv=None):
                 return compatibility_cli.main(argv, root=source)
     # `cedar installer …` hands every argument to the installed copy's installer untouched;
     # its own options (--update, --uninstall, --dry-run, …) are not this parser's business.
+    if argv and argv[0]=='task-manager':
+        os.execv(sys.executable,[sys.executable,str(installed()/'scripts/task_manager.py'),*argv[1:]])
     if argv and argv[0]=='installer':
         if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
         os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*argv[1:]])

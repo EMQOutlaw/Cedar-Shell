@@ -112,6 +112,7 @@ keep = true
         self.install_patch(patch.object(d.shutil, 'which', side_effect=lambda name: '/fixture/'+name))
         self.install_patch(patch.object(subprocess, 'run', side_effect=self.command))
         self.install_patch(patch.object(subprocess, 'Popen', side_effect=self.launch))
+        self.install_patch(patch.object(d, 'prepare_task_manager', return_value=None))
         self.install_patch(patch.object(d, 'validate', return_value='Fixture QML boundary; real QML validated separately.'))
         self.install_patch(patch.object(s.time, 'time', side_effect=lambda: self.clock))
         self.install_patch(patch.object(s.time, 'monotonic', side_effect=lambda: self.clock))

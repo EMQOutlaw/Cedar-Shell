@@ -1,116 +1,51 @@
 #!/usr/bin/env python3
-"""Field Station tasks: real QML sorting/filtering/routes and narrow render; no hardware actions."""
+"""Field Station migration: unchanged Overview, one launch action, no retired page."""
 from pathlib import Path
-import os
-import re
-import shutil
-import subprocess
-import sys
-import tempfile
-
-ROOT = Path(__file__).resolve().parents[1]
-with tempfile.TemporaryDirectory(prefix='cedar-tasks-') as tmp:
-    base = Path(tmp)
-    source = base / 'shell'
-    shutil.copytree(ROOT, source, ignore=shutil.ignore_patterns('.git', '__pycache__'))
-    runtime = base / 'runtime'
-    runtime.mkdir(mode=0o700)
-    shots = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else base / 'shots'
-    shots.mkdir(parents=True, exist_ok=True)
-    (source / 'preview.qml').write_text('''
+import os,re,shutil,subprocess,tempfile
+ROOT=Path(__file__).resolve().parents[1]
+with tempfile.TemporaryDirectory(prefix='cedar-field-regression-') as tmp:
+    base=Path(tmp);source=base/'shell'
+    shutil.copytree(ROOT,source,ignore=shutil.ignore_patterns('.git','.local','__pycache__'))
+    runtime=base/'runtime';runtime.mkdir(mode=0o700)
+    (source/'preview.qml').write_text('''
 import QtQuick
 import Quickshell
 import "."
 import "modules"
 import "services"
+import "components"
 ShellRoot {
     FloatingWindow {
-        id: window
-        visible: true
-        implicitWidth: 960; implicitHeight: 1000
-        color: Theme.strataFoundation
-        StationTasks { id: tasks; x: 20; y: 20; width: window.width - 40; active: true }
-        FieldStation { id: station; x: 20; y: 20; width: 480; bare: true; visible: false; active: visible }
-        function find(item, name) {
-            if (item.objectName === name) return item;
-            for (const child of item.children || []) { const result = find(child, name); if (result) return result; }
-            return null;
-        }
-        function check(ok, message) { if (!ok) { console.error("FAIL: " + message); Qt.exit(1); } }
-        Component.onCompleted: {
-            Config.set("reducedMotion", true);
-            SystemStats.cpu = .42; SystemStats.ram = .58; SystemStats.disk = .31;
-            SystemStats.memoryLabel = "9.3 / 16 GiB"; SystemStats.temperature = 53;
-            tasks.snapshot = {total:3, omitted:0,
-                cores:Array.from({length:8}, (_,i)=>({name:"cpu"+i,cpu:i*12})),
-                gpus:[{name:"Fixture GPU",load:24,temperature:48,used:512,total:8192}],
-                processes:[{pid:12,start:"10",name:"browser",user:"fixture",cpu:135.4,rss:805306368,state:"S",threads:34},
-                    {pid:5,start:"20",name:"editor",user:"fixture",cpu:4.2,rss:1073741824,state:"S",threads:10},
-                    {pid:42,start:"30",name:"quickshell",user:"fixture",cpu:null,rss:83886080,state:"S",threads:8}]};
-        }
-        property int step: 0
-        Timer {
-            interval: 350; running: true; repeat: true
-            onTriggered: {
-                if (window.step === 0) {
-                    window.check(tasks.rows[0].pid === 12, "CPU sort uses measured values");
-                    tasks.sortBy = "rss";
-                    window.check(tasks.rows[0].pid === 5, "Memory sort");
-                    tasks.query = "42";
-                    window.check(tasks.rows.length === 1 && tasks.rows[0].name === "quickshell", "PID filter");
-                    tasks.query = "EDITOR";
-                    window.check(tasks.rows.length === 1 && tasks.rows[0].pid === 5, "Case-insensitive name filter");
-                    tasks.query = "missing";
-                    window.check(tasks.rows.length === 0, "Empty filter result");
-                    tasks.query = ""; tasks.sortBy = "cpu";
-                    window.check(tasks.percent(null) === "—", "First sample stays unknown");
-                    window.check(!tasks.sampling, "Test mode never starts real process sampling");
-                    tasks.grabToImage(r=>r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR")+"/tasks-wide.png"));
-                } else if (window.step === 1) {
-                    tasks.width = 440; Config.set("fontScale", 1.3);
-                } else if (window.step === 2) {
-                    tasks.grabToImage(r=>r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR")+"/tasks-narrow.png"));
-                } else if (window.step === 3) {
-                    window.check(tasks.width === 440, "Narrow task view width");
-                    tasks.paused = true;
-                    window.check(!tasks.sampling, "Pause stops demand");
-                    tasks.applications = true;
-                    window.check(tasks.rows.length === tasks.windows.length, "Application view uses compositor windows");
-                    Canopy.open("system");
-                    window.check(Canopy.topic === "station" && Canopy.stationPage === "tasks", "Legacy System route opens Field Station tasks");
-                    Canopy.close();
-                    ShellState.locked = true; Canopy.openStation("tasks");
-                    window.check(!Canopy.shown && !tasks.sampling, "Lock guard");
-                    ShellState.locked = false;
-                } else if (window.step === 4) {
-                    tasks.visible = false; station.visible = true;
-                    Canopy.stationPage = "tasks";
-                    const embedded = window.find(station, "stationTasks");
-                    window.check(embedded && embedded.active, "Field Station activates its task page");
-                    embedded.snapshot = tasks.snapshot;
-                } else if (window.step === 5) {
-                    station.grabToImage(r=>r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR")+"/tasks-embedded.png"));
-                } else {
-                    Canopy.stationPage = "overview";
-                    window.check(!window.find(station, "stationTasks").active, "Overview stops task-page demand");
-                    console.log("PASS: Field Station task sorting, filters, aliases and narrow layout"); Qt.quit();
-                }
-                window.step++;
-            }
-        }
+        id: host
+        visible: true; implicitWidth: 1000; implicitHeight: 1000
+        FieldStation { id: field; width: 960; active: true }
+        function check(ok,message){if(!ok){console.error("FAIL: "+message);Qt.exit(1);}return ok;}
+        function all(item,result){result.push(item);for(const child of item.children||[])all(child,result);}
+        Timer { interval: 500; running: true; onTriggered: {
+            const items=[];host.all(field,items);
+            const texts=items.filter(i=>i instanceof StrataButton).map(i=>i.text);
+            host.check(!texts.some(t=>/Tasks.*performance/i.test(t)),"Retired navigation absent");
+            for(const name of ["Terminal","Browser","Files","Update CEDAR","Task Manager"])
+                host.check(texts.filter(t=>t===name).length===1,"One existing utility action: "+name);
+            host.check(items.filter(i=>i.objectName==="taskManagerLauncher").length===1,"One task launcher");
+            host.check(field.page==="overview","Field Station always retains Overview");
+            let before=TaskManager.testLaunches;
+            items.find(i=>i.objectName==="taskManagerLauncher").clicked();
+            host.check(TaskManager.testLaunches===before+1,"Utility button launches standalone app");
+            Canopy.openStation("tasks");Canopy.open("system");
+            host.check(TaskManager.testLaunches===before+3&&Canopy.stationPage==="overview","Legacy routes cannot open retired page");
+            ShellState.locked=true;TaskManager.launch();Canopy.openStation("tasks");
+            host.check(TaskManager.testLaunches===before+3,"Launch lock guard");
+            ShellState.locked=false;field.width=440;
+            console.log("PASS: Field Station Overview, utility actions, retired routes and launch guards");Qt.quit();
+        }}
     }
 }
 ''')
-    env = {**os.environ, 'CEDAR_TEST':'1', 'QT_QPA_PLATFORM':'offscreen', 'QT_QPA_PLATFORMTHEME':'basic',
-           'QT_QUICK_CONTROLS_STYLE':'Basic', 'QT_QUICK_BACKEND':'software', 'QSG_RENDER_LOOP':'basic',
-           'XDG_RUNTIME_DIR':str(runtime), 'XDG_CONFIG_HOME':str(base/'config'),
-           'XDG_STATE_HOME':str(base/'state'), 'CEDAR_SCREENSHOT_DIR':str(shots)}
-    result = subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=20)
-    output = result.stdout + result.stderr
-    if result.returncode or 'PASS: Field Station task sorting' not in output or re.search(r'FAIL:|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign|has crashed',output):
-        print(output)
-        raise SystemExit(1)
-    if len(list(shots.glob('tasks-*.png'))) != 3:
-        print(output)
-        raise SystemExit('Missing task renders')
-    print('PASS: Field Station task sorting, filters, aliases and narrow layout')
+    env={**os.environ,'QT_FORCE_STDERR_LOGGING':'1','CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_BACKEND':'software','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
+    try: result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=25)
+    except subprocess.TimeoutExpired as error:
+        raise SystemExit('Field Station harness timeout: '+str(error.stdout)+' '+str(error.stderr))
+    output=result.stdout+result.stderr
+    if result.returncode or 'PASS: Field Station' not in output or re.search(r'FAIL:|ReferenceError|TypeError|Binding loop|Cannot assign|Unable to assign|Failed to load',output):raise SystemExit(output)
+    print(next(line for line in output.splitlines() if 'PASS:' in line))

@@ -210,9 +210,7 @@
         "components/StationCore.qml",
         "data/branding.json",
         "modules/FieldStation.qml",
-        "modules/Hud.qml",
-        "modules/StationTasks.qml",
-        "scripts/task_monitor.py"
+        "modules/Hud.qml"
       ],
       "dependencies": [
         "qs"
@@ -223,11 +221,10 @@
       ],
       "external": false,
       "settings": "Config.qml and components/SettingsSchema.js",
-      "dataSources": "SystemStats plus visible-page /proc process samples and Hyprland application windows",
-      "lifecycle": "Task sampler runs every 2 seconds only while Tasks is visible, unpaused and unlocked; GPU readings every 10 seconds",
+      "dataSources": "Shared SystemStats, Media and Weather for the existing Overview",
+      "lifecycle": "Overview retains its visible-consumer demand; Task Manager is an independent application",
       "tests": [
         "tests/check_identity.py",
-        "tests/test_task_monitor.py",
         "tests/check_station_tasks.py"
       ],
       "releaseArtifacts": [
@@ -235,9 +232,7 @@
         "components/StationCore.qml",
         "data/branding.json",
         "modules/FieldStation.qml",
-        "modules/Hud.qml",
-        "modules/StationTasks.qml",
-        "scripts/task_monitor.py"
+        "modules/Hud.qml"
       ]
     },
     {
@@ -1334,6 +1329,56 @@
         "installer/ui/InstallerModel.qml",
         "installer/ui/StagePane.qml",
         "installer/ui/SystemVisual.qml"
+      ]
+    },
+    {
+      "id": "cedar.task-manager",
+      "name": "CEDAR Task Manager",
+      "version": "1",
+      "kind": "standalone native Qt Quick application",
+      "status": "Implemented",
+      "entryPoint": "scripts/task_manager.py",
+      "files": [
+        "services/TaskManager.qml",
+        "scripts/task_manager.py",
+        "scripts/cedar-task-manager",
+        "scripts/build_task_manager.py",
+        "data/applications/cedar-task-manager.desktop",
+        "native/taskmanager/backend.cpp",
+        "native/taskmanager/collector.cpp",
+        "native/taskmanager/collector.h",
+        "native/taskmanager/collector_tests.cpp",
+        "native/taskmanager/frontend.cpp",
+        "native/taskmanager/frontend.h",
+        "taskmanager/Main.qml",
+        "taskmanager/ResourceCard.qml",
+        "taskmanager/TMButton.qml"
+      ],
+      "releaseArtifacts": [
+        "services/TaskManager.qml",
+        "scripts/task_manager.py",
+        "scripts/cedar-task-manager",
+        "scripts/build_task_manager.py",
+        "data/applications/cedar-task-manager.desktop",
+        "native/taskmanager/backend.cpp",
+        "native/taskmanager/collector.cpp",
+        "native/taskmanager/collector.h",
+        "native/taskmanager/collector_tests.cpp",
+        "native/taskmanager/frontend.cpp",
+        "native/taskmanager/frontend.h",
+        "taskmanager/Main.qml",
+        "taskmanager/ResourceCard.qml",
+        "taskmanager/TMButton.qml"
+      ],
+      "dependencies": [
+        "g++",
+        "pkg-config"
+      ],
+      "external": false,
+      "lifecycle": "Independent window; backend is demand-driven and exits with its last client",
+      "tests": [
+        "tests/check_task_manager.py",
+        "tests/check_station_tasks.py"
       ]
     }
   ],

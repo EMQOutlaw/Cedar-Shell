@@ -29,10 +29,11 @@ Singleton {
         controlWindows = controlWindows.filter(w => w !== window);
     }
     property string topic: "quick"
-    property string stationPage: "overview"
+    readonly property string stationPage: "overview"
     function openStation(page = "overview") {
         if (ShellState.locked) return;
-        stationPage = page === "tasks" ? "tasks" : "overview";
+        if (page === "tasks") { TaskManager.launch(); return; }
+        if (page !== "overview") return;
         if (Config.saved.canopyEnabled) open("station"); else ShellState.open("hud");
     }
     // The surface controller's state, driven by CanopyWindow:
@@ -132,7 +133,7 @@ Singleton {
             keybinds: "Keybinds"
         })[topic] || "Canopy"
     function open(value, output = "", peek = false) {
-        if (value === "system") { if (ShellState.locked) return; stationPage = "tasks"; value = "station"; }
+        if (value === "system") { TaskManager.launch(); return; }
         if (!topics.includes(value) || ShellState.locked || (!Config.saved.canopyEnabled && value !== "go"))
             return;
         if (peek && (pinned || (ShellState.panel !== "" && !peeking)))

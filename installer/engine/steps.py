@@ -308,6 +308,25 @@ def shell_run(ctx, op):
 
 
 # --------------------------------------------------------------- migrate
+def add_task_manager_shortcut(host, state, source):
+    """Use the existing owned binding list, and never replace an occupied key."""
+    definition=read_json(Path(source)/'data/keybinds.json',{})
+    choice=next((r for r in definition.get('optionalShortcuts',[]) if r.get('id')=='task-manager'),None)
+    if not choice: return ''
+    def normalized(value): return {part.strip().upper() for part in value.split('+')}
+    keys=normalized(choice['keys'])
+    if any(normalized(row.get('keys',''))==keys for row in state.get('bindings',[])): return ''
+    if not host.which('hyprctl'): return 'Task Manager shortcut deferred: Hyprland bindings are unavailable.'
+    code,out,_=host.run(['hyprctl','-j','binds'],timeout=5)
+    try: bindings=json.loads(out) if code==0 else None
+    except ValueError: bindings=None
+    if not isinstance(bindings,list): return 'Task Manager shortcut deferred: live bindings could not be verified.'
+    if any(not isinstance(row,dict) for row in bindings): return 'Task Manager shortcut deferred: invalid binding data.'
+    if any(row.get('modmask')==65 and (str(row.get('key','')).upper() in ('ESCAPE','ESC') or row.get('keycode')==9) for row in bindings):
+        return 'Super+Shift+Escape is already assigned; its existing action was kept.'
+    state.setdefault('bindings',[]).append({k:choice[k] for k in ('keys','command','description')})
+    return 'Task Manager shortcut added: Super+Shift+Escape.'
+
 def migrate_run(ctx, op):
     if not ctx.options.get('migrate'):
         raise ops.Skip('Migration turned off; existing configuration untouched')
@@ -362,6 +381,9 @@ def migrate_run(ctx, op):
         elif outcome == 'kept':
             notes.append('Your edited keybinds copy was kept; the current default set is in ' + str(shipped) + '.')
         state['keybinds'] = True
+        shortcut_note=add_task_manager_shortcut(ctx.host,state,ctx.source)
+        if shortcut_note:
+            (imported if shortcut_note.startswith('Task Manager shortcut added') else notes).append(shortcut_note)
     write_private_json(desktop_path, state)
     if backup: backup.changed(desktop_path)
     if facts['compositor']['running'] and facts['hyprland'].get('config') and not facts['hyprland'].get('ambiguous'):

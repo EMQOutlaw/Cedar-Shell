@@ -23,6 +23,8 @@ import desktop
 
 class Portable(unittest.TestCase):
     def setUp(self):
+        native = patch.object(d, "prepare_task_manager", return_value=None)
+        native.start(); self.addCleanup(native.stop)  # Native install is exercised by check_task_manager.py.
         temp = tempfile.TemporaryDirectory(prefix='cedar standalone 雨 ')
         self.addCleanup(temp.cleanup)
         self.base = Path(temp.name)

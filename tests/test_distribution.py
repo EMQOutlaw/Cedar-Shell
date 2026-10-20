@@ -7,6 +7,8 @@ import network_policy as policy
 
 class Distribution(unittest.TestCase):
     def setUp(self):
+        native = patch.object(d, "prepare_task_manager", return_value=None)
+        native.start(); self.addCleanup(native.stop)  # Native install is exercised by check_task_manager.py.
         self.temp=tempfile.TemporaryDirectory(prefix='cedar 雨 paths ');self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.env=patch.dict(os.environ,{'HOME':str(self.root/'home'),**{'XDG_'+k+'_HOME':str(self.root/k.lower()) for k in ['CONFIG','DATA','STATE','CACHE']}});self.env.start();self.addCleanup(self.env.stop)
     def test_backup_restore_mode_time_and_conflicts(self):

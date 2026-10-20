@@ -11,7 +11,6 @@ from pathlib import Path
 import distribution as d
 
 POLICIES = {
-    'modules/StationTasks.qml': ('Field Station Tasks tab', 'Process/core samples every 2 s; GPU every 10 s', 'Hidden, paused or locked stops the helper; unexpected exit retries after 5 s', 'At most 4096 process rows; no command lines, environment or process signals'),
     'services/Network.qml': ('NetworkManager status and Connections/Core', 'One subscribed stream; detail snapshots on visible demand', 'Helper exits with shell; retry capped at 60 s', '4 MiB snapshot protocol; no packet/history accumulation'),
     'services/DefaultApps.qml': ('Go and Default Apps Settings', 'One AppInfoMonitor; read only when shown or applying an action', 'Helper exits with shell; retry capped at 60 s', '4 MiB catalog; hidden events only mark dirty'),
     'services/SystemStats.qml': ('Field Station, System, Forest, warnings', 'In-process FileView reads of /proc and hwmon: fast 2 s visible/20 s ambient; temperature 5 s visible/30 s warnings; uptime and `df` 30 s visible/300 s warnings; one timer armed for the next due topic', 'No demand stops scheduling; hwmon discovery runs once per shell lifetime', 'Bounded /proc and sysfs reads; one `df` line'),
