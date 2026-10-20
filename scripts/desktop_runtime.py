@@ -5,6 +5,7 @@ The Omarchy branch is an explicit compatibility choice, never auto-selected
 because an executable or a directory happens to exist.
 """
 from datetime import datetime
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -81,6 +82,44 @@ def run(argv):
     return result.stdout.strip()
 
 
+def unique_wallpapers(items, selected):
+    """Collapse byte-identical images across releases and personal libraries.
+
+    Compare sizes first so unique files need no content read. Keep the selected
+    path for its highlight; otherwise keep the first source (personal folder
+    before bundled files). This only changes the catalog, never files on disk.
+    """
+    groups = {}
+    for item in items:
+        try:
+            size = Path(item['path']).stat().st_size
+        except OSError:
+            continue  # A file removed during discovery should not break the list.
+        groups.setdefault(size, []).append(item)
+    result = []
+    for group in groups.values():
+        if len(group) == 1:
+            result.extend(group)
+            continue
+        by_content = {}
+        for item in group:
+            digest = hashlib.sha256()
+            try:
+                with Path(item['path']).open('rb') as stream:
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                        digest.update(chunk)
+            except OSError:
+                # If comparison is unavailable, keep the entry instead of
+                # assuming it is a duplicate of another same-sized image.
+                result.append(item)
+                continue
+            key = digest.digest()
+            if key not in by_content or item['path'] == selected:
+                by_content[key] = item
+        result.extend(by_content.values())
+    return sorted(result, key=lambda row: (row['name'].casefold(), row['path']))
+
+
 def wallpapers():
     roots = [ROOT / 'themes/backgrounds', config() / 'wallpapers', xdg('DATA', '.local/share') / 'cedar/wallpapers']
     selected = desktop().get('wallpaper', '')
@@ -92,6 +131,7 @@ def wallpapers():
         except OSError:
             pass
     if selected:
+        selected = str(Path(selected).resolve())
         roots.append(Path(selected).parent)
     items = {}
 
@@ -99,13 +139,7 @@ def wallpapers():
         resolved = str(path.resolve())
         items[resolved] = {'path': resolved, 'name': path.stem.replace('_', ' ').replace('-', ' ').title()}
 
-    for directory in roots:
-        try:
-            for path in directory.iterdir():
-                if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES:
-                    add(path)
-        except OSError:
-            continue
+    # Personal paths survive release changes; prefer them for identical copies.
     folder = wallpaper_folder()
     if folder is not None:
         try:
@@ -113,8 +147,15 @@ def wallpapers():
                 add(path)
         except OSError:
             pass
+    for directory in roots:
+        try:
+            for path in sorted(directory.iterdir()):
+                if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES:
+                    add(path)
+        except OSError:
+            continue
     return {'selected': selected, 'folder': str(folder) if folder is not None else '',
-            'items': sorted(items.values(), key=lambda row: row['name'].casefold())}
+            'items': unique_wallpapers(items.values(), selected)}
 
 
 def set_wallpaper(value):
