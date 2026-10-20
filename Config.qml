@@ -43,9 +43,9 @@ Singleton {
     // Legacy custom commands remain explicit user overrides. New app selections
     // store desktop IDs and launch through GIO, never through command concatenation.
     readonly property var terminal: appArgv("terminal", saved.terminal, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "terminal"])
-    readonly property var browser: appArgv("browser", saved.browser, ["xdg-open", "https://duckduckgo.com"])
+    readonly property var browser: appArgv("browser", saved.browser, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "browser"])
     readonly property var editor: appArgv("editor", saved.editor, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "editor"])
-    readonly property var files: appArgv("files", saved.files, ["xdg-open", home])
+    readonly property var files: appArgv("files", saved.files, ["python3", Quickshell.shellPath("scripts/desktop_runtime.py"), "launch", "files"])
     // The launchers' web search; unknown ids fall back to Compass's first engine.
     readonly property string searchEngine: Compass.engine(saved.searchEngine).id
     // Saved coordinates override the optional automatic weather location service.

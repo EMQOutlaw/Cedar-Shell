@@ -205,6 +205,9 @@ def ipc(*args):
 
 
 TERMINAL_FLAGS = {'alacritty': ['-e'], 'ghostty': ['-e'], 'xterm': ['-e'], 'wezterm': ['start', '--']}
+TERMINAL_DESKTOPS = {'kitty.desktop': 'kitty', 'foot.desktop': 'foot',
+                     'Alacritty.desktop': 'alacritty', 'com.mitchellh.ghostty.desktop': 'ghostty',
+                     'org.wezfurlong.wezterm.desktop': 'wezterm', 'xterm.desktop': 'xterm'}
 
 
 def terminal_argv(command=()):
@@ -213,10 +216,18 @@ def terminal_argv(command=()):
     xdg-terminal-exec, foot and kitty take the command as positional
     arguments; alacritty, ghostty and xterm need -e; wezterm needs start --.
     """
-    if shutil.which('xdg-terminal-exec'):
+    # Command-running actions need the terminal's own argv, not gtk-launch's
+    # file/URI arguments. Honor known selected terminals before XDG fallback.
+    saved = settings()
+    targets = saved.get('applicationTargets')
+    target = targets.get('terminal') if isinstance(targets, dict) else None
+    selected = TERMINAL_DESKTOPS.get(target.get('id')) if isinstance(target, dict) and target.get('kind') == 'desktop-entry' else None
+    if selected and shutil.which(selected):
+        argv = [selected]
+    elif shutil.which('xdg-terminal-exec'):
         argv = ['xdg-terminal-exec']
     else:
-        choices = [shlex.split(os.environ.get('TERMINAL', ''))] + [[name] for name in ('foot', 'kitty', 'alacritty', 'ghostty', 'wezterm', 'xterm')]
+        choices = [shlex.split(os.environ.get('TERMINAL', ''))] + [[name] for name in ('kitty', 'foot', 'alacritty', 'ghostty', 'wezterm', 'xterm')]
         argv = next((a for a in choices if a and shutil.which(a[0])), None)
         if not argv:
             raise RuntimeError('Choose an installed terminal in Settings → Applications.')
@@ -244,12 +255,27 @@ def configured_argv(role):
     return None
 
 
+def preferred_app_argv(role):
+    """CEDAR's installed choice when no existing association has been selected."""
+    try:
+        from default_apps import preferred
+        app = preferred(role)
+    except ImportError:
+        return None  # Minimal environments can still use the XDG fallbacks.
+    return ['gtk-launch', app] if app else None
+
+
 def default_browser_argv():
-    """The system's default browser with no page, falling back to a blank tab."""
-    app = run(['xdg-mime', 'query', 'default', 'x-scheme-handler/https']) or run(['xdg-settings', 'get', 'default-web-browser'])
-    if app:
-        return ['gtk-launch', app]
-    return ['xdg-open', 'about:blank']
+    """Existing browser first, then installed Zen, finally an XDG blank tab."""
+    for query in (['xdg-mime', 'query', 'default', 'x-scheme-handler/https'],
+                  ['xdg-settings', 'get', 'default-web-browser']):
+        try:
+            app = run(query)
+        except (OSError, RuntimeError):
+            continue  # XDG providers can return failure when no default exists.
+        if app:
+            return ['gtk-launch', app]
+    return preferred_app_argv('browser') or ['xdg-open', 'about:blank']
 
 
 def launch(role, command=()):
@@ -263,12 +289,14 @@ def launch(role, command=()):
     elif role == 'browser':
         argv = default_browser_argv()
     elif role == 'files':
-        argv = ['xdg-open', str(Path.home())]
+        app = run(['xdg-mime', 'query', 'default', 'inode/directory'])
+        argv = (['gtk-launch', app] if app else preferred_app_argv('files'))
+        argv = argv + [str(Path.home())] if argv else ['xdg-open', str(Path.home())]
     elif role == 'editor':
         app = run(['xdg-mime', 'query', 'default', 'text/plain'])
-        if not app:
+        argv = ['gtk-launch', app] if app else preferred_app_argv('editor')
+        if not argv:
             raise RuntimeError('Choose an editor in Settings → Default Applications.')
-        argv = ['gtk-launch', app]
     else:
         argv = terminal_argv(command)
     subprocess.Popen(argv, start_new_session=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

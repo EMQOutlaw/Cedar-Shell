@@ -5,7 +5,7 @@ ROOT=Path(__file__).resolve().parents[1]
 class DefaultApps(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.home=Path(self.tmp.name)
-        self.env={**os.environ,'HOME':str(self.home),'XDG_CONFIG_HOME':str(self.home/'config'),'XDG_DATA_HOME':str(self.home/'data'),'XDG_STATE_HOME':str(self.home/'state')}
+        self.env={**os.environ,'HOME':str(self.home),'XDG_CONFIG_HOME':str(self.home/'config'),'XDG_DATA_HOME':str(self.home/'data'),'XDG_STATE_HOME':str(self.home/'state'),'XDG_DATA_DIRS':str(self.home/'empty')}
         apps=self.home/'data/applications';apps.mkdir(parents=True)
         (apps/'cedar-test-editor.desktop').write_text('[Desktop Entry]\nType=Application\nName=Test Editor\nExec=/usr/bin/true %U\nMimeType=text/plain;application/json;\nCategories=TextEditor;\n')
     def request(self,value):
@@ -40,3 +40,25 @@ class DefaultApps(unittest.TestCase):
     def test_catalog_has_no_conflicting_groups(self):
         roles=json.loads((ROOT/'data/default-apps.json').read_text());types=[t for r in roles for t in r['types']]
         self.assertEqual(len(types),len(set(types)));self.assertGreaterEqual(len(roles),18)
+    def test_choices_are_installed_entries_and_never_change_defaults_on_read(self):
+        choices={'browser':'zen.desktop','editor':'codium.desktop','files':'io.github.lgse.Strata.desktop','terminal':'kitty.desktop'}
+        before=self.request({'action':'snapshot'})['data']
+        self.assertTrue(all(not row['preferred'] for row in before['roles']))
+        apps=self.home/'data/applications'
+        for app in choices.values():
+            (apps/app).write_text('[Desktop Entry]\nType=Application\nName=Preferred Fixture\nExec=/usr/bin/true %U\n')
+        after=self.request({'action':'snapshot'})['data']
+        for role,app in choices.items():
+            row=next(r for r in after['roles'] if r['id']==role)
+            self.assertEqual(row['preferred'],app)
+            self.assertIn(app,row['recommended'])
+        self.assertFalse((self.home/'config/mimeapps.list').exists())
+        (apps/'zen.desktop').unlink()
+        removed=self.request({'action':'snapshot'})['data']
+        self.assertEqual(next(r for r in removed['roles'] if r['id']=='browser')['preferred'],'')
+    def test_reselecting_existing_associations_still_returns_launch_target(self):
+        request={'action':'apply','role':'editor','app':'cedar-test-editor.desktop'}
+        self.assertTrue(self.request(request)['ok'])
+        result=self.request(request)['data']
+        self.assertEqual(result['status'],'unchanged')
+        self.assertEqual(result['launchTarget'],{'kind':'desktop-entry','id':'cedar-test-editor.desktop'})

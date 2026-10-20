@@ -14,6 +14,11 @@ from desktop_runtime import omarchy
 ROLES=json.loads((Path(__file__).resolve().parents[1]/'data/default-apps.json').read_text())
 def apps():
     return {a.get_id():a for a in Gio.AppInfo.get_all() if a.get_id() and a.should_show()}
+def preferred(role_id, installed=None):
+    """Resolve only an installed, visible desktop entry from CEDAR's choices."""
+    role=next((r for r in ROLES if r['id']==role_id),{})
+    installed=apps() if installed is None else installed
+    return next((key for key in role.get('preferredIds',[]) if key in installed),'')
 def snapshot(installed=None):
     installed=dict(apps() if installed is None else installed);rows=[]
     for role in ROLES:
@@ -28,7 +33,9 @@ def snapshot(installed=None):
             # its namespace-specific methods. Explicit receivers work on both.
             cats=set((DesktopAppInfo.get_categories(app) or '').split(';')) if isinstance(app,DesktopAppInfo) else set()
             if set(app.get_supported_types() or []) & set(role['types']) or cats & set(role['categories']):recommendations.append(key)
-        rows.append({**role,'current':current,'mixed':len(set(ids))>1,'recommended':recommendations})
+        choice=preferred(role['id'],installed)
+        if choice and choice not in recommendations:recommendations.insert(0,choice)
+        rows.append({**role,'current':current,'mixed':len(set(ids))>1,'recommended':recommendations,'preferred':choice})
     catalog=[]
     for key, app in installed.items():
         description=app.get_description() or ''

@@ -53,7 +53,9 @@ Singleton {
         if (busy || Config.testMode || ShellState.locked || !id)
             return;
         const current = data.roles.find(value => value.id === role);
-        if (current && !current.mixed && selected(current) === id) {
+        const target = current?.launchKey ? Config.saved.applicationTargets[current.launchKey] : null;
+        if (current && !current.mixed && selected(current) === id
+                && (!current.launchKey || (target?.kind === "desktop-entry" && target.id === id))) {
             message = current.label + " is already selected.";
             return;
         }
@@ -86,7 +88,9 @@ Singleton {
                 id: "",
                 label: current ? "Select an application…" : "Not selected"
             }
-        ].concat(data.apps.filter(a => a.id === current || ((all || role.recommended.includes(a.id)) && (!query || (a.label + " " + a.id).toLowerCase().includes(query)))));
+        ].concat(data.apps.filter(a => a.id === current || ((all || role.recommended.includes(a.id)) && (!query || (a.label + " " + a.id).toLowerCase().includes(query))))
+            .map(a => Object.assign({}, a, {label: a.label + (a.id === role.preferred ? " · CEDAR choice" : "")}))
+            .sort((a,b) => Number(b.id === role.preferred) - Number(a.id === role.preferred)));
     }
     ServiceRequest {
         id: worker
@@ -96,7 +100,7 @@ Singleton {
             if (!root.generation) root.data = result;
             root.error = "";
             root.message = result.message || "";
-            if (result.launchKey && result.status !== "unchanged")
+            if (result.launchKey && ["complete", "unchanged"].includes(result.status))
                 Config.set("applicationTargets", Object.assign({}, Config.saved.applicationTargets, {[result.launchKey]:result.launchTarget}));
             root.refresh();
         }

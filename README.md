@@ -32,6 +32,18 @@ cd Cedar-Shell
 
 The packages it installs are listed at the top of [install.sh](install.sh). To manage packages yourself, run `CEDAR_SKIP_PACKAGES=1 ./install.sh`.
 
+## Preferred applications
+
+CEDAR’s choices are **Strata** for files, **Zen Browser** for the web, **kitty**
+for the terminal, and **VSCodium** for text and code. In **Settings → Default
+apps**, installed choices appear first and have a **Use…** button to set their
+associations and CEDAR launchers.
+
+Your existing choices survive installation and updates. When no association is
+set, CEDAR can use its installed preferred app; kitty is the first terminal
+fallback after your selected terminal, XDG terminal provider and `$TERMINAL`.
+These apps are optional and are not downloaded automatically.
+
 ## Update
 
 Open **Field Station → Update CEDAR**, or run:

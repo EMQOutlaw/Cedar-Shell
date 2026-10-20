@@ -27,15 +27,24 @@ ColumnLayout {
         Layout.fillWidth: true
         highlighted: root.highlightKey === modelData.id
         title: modelData.label
-        description: modelData.description + (modelData.mixed ? " Some formats currently use different apps." : "") + (options.length === 1 ? " No matching installed app; turn on Show every installed app." : "")
-        StationCombo {
+        description: modelData.description + (modelData.preferredName ? " CEDAR choice: " + modelData.preferredName + (modelData.preferred ? "." : " (not installed).") : "") + (modelData.mixed ? " Some formats currently use different apps." : "") + (options.length === 1 ? " No matching installed app; turn on Show every installed app." : "")
+        ColumnLayout {
             Layout.fillWidth: true
-            model: row.options
-            textRole: "label"
-            enabled: !DefaultApps.busy
-            currentIndex: Math.max(0, row.options.findIndex(a => a.id === DefaultApps.selected(row.modelData)))
-            onActivated: if (row.options[currentIndex].id) DefaultApps.apply(row.modelData.id, row.options[currentIndex].id)
-            Accessible.name: row.modelData.label
+            StationCombo {
+                Layout.fillWidth: true
+                model: row.options
+                textRole: "label"
+                enabled: !DefaultApps.busy
+                currentIndex: Math.max(0, row.options.findIndex(a => a.id === DefaultApps.selected(row.modelData)))
+                onActivated: if (row.options[currentIndex].id) DefaultApps.apply(row.modelData.id, row.options[currentIndex].id)
+                Accessible.name: row.modelData.label
+            }
+            StationButton {
+                visible: !!row.modelData.preferred
+                text: "Use " + (row.modelData.preferredName || "")
+                enabled: !DefaultApps.busy
+                onClicked: DefaultApps.apply(row.modelData.id, row.modelData.preferred)
+            }
         }
     }
 
@@ -52,7 +61,7 @@ ColumnLayout {
 
     SettingsTabs { tabs:["Default apps","Application theming","Dictation"];current:"Default apps";onChosen:tab=>{if(tab!=="Default apps")SettingsService.navigate(tab==="Dictation" ? "dictation":"application-theming", "");} }
     SettingsSection {
-        heading: "Everyday apps"; caption: "What opens your links, folders and text. Terminal also sets CEDAR’s quick launch."
+        heading: "Everyday apps"; caption: "CEDAR’s choices are Zen Browser, kitty, Strata and VSCodium. Choose an installed app below to use it for your account and CEDAR’s quick launch."
         Repeater {
             model: root.mainRoles.map(id => root.roles.find(r => r.id === id)).filter(Boolean)
             RoleRow {}

@@ -84,12 +84,13 @@ class Restore(unittest.TestCase):
 
 class Terminal(unittest.TestCase):
     def argv(self,available,terminal_env='',command=('python3','x.py')):
-        with patch.object(runtime.shutil,'which',side_effect=lambda n:'/usr/bin/'+n if n in available else None),patch.dict(os.environ,{'TERMINAL':terminal_env}):
+        with patch.object(runtime,'settings',return_value={}),patch.object(runtime.shutil,'which',side_effect=lambda n:'/usr/bin/'+n if n in available else None),patch.dict(os.environ,{'TERMINAL':terminal_env}):
             return runtime.terminal_argv(command)
     def test_positional_terminals(self):
         self.assertEqual(self.argv({'xdg-terminal-exec','alacritty'}),['xdg-terminal-exec','python3','x.py'])
         self.assertEqual(self.argv({'foot'}),['foot','python3','x.py'])
         self.assertEqual(self.argv({'kitty'}),['kitty','python3','x.py'])
+        self.assertEqual(self.argv({'foot','kitty'}),['kitty','python3','x.py'])
     def test_flag_terminals_and_env_choice(self):
         self.assertEqual(self.argv({'alacritty'}),['alacritty','-e','python3','x.py'])
         self.assertEqual(self.argv({'ghostty'},terminal_env='ghostty --class=x'),['ghostty','--class=x','-e','python3','x.py'])
@@ -102,7 +103,7 @@ class Terminal(unittest.TestCase):
 class Launch(unittest.TestCase):
     """launch() opens what Settings → Applications chose, like the bar's own buttons."""
     def argv(self,role,saved,default_app=''):
-        with patch.object(runtime,'settings',return_value=saved),patch.object(runtime,'run',return_value=default_app),patch.object(runtime.subprocess,'Popen') as popen:
+        with patch.object(runtime,'preferred_app_argv',return_value=None),patch.object(runtime,'settings',return_value=saved),patch.object(runtime,'run',return_value=default_app),patch.object(runtime.subprocess,'Popen') as popen:
             runtime.launch(role)
             return popen.call_args[0][0]
     def test_desktop_entry_target_wins(self):
@@ -121,5 +122,21 @@ class Launch(unittest.TestCase):
         self.assertEqual(self.argv('terminal',{'applicationTargets':{'terminal':{'id':'kitty.desktop','kind':'desktop-entry'}}}),['gtk-launch','kitty.desktop'])
     def test_unknown_role(self):
         with self.assertRaises(ValueError):runtime.launch('mail')
+    def test_installed_cedar_choices_only_fill_missing_defaults(self):
+        for role,app,existing in [('browser','zen.desktop','firefox.desktop'),('files','io.github.lgse.Strata.desktop','files.desktop'),('editor','codium.desktop','editor.desktop')]:
+            for default in ('',existing):
+                with self.subTest(role=role,default=default),patch.object(runtime,'settings',return_value={}),patch.object(runtime,'run',return_value=default),patch.object(runtime,'preferred_app_argv',return_value=['gtk-launch',app]) as preferred,patch.object(runtime.subprocess,'Popen') as popen:
+                    runtime.launch(role)
+                    expected=['gtk-launch',default or app]
+                    if role=='files':expected.append(str(Path.home()))
+                    self.assertEqual(popen.call_args.args[0],expected)
+                    if default:preferred.assert_not_called()
+    def test_selected_kitty_runs_commands_even_with_an_xdg_terminal(self):
+        with patch.object(runtime,'settings',return_value={'applicationTargets':{'terminal':{'kind':'desktop-entry','id':'kitty.desktop'}}}),patch.object(runtime.shutil,'which',return_value='/installed'),patch.object(runtime.subprocess,'Popen') as popen:
+            runtime.launch('terminal',['python3','file with spaces.py'])
+            self.assertEqual(popen.call_args.args[0],['kitty','python3','file with spaces.py'])
+    def test_browser_provider_without_a_default_still_reaches_installed_choice(self):
+        with patch.object(runtime,'run',side_effect=RuntimeError('No default')),patch.object(runtime,'preferred_app_argv',return_value=['gtk-launch','zen.desktop']):
+            self.assertEqual(runtime.default_browser_argv(),['gtk-launch','zen.desktop'])
 
 if __name__=='__main__':unittest.main()

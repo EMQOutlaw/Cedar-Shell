@@ -22,7 +22,10 @@ with tempfile.TemporaryDirectory(prefix='cedar-responsive-') as tmp:
     runtime.mkdir(mode=0o700)
     fixture=(ROOT/'tests/qml/DesktopHarness.qml').read_text().split('Component.onCompleted: {',1)[1].split('\n        }\n        property int step',1)[0]
     roles=json.loads((ROOT/'data/default-apps.json').read_text())
-    fixture=fixture.replace('DEFAULT_APPS_FIXTURE',json.dumps({'roles':[{**r,'current':'','mixed':False,'recommended':[]} for r in roles],'apps':[]}))
+    choices=[{'id':r['preferredIds'][0],'label':r['preferredName']} for r in roles if r.get('preferredIds')]
+    fixture=fixture.replace('DEFAULT_APPS_FIXTURE',json.dumps({
+        'roles':[{**r,'current':'','mixed':False,'recommended':r.get('preferredIds',[]),
+                  'preferred':next(iter(r.get('preferredIds',[])),'')} for r in roles], 'apps':choices}))
     with patch.dict(os.environ,XDG_CONFIG_HOME=str(p/'config')):
         themes=desktop_runtime.themes()
     harness=(ROOT/'tests/core/SettingsResponsiveHarness.qml').read_text()

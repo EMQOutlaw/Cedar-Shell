@@ -79,7 +79,7 @@ ShellRoot {
             if(!check(flick.contentY+flick.height>=flick.contentHeight-1,"page bottom remains reachable")) return;
             flick.contentY=0;
             const directory=Quickshell.env("CEDAR_SCREENSHOT_DIR");
-            if(directory && ["overview","appearance","bar"].includes(pages[pageIndex])) {
+            if(directory && ["overview","appearance","bar","apps"].includes(pages[pageIndex])) {
                 panel.grabToImage(result=>{
                     result.saveToFile(directory+"/"+pages[pageIndex]+"-"+size.w+"-"+size.h+"-"+size.scale+".png");
                     advance();
