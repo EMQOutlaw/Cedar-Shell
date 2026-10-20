@@ -17,7 +17,7 @@
 %global __os_install_post %{nil}
 
 Name:           cedar-shell
-Version:        1.9
+Version:        1.11
 Release:        1%{?dist}
 Summary:        CEDAR desktop shell for Hyprland
 # The first-party code carries no license by the owner's decision
@@ -85,6 +85,9 @@ install -D -m 0644 docs/LICENSES.md %{buildroot}%{_licensedir}/%{name}/LICENSES.
 %doc %{_licensedir}/%{name}/LICENSES.md
 
 %changelog
+* Tue Oct 20 2026 CEDAR release automation <41898282+github-actions[bot]@users.noreply.github.com> - 1.11-1
+- Automated release 1.11
+
 * Tue Oct 20 2026 CEDAR release automation <41898282+github-actions[bot]@users.noreply.github.com> - 1.9-1
 - Automated release 1.9
 
