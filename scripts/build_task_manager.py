@@ -6,12 +6,13 @@ ROOT=Path(__file__).resolve().parents[1]
 PACKAGES=['Qt6Core','Qt6Network','Qt6Gui','Qt6Qml','Qt6Quick','Qt6QuickControls2','Qt6DBus']
 def build(root=ROOT, output=None):
     root=Path(root).resolve();output=Path(output or root/'.local/task-manager').resolve()
-    sources=sorted((root/'native/taskmanager').glob('*'))+sorted((root/'taskmanager').glob('*.qml'))
+    sources=sorted((root/'native/taskmanager').glob('*'))+sorted((root/'taskmanager').glob('*.qml'))+[root/'scripts/build_task_manager.py']
     sources=[p for p in sources if p.is_file()]
     build_id=hashlib.sha256(b''.join(p.name.encode()+p.read_bytes() for p in sources)).hexdigest()[:16]
     tools={k:shutil.which(k) for k in ('g++','pkg-config')}
     if not all(tools.values()):raise RuntimeError('Task Manager needs g++ and pkg-config (Arch: gcc, pkgconf).')
     flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs',*PACKAGES],text=True))
+    backend_flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Core','Qt6Network'],text=True))
     moc=Path(subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip())/'moc'
     if not moc.exists():raise RuntimeError('Qt development tools missing (Arch: qt6-base, qt6-declarative).')
     output.mkdir(parents=True,exist_ok=True)
@@ -33,7 +34,8 @@ def build(root=ROOT, output=None):
             source=str(native/unit) if not unit.startswith('/') else unit
             subprocess.run([*common,'-c',source,*flags,'-o',objects[name]],check=True)
         for target,names_ in {'cedar-taskd':['collector','backend'],'cedar-task-manager':['collector','frontend','moc']}.items():
-            subprocess.run(['g++',*[objects[n] for n in names_],*flags,'-o',str(temp/target)],check=True)
+            link_flags=backend_flags if target=='cedar-taskd' else flags
+            subprocess.run(['g++',*[objects[n] for n in names_],*link_flags,'-o',str(temp/target)],check=True)
         for name in ('cedar-taskd','cedar-task-manager'):os.replace(temp/name,output/name)
         stamp.write_text(json.dumps({'build':build_id,'fingerprint':fingerprint,'binaries':{n:hashlib.sha256((output/n).read_bytes()).hexdigest() for n in names}})+'\n')
     return output

@@ -159,7 +159,7 @@ ApplicationWindow {
                 Rectangle {
                     id: inspectorPanel; objectName: "processInspector"; visible: win.inspector
                     Layout.fillWidth: !win.wide; Layout.preferredWidth: win.wide ? 340 : -1; Layout.fillHeight: true
-                    color: Task.style.surface; radius: Task.style.radius || 12; border.color: Task.style.border
+                    color: Task.style.surface; radius: Task.style.radius; border.color: Task.style.border
                     opacity: visible ? 1 : 0
                     Behavior on opacity { enabled: !Task.style.reducedMotion; NumberAnimation { duration: 150 } }
                     ScrollView {

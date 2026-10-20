@@ -11,7 +11,7 @@ Rectangle {
     property color accent: Task.style.teal
     implicitHeight: 200
     color: Task.style.surface
-    radius: Task.style.radius || 12
+    radius: Task.style.radius
     border.color: Task.style.border
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 18; spacing: 8

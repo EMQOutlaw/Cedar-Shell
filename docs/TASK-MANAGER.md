@@ -194,3 +194,55 @@ long-duration rendering require a real desktop session. Service management
 is intentionally read-only. Hierarchical process trees and per-application
 icons are not implemented; grouping uses executable identity and the inspector
 has a generic process icon.
+
+## Recorded engineering verification — 2026-10-20
+
+The native and recovery job for
+[`5bb545b`](https://github.com/EMQOutlaw/Cedar-Shell/actions/runs/39402174400)
+passed on Ubuntu 24.04 with Qt 6.4.2. It exercised real Unix sockets,
+cross-UID rejection, malformed/oversized/version/rate guards, disposable
+SIGTERM/KILL/STOP/CONT targets, guarded priority and permission rejection,
+identity/protected-process checks, duplicate launches, backend restart,
+idle exit, normal termination cleanup and native installation rollback.
+An earlier run exposed termination reaching a Qt worker before cleanup;
+blocking termination signals before Qt thread creation fixed that failure.
+
+Local Qt 6.11.2 verification also passed:
+
+| Executed check | Result |
+| --- | --- |
+| `python3 tests/check_task_manager.py` | Native accounting/control tests, all four QML views, 6,000-row model, search/sort/inspector, two lifecycles, 150% text, Reduced Motion, real binary installation/restore passed. Local IPC checks skipped because the sandbox denies SO_PEERCRED; CI ran them without that skip. |
+| `python3 -m unittest discover -s tests -p test_task_manager.py` | Five integration contracts passed, including preserved Overview content hash and occupied-shortcut handling. |
+| `PYTHONPATH=scripts python3 -m unittest discover -s tests -p 'test_settings*.py'` | 60 tests passed. |
+| `python3 tests/check_station_tasks.py` | Production Field Station utility actions, retired routes, Overview and lock guards passed. |
+| `python3 tests/check_identity.py /tmp/cedar-task-after` | Identity content, narrow/wide scaling, missing fonts, Reduced Motion and persistence passed. |
+| `python3 tests/check_settings_window.py` | Window routes, resize, levels, reopening and lock passed. |
+| `python3 tests/check_settings_responsive.py` | 26 Settings pages across eight sizes passed. |
+| `python3 scripts/package_release.py /tmp/cedar-task-candidate.tar.gz` then `python3 tests/check_artifact.py /tmp/cedar-task-candidate.tar.gz` | Exact archive hashes, plugin artifacts, isolated fresh/repeated installation with actual offscreen shell validation, and existing recovery fixtures passed. |
+| `python3 scripts/audit_public.py` and `python3 scripts/update_source_inventory.py --check` | Privacy scan and explicit source inventory passed. |
+
+The broader `PYTHONPATH=scripts python3 -m unittest discover -s tests -p
+'test_*.py'` ran 668 tests with one existing failure:
+`test_cedar.Palette.test_only_theme_defines_qml_colors` finds a literal color
+in unchanged `modules/CalendarConnections.qml`. Running `test_cedar.py` in an
+isolated archive of the pre-task `8e81ec7` source reproduced the same failure.
+The native rewrite does not alter that calendar component or weaken its test.
+
+### Measurements and limits
+
+The passing Ubuntu CI native check observed the following over eight seconds
+with software/offscreen rendering, 150% typography and Reduced Motion:
+
+| Measurement | Observed |
+| --- | --- |
+| Frontend idle CPU / RSS | 0.87% of one core / 60.77 MiB |
+| Backend idle CPU / RSS | 1.37% of one core / 19.78 MiB |
+| 6,000-row batch, filter, sort and selection exercise | 93 ms combined |
+| Complete first window test, including restart and view checks | 8.92 seconds; this is not a cold-launch latency benchmark |
+
+A separate twelve-sample local collector-only probe observed 1.32 ms mean,
+1.62 ms maximum sample time, 0.21% of one core and 42,528 KiB peak RSS. That
+sandbox exposed only four processes, so it is not a desktop-scale benchmark.
+No hardware-rendered FPS, multi-hour soak, live monitor hotplug, NVIDIA driver
+matrix or packaged Nix build has been certified. These remain reproducible
+desktop/package verification tasks, not claimed successes.

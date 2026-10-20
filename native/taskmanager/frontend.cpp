@@ -71,10 +71,13 @@ TaskClient::TaskClient(QString source,bool testing,QObject *p):QObject(p),model(
 }
 TaskClient::~TaskClient(){reconnect.stop();socket.abort();if(backend.state()!=QProcess::NotRunning){backend.terminate();if(!backend.waitForFinished(1500)){backend.kill();backend.waitForFinished(1000);}}}
 void TaskClient::loadStyle(){
+    QDir().mkpath(configPath());
     theme=jsonFile(root+"/themes/palettes/cedar.json").value("colors").toMap();auto overrides=jsonFile(configPath()+"/theme.json").value("colors").toMap();
     for(auto it=overrides.begin();it!=overrides.end();++it)if(QColor::isValidColorName(it.value().toString()))theme[it.key()]=it.value();
     auto settings=jsonFile(configPath()+"/settings.json");theme["font"]=settings.value("interfaceFont","Rajdhani");theme["mono"]=settings.value("dataFont","JetBrainsMono Nerd Font");
-    theme["fontScale"]=std::clamp(settings.value("fontScale",1).toDouble(),0.8,1.5);theme["reducedMotion"]=settings.value("reducedMotion",false);theme["radius"]=std::clamp(settings.value("panelRadius",12).toInt(),0,28);
+    theme["fontScale"]=std::clamp(settings.value("fontScale",1).toDouble(),0.8,1.5);
+    theme["reducedMotion"]=settings.value("reducedMotion",false).toBool()||settings.value("motionPreset").toString()=="off"||settings.value("performanceMode").toString()=="on";
+    theme["radius"]=std::clamp(settings.value("panelRadius",16).toInt(),0,28);
     for(const auto &path:QStringList{configPath(),configPath()+"/settings.json",configPath()+"/theme.json"})if(QFileInfo::exists(path)&&!watcher.files().contains(path)&&!watcher.directories().contains(path))watcher.addPath(path);
     Q_EMIT styleChanged();
 }
@@ -144,7 +147,11 @@ void TaskClient::savePreferences(int w,int h,int page){if(test)return;prefs.setV
 void TaskClient::finishTest(bool ok,QString reason){qInfo().noquote()<<(ok?"PASS: ":"FAIL: ")+reason;QCoreApplication::exit(ok?0:1);}
 bool TaskClient::exerciseModel(){
     QJsonArray rows;for(int i=0;i<6000;++i)rows.append(QJsonObject{{"identity",QString::number(i)+":1"},{"name",QString("fixture %1").arg(i)},{"pid",i},{"uid",qint64(getuid())},{"cpu",i%100},{"rss",i*1000},{"state","S"},{"group","fixture"}});
-    QElapsedTimer time;time.start();model.update(rows);filter("fixture 5999","",true,false);bool ok=proxy.rowCount()==1;filter("","",false,true);sort("rss");ok&=proxy.rowCount()==6000;select("5999:1");ok&=detail.value("pid").toInt()==5999;
+    QElapsedTimer time;time.start();model.update(rows);filter("fixture 5999","",true,false);bool ok=proxy.rowCount()==1;
+    filter("","",false,true);sort("rss");ok&=proxy.rowCount()==6000&&proxy.index(0,0).data(ProcessModel::Pid).toInt()==5999;
+    sort("rss");ok&=proxy.index(0,0).data(ProcessModel::Pid).toInt()==0;
+    filter("5999","S",true,false);ok&=proxy.rowCount()==1;filter("","T",false,false);ok&=proxy.rowCount()==0;
+    filter("","",false,false);select("5999:1");ok&=detail.value("pid").toInt()==5999;
     rows.removeLast();model.update(rows);updateDetail();ok&=detail.value("exited").toBool();qInfo()<<"6000-row batch/search/sort/selection ms"<<time.elapsed();model.update({});select("");filter("","",false,false);return ok;
 }
 int main(int argc,char **argv){
