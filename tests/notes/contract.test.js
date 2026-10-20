@@ -99,7 +99,9 @@ test("the bar, Applications, the keybind set and Settings each reach the notes o
   assert.match(read("docs/KEYBINDS.md"), /Super\+Alt\+N/)
   assert.match(schema, /\{id:"notes",label:"Field Notes"/, "the Settings page must be in the schema")
   assert.match(read("modules/SettingsPanel.qml"), /notes:notesPage/)
-  assert.match(read("tests/qml/DesktopHarness.qml"), /"notes"/, "the desktop harness renders the page")
+  const harness = read("tests/qml/DesktopHarness.qml")
+  assert.match(harness, /readonly property var sections:\s*Schema\.pages\.map\(p\s*=>\s*p\.id\)/, "the desktop harness includes every schema page, including Field Notes")
+  assert.match(harness, /settings\.navigate\(window\.sections\[window\.step%count\]\)/, "the desktop harness visits the schema pages")
 })
 
 test("every preference is a schema descriptor with a Config default that is saved", () => {
