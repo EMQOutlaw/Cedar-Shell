@@ -29,7 +29,7 @@ ScrollView {
                         required property var modelData
                         objectName: "settingsNav-" + modelData.id
                         Layout.fillWidth: true; implicitHeight: 28
-                        text: modelData.label; checked: (({keybinds:"input",core:"bar","application-theming":"apps",setup:"advanced",time:"advanced",notes:"advanced",dictation:"apps"})[SettingsService.page] || SettingsService.page) === modelData.id
+                        text: modelData.label; checked: (({keybinds:"input",core:"bar","application-theming":"apps",setup:"advanced",time:"input",notes:"input",dictation:"apps"})[SettingsService.page] || SettingsService.page) === modelData.id
                         onClicked: root.chosen(modelData.id)
                         background: ChamferFrame {
                             cut: 4

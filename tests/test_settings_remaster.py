@@ -134,7 +134,6 @@ class SingleEntryPoints(unittest.TestCase):
             if name == 'SettingsOverview':
                 text = text.replace('SettingsService.navigate(modelData.pages[0].id, "")', '')
                 text = text.replace('SettingsService.navigate(modelData.page, "")', '')
-            text = text.replace('SettingsService.navigate(', 'SettingsService.checkedRoute(')
             self.assertIsNone(pattern.search(text),f'{name} adds a second route to another place')
     def test_each_preference_has_one_custom_control(self):
         import re

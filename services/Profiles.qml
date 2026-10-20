@@ -271,7 +271,11 @@ Singleton {
         target: Gaming
         function onPhaseChanged() {
             Qt.callLater(() => {
-                if (root.guardedProfile !== "gaming" || Gaming.busy || !Gaming.active) return;
+                if (root.guardedProfile !== "gaming" || Gaming.busy) return;
+                if (!Gaming.active) {
+                    if (Gaming.phase === "idle") root.guardedProfile = "";
+                    return;
+                }
                 root.guardedProfile = "";
                 if (Gaming.failures.length) {
                     root.settingsFailure = "Gaming verification failed. Restoring prior values.";

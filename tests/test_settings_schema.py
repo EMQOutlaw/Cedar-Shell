@@ -47,6 +47,18 @@ class SchemaIntegrity(unittest.TestCase):
         for m in self.schema['menu']:
             self.assertTrue(m['id'] and m['label'] and m['description'],m)
         self.assertTrue(all(category for _,category in self.schema['menuOf']))
+    def test_rail_highlights_stay_in_the_hidden_pages_menu_group(self):
+        navigation = (ROOT/'components/SettingsNavigation.qml').read_text()
+        mapping = re.search(r'checked: \(\((\{[^}]+\})\)', navigation).group(1)
+        targets = evaluate('(' + mapping + ')')
+        self.assertEqual({page: targets[page] for page in ('notes', 'time', 'dictation')},
+                         {'notes': 'input', 'time': 'input', 'dictation': 'apps'})
+        for page in self.schema['pages']:
+            if page.get('rail') is False:
+                target = targets[page['id']]
+                self.assertNotEqual(next(p for p in self.schema['pages'] if p['id'] == target).get('rail'), False)
+                self.assertEqual(evaluate('groupOf(' + json.dumps(page['id']) + ')'),
+                                 evaluate('groupOf(' + json.dumps(target) + ')'))
     def test_fields_and_extras_point_at_existing_pages(self):
         ids={p['id'] for p in self.schema['pages']}
         for f in self.schema['fields']+self.schema['extras']:

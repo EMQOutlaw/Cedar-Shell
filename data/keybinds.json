@@ -121,10 +121,6 @@
           "description": "Hold to talk; release to stop and let Voxtype type",
           "lua": "ipc(\"dictation start\")",
           "conf": "exec, $cedarShell dictation start",
-          "flags": [
-            "release",
-            "repeating"
-          ],
           "release": {
             "lua": "ipc(\"dictation stop\")",
             "conf": "exec, $cedarShell dictation stop"
