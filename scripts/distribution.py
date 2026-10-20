@@ -327,24 +327,20 @@ def session_active():
     import omarchy_session, portable_session
     return omarchy_session.active() or portable_session.active()
 
-def capabilities(root,key=None):
-    # Package names come from the manifest column of this machine's reviewed
-    # backend (archPackage, fedoraPackage); a null entry means the distribution
-    # has no equivalent and the feature stays Needs Setup rather than guessed.
-    key=key or package_key(root)
+def capabilities(root):
     manifest=read_json(root/'data/dependencies.json');out=[]
     for row in manifest['commands']:
         if row.get('scope') in ('development', 'omarchy-adapter'): continue
-        out.append({'id':row['command'],'status':'Ready' if shutil.which(row['command']) else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})
+        out.append({'id':row['command'],'status':'Ready' if shutil.which(row['command']) else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
     for row in manifest['pythonModules']:
         r=subprocess.run([sys.executable,'-c',row.get('probe', 'import '+row['name'])],capture_output=True)
-        out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})
+        out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
     for row in manifest.get('fonts', []):
         family = ''
         if shutil.which('fc-match'):
             family = command(['fc-match', '--format=%{family}', row['family']], timeout=5)
         out.append({'id':row['family'], 'status':'Ready' if row['family'].lower() in family.lower() else 'Needs Setup',
-                    'purpose':'Display font; readable fallback: '+row['fallback'], 'required':False, 'scope':'font', 'package':row.get(key)})
+                    'purpose':'Display font; readable fallback: '+row['fallback'], 'required':False, 'scope':'font', 'package':row.get('archPackage')})
     return out
 
 def validate_imports(root):
@@ -421,6 +417,21 @@ def command_owner(binary):
     if COMMAND_SOURCE in head:return 'source'
     return 'other'
 
+def selected_source(current):
+    """Recognize the local CEDAR tree selected through its Quickshell profile.
+
+    Updates replace only the journaled link; the checkout and its edits stay
+    untouched. An unrelated or broken link is still not an installed CEDAR.
+    """
+    profile=paths()['config'].parent/'quickshell/cedar'
+    try:
+        target=current.resolve(strict=True)
+        return (profile.is_symlink() and profile.resolve(strict=True)==target
+                and command_owner(target/'scripts/cedar')=='source'
+                and all((target/name).is_file() for name in ('shell.qml','Config.qml','scripts/distribution.py')))
+    except (OSError,RuntimeError):
+        return False
+
 def install(root,approved=False,plan_only=False,live=False):
     # live: the running CEDAR keeps its (immutable) release directory while
     # `current` moves; the caller restarts it right after (the installer's session
@@ -442,7 +453,9 @@ def install(root,approved=False,plan_only=False,live=False):
         if owner=='other':raise Refused('The cedar command at '+str(binary)+' belongs to something other than CEDAR, so it is left alone. Move it aside (for example: mv '+__import__('shlex').quote(str(binary))+' '+__import__('shlex').quote(str(binary)+'.other')+'), then run the installer again.')
         if owner=='source':print('Replacing the cedar command from the local-source registration ('+(os.readlink(binary) if binary.is_symlink() else str(binary))+'); the journal puts it back on uninstall.')
         if current.exists() and not current.is_symlink():raise Refused('Unmanaged current-release entry exists.')
-        if current.is_symlink() and current.resolve().parent!=destination.parent:raise Refused('Unmanaged current-release link exists.')
+        if current.is_symlink() and current.resolve().parent!=destination.parent:
+            if not selected_source(current):raise Refused('Unmanaged current-release link exists.')
+            print('Replacing the selected local CEDAR source link; the checkout is preserved and recovery restores the link.')
         if current.is_symlink() and current.resolve()==destination and binary.is_file() and recovery.is_file():
             verify_tree(destination,read_json(destination/'release-files.json'))
             print('This candidate is already installed. No files or recovery checkpoints changed.')
@@ -510,14 +523,13 @@ def preview(root):
         # A FloatingWindow only. No session lock, wallpaper, notifications or layer surfaces.
         subprocess.run(['qs','-p',str(root/'preview.qml')],env=env,check=True)
 
-def missing_packages(root,include_recommended=False,key=None):
-    key=key or package_key(root)
+def missing_packages(root,include_recommended=False):
     manifest = read_json(root/'data/dependencies.json')
     rows = {r['command']: r for r in manifest['commands']}
     rows.update({r['name']: r for r in manifest['pythonModules']})
     rows.update({r['family']: r for r in manifest.get('fonts', [])})
     packages = set()
-    for capability in capabilities(root,key):
+    for capability in capabilities(root):
         row = rows.get(capability['id'], {})
         needed = row.get('status') in ('required', 'feature-required')
         recommended = include_recommended and row.get('status') == 'recommended'
@@ -528,76 +540,43 @@ def missing_packages(root,include_recommended=False,key=None):
         # Never replace somebody else's working Qt/Quickshell to satisfy -Q.
         validate_imports(root)
     else:
-        for row in manifest['modules'] + manifest.get('imageFormats', []):
-            package = row.get(key) or (row.get('package') if key == 'archPackage' else None)
-            if package:packages.add(package)
+        packages.update(row.get('archPackage') or row.get('package') for row in manifest['modules'] + manifest.get('imageFormats', []) if row.get('archPackage') or row.get('package'))
     return sorted(packages)
 
 
-# The classic terminal flow recognises these backends; each one is reviewed in
-# data/dependencies.json (packageManagement.backends) and nowhere else.
-BACKENDS={'pacman':{'verify':['pacman','-Si'],'timeout':30,'install':['pacman','-Syu','--needed'],
-                    'operation':'sudo pacman -Syu --needed (includes a full system upgrade)',
-                    'providerChanges':'No replacement desktop/audio/network providers or repositories are added. A full upgrade may update existing system packages.'},
-          'dnf':{'verify':['dnf','-q','info'],'timeout':120,'install':['dnf','install'],
-                 'operation':'sudo dnf install (adds only the listed packages from your enabled repositories; no system upgrade)',
-                 'providerChanges':'No replacement desktop/audio/network providers or repositories are added. Runtime package availability varies by Fedora release; only your enabled repositories are used.'}}
-
-
-def match_backend(root):
-    """The reviewed package backend for this distribution and architecture, or None; never a guess from ID_LIKE."""
+def package_host(root):
+    """Explicitly reviewed package systems, independent of desktop adapters."""
     try: release=__import__('platform').freedesktop_os_release()
     except OSError: release={}
     distro=release.get('ID', 'unknown')
     machine=__import__('platform').machine()
     for backend in read_json(root/'data/dependencies.json')['packageManagement']['backends']:
         if distro in backend['distributions'] and machine in backend['architectures']:
-            return {'packageKey':'archPackage','upgradeRequired':True,**backend, 'distribution':distro, 'displayName':backend['distributions'][distro]}
-    return None
-
-
-def package_key(root):
-    """The manifest column that names packages for this machine; Arch names where no backend is reviewed."""
-    return (match_backend(root) or {}).get('packageKey') or 'archPackage'
-
-
-def package_host(root):
-    """Explicitly reviewed package systems, independent of desktop adapters."""
-    backend=match_backend(root)
-    if backend:return backend
-    try: release=__import__('platform').freedesktop_os_release()
-    except OSError: release={}
-    raise Refused('Automatic package setup is not reviewed for this distribution/architecture ('+release.get('ID', 'unknown')+'/'+__import__('platform').machine()+'). '
+            return {**backend, 'distribution':distro, 'displayName':backend['distributions'][distro]}
+    raise Refused('Automatic package setup is not reviewed for this distribution/architecture ('+distro+'/'+machine+'). '
                   'Install the missing dependencies with your own package manager, then rerun bash ./install.sh. No package changes made.')
 
 
 def check_package_plan(plan):
-    backend=BACKENDS.get(plan['backend'])
-    if backend is None:raise Refused('Unrecognized package backend; no package changes made.')
-    if not shutil.which(plan['backend']) or not shutil.which('sudo'):
-        raise Refused('Automatic package setup needs '+plan['backend']+' and sudo. Install the listed dependencies through your distribution tools instead.')
-    if plan['backend']=='pacman' and Path('/var/lib/pacman/db.lck').exists():raise Refused('The package manager is busy; its lock will not be removed.')
+    if plan['backend'] != 'pacman':raise Refused('Unrecognized package backend; no package changes made.')
+    if not shutil.which('pacman') or not shutil.which('sudo'):
+        raise Refused('Automatic package setup needs pacman and sudo. Install the listed dependencies through your distribution tools instead.')
+    if Path('/var/lib/pacman/db.lck').exists():raise Refused('The package manager is busy; its lock will not be removed.')
     for package in plan['packages']:
-        try:
-            if plan['backend']=='pacman':command([*backend['verify'],package])
-            else:command([*backend['verify'],package],timeout=backend['timeout'])
+        try: command(['pacman','-Si',package])
         except (Refused, subprocess.SubprocessError) as error:
-            hint='Runtime package availability varies by Fedora release; configure a repository that provides it, or install a compatible runtime yourself. CEDAR adds no repository. ' if plan['backend']=='dnf' else ''
             raise Refused('Package '+package+' could not be verified in your configured repositories. '
-                          'No repositories were added or packages changed. '+hint+'Details: '+str(error)) from error
+                          'No repositories were added or packages changed. Details: '+str(error)) from error
 
 
 def install_packages(plan,approve_upgrade=False):
     # Use the exact disclosed plan, not a fresh dependency scan after approval.
     if not plan['packages']:return
-    # pacman -Syu upgrades the whole system along with the new packages, so it
-    # needs its own consent; dnf install adds only the listed packages.
-    if plan.get('upgradeRequired',True) and not approve_upgrade:raise Refused('A full supported upgrade requires separate consent. Review and explicitly add --approve-system-upgrade, or manage dependencies yourself.')
+    if not approve_upgrade:raise Refused('A full supported upgrade requires separate consent. Review and explicitly add --approve-system-upgrade, or manage dependencies yourself.')
     check_package_plan(plan)
-    argv=[*BACKENDS[plan['backend']]['install'],*plan['packages']]
     with exclusive():
-        tx=Transaction('packages');tx.record['packages']=[{'command':argv,'result':'pending','reversible':False}];tx.save()
-        r=subprocess.run(['sudo',*argv])
+        tx=Transaction('packages');tx.record['packages']=[{'command':['pacman','-Syu','--needed',*plan['packages']],'result':'pending','reversible':False}];tx.save()
+        r=subprocess.run(['sudo','pacman','-Syu','--needed',*plan['packages']])
         tx.record['packages'][0]['result']='succeeded' if r.returncode==0 else 'failed';tx.save()
         if r.returncode:raise Refused('Package operation failed/canceled. No desktop configuration changed.')
         tx.commit()
@@ -606,13 +585,12 @@ def install_packages(plan,approve_upgrade=False):
 def package_plan(root,approve_packages=False,approve_upgrade=False,include_recommended=False):
     packages=missing_packages(root,include_recommended)
     plan={'packages':packages,'includeRecommended':include_recommended,
-          'providerChanges':BACKENDS['pacman']['providerChanges'],
+          'providerChanges':'No replacement desktop/audio/network providers or repositories are added. A full upgrade may update existing system packages.',
           'operation':'None needed'}
     if packages:
         print('Missing software from the CEDAR dependency manifest: '+', '.join(packages))
         host=package_host(root)
-        plan.update(backend=host['id'],distribution=host['displayName'],source=host['source'],packageKey=host['packageKey'],upgradeRequired=bool(host['upgradeRequired']),
-                    operation=BACKENDS[host['id']]['operation'],providerChanges=BACKENDS[host['id']]['providerChanges'])
+        plan.update(backend=host['id'],distribution=host['displayName'],source=host['source'],operation='sudo pacman -Syu --needed (includes a full system upgrade)')
         # Read-only checks happen before offering an unsupported privileged plan.
         check_package_plan(plan)
     print(json.dumps(plan,indent=2))
@@ -755,36 +733,11 @@ def main(argv=None):
             if argv[0] in compatibility_actions or argv[0] in ('rollback', 'restore') and (pending_migration or '--migration' in argv):
                 if os.getuid() == 0: raise Refused('Run CEDAR as your ordinary user, never root.')
                 return compatibility_cli.main(argv, root=source)
-    # Package-backed updates use the managed offline channel. Keep the existing
-    # signed-archive command intact when an archive or signature is supplied.
-    managed_update = bool(argv and argv[0]=='update' and
-                          (len(argv)==1 or argv[1].startswith('-')) and
-                          not any(arg.split('=',1)[0] in ('--signature','--trusted-key') for arg in argv[1:]))
-    # `cedar installer …` hands options to the selected installer untouched.
-    if argv and (argv[0]=='installer' or managed_update):
+    # `cedar installer …` hands every argument to the installed copy's installer untouched;
+    # its own options (--update, --uninstall, --dry-run, …) are not this parser's business.
+    if argv and argv[0]=='installer':
         if os.getuid()==0:raise Refused('Run CEDAR as your ordinary user, never root.')
-        try: source=installed()
-        except Refused:
-            # Nothing is installed for this user yet: a `cedar` from a system
-            # package (/usr/bin/cedar runs this tree's distribution.py) opens this
-            # tree's installer for the first per-user installation. The standalone
-            # recovery copy ships no installer, so its refusal stands.
-            if (paths()['data']/'current').is_symlink() or not (ROOT/'installer/cedar_install.py').is_file():raise
-            source=ROOT
-        sys.path.insert(0,str(source))
-        from installer.engine import update as update_engine
-        # A source install or rollback can select a release that predates the
-        # package channel. Its updater has no default_channel helper, but its
-        # original installer and signed-archive update entry points still work.
-        choose_channel=getattr(update_engine,'default_channel',None)
-        channel=(choose_channel(source) if choose_channel else
-                 os.environ.get('CEDAR_INSTALLER_CHANNEL') or update_engine.installed_channel() or 'stable')
-        if channel=='package':
-            packaged=update_engine.system_source()
-            if (packaged/'installer/cedar_install.py').is_file():source=packaged
-        if argv[0]=='installer' or channel=='package':
-            options=['--update',*argv[1:]] if managed_update else argv[1:]
-            os.execv(sys.executable,[sys.executable,str(source/'installer/cedar_install.py'),*options])
+        os.execv(sys.executable,[sys.executable,str(installed()/'installer/cedar_install.py'),*argv[1:]])
     parser=argparse.ArgumentParser(description='CEDAR: install, preview and recover without replacing your desktop implicitly.')
     parser.add_argument('action',nargs='?',default='doctor',choices=['install','preview','try','activate','keep','status','restore','rollback','doctor','update','uninstall','ipc','dependencies','session-login','launcher','lock','shield','profiles','focus','station','installer','compatibility','migrate','start','stop','restart','history'])
     parser.add_argument('arguments',nargs='*');parser.add_argument('--source',type=Path,default=ROOT)
@@ -815,11 +768,15 @@ def main(argv=None):
             if backend.__name__ == 'portable_session': backend.trial(installed(),args.approve_trial, expected_adapter=args.adapter, cedar_launcher=args.cedar_launcher, trailwatch=args.trailwatch)
             else:
                 if args.cedar_launcher: raise Refused('The launcher choice applies to the portable adapter; existing Omarchy shortcuts are preserved.')
-                backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial,trailwatch=args.trailwatch)
+                if args.trailwatch and backend.active(): backend.switch_trailwatch(args.approve_trial or args.approve_omarchy_trial)
+                else: backend.trial(installed(),args.approve_trial or args.approve_omarchy_trial,trailwatch=args.trailwatch)
         elif args.action=='status':
             row=backend.read_record()
             print(json.dumps(backend.status_report() if backend.__name__=='portable_session' else {k:row.get(k) for k in ('stage','login','deadline','error','locker')} if row else {'stage':'not active'},indent=2))
-        else:backend.keep(args.action=='activate',args.approve_login)
+        else:
+            if args.trailwatch and backend.__name__!='portable_session' and backend.active() and not (backend.read_record() or {}).get('trailwatch'):
+                backend.switch_trailwatch(args.approve_trial or args.approve_omarchy_trial)
+            backend.keep(args.action=='activate',args.approve_login)
     elif args.action=='session-login':session_backend(args.adapter).login()
     elif args.action in ('lock','launcher'):
         backend=session_backend(args.adapter)

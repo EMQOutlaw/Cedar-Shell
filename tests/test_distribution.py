@@ -149,6 +149,58 @@ class Distribution(unittest.TestCase):
         from redaction import redact
         value=redact('token=syntheticsecret password=example 192.0.2.9 person@example.invalid')
         self.assertNotIn('syntheticsecret',value);self.assertNotIn('person@',value);self.assertNotIn('192.0.2.9',value)
+    def selected_source_fixture(self):
+        checkout=self.root/'local checkout';(checkout/'scripts').mkdir(parents=True)
+        for name in ('shell.qml','Config.qml','scripts/distribution.py'):
+            (checkout/name).write_text('local edits to '+name)
+        (checkout/'scripts/cedar').write_text('#!/bin/sh\n# CEDAR-owned command entry point.\n')
+        current=d.paths()['data']/'current';current.parent.mkdir(parents=True)
+        current.symlink_to(checkout)
+        profile=d.paths()['config'].parent/'quickshell/cedar';profile.parent.mkdir(parents=True)
+        profile.symlink_to(current)
+        binary=d.paths()['bin'];binary.parent.mkdir(parents=True)
+        binary.write_text('#!/bin/sh\n# CEDAR distribution launcher\n')
+        return checkout,current,profile,binary
+    def test_update_adopts_selected_checkout_and_restore_keeps_its_edits(self):
+        checkout,current,profile,binary=self.selected_source_fixture()
+        before={p:p.read_bytes() for p in checkout.rglob('*') if p.is_file()}
+        launcher=binary.read_bytes()
+        with patch.object(d,'validate',return_value='Fixture validation'),patch.object(d,'ensure_unlocked'),patch.object(d,'release_in_use',return_value=True):
+            d.install(d.ROOT,approved=True,live=True)
+        self.assertEqual(current.resolve().parent,d.paths()['data']/'releases')
+        self.assertEqual(profile.resolve(),current.resolve())
+        self.assertEqual({p:p.read_bytes() for p in before},before)
+        with patch.object(d,'ensure_unlocked'),patch.object(d,'release_in_use',return_value=False):
+            d.recover_latest('install')
+        self.assertEqual(current.resolve(),checkout)
+        self.assertEqual(binary.read_bytes(),launcher)
+        self.assertEqual({p:p.read_bytes() for p in before},before)
+    def test_unknown_or_unselected_current_link_still_refuses_before_writes(self):
+        checkout,current,profile,binary=self.selected_source_fixture()
+        for kind in ('unselected','unrecognized','broken'):
+            with self.subTest(kind=kind):
+                if kind=='unselected':
+                    profile.unlink();profile.symlink_to(self.root/'elsewhere')
+                elif kind=='unrecognized':
+                    profile.unlink();profile.symlink_to(current)
+                    (checkout/'scripts/cedar').write_text('unrelated command')
+                else:
+                    current.unlink();current.symlink_to(self.root/'missing')
+                before={p:d.info(p) for p in (current,profile,binary)}
+                with patch.object(d,'validate') as validate,patch.object(d.Transaction,'apply_file') as write:
+                    with self.assertRaisesRegex(d.Refused,'Unmanaged current-release link'):d.install(d.ROOT,approved=True,live=True)
+                validate.assert_not_called();write.assert_not_called()
+                self.assertEqual({p:d.info(p) for p in before},before)
+    def test_selected_checkout_still_obeys_lock_and_live_update_guards(self):
+        checkout,current,profile,binary=self.selected_source_fixture()
+        before={p:d.info(p) for p in (current,profile,binary)}
+        with patch.object(d,'ensure_unlocked',side_effect=d.Refused('Fixture locked')),patch.object(d,'validate') as validate:
+            with self.assertRaisesRegex(d.Refused,'Fixture locked'):d.install(d.ROOT,approved=True,live=True)
+            validate.assert_not_called()
+        with patch.object(d,'ensure_unlocked'),patch.object(d,'release_in_use',return_value=True),patch.object(d,'validate') as validate:
+            with self.assertRaisesRegex(d.Refused,'release is in use'):d.install(d.ROOT,approved=True)
+            validate.assert_not_called()
+        self.assertEqual({p:d.info(p) for p in before},before)
     def test_manifest_reconciles_files(self):
         for plugin in d.read_json(d.ROOT/'data/plugins.json')['plugins']:
             for file in plugin['files']:self.assertTrue((d.ROOT/file).is_file(),file)
@@ -160,11 +212,6 @@ class Distribution(unittest.TestCase):
         with patch.object(d,'command',side_effect=d.Refused('bad signature')),patch.object(d,'safe_extract') as extract:
             with self.assertRaises(d.Refused):d.update(Path('archive'),Path('sig'),Path('key'))
             extract.assert_not_called()
-    def test_explicit_archive_update_keeps_the_signed_archive_dispatch(self):
-        with patch.object(d,'update') as archive_update,patch.object(d.os,'getuid',return_value=1000),patch.object(d.os,'execv') as execute:
-            d.main(['update','archive.tar.gz','--signature','archive.sig','--trusted-key','public.pem'])
-        archive_update.assert_called_once_with(Path('archive.tar.gz'),Path('archive.sig'),Path('public.pem'))
-        execute.assert_not_called()
     def test_standalone_recovery_cli_reports_session_refusals(self):
         recovery=self.root/'standalone recovery';recovery.mkdir()
         for name in ('distribution.py','omarchy_session.py','omarchy_providers.py','portable_session.py','portable_providers.py','portable_controls.py','adoption_plan.py','startup_graph.py'):
@@ -175,35 +222,6 @@ class Distribution(unittest.TestCase):
             self.assertIn('CEDAR: No CEDAR trial is running.',result.stderr)
             self.assertIn('cedar try',result.stderr)
             self.assertNotIn('Traceback',result.stderr)
-    def test_installer_from_a_system_package_opens_this_tree_when_nothing_is_installed(self):
-        # /usr/bin/cedar from a distribution package runs /usr/share/cedar/scripts/distribution.py;
-        # before the first per-user installation there is no installed copy to hand off to.
-        calls=[]
-        def fake_exec(exe,argv):calls.append(argv);raise SystemExit(0)
-        with patch.object(d.os,'execv',side_effect=fake_exec),patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaises(SystemExit):d.main(['installer','--dry-run','--no-gui'])
-        self.assertEqual(calls,[[sys.executable,str(d.ROOT/'installer/cedar_install.py'),'--dry-run','--no-gui']])
-        # An installed copy keeps winning, and root is still refused before anything runs.
-        with patch.object(d,'installed',return_value=Path('/installed/release')),patch.object(d.os,'execv',side_effect=fake_exec),patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaises(SystemExit):d.main(['installer','--update'])
-        self.assertEqual(calls[-1][1:],['/installed/release/installer/cedar_install.py','--update'])
-        with patch.object(d.os,'execv',side_effect=fake_exec) as execute,patch.object(d.os,'getuid',return_value=0):
-            with self.assertRaisesRegex(d.Refused,'never root'):d.main(['installer'])
-        execute.assert_not_called()
-        # The standalone recovery copy (~/.local/share/cedar/recovery) ships no installer: its refusal stands.
-        recovery=self.root/'recovery store';(recovery/'recovery').mkdir(parents=True)
-        with patch.object(d,'ROOT',recovery),patch.object(d.os,'execv',side_effect=fake_exec) as execute,patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaisesRegex(d.Refused,'No versioned CEDAR installation'):d.main(['installer'])
-        execute.assert_not_called()
-
-    def test_invalid_installed_release_never_falls_back_to_the_system_installer(self):
-        current=d.paths()['data']/'current'
-        current.parent.mkdir(parents=True)
-        current.symlink_to(self.root/'not-a-verified-release')
-        with patch.object(d.os,'execv') as execute,patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaisesRegex(d.Refused,'outside the owned release store'):d.main(['installer'])
-        execute.assert_not_called()
-
     def test_source_inventory_excludes_nested_clone_and_private_extras(self):
         source=self.root/'source';(source/'data').mkdir(parents=True)
         (source/'shell.qml').write_text('fixture shell')
