@@ -2,40 +2,96 @@
 
 // These descriptors render the controls AND build the search index.
 var pages = [
- {id:"setup",label:"Desktop Setup",icon:"◇",group:"",description:"Review desktop ownership, privacy, applications and recovery."},
- {id:"overview",label:"Overview",icon:"◈",group:"",description:"Your desktop at a glance."},
- {id:"appearance",label:"Appearance",icon:"◐",group:"Personalize",description:"The light, texture, and character of your interface."},
- {id:"application-theming",label:"Application Theming",icon:"◐",group:"",description:"Synchronize native application palettes, coverage, ownership and recovery."},
- {id:"apps",label:"Default Apps",icon:"▦",group:"",description:"Choose the apps that open your links, files, and everyday tasks."},
- {id:"desktop",label:"Desktop",icon:"▧",group:"",description:"Wallpaper and Field Station preferences."},
- {id:"bar",label:"Top Bar",icon:"━",group:"",description:"Shape a bar that fits the way you work."},
- {id:"core",label:"CEDAR Core",icon:"◈",group:"",description:"A quiet awareness center for the things happening now."},
- {id:"displays",label:"Displays",icon:"▣",group:"System",description:"Detect and arrange monitors: resolution, scale, rotation, mirroring, and saved layout profiles."},
- {id:"input",label:"Input",icon:"⌨",group:"",description:"Keyboard layout, pointer feel, touchpad behavior, and key repeat."},
- {id:"keybinds",label:"Keybinds",icon:"⌘",group:"",description:"Every shortcut, read live from your Hyprland config, plus your own custom binds."},
- {id:"connections",label:"Connections",icon:"⌁",group:"",description:"Wi-Fi networks, Bluetooth devices, and your hotspot, in one place."},
- {id:"audio",label:"Audio",icon:"♫",group:"Daily use",description:"Output devices, microphones, and application volume."},
- {id:"notifications",label:"Notifications",icon:"◌",group:"",description:"Choose when CEDAR asks for your attention."},
- {id:"power",label:"Power & Lock",icon:"⏻",group:"",description:"Energy, brightness, and session security."},
- {id:"time",label:"Time & Date",icon:"◷",group:"",description:"A familiar clock across every CEDAR surface."},
- // The page id remains "system" for existing IPC, Go and search routes.
- {id:"system",label:"Health",icon:"✚",group:"Station",description:"Service health, diagnostics, updates, and useful error details."},
- {id:"about",label:"About CEDAR",icon:"✧",group:"",description:"A quiet, living forest interface with the precision of a personal command station."}
+ {id:"overview",label:"Overview",icon:"⌂",description:"Your environment. Your flow."},
+ {id:"appearance",label:"Appearance",icon:"◐",description:"Shape your environment."},
+ {id:"bar",label:"Shell & Bar",icon:"━",description:"Customize your command center."},
+ {id:"animations",label:"Animations & Effects",icon:"◌",description:"Bring your environment to life."},
+ {id:"desktop",label:"Wallpapers & Screensavers",icon:"▧",description:"Set the mood."},
+ {id:"displays",label:"Displays",icon:"▣",description:"Configure your visual workspace."},
+ {id:"windows",label:"Windows & Workspaces",icon:"▦",description:"The layout and organization of your desktop."},
+ {id:"input",label:"Input & Keybinds",icon:"⌨",description:"Make every interaction feel right."},
+ {id:"notifications",label:"Notifications & Signals",icon:"◈",description:"Choose what deserves your attention."},
+ {id:"audio",label:"Audio & Media",icon:"♫",description:"Outputs, microphones, routing and audio scenes."},
+ {id:"apps",label:"Applications & Integrations",icon:"◇",description:"Connect your everyday tools."},
+ {id:"profiles",label:"Desktop Profiles",icon:"△",description:"Optimize CEDAR for your workflow."},
+ {id:"power",label:"Power & Idle",icon:"⏻",description:"Balance energy, performance and inactivity."},
+ {id:"connections",label:"Network & Bluetooth",icon:"⌁",description:"Your connections, in one place."},
+ {id:"privacy",label:"Privacy & Shield",icon:"⬡",description:"Understand and control your protections."},
+ {id:"security",label:"Lock Screen & Security",icon:"▢",description:"Privacy and controls while the desktop is locked."},
+ {id:"system",label:"Updates & Recovery",icon:"↻",description:"Review updates, diagnose problems and recover safely."},
+ {id:"advanced",label:"Advanced",icon:"⌘",description:"Desktop setup and specialized CEDAR controls."},
+ {id:"about",label:"About CEDAR",icon:"✧",description:"Contextual Environment & Desktop Automation Runtime."},
+ // Existing deep links remain stable. Their owners are available as section tabs.
+ {id:"keybinds",label:"Keybinds",icon:"⌘",rail:false,description:"Search, record and manage your shortcuts."},
+ {id:"core",label:"Dynamic Island",icon:"◈",rail:false,description:"CEDAR Core: a quiet awareness center."},
+ {id:"application-theming",label:"Application Theming",icon:"◐",rail:false,advanced:true,description:"Native application palettes, ownership and recovery."},
+ {id:"setup",label:"Desktop Setup",icon:"◇",rail:false,advanced:true,description:"Desktop ownership, applications and recovery."},
+ {id:"time",label:"Time & Date",icon:"◷",rail:false,description:"A familiar clock across every CEDAR surface."},
+ {id:"notes",label:"Field Notes",icon:"✎",rail:false,description:"Your floating notebook, sketches and text."},
+ {id:"dictation",label:"Dictation",icon:"●",rail:false,description:"Voxtype voice typing and microphone preferences."}
 ];
-// The sidebar group a page belongs to (groups are declared on their first page).
+var menu = [
+ {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows","core"]},
+ {id:"interaction",label:"Interaction",description:"Input, attention and everyday tools.",pages:["input","keybinds","notifications","audio","apps","application-theming","dictation","time","notes"]},
+ {id:"system",label:"System",description:"Profiles, power, connections and protection.",pages:["profiles","power","connections","privacy","security"]},
+ {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","advanced","setup","about"]}
+];
+function menuOf(id) {
+    for (var i = 0; i < menu.length; ++i) if (menu[i].pages.indexOf(id) !== -1) return menu[i].id;
+    return "";
+}
 function groupOf(id) {
-    var group = "CEDAR";
-    for (var i = 0; i < pages.length; ++i) { if (pages[i].group) group = pages[i].group; if (pages[i].id === id) return pages[i].group || (i < 2 ? "CEDAR" : group); }
+    for (var i = 0; i < menu.length; ++i) if (menu[i].pages.indexOf(id) !== -1) return menu[i].label;
     return "CEDAR";
 }
+function indexOf(id) { return String(Math.max(1,pages.findIndex(p=>p.id===id)+1)).padStart(2,"0"); }
+// Rows the Simple view folds away. Everything else is basic; the "Advanced"
+// group is advanced wherever it appears. A row's own `level` wins.
+var advancedKeys = ["remoteArtwork","lockMediaDetails","lockAgendaDetails","whisperDevices","whisperQuiet","whisperBattery","forestEchoes","canopyPeek","audioSpectrum","editor","terminal","browser","files","coreScreenshots","coreConnections","coreWorkspaces","coreKeyboard","coreClipboard","coreTemperatureLimit","coreDiskLimit","panelRadius","panelOpacity","effectIntensity","barPulse","barKinetic","latitude","longitude","gamingBlur","gamingAnimations","gamingAutoGameMode","focusTrails","focusAllowedApps","notesFadeToolbar","notesSmoothing","notesExportDir"];
+function levelOf(field) {
+    if (!field) return "basic";
+    if (field.level === "advanced" || field.level === "basic") return field.level;
+    return field.group === "Advanced" || advancedKeys.indexOf(field.key) !== -1 ? "advanced" : "basic";
+}
+function visibleFields(page, level) {
+    return fields.filter(function(f) { return f.page === page && (level === "advanced" || levelOf(f) === "basic"); });
+}
+// The page a key lives on: a preference, a page's own control (extras) or an input row.
+function pageOf(key) {
+    var all = fields.concat(extras);
+    for (var i = 0; i < all.length; ++i) if (all[i].key === key) return all[i].page;
+    for (var j = 0; j < inputFields.length; ++j) if (inputFields[j].key === key) return "input";
+    return "";
+}
+// Does a value fit its descriptor? Empty string means yes; otherwise the
+// reason. Keys the schema does not describe are left to Config's type check.
+function validate(key, value) {
+    var field = null;
+    for (var i = 0; i < fields.length; ++i) if (fields[i].key === key) { field = fields[i]; break; }
+    if (!field) return "";
+    if (field.type === "toggle") return typeof value === "boolean" ? "" : "expected true or false";
+    if (field.type === "slider" || field.type === "number") {
+        if (typeof value !== "number" || !isFinite(value)) return "expected a number";
+        if (field.min !== undefined && value < field.min) return "below the minimum of " + field.min;
+        if (field.max !== undefined && value > field.max) return "above the maximum of " + field.max;
+        return "";
+    }
+    if (field.type === "choice") {
+        for (var k = 0; k < field.options.length; ++k) if (field.options[k].value === value) return "";
+        return "not one of the choices: " + field.options.map(function(o) { return o.value; }).join(", ");
+    }
+    if (field.type === "text" || field.type === "font") return typeof value === "string" ? "" : "expected text";
+    return "";
+}
 var fields = [
- {page:"desktop",group:"Privacy",key:"localOnly",label:"Local-only mode",description:"Block CEDAR external weather, location, calendar and artwork requests.",type:"toggle",defaultValue:true},
- {page:"desktop",group:"Privacy",key:"weatherEnabled",label:"Weather access",description:"Allow Open-Meteo forecasts, IP-based location and explicitly requested city search when local-only is off.",type:"toggle",defaultValue:false},
- {page:"desktop",group:"Privacy",key:"remoteArtwork",label:"Remote artwork",description:"Allow media artwork hosts when local-only is off.",type:"toggle",defaultValue:false},
- {page:"power",group:"Trailwatch privacy",key:"lockPrivacy",label:"Privacy while locked",description:"Hide media, event, reminder and device names. Notification contents never appear on Trailwatch.",type:"toggle",defaultValue:true},
- {page:"power",group:"Trailwatch privacy",key:"lockMediaDetails",label:"Show media details",description:"Show track and artist when lockscreen privacy is off.",type:"toggle",defaultValue:false},
- {page:"power",group:"Trailwatch privacy",key:"lockAgendaDetails",label:"Show agenda details",description:"Show event and reminder titles when lockscreen privacy is off.",type:"toggle",defaultValue:false},
- {page:"power",group:"Trailwatch controls",key:"lockMediaControls",label:"Media controls while locked",description:"Allow playback and volume adjustment without unlocking.",type:"toggle",defaultValue:false},
+ {page:"overview",group:"View",key:"settingsLevel",label:"Settings depth",description:"Simple shows what most people change. Advanced shows every page and every row.",type:"choice",options:[{value:"simple",label:"Simple"},{value:"advanced",label:"Advanced"}],defaultValue:"simple",aliases:"advanced mode expert basic level show all"},
+ {page:"privacy",group:"Privacy",key:"localOnly",label:"Local-only mode",description:"Block CEDAR external weather, location, calendar and artwork requests.",type:"toggle",defaultValue:true},
+ {page:"privacy",group:"Privacy",key:"weatherEnabled",label:"Weather access",description:"Allow Open-Meteo forecasts, IP-based location and explicitly requested city search when local-only is off.",type:"toggle",defaultValue:false},
+ {page:"privacy",group:"Privacy",key:"remoteArtwork",label:"Remote artwork",description:"Allow media artwork hosts when local-only is off.",type:"toggle",defaultValue:false},
+ {page:"security",group:"Trailwatch privacy",key:"lockPrivacy",label:"Privacy while locked",description:"Hide media, event, reminder and device names. Notification contents never appear on Trailwatch.",type:"toggle",defaultValue:true},
+ {page:"security",group:"Trailwatch privacy",key:"lockMediaDetails",label:"Show media details",description:"Show track and artist when lockscreen privacy is off.",type:"toggle",defaultValue:false},
+ {page:"security",group:"Trailwatch privacy",key:"lockAgendaDetails",label:"Show agenda details",description:"Show event and reminder titles when lockscreen privacy is off.",type:"toggle",defaultValue:false},
+ {page:"security",group:"Trailwatch controls",key:"lockMediaControls",label:"Media controls while locked",description:"Allow playback and volume adjustment without unlocking.",type:"toggle",defaultValue:false},
  {page:"core",group:"Whisper types",key:"whisperDevices",label:"Connected device observations",description:"A quiet reminder about a connected Bluetooth audio output after long inactivity.",type:"toggle",defaultValue:true},
 {"page": "core", "group": "Canopy", "key": "canopyEnabled", "label": "Canopy", "description": "Panels descend beneath the bar. Applications always drops from its own button.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Canopy", "key": "canopyPeek", "label": "Peek", "description": "Hover or focus a bar control for a compact preview.", "type": "toggle", "defaultValue": true},
@@ -54,6 +110,7 @@ var fields = [
 {"page": "core", "group": "Activities", "key": "coreNotifications", "label": "Notifications", "description": "Notifications unfold from the Core pill and gather in Signals. Off: they appear as cards at the top right instead.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreScreenshots", "label": "Screenshot actions", "description": "Show Open, Copy and Reveal for saved Omarchy screenshot notifications.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreConnections", "label": "Connections", "description": "Bluetooth changes in Core; network and VPN changes on the network button.", "type": "toggle", "defaultValue": true},
+{"page": "core", "group": "Activities", "key": "coreDictation", "label": "Dictation", "description": "A row with Stop and Cancel while Voxtype is listening or transcribing. The bar button and keybinds work either way.", "type": "toggle", "defaultValue": true, "aliases": "voxtype voice speech"},
 {"page": "core", "group": "Activities", "key": "corePower", "label": "Power", "description": "Battery warnings, power connection and system profile changes.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "corePrivacy", "label": "Privacy indicators", "description": "Active PipeWire links from identifiable microphones and cameras. Direct hardware access outside PipeWire is not monitored.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreWorkspaces", "label": "Workspace changes", "description": "Brief feedback when the focused workspace changes.", "type": "toggle", "defaultValue": false},
@@ -67,15 +124,15 @@ var fields = [
  {page:"appearance",group:"Typography",key:"fontScale",label:"Text scale",description:"Size of shared interface text and controls.",type:"slider",min:.85,max:1.3,step:.05,unit:"%",factor:100,defaultValue:1},
  {page:"appearance",group:"Interface",key:"panelRadius",label:"Panel corners",description:"Corner radius for Settings, Canopy, and Field Station.",type:"slider",min:0,max:28,step:1,unit:" px",defaultValue:16,aliases:"rounded radius"},
  {page:"appearance",group:"Interface",key:"panelOpacity",label:"Panel opacity",description:"Background opacity of the main CEDAR panels.",type:"slider",min:.88,max:1,step:.01,factor:100,unit:"%",defaultValue:.97,aliases:"transparency glass"},
- {page:"appearance",group:"Bar effects",key:"motionPreset",label:"Motion preset",description:"How much the bar moves: Calm keeps transitions subtle, Balanced is the CEDAR experience, Expressive makes traces brighter and transitions richer, Off keeps the bar static.",type:"choice",options:[{value:"calm",label:"Calm"},{value:"balanced",label:"Balanced"},{value:"expressive",label:"Expressive"},{value:"off",label:"Off"}],defaultValue:"balanced",aliases:"animation effects"},
- {page:"appearance",group:"Bar effects",key:"effectIntensity",label:"Effect intensity",description:"Brightness and reach of the Heartwood rings, Rootline traces and edge light.",type:"slider",min:.3,max:1.5,step:.1,unit:"%",factor:100,defaultValue:1},
- {page:"appearance",group:"Bar effects",key:"barHeartwood",label:"Heartwood",description:"The cedar cross-section instrument in the Core pill: it turns on hover, runs a light on click, separates when a panel unfolds, and reads Gaming Mode, Focus and Shield.",type:"toggle",defaultValue:true},
- {page:"appearance",group:"Bar effects",key:"barRootlines",label:"Rootlines",description:"Thin branching paths in the bar that light briefly when a panel opens, a profile changes or Shield's posture moves.",type:"toggle",defaultValue:true},
- {page:"appearance",group:"Bar effects",key:"barKinetic",label:"Kinetic Type",description:"Status words, tile values and titles move when their meaning changes.",type:"toggle",defaultValue:true},
- {page:"appearance",group:"Bar effects",key:"barWhispers",label:"Whispers in the bar",description:"The bar's text region shows profile, Focus and Shield messages as they happen, and a curated line when no window has a title.",type:"toggle",defaultValue:true},
- {page:"appearance",group:"Bar effects",key:"barPulse",label:"Canopy Pulse",description:"Thin strokes in the bar that follow real audio levels while something plays (CAVA over PipeWire). Off by default; analysis runs only while shown.",type:"toggle",defaultValue:false},
- {page:"appearance",group:"Motion & light",key:"ambientIntensity",label:"Ambient illumination",description:"Subtle forest light in the main panels. Set to zero to hide drifting spores and edge illumination.",type:"slider",min:0,max:1,step:.05,factor:100,unit:"%",defaultValue:.45,aliases:"glow spores particles"},
- {page:"appearance",group:"Motion & light",key:"reducedMotion",label:"Reduced Motion",description:"Stop decorative spores, orbiting accents, and breathing light.",type:"toggle",defaultValue:false,aliases:"animation accessibility motion"},
+ {page:"animations",group:"Bar effects",key:"motionPreset",label:"Motion preset",description:"How much the bar moves: Calm keeps transitions subtle, Balanced is the CEDAR experience, Expressive makes traces brighter and transitions richer, Off keeps the bar static.",type:"choice",options:[{value:"calm",label:"Calm"},{value:"balanced",label:"Balanced"},{value:"expressive",label:"Expressive"},{value:"off",label:"Off"}],defaultValue:"balanced",aliases:"animation effects"},
+ {page:"animations",group:"Bar effects",key:"effectIntensity",label:"Effect intensity",description:"Brightness and reach of the Heartwood rings, Rootline traces and edge light.",type:"slider",min:.3,max:1.5,step:.1,unit:"%",factor:100,defaultValue:1},
+ {page:"animations",group:"Bar effects",key:"barHeartwood",label:"Heartwood",description:"The cedar cross-section instrument in the Core pill: it turns on hover, runs a light on click, separates when a panel unfolds, and reads Gaming Mode, Focus and Shield.",type:"toggle",defaultValue:true},
+ {page:"animations",group:"Bar effects",key:"barRootlines",label:"Rootlines",description:"Thin branching paths in the bar that light briefly when a panel opens, a profile changes or Shield's posture moves.",type:"toggle",defaultValue:true},
+ {page:"animations",group:"Bar effects",key:"barKinetic",label:"Kinetic Type",description:"Status words, tile values and titles move when their meaning changes.",type:"toggle",defaultValue:true},
+ {page:"animations",group:"Bar effects",key:"barWhispers",label:"Whispers in the bar",description:"The bar's text region shows profile, Focus and Shield messages as they happen, and a curated line when no window has a title.",type:"toggle",defaultValue:true},
+ {page:"animations",group:"Bar effects",key:"barPulse",label:"Canopy Pulse",description:"Thin strokes in the bar that follow real audio levels while something plays (CAVA over PipeWire). Off by default; analysis runs only while shown.",type:"toggle",defaultValue:false},
+ {page:"animations",group:"Motion & light",key:"ambientIntensity",label:"Ambient illumination",description:"Subtle forest light in the main panels. Set to zero to hide drifting spores and edge illumination.",type:"slider",min:0,max:1,step:.05,factor:100,unit:"%",defaultValue:.45,aliases:"glow spores particles"},
+ {page:"animations",group:"Motion & light",key:"reducedMotion",label:"Reduced Motion",description:"Stop decorative spores, orbiting accents, and breathing light.",type:"toggle",defaultValue:false,aliases:"animation accessibility motion"},
  {page:"desktop",group:"Background",key:"wallpaperMode",label:"Wallpaper fit",description:"How an image fills each display.",type:"choice",options:[{value:"crop",label:"Fill screen"},{value:"fit",label:"Fit image"},{value:"stretch",label:"Stretch"}],defaultValue:"crop",aliases:"background mode"},
  {page:"desktop",group:"Background",key:"wallpaperFolder",label:"Wallpaper folder",description:"A folder of your own images, searched with its subfolders. Empty shows only CEDAR’s bundled backgrounds and ~/.config/cedar/wallpapers.",type:"text",defaultValue:"",placeholder:"~/Pictures/Wallpapers/CEDAR",aliases:"background images directory pictures"},
  {page:"desktop",group:"Background",key:"desktopSignature",label:"CEDAR signature",description:"Show the small CEDAR identity on the desktop.",type:"toggle",defaultValue:true,aliases:"background branding text"},
@@ -112,14 +169,21 @@ var fields = [
  {page:"time",group:"Clock",key:"clock24",label:"24-hour clock",description:"Off uses a 12-hour clock with AM / PM. Updates every CEDAR clock.",type:"toggle",defaultValue:true,aliases:"12hr 24hr twelve hour twenty four time format"},
  {page:"time",group:"Date",key:"dateStyle",label:"Date format",description:"Choose the order of month, day, and year.",type:"choice",options:[{value:"month-first",label:"Month first"},{value:"day-first",label:"Day first"},{value:"iso",label:"Year first · ISO"}],defaultValue:"month-first",aliases:"calendar"},
  {page:"time",group:"Date",key:"showWeekday",label:"Show weekday",description:"Include the day name beside the date.",type:"toggle",defaultValue:true},
- {page:"time",group:"Top bar",key:"barShowDate",label:"Show date in the bar",description:"Off leaves a time-only bar clock.",type:"toggle",defaultValue:true}
+ {page:"time",group:"Top bar",key:"barShowDate",label:"Show date in the bar",description:"Off leaves a time-only bar clock.",type:"toggle",defaultValue:true},
+ {page:"notes",group:"Paper",key:"notesTilt",label:"Tilted paper",description:"Rest the sheet at a slight angle, like paper on a desk.",type:"toggle",defaultValue:true,aliases:"angle rotate straight"},
+ {page:"notes",group:"Paper",key:"notesToolbar",label:"Toolbar side",description:"Which side of the paper the tools dock to. Dragging the toolbar by its grip moves it too.",type:"choice",options:[{value:"left",label:"Left"},{value:"top",label:"Top"},{value:"bottom",label:"Bottom"},{value:"right",label:"Right"}],defaultValue:"right",aliases:"dock tools position"},
+ {page:"notes",group:"Paper",key:"notesFadeToolbar",label:"Fade toolbar",description:"Fade the tools away while you work in another window. They return when the notes have focus or you point at them.",type:"toggle",defaultValue:true},
+ {page:"notes",group:"Drawing",key:"notesSmoothing",label:"Mouse smoothing",description:"Steadies strokes from a mouse or touchpad; sharp corners and stroke ends stay put. Pen tablets are left exactly as drawn.",type:"choice",options:[{value:"off",label:"Off"},{value:"light",label:"Light"},{value:"medium",label:"Medium"},{value:"strong",label:"Strong"}],defaultValue:"medium",aliases:"steady wobble pen"},
+ {page:"notes",group:"Drawing",key:"notesEraser",label:"Eraser size",description:"The eraser ring cuts strokes at its edge and removes any note it touches.",type:"choice",options:[{value:"small",label:"Small"},{value:"medium",label:"Medium"},{value:"large",label:"Large"}],defaultValue:"medium"},
+ {page:"notes",group:"Export",key:"notesClipboard",label:"Ctrl+C copies",description:"Ctrl+Shift+C copies the other one. Both save the sheet as a PNG first.",type:"choice",options:[{value:"path",label:"File path"},{value:"image",label:"Image"}],defaultValue:"path",aliases:"copy clipboard png export"},
+ {page:"notes",group:"Export",key:"notesExportDir",label:"Export folder",description:"Where copied sheets are saved, one new PNG per copy. Empty uses ~/Pictures/field-notes; ~ is your home folder.",type:"text",defaultValue:"",placeholder:"~/Pictures/field-notes",aliases:"save directory pictures"}
 ];
 var modules = [
  {key:"identity",label:"CEDAR / Field Station"}, {key:"go",label:"Applications"}, {key:"workspaces",label:"Workspaces"},
  {key:"activeWindow",label:"Active window"}, {key:"tray",label:"System tray"}, {key:"network",label:"Connections"},
  {key:"audio",label:"Audio (Strata layout)",strataOnly:true},
   {key:"battery",label:"Battery"}, {key:"notifications",label:"Notifications"},
-  {key:"clock",label:"Clock"}
+  {key:"clock",label:"Clock"}, {key:"notes",label:"Field Notes"}, {key:"dictation",label:"Dictation (when Voxtype is installed)"}
 ];
 function search(entries, text) {
     var words=text.toLowerCase().trim().split(/\s+/).filter(Boolean);

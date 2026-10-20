@@ -2,104 +2,82 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../components"
+import "../components/SettingsSchema.js" as Schema
 import "../services"
 ColumnLayout {
     id: root
+    property bool active:false
     property string highlightKey:""
+    property string tab:"Themes"
+    readonly property bool dirty:SettingsInfo.themePreview!==null
+    readonly property var preview:SettingsInfo.themePreview
+    readonly property var themes:SettingsInfo.data.themes || []
+    readonly property string current:(SettingsInfo.data.theme || "").toLowerCase()
     spacing:16
-    readonly property var themes: SettingsInfo.data.themes || []
-    readonly property string current: (SettingsInfo.data.theme || "").toLowerCase()
-
-    SettingsSection {
-        objectName:"theme"
-        heading:"Theme"; caption:"Palettes apply to this shell immediately. Add local JSON palettes to the CEDAR themes folder; your applications keep running."
-        badge:SettingsInfo.data.theme || ""; badgeColor:Theme.green
-        Row { spacing:6; Repeater { model:[Theme.background,Theme.surface,Theme.elevated,Theme.border,Theme.green,Theme.teal,Theme.amber,Theme.ember,Theme.text]; Rectangle { required property color modelData; width:28; height:28; radius:6; color:modelData; border.color:Qt.alpha(Theme.text,.12) } } }
+    function discard(){SettingsInfo.themePreview=null;}
+    function selectTheme(name, accent=""){SettingsInfo.run({action:"theme-preview",name:name,accent:accent});}
+    onHighlightKeyChanged: {
+        const f=Schema.fields.find(f=>f.key===highlightKey);
+        if(f)tab=f.group==="Typography" ? "Typography":"Surfaces";
+    }
+    SettingsTabs { tabs:["Themes","Colors","Surfaces","Typography","Living Edge","Grain"];current:root.tab;onChosen:tab=>root.tab=tab }
+    SettingsBarPreview { active:root.active;palette:root.preview?.palette || ({});Layout.fillWidth:true }
+    SettingsSurface {
+        visible:root.tab==="Themes" || root.tab==="Colors"
+        GlowText { text:root.tab==="Themes" ? "Installed themes":"Theme accents";font.family:Theme.labelFont;font.pixelSize:Theme.title }
         GridLayout {
-            Layout.fillWidth:true; columns:root.width<560 ? 2:3; columnSpacing:10; rowSpacing:10
+            visible:root.tab==="Themes";Layout.fillWidth:true;columns:root.width<600 ? 2:3;columnSpacing:10;rowSpacing:10
             Repeater {
                 model:root.themes
                 StationButton {
                     id:tile
                     required property var modelData
-                    readonly property bool inUse:modelData.name.toLowerCase()===root.current
-                    Layout.fillWidth:true; Layout.preferredWidth:180; implicitHeight:128
-                    checked:inUse; enabled:!SettingsInfo.busy
-                    Accessible.name:modelData.label+(inUse ? ", in use":"")
-                    onClicked:if(!inUse)SettingsInfo.run({action:"theme",name:modelData.name})
-                    background:Rectangle {
-                        radius:10; color:Theme.surface; clip:true
-                        border.width:tile.visualFocus ? Theme.focusWidth:tile.inUse ? 2:1
-                        border.color:tile.visualFocus || tile.inUse ? Theme.green:tile.hovered ? Qt.alpha(Theme.teal,.45):Qt.alpha(Theme.teal,.14)
-                    }
+                    readonly property bool selected:(root.preview?.name || root.current)===modelData.name
+                    readonly property var palette:modelData.palette || ({})
+                    Layout.fillWidth:true;Layout.minimumWidth:0;implicitHeight:120
+                    text:modelData.label;checked:selected;enabled:!SettingsInfo.busy
+                    onClicked:root.selectTheme(modelData.name)
+                    background:ChamferFrame {cut:7;fill:tile.palette.background || Theme.background;stroke:tile.visualFocus ? Theme.green:Qt.alpha(Theme.strataAccent,tile.selected ? .7:.2);topLine:tile.selected;topLineColor:Theme.strataAccent}
                     contentItem:ColumnLayout {
-                        spacing:6
+                        spacing:8
                         Rectangle {
-                            Layout.fillWidth:true; Layout.fillHeight:true; radius:6; color:Theme.background; clip:true
-                            Image { anchors.fill:parent; source:Config.imageSource(tile.modelData.preview); fillMode:Image.PreserveAspectCrop; sourceSize.width:480; asynchronous:true }
-                            Text { anchors.centerIn:parent; visible:!tile.modelData.preview; text:"Aa"; font.family:Theme.labelFont; font.pixelSize:28; color:Theme.muted }
+                            Layout.fillWidth:true;implicitHeight:52;radius:Theme.controlRadius
+                            color:tile.palette.surface || Theme.surface
+                            Row {anchors.centerIn:parent;spacing:6;Repeater {model:[tile.palette.green || Theme.green,tile.palette.teal || Theme.teal,tile.palette.amber || Theme.amber,tile.palette.text || Theme.text];Rectangle {required property color modelData;width:18;height:18;radius:9;color:modelData}}}
                         }
-                        RowLayout {
-                            Layout.fillWidth:true
-                            Text { Layout.fillWidth:true; text:tile.modelData.label; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:tile.inUse ? Theme.green:Theme.text; elide:Text.ElideRight }
-                            Text { visible:tile.inUse; text:"IN USE"; font.family:Theme.dataFont; font.pixelSize:9; font.letterSpacing:1.2; color:Theme.green }
-                        }
+                        GlowText {text:tile.modelData.label+(tile.modelData.name===root.current ? " · Active":"");font.family:Theme.labelFont;font.pixelSize:Theme.normal;Layout.fillWidth:true;elide:Text.ElideRight}
                     }
                 }
             }
         }
-        GlowText { visible:!root.themes.length; text:"No installed themes were found."; color:Theme.muted; font.pixelSize:Theme.small }
-    }
-
-    SettingsSection {
-        heading:"Typography"; caption:"Display type for headings, monospace for controls and readings."
-        Rectangle {
-            Layout.fillWidth:true; implicitHeight:specimen.implicitHeight+28; radius:8; color:Theme.background; border.color:Qt.alpha(Theme.teal,.12)
-            ColumnLayout {
-                id:specimen; anchors.left:parent.left; anchors.right:parent.right; anchors.top:parent.top; anchors.margins:14; spacing:6
-                Text { Layout.fillWidth:true; text:"Field notes, clearly spoken."; font.family:Theme.labelFont; font.pixelSize:Math.round(28*Theme.fontScale); color:Theme.green; wrapMode:Text.WordWrap }
-                Text { Layout.fillWidth:true; text:"THE WOODS ARE QUIET.  ·  Aa Bb Cc  ·  0123456789  ·  12:48"; font.family:Theme.dataFont; font.pixelSize:Theme.normal; color:Theme.text; wrapMode:Text.WordWrap }
-                Text { Layout.fillWidth:true; text:Theme.labelFont+"  /  "+Theme.dataFont+"  ·  "+Math.round(Theme.fontScale*100)+"%"; font.family:Theme.dataFont; font.pixelSize:10; color:Theme.muted; elide:Text.ElideRight }
-            }
-        }
-        SettingsFields { page:"appearance"; groups:["Typography"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
-    }
-
-    SettingsSection {
-        heading:"Panels"; caption:"Shape and depth for Settings, Canopy and Field Station."
-        GridLayout {
-            Layout.fillWidth:true; columns:root.width<620 ? 1:2; columnSpacing:16; rowSpacing:8
-            SettingsFields { page:"appearance"; groups:["Interface"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
-            // Live miniature of a panel at the current radius and opacity.
-            Item {
-                Layout.preferredWidth:root.width<620 ? -1:220; Layout.fillWidth:root.width<620; implicitHeight:130
-                Rectangle { anchors.fill:parent; radius:8; color:Theme.background; border.color:Qt.alpha(Theme.teal,.1)
-                    Rectangle { anchors.fill:parent; anchors.margins:1; radius:8; gradient:Gradient { GradientStop { position:0; color:Qt.alpha(Theme.green,.10) } GradientStop { position:1; color:Qt.alpha(Theme.teal,.02) } } }
-                }
-                Rectangle {
-                    anchors.centerIn:parent; width:parent.width-44; height:parent.height-36
-                    radius:Math.min(height/2,Config.panelRadius*.6); color:Qt.alpha(Theme.background,Config.panelOpacity); border.color:Qt.alpha(Theme.teal,.3)
-                    Column {
-                        anchors.left:parent.left; anchors.top:parent.top; anchors.margins:12; spacing:6
-                        Text { text:"CEDAR"; font.family:Theme.labelFont; font.pixelSize:16; color:Theme.green }
-                        Rectangle { width:90; height:4; radius:2; color:Qt.alpha(Theme.teal,.4) }
-                        Rectangle { width:60; height:4; radius:2; color:Qt.alpha(Theme.teal,.2) }
-                    }
+        GlowText {visible:!root.themes.length;text:"No installed themes were found.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+        Flow {
+            visible:root.tab==="Colors";Layout.fillWidth:true;spacing:8
+            Repeater {
+                model:["green","teal","amber","ember"]
+                StationButton {
+                    required property string modelData
+                    text:modelData.charAt(0).toUpperCase()+modelData.slice(1)
+                    accent:root.preview?.palette?.[modelData] || Theme[modelData]
+                    checked:root.preview?.accent===modelData;enabled:!SettingsInfo.busy && root.themes.length>0
+                    onClicked:root.selectTheme(root.preview?.name || (root.themes.find(t=>t.name===root.current)?.name || root.themes[0].name),modelData)
                 }
             }
         }
+        GlowText {text:"Selections preview locally. Apply changes CEDAR’s palette; application palettes remain separately managed.";color:Theme.muted;font.pixelSize:Theme.small;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+        Flow {
+            Layout.fillWidth:true;spacing:8
+            StrataButton {text:SettingsInfo.busy ? "Working…":"Apply theme";enabled:root.dirty && !SettingsInfo.busy;onClicked:SettingsInfo.run(Object.assign({action:"theme-apply"},root.preview))}
+            StrataButton {text:"Cancel preview";enabled:root.dirty && !SettingsInfo.busy;onClicked:root.discard()}
+            StrataButton {text:"Restore previous theme";enabled:SettingsInfo.data.themeRestoreAvailable===true && !SettingsInfo.busy;onClicked:SettingsInfo.run({action:"theme-restore"})}
+        }
     }
-
-    SettingsSection {
-        heading:"Motion & light"; caption:"Ambient light follows real activity. Reduced Motion stops every decorative cycle."
-        SettingsFields { page:"appearance"; groups:["Motion & light"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
-    }
-    SettingsSection {
-        objectName:"barEffects"
-        heading:"Bar effects"
-        caption:"The bar's animation identity: the Heartwood instrument, Rootlines, Kinetic Type, Whispers and Canopy Pulse. Every effect is state-driven and still while nothing changes; Reduced Motion and the Off preset keep the bar static."
-        badge:Config.saved.motionPreset === "off" ? "Static" : Config.saved.motionPreset.charAt(0).toUpperCase() + Config.saved.motionPreset.slice(1)
-        badgeColor:Config.saved.motionPreset === "off" ? Theme.muted : Theme.green
-        SettingsFields { page:"appearance"; groups:["Bar effects"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+    SettingsFields {visible:root.tab==="Typography";page:"appearance";groups:["Typography"];highlightKey:root.highlightKey;Layout.fillWidth:true}
+    SettingsFields {visible:root.tab==="Surfaces";page:"appearance";groups:["Interface"];highlightKey:root.highlightKey;Layout.fillWidth:true}
+    SettingsSurface {
+        visible:root.tab==="Living Edge" || root.tab==="Grain"
+        GlowText {text:root.tab==="Living Edge" ? "CEDAR’s living surface":"Strata grain";font.family:Theme.labelFont;font.pixelSize:Theme.title}
+        GlowText {text:root.tab==="Living Edge" ? "Edge light uses the shared Rootlines, Heartwood and morph surfaces. Adjust their activity in Animations & Effects. Independent edge intensity and global blur controls are not available in this backend.":"Grain is part of Strata’s retained surface geometry. Its contrast follows the active palette; there is no separate grain texture or intensity setting.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+        StrataButton {visible:root.tab==="Living Edge";text:"Open Animations & Effects";onClicked:SettingsService.navigate("animations", "effectIntensity")}
     }
 }

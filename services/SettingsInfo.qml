@@ -10,15 +10,16 @@ Singleton {
     property string message: ""
     property string logs: ""
     property string action:"snapshot"
-    readonly property bool busy: worker.running
+    property var themePreview: null
+    readonly property bool busy: worker.busy
     property double lastRead: 0
     function refresh(force=false) { if (!busy && !Config.testMode && (force || Date.now()-lastRead>15000)) { lastRead=Date.now(); worker.send({action:"snapshot"}); } }
     function run(request) { if (!busy && !Config.testMode) { error=""; message="Working…"; action=request.action; worker.send(request); } }
     function report() { return "CEDAR "+data.version+"\n"+data.os+"\nKernel "+data.kernel+"\n"+Object.keys(data.versions).map(k=>k+": "+data.versions[k]).join("\n")+"\n"+data.services.map(s=>s.name+": "+s.status).join("\n"); }
     Timer { id:afterRestart; interval:500; onTriggered:root.refresh(true) }
     ServiceRequest {
-        id: worker; script:"scripts/settings_info.py"
-        onResult: result => { root.error=""; if (result.hostname || result.themes) root.data=Object.assign({},root.data,result); root.message=result.message || ""; if (result.logs!==undefined) root.logs=result.logs; if(root.action==="restart"){root.action="snapshot";afterRestart.restart();} }
+        id: worker; script:"scripts/settings_info.py"; timeoutMs:180000
+        onResult: result => { root.error=""; if (result.hostname || result.themes || result.updateStatus) root.data=Object.assign({},root.data,result); if(result.themePreview)root.themePreview=result.themePreview; if(root.action==="theme-apply" || root.action==="theme-restore")root.themePreview=null; root.message=result.message || ""; if (result.logs!==undefined) root.logs=result.logs; if(root.action==="restart"){root.action="snapshot";afterRestart.restart();} }
         onFailed: value=>{root.error=value; root.message="";}
     }
 }

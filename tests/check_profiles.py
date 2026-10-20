@@ -101,6 +101,16 @@ ShellRoot {
                 window.shot("profiles-idle");
                 break;
             case 10:
+                Profiles.activateChecked("work");
+                window.check(Profiles.active === "work", "Settings uses the existing verified profile transaction");
+                // Inject a required provider's failed verification at settlement.
+                Profiles.guardedProfile = "work";
+                Profiles.steps = Profiles.steps.map(s => s.id === "performance" ? Object.assign({}, s, {state: "failed", detail: "Injected readback failure"}) : s);
+                Profiles.settle();
+                window.check(Profiles.active === "" && Config.saved.doNotDisturb === false && Config.saved.performanceMode === "auto", "Failed Settings profile verification restores captured values");
+                window.check(Profiles.settingsFailure.includes("verification failed"), "Failed apply remains visible after restoration");
+                break;
+            case 11:
                 console.log("PASS: Desktop Profiles apply, verify, nest with Gaming Mode, respect manual changes, stay exclusive and restore");
                 Qt.quit();
             }

@@ -242,7 +242,7 @@ Singleton {
             if (Network.state !== "connected") return;
             if (root.lastNetwork && root.lastNetwork !== Network.label) root.record("network", "Network changed", root.lastNetwork + " → " + Network.label);
             root.lastNetwork = Network.label;
-            if (root.open || Config.saved.shieldWatchNetwork) settle.restart();
+            if (root.open || (SettingsService.open && SettingsService.page === "privacy") || Config.saved.shieldWatchNetwork) settle.restart();
         }
     }
     Timer { id: settle; interval: 1500; onTriggered: root.refresh() }

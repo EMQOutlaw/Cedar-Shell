@@ -118,7 +118,7 @@ class RemasterTransactions(unittest.TestCase):
 
 PAGES=['FirstRunSettings','SettingsOverview','AppearanceSettings','DefaultAppsSettings','DesktopSettingsPage','TopBarSettings','CoreSettings','DisplaySettings','InputSettings','KeybindSettings','ConnectionsPage','HotspotSettings','AudioSettings','NotificationSettings','PowerSettings','TimeSettings','SystemSettings','AboutSettings','WeatherLocationSettings']
 class SingleEntryPoints(unittest.TestCase):
-    """Settings has one way to reach each place: the sidebar (and search)."""
+    """Navigation belongs to the Settings menu, search and home directory."""
     def test_pages_do_not_navigate_or_open_other_surfaces(self):
         import re
         pattern=re.compile(r'\bnavigate\(|signal navigate|ShellState\.(toggle|open|lock|settingsPage)|Canopy\.(open|context|toggle)|CoreService\.expand')
@@ -129,6 +129,11 @@ class SingleEntryPoints(unittest.TestCase):
                 self.assertNotIn('SystemStats.cpu', text)
                 self.assertNotIn('SystemStats.ram', text)
                 text = text.replace('Canopy.openStation("tasks")', '')
+            # The home directory is navigation furniture, not a preference
+            # page. Its category and recent links use the same draft guard.
+            if name == 'SettingsOverview':
+                text = text.replace('SettingsService.navigate(modelData.pages[0].id, "")', '')
+                text = text.replace('SettingsService.navigate(modelData.page, "")', '')
             self.assertIsNone(pattern.search(text),f'{name} adds a second route to another place')
     def test_each_preference_has_one_custom_control(self):
         import re
@@ -137,10 +142,12 @@ class SingleEntryPoints(unittest.TestCase):
             for key in set(re.findall(r'Config\.set\("(\w+)"',(ROOT/'modules'/f'{name}.qml').read_text())):
                 owners.setdefault(key,[]).append(name)
         self.assertEqual({k:v for k,v in owners.items() if len(v)>1},{})
-    def test_sidebar_is_the_only_page_navigation(self):
+    def test_panel_keeps_navigation_in_menu_and_search(self):
         panel=(ROOT/'modules/SettingsPanel.qml').read_text()
         self.assertNotIn('family-',panel)
-        self.assertEqual(panel.count('onClicked:root.navigate('),2)  # sidebar item, search result
+        self.assertIn('SettingsNavigation {', panel)
+        self.assertIn('onChosen:page=>root.navigate(page)', panel)
+        self.assertIn('SettingsService.navigate(page, anchor)', panel)
 
 
 class DesktopSingleRoutes(unittest.TestCase):
@@ -149,13 +156,14 @@ class DesktopSingleRoutes(unittest.TestCase):
         return {f.relative_to(ROOT).as_posix():f.read_text() for d in ('modules','components') for f in (ROOT/d).rglob('*.qml')}
     def test_settings_has_one_button(self):
         import re
-        route=re.compile(r'ShellState\.(open|toggle)\("settings"\)|settingsPage *=')
+        # The window is owned by SettingsService; reaching it directly is the same route as ShellState.open("settings").
+        route=re.compile(r'ShellState\.(open|toggle)\("settings"\)|settingsPage *=|SettingsService\.(openApp|openPage|toggleApp|route)\(')
         # Canopy's Full Settings; the legacy Control Center replaces Canopy when it is disabled;
         # The network indicator and Strata's audio/calendar controls fall back only
         # when Canopy is disabled; Trails replays history. Strata's exact fallback
         # branches are executed below, so this exception cannot become another
         # always-visible Full Settings entry.
-        allowed={'modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml','modules/StrataBarContents.qml'}
+        allowed={'modules/CalendarCanopy.qml','modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml','modules/StrataBarContents.qml'}
         found={name for name,text in self.sources().items() if route.search(text) and not name.startswith('modules/Settings')}
         self.assertEqual(found-allowed,set())
         self.assertEqual(len(route.findall(self.sources()['modules/StrataBarContents.qml'])),4,

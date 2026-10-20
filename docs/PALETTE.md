@@ -21,5 +21,15 @@
 | `brightViolet` | `#D7C6EF` | ANSI bright magenta |
 | `brightTeal` | `#9AF4E1` | ANSI bright cyan |
 | `white` | `#F4FFF8` | Bright foreground |
+| `paper` | `#DED7C5` | Field Notes sheet |
+| `paperEdge` | `#B8AD96` | Field Notes sheet edge |
+| `paperUnder` | `#CDC5B1` | The sheet peeking from under the page |
+| `ink` | `#423E38` | Graphite ink and printed header |
+| `inkSelection` | `#B18D52` | Selected ink and note halo |
+| `rule` | `#7898A8` | Graph and ruled paper lines |
+| `ruleMajor` | `#5F8394` | Major grid lines and dots |
+| `marginRule` | `#C0736A` | The red margin on ruled paper |
 
 Derived alpha colors: transparent (0%), glass (94%), veil (88%), grid (teal at 4.5%).
+The paper tokens are the one place CEDAR is light on purpose: a sheet of paper
+under the dark shell. They follow `theme.json` like every other token.

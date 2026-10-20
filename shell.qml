@@ -10,6 +10,8 @@ import "services"
 
 ShellRoot {
     readonly property bool applicationThemingEnabled: ApplicationTheming.enabled
+    // The longest string argument the notes IPC target accepts (titles, notes and strokes are bounded further by the model).
+    readonly property int notesArgumentLimit: 65536
 
     LazyLoader {
         active: Config.externalSession
@@ -100,10 +102,21 @@ ShellRoot {
         active: Config.stage >= 3 && Focus.windowOpen
         FocusApp {}
     }
+    LazyLoader {
+        active: Config.stage >= 3
+        Settings {}
+    }
     // CEDAR Station: the health application, created when opened and released when closed.
     LazyLoader {
         active: Config.stage >= 3 && Station.windowOpen
         StationApp {}
+    }
+    // Field Notes: the floating notebook. It is kept loaded so each sheet's undo
+    // history survives putting the notes away, and so scripts can draw before
+    // the first open; its layer surface exists only while the notes show.
+    LazyLoader {
+        active: Config.stage >= 3
+        FieldNotesBoard {}
     }
     // One Canopy on its chosen output. Output changes replace the host safely.
     Variants {
@@ -226,7 +239,45 @@ ShellRoot {
         function close(): void { Profiles.closeApp(); }
         function status(): string { return JSON.stringify({ current: Profiles.current, active: Profiles.active, busy: Profiles.anyBusy, summary: Profiles.summary, steps: Profiles.steps, held: Overrides.keysHeldBy("profile"), profiles: Profiles.definitions.map(d => d.id) }); }
     }
+    // Dictation: `dictation start|stop|toggle|cancel|status` (Super+Ctrl+X toggles,
+    // hold F9 to talk). All actions answer "ok" or "error: <reason>".
+    IpcHandler {
+        target: "dictation"
+        function start(): string { return Dictation.start() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function stop(): string { return Dictation.stop() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function toggle(): string { return Dictation.toggle() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function cancel(): string { return Dictation.cancel() ? "ok" : (Dictation.refusal || "error: busy"); }
+        function status(): string { return JSON.stringify(Dictation.status()); }
+    }
     // Gaming Mode: `gaming toggle|activate|deactivate|status` (Super+G).
+    // Field Notes: `notes status|open|openOn <output>|close|toggle|newSheet|selectSheet <n>|
+    // setTitle <text>|setPaper <graph|dots|ruled|plain>|setSize <small|medium|large>|
+    // setTool <select|pen|eraser|text>|setPenWidth <1-12>|clear|center|undo|redo|
+    // draw "<x y x y …>" <ms>|stopDrawing|addNote <x> <y> <text>|copy <path|image|"">`.
+    // Actions answer "ok" or "error: <reason>"; everything but status is refused while locked.
+    IpcHandler {
+        target: "notes"
+        function status(): string { return FieldNotes.script("status", []); }
+        function open(): string { return FieldNotes.script("open", []); }
+        function openOn(screen: string): string { return screen.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("openOn", [screen]); }
+        function close(): string { return FieldNotes.script("close", []); }
+        function toggle(): string { return FieldNotes.script("toggle", []); }
+        function newSheet(): string { return FieldNotes.script("newSheet", []); }
+        function selectSheet(number: int): string { return FieldNotes.script("selectSheet", [number]); }
+        function setTitle(title: string): string { return title.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setTitle", [title]); }
+        function setPaper(name: string): string { return name.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setPaper", [name]); }
+        function setSize(name: string): string { return name.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setSize", [name]); }
+        function setTool(name: string): string { return name.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("setTool", [name]); }
+        function setPenWidth(width: real): string { return FieldNotes.script("setPenWidth", [width]); }
+        function clear(): string { return FieldNotes.script("clear", []); }
+        function center(): string { return FieldNotes.script("center", []); }
+        function undo(): string { return FieldNotes.script("undo", []); }
+        function redo(): string { return FieldNotes.script("redo", []); }
+        function draw(points: string, durationMs: int): string { return points.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("draw", [points, durationMs]); }
+        function stopDrawing(): string { return FieldNotes.script("stopDrawing", []); }
+        function addNote(x: real, y: real, text: string): string { return text.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("addNote", [x, y, text]); }
+        function copy(mode: string): string { return mode.length > notesArgumentLimit ? "error: argument too long" : FieldNotes.script("copy", [mode]); }
+    }
     IpcHandler {
         target: "gaming"
         function toggle(): void { if (Config.stage >= 3) Gaming.toggle(); }
@@ -234,35 +285,41 @@ ShellRoot {
         function deactivate(): void { if (Config.stage >= 3) Gaming.deactivate(); }
         function status(): string { return JSON.stringify({ active: Gaming.active, busy: Gaming.busy, summary: Gaming.summary, steps: Gaming.steps, trigger: Gaming.trigger, game: Gaming.gameName, progress: Gaming.progress, hud: Gaming.hudShown ? Gaming.hudMode : "hidden" }); }
     }
+    // Settings: `settings toggle|open <page>|close|level <simple|advanced>|status|search <text>|set <key> <value>|get <key>`.
+    // The window belongs to SettingsService; every route still enters through ShellState.
     IpcHandler {
         target: "settings"
         function toggle(): void {
             if (Config.stage >= 3)
                 ShellState.toggle("settings");
         }
-        // `settings set barStyle islands`: scriptable edits of presentation
+        // `settings set barHeight 48`: scriptable edits of presentation
         // settings. Command, network, location and lock settings are refused
-        // here (Config.ipcProtected); the file and the Settings panel own them.
+        // here (Config.ipcProtected); the file and the Settings window own them.
+        // Values must fit the schema's ranges and choices.
         function set(key: string, value: string): string {
             return Config.ipcSet(key, value);
         }
         function get(key: string): string {
             return Config.ipcGet(key);
         }
-        // `settings show shield`: open Settings on a page (ids from SettingsSchema.pages).
-        function show(page: string): void {
-            if (Config.stage < 3 || ShellState.locked) return;
-            ShellState.settingsPage = page;
-            if (ShellState.panel === "settings") ShellState.close();
-            ShellState.open("settings");
-        }
         // `qs ipc call settings show …` is swallowed by the CLI, like canopy show; `open` reaches the shell.
+        function show(page: string): void { open(page); }
+        // `settings open power`: open the window on a page (ids from SettingsSchema.pages).
         function open(page: string): void {
             if (Config.stage < 3 || ShellState.locked) return;
             ShellState.settingsPage = page;
-            if (ShellState.panel === "settings") ShellState.close();
             ShellState.open("settings");
         }
+        function close(): void { SettingsService.closeApp(); }
+        function level(value: string): string {
+            if (ShellState.locked) return "locked";
+            if (value !== "simple" && value !== "advanced") return "expected simple or advanced";
+            return SettingsService.setLevel(value);
+        }
+        function status(): string { return SettingsService.status(); }
+        // Up to ten matching rows as JSON (page, key, label, group); the query is capped.
+        function search(text: string): string { return SettingsService.searchJson(String(text || "").slice(0, 200), 10); }
     }
     // The menu lives in the Applications drop: `menu toggle <route>` opens it
     // at a menu id or alias (root, apps, system, capture…); `menu summon <json>`
@@ -419,9 +476,6 @@ ShellRoot {
             LazyLoader {
                 active: Config.stage >= 3
                 component: Scope {
-                    Settings {
-                        output: modelData
-                    }
                     ControlCenter {
                         output: modelData
                     }

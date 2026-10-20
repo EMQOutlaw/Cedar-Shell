@@ -29,6 +29,8 @@ SettingsOverview 1.0 SettingsOverview.qml
 SystemSettings 1.0 SystemSettings.qml
 CedarCore 1.0 CedarCore.qml
 CoreSettings 1.0 CoreSettings.qml
+FieldNotesBoard 1.0 FieldNotesBoard.qml
+FieldNotesSettings 1.0 FieldNotesSettings.qml
 StrataBarContents 1.0 StrataBarContents.qml
 CoreWindow 1.0 CoreWindow.qml
 DefaultAppsSettings 1.0 DefaultAppsSettings.qml
@@ -78,3 +80,10 @@ StationTasks 1.0 StationTasks.qml
 
 ApplicationThemingSettings 1.0 ApplicationThemingSettings.qml
 CalendarConnections 1.0 CalendarConnections.qml
+
+AnimationSettings 1.0 AnimationSettings.qml
+WindowsSettings 1.0 WindowsSettings.qml
+ProfileSettings 1.0 ProfileSettings.qml
+PrivacySettings 1.0 PrivacySettings.qml
+SecuritySettings 1.0 SecuritySettings.qml
+AdvancedSettings 1.0 AdvancedSettings.qml

@@ -3,6 +3,7 @@ import Quickshell
 import "../.."
 import "../../modules"
 import "../../services"
+import "../../components/SettingsSchema.js" as Schema
 ShellRoot {
     Component { FieldStation {} }
     FloatingWindow {
@@ -29,7 +30,7 @@ ShellRoot {
         }
         property int step:0
         property string shot:""
-        readonly property var sections:["overview","appearance","application-theming","apps","desktop","bar","core","displays","input","keybinds","connections","audio","notifications","power","time","system","about"]
+        readonly property var sections:Schema.pages.map(p=>p.id)
         function check(ok,label){if(!ok){console.error("FAIL: "+label);Qt.exit(1);}}
         Timer {
             id:capture; interval:180
@@ -43,7 +44,7 @@ ShellRoot {
             onTriggered:{
                 const count=window.sections.length;
                 if(window.step<count*2){
-                    settings.section=window.sections[window.step%count];
+                    settings.navigate(window.sections[window.step%count]);
                     settings.width=window.step<count ? 1180:480;
                     window.shot="settings-"+(window.step<count ? "wide-":"narrow-")+settings.section;
                 } else if(window.step<count*2+3){
@@ -65,7 +66,21 @@ ShellRoot {
                     window.check(input.dirty && input.draft.sensitivity===.4 && input.externalChange,"Refresh retains dirty input draft and reports changes");
                     settings.navigate("appearance");window.check(settings.section==="input" && settings.pendingPage==="appearance","Navigation protects unapplied edits");
                     window.shot="input-conflict";
-                } else {console.log("PASS: Settings search, scoped reset, external changes, and draft navigation");Qt.quit();return;}
+                } else if(window.step===count*2+7){
+                    settings.discardPending();
+                    settings.navigate("overview");window.shot="settings-home-recent";
+                } else if(window.step===count*2+8){
+                    const category=settings.findItem(settings,"settingsQuick-desktop");
+                    window.check(category!==null,"Overview exposes Change wallpaper");
+                    category.clicked();
+                    window.check(SettingsService.page==="desktop" && settings.section==="desktop","Overview action opens wallpaper settings through SettingsService");
+                    settings.navigate("overview");window.shot="settings-home-return";
+                } else if(window.step===count*2+9){
+                    const recent=settings.findItem(settings,"settingsNav-displays");
+                    window.check(recent!==null,"Persistent navigation includes Displays");
+                    recent.clicked();
+                    window.check(SettingsService.page==="displays","Persistent navigation uses SettingsService navigation");
+                } else {console.log("PASS: Settings search, scoped reset, external changes, and draft navigation; home category and recent links");Qt.quit();return;}
                 capture.restart();window.step++;
             }
         }

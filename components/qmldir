@@ -47,3 +47,18 @@ CedarWhispers 1.0 CedarWhispers.qml
 CanopyPulse 1.0 CanopyPulse.qml
 StrataButton 1.0 StrataButton.qml
 StrataField 1.0 StrataField.qml
+NotesTheme 1.0 NotesTheme.qml
+NotesTooltip 1.0 NotesTooltip.qml
+NotesToolButton 1.0 NotesToolButton.qml
+NotesToolIsland 1.0 NotesToolIsland.qml
+NotesHeaderLabel 1.0 NotesHeaderLabel.qml
+NotesTitleField 1.0 NotesTitleField.qml
+NotesTextNote 1.0 NotesTextNote.qml
+NotesBinderClip 1.0 NotesBinderClip.qml
+NotesPaper 1.0 NotesPaper.qml
+
+SettingsTabs 1.0 SettingsTabs.qml
+SettingsSurface 1.0 SettingsSurface.qml
+SettingsBackdrop 1.0 SettingsBackdrop.qml
+SettingsNavigation 1.0 SettingsNavigation.qml
+SettingsBarPreview 1.0 SettingsBarPreview.qml

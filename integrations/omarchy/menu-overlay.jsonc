@@ -27,6 +27,7 @@
   "cedar.wallpapers": {"icon":"","label":"Wallpapers","description":"CEDAR wallpaper picker","action":"qs -c cedar ipc call wallpapers toggle"},
   "cedar.themes": {"icon":"󰸌","label":"Themes","description":"Leave CEDAR for another Omarchy theme","action":"qs -c cedar ipc call themes toggle"},
   "cedar.history": {"icon":"󰂚","label":"Notification History","action":"qs -c cedar ipc call notifications toggle"},
+  "cedar.notes": {"icon":"󰈙","label":"Field Notes","aliases":["notebook","sketch","draw"],"description":"A floating sheet for sketches and typed notes","action":"qs -c cedar ipc call notes toggle"},
   "cedar.lock": {"icon":"","label":"Lock","action":"qs -c cedar ipc call lock lock"},
   "cedar.power": {"icon":"","label":"Power Menu","action":"qs -c cedar ipc call power toggle"},
   "cedar.restart": {"icon":"󰑓","label":"Restart CEDAR","description":"Restart the CEDAR shell service","action":"systemd-run --user --collect --quiet -- systemctl --user restart cedar-shell.service"},

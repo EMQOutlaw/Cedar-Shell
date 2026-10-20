@@ -20,6 +20,14 @@
     "brightBlue": "#B4DEEA",
     "brightViolet": "#D7C6EF",
     "brightTeal": "#9AF4E1",
-    "white": "#F4FFF8"
+    "white": "#F4FFF8",
+    "paper": "#DED7C5",
+    "paperEdge": "#B8AD96",
+    "paperUnder": "#CDC5B1",
+    "ink": "#423E38",
+    "inkSelection": "#B18D52",
+    "rule": "#7898A8",
+    "ruleMajor": "#5F8394",
+    "marginRule": "#C0736A"
   }
 }

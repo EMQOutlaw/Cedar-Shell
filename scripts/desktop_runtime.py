@@ -129,12 +129,13 @@ def set_wallpaper(value):
 
 
 def themes():
-    items = [{'name': 'cedar', 'label': 'CEDAR', 'preview': (ROOT / 'themes/backgrounds/field-station.png').as_uri()}]
+    base = read_json(ROOT / 'themes/palettes/cedar.json')['colors']
+    items = [{'name': 'cedar', 'label': 'CEDAR', 'preview': (ROOT / 'themes/backgrounds/field-station.png').as_uri(), 'palette': base}]
     for path in sorted((config() / 'themes').glob('*.json')):
         try:
             value = read_json(path)
             validate_palette(value)
-            items.append({'name': path.stem, 'label': str(value.get('name', path.stem))[:80], 'preview': ''})
+            items.append({'name': path.stem, 'label': str(value.get('name', path.stem))[:80], 'preview': '', 'palette': {**base, **value['colors']}})
         except (OSError, ValueError, TypeError):
             continue
     return items
@@ -401,7 +402,8 @@ def main(args):
     surfaces = {'settings': ('settings', 'toggle'), 'field-station': ('hud', 'toggle'),
                 'quick': ('control', 'toggle'), 'power': ('power', 'toggle'),
                 'lock': ('lock', 'lock'), 'wallpapers': ('wallpapers', 'toggle'),
-                'themes': ('themes', 'toggle'), 'signals': ('core', 'toggle')}
+                'themes': ('themes', 'toggle'), 'signals': ('core', 'toggle'),
+                'notes': ('notes', 'toggle')}
     if name in surfaces:
         ipc(*surfaces[name])
     elif name == 'settings' and len(args) == 2:

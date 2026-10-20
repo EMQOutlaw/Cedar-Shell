@@ -8,11 +8,15 @@ import ".."
 Item {
     id: root
     property real materialOpacity: 1
+    // Preview callers may supply a candidate palette without changing Theme.
+    property color foundation: Theme.strataFoundation
+    property color materialSurface: Theme.strataSurface
+    property color grain: Theme.strataGrain
     property real centerWidth: 0
     // A one-shot increase in edge light, owned by the bar's awakening.
     property real awakening: 0
     property color eventAccent: Theme.strataAccent
-    readonly property color awakeGrain: Qt.tint(Theme.strataGrain, Qt.alpha(eventAccent, awakening * .7))
+    readonly property color awakeGrain: Qt.tint(root.grain, Qt.alpha(eventAccent, awakening * .7))
     readonly property real insetLeft: Math.min(Theme.strataInset, width / 2)
     readonly property real insetRight: Math.max(insetLeft, width - Theme.strataInset)
     readonly property real insetTop: Math.min(Theme.strataInset, height / 2)
@@ -33,8 +37,8 @@ Item {
             strokeColor: Theme.transparent
             fillGradient: LinearGradient {
                 x1: 0; y1: root.insetTop; x2: 0; y2: root.insetBottom
-                GradientStop { position: 0; color: Qt.alpha(Theme.strataSurface, root.materialOpacity) }
-                GradientStop { position: 1; color: Qt.alpha(Theme.strataFoundation, root.materialOpacity) }
+                GradientStop { position: 0; color: Qt.alpha(root.materialSurface, root.materialOpacity) }
+                GradientStop { position: 1; color: Qt.alpha(root.foundation, root.materialOpacity) }
             }
             startX: root.insetLeft + root.cut; startY: root.insetTop
             PathLine { x: root.insetRight; y: root.insetTop }
