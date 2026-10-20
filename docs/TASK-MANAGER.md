@@ -106,6 +106,9 @@ eight clients and a three-second handshake deadline. Unknown fields and
 commands are rejected. Slow readers are disconnected before unbounded output
 accumulates. Frontend input is bounded to 32 MiB. Telemetry timeout clears
 readings and displays a disconnected state while reconnecting.
+Collector startup/exit diagnostics are retained in a bounded 4 KiB memory
+buffer, with a short visible error taking precedence over previous action
+messages. They are not discarded or written to an accumulating log.
 
 Signals require pidfd_open and pidfd_send_signal plus start-time validation.
 There is no numeric-PID signal fallback. Only processes whose real, effective,
@@ -188,6 +191,9 @@ offscreen through all views, selection, search, sorting, narrow geometry and
 The self-test's explicitly enabled local-collector transport allows QML
 verification in sandboxes denying SO_PEERCRED; it cannot bypass authentication
 in a normal application launch.
+The failure-window fixture runs a deliberately failing collector executable
+and verifies that its real startup error is visible with an empty process
+model and cleared telemetry.
 
 Hardware NVML, monitor changes, compositor focus, fractional scaling and
 long-duration rendering require a real desktop session. Service management

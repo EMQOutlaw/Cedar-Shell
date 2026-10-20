@@ -59,9 +59,16 @@ TaskClient::TaskClient(QString source,bool testing,QObject *p):QObject(p),model(
     connect(&socket,&QLocalSocket::readyRead,this,&TaskClient::read);
     connect(&socket,&QLocalSocket::disconnected,this,&TaskClient::disconnected);
     connect(&socket,&QLocalSocket::errorOccurred,this,[this](auto){disconnected();});
-    backend.setStandardOutputFile(QProcess::nullDevice());backend.setStandardErrorFile(QProcess::nullDevice());
-    connect(&backend,&QProcess::errorOccurred,this,[this](auto){stateText="Collector could not start: "+backend.errorString();Q_EMIT changed();});
-    watchdog.setInterval(1000);connect(&watchdog,&QTimer::timeout,this,[this]{if(online&&lastSample.isValid()&&lastSample.elapsed()>(visible?5000:15000)){stateText="Collector stopped responding";socket.abort();}});watchdog.start();
+    backend.setStandardOutputFile(QProcess::nullDevice());
+    connect(&backend,&QProcess::readyReadStandardError,this,[this]{
+        backendDiagnostic=(backendDiagnostic+QString::fromLocal8Bit(backend.readAllStandardError())).right(4096);
+        if(!backendDiagnostic.trimmed().isEmpty()){backendProblem="Collector: "+backendDiagnostic.trimmed().left(240);stateText=backendProblem;Q_EMIT changed();}
+    });
+    connect(&backend,&QProcess::errorOccurred,this,[this](auto){backendProblem="Collector could not start: "+backend.errorString();stateText=backendProblem;Q_EMIT changed();});
+    connect(&backend,&QProcess::finished,this,[this](int code,QProcess::ExitStatus status){
+        if(code||status==QProcess::CrashExit){backendProblem="Collector exited ("+QString::number(code)+"): "+backendDiagnostic.trimmed().left(240);stateText=backendProblem;Q_EMIT changed();}
+    });
+    watchdog.setInterval(1000);connect(&watchdog,&QTimer::timeout,this,[this]{if(online&&lastSample.isValid()&&lastSample.elapsed()>(visible?5000:15000)){backendProblem="Collector stopped responding";stateText=backendProblem;socket.abort();}});watchdog.start();
     connect(&watcher,&QFileSystemWatcher::fileChanged,this,[this]{loadStyle();});connect(&watcher,&QFileSystemWatcher::directoryChanged,this,[this]{loadStyle();});
     loadStyle();
     if(test && qEnvironmentVariableIsSet("CEDAR_TASK_TEST_LOCAL_COLLECTOR")) {
@@ -90,16 +97,16 @@ void TaskClient::connectBackend(){
 void TaskClient::disconnected(){
     online=false;system.clear();model.update({});proxy.invalidate();detail.clear();hist.clear();buffer.clear();
     if(!pending.isEmpty()){pending.clear();actionTimer.stop();resultText="Disconnected before action confirmation; outcome unknown";}
-    stateText="Disconnected · reconnecting to the collector";if(!reconnect.isActive()){reconnect.start(retryMs);retryMs=std::min(retryMs*2,5000);}Q_EMIT changed();
+    stateText=backendProblem.isEmpty()?"Disconnected · reconnecting to the collector":backendProblem+" · reconnecting";if(!reconnect.isActive()){reconnect.start(retryMs);retryMs=std::min(retryMs*2,5000);}Q_EMIT changed();
 }
 void TaskClient::read(){
     buffer+=socket.readAll();if(buffer.size()>32*1024*1024){socket.abort();return;}
     while(buffer.contains('\n')){auto n=buffer.indexOf('\n');auto line=buffer.left(n);buffer.remove(0,n+1);QJsonParseError e;auto doc=QJsonDocument::fromJson(line,&e);
-        if(e.error!=QJsonParseError::NoError||!doc.isObject()||doc["protocol"].toInt()!=Protocol){socket.abort();return;}receive(doc.object());
+        if(e.error!=QJsonParseError::NoError||!doc.isObject()||doc["protocol"].toInt()!=Protocol){backendProblem="Invalid or incompatible collector message";socket.abort();return;}receive(doc.object());
     }
 }
 void TaskClient::receive(QJsonObject r){auto type=r["type"].toString();
-        if(type=="hello"){if(r["build"].toString()!=CEDAR_BUILD_ID){socket.abort();return;}retryMs=250;send({{"type","visibility"},{"visible",visible}});}
+        if(type=="hello"){if(r["build"].toString()!=CEDAR_BUILD_ID){backendProblem="Backend and frontend builds differ";socket.abort();return;}backendProblem.clear();backendDiagnostic.clear();retryMs=250;send({{"type","visibility"},{"visible",visible}});}
         else if(type=="snapshot"){
             online=true;stateText="Live · "+QString::number(r["sampleIntervalMs"].toInt()/1000)+" s sampling";lastSample.restart();++sampleCount;system=r.toVariantMap();
             auto append=[&](QString key,QVariant value){auto list=hist.value(key).toList();list.append(value);while(list.size()>120)list.removeFirst();hist[key]=list;};
@@ -112,7 +119,7 @@ void TaskClient::receive(QJsonObject r){auto type=r["type"].toString();
             model.update(r["rows"].toArray());proxy.invalidate();proxy.sort(0,proxy.descending?Qt::DescendingOrder:Qt::AscendingOrder);updateDetail();Q_EMIT changed();
         }else if(type=="action-result"){
             if(r["id"].toString()==pending){pending.clear();actionTimer.stop();resultText=r["message"].toString();Q_EMIT changed();}
-        }else if(type=="error"){stateText=r["message"].toString();Q_EMIT changed();}
+        }else if(type=="error"){backendProblem=r["message"].toString().left(240);stateText=backendProblem;Q_EMIT changed();}
 }
 void TaskClient::visibility(bool value){visible=value;if(socket.state()==QLocalSocket::ConnectedState)send({{"type","visibility"},{"visible",value}});}
 void TaskClient::filter(QString query,QString state,bool own,bool groups){proxy.query=query.trimmed();proxy.state=state;proxy.own=own;proxy.groups=groups;proxy.invalidate();proxy.sort(0,proxy.descending?Qt::DescendingOrder:Qt::AscendingOrder);Q_EMIT changed();}
@@ -161,7 +168,7 @@ int main(int argc,char **argv){
     QGuiApplication app(argc,argv);QCoreApplication::setApplicationName("cedar-task-manager");QCoreApplication::setOrganizationName("CEDAR");QGuiApplication::setDesktopFileName("cedar-task-manager");QQuickStyle::setStyle("Basic");umask(0077);
     const auto args=app.arguments();auto at=args.indexOf("--source");QString root=at>=0&&at+1<args.size()?QFileInfo(args[at+1]).canonicalFilePath():QString();
     if(root.isEmpty()||!QFileInfo::exists(root+"/taskmanager/Main.qml")){qCritical()<<"Launch through cedar-task-manager or provide --source <CEDAR release>";return 1;}
-    bool test=args.contains("--self-test");bool localTest=test&&qEnvironmentVariableIsSet("CEDAR_TASK_TEST_LOCAL_COLLECTOR");
+    bool test=args.contains("--self-test");bool localTest=test&&(qEnvironmentVariableIsSet("CEDAR_TASK_TEST_LOCAL_COLLECTOR")||args.contains("--self-test-failure"));
     try{
         const auto endpoint=runtimeDirectory()+"/task-manager.sock";QLocalSocket previous;previous.connectToServer(endpoint);
         if(previous.waitForConnected(250)&&sameUserPeer(previous.socketDescriptor())){previous.write("focus\n");previous.waitForBytesWritten(500);return 0;}

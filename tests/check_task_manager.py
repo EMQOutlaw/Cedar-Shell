@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Real native backend, secured IPC, disposable process actions and standalone QML."""
 from pathlib import Path
-import json,os,signal,socket,subprocess,sys,tempfile,time,shlex,re,ctypes
+import json,os,signal,socket,subprocess,sys,tempfile,time,shlex,re,ctypes,shutil
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import build_task_manager
@@ -119,6 +119,16 @@ def main():
         assert 'PASS: Standalone' in again.stdout+again.stderr
         assert not list((runtime/'cedar').glob('*.sock'))
         print('PASS: repeated lifecycle with 150% typography and Reduced Motion')
+        failure_dir=base/'startup-failure';failure_dir.mkdir()
+        shutil.copy2(binaries/'cedar-task-manager',failure_dir/'cedar-task-manager')
+        failed_backend=failure_dir/'cedar-taskd'
+        failed_backend.write_text("#!/usr/bin/env python3\nimport sys\nprint('Fixture collector denied startup',file=sys.stderr)\nsys.exit(42)\n")
+        failed_backend.chmod(0o700)
+        failure_env={k:v for k,v in env.items() if k!='CEDAR_TASK_TEST_LOCAL_COLLECTOR'}
+        failure=subprocess.run([str(failure_dir/'cedar-task-manager'),'--source',str(ROOT),'--self-test','--self-test-failure'],env=failure_env,capture_output=True,text=True,timeout=10)
+        assert failure.returncode==0,failure.stdout+failure.stderr
+        assert 'PASS: Collector startup error' in failure.stdout+failure.stderr
+        print('PASS: failed collector startup displays its real error without stale readings')
         if not peer_blocked:
             app=subprocess.Popen([str(binaries/'cedar-task-manager'),'--source',str(ROOT)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
             try:

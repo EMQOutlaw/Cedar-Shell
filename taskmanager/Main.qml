@@ -61,7 +61,7 @@ ApplicationWindow {
             Rectangle { width: 4; height: 28; radius: 2; color: Task.style.teal }
             Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: "CEDAR  |  TASK MANAGER"; color: Task.style.text; font.pixelSize: win.width<650 ? 16:22; font.letterSpacing: 1; elide: Text.ElideRight }
             Rectangle { width: 7; height: 7; radius: 4; color: Task.connected ? Task.style.green : Task.style.amber }
-            Text { textFormat: Text.PlainText; visible: win.width>750; text: Task.status; color: Task.style.muted; font.pixelSize: 12 }
+            Text { textFormat: Text.PlainText; visible: win.width>750; Layout.maximumWidth: win.width/2; elide: Text.ElideRight; text: Task.status; color: Task.style.muted; font.pixelSize: 12 }
         }
         RowLayout {
             Layout.fillWidth: true; Layout.leftMargin: 18; Layout.rightMargin: 18; Layout.bottomMargin: 12
@@ -73,7 +73,7 @@ ApplicationWindow {
     }
     footer: Rectangle {
         implicitHeight: footerText.implicitHeight+20; color: Task.style.surface
-        Text { textFormat: Text.PlainText; id: footerText; anchors.fill: parent; anchors.margins: 10; color: Task.connected ? Task.style.muted : Task.style.amber; font.pixelSize: 12; wrapMode: Text.WordWrap; text: Task.message || (Task.connected ? Task.gaming+" · CPU 100% = one logical core in Processes · History: 120 samples" : Task.status) }
+        Text { textFormat: Text.PlainText; id: footerText; anchors.fill: parent; anchors.margins: 10; color: Task.connected ? Task.style.muted : Task.style.amber; font.pixelSize: 12; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight; text: !Task.connected ? Task.status : Task.message || Task.gaming+" · CPU 100% = one logical core in Processes · History: 120 samples" }
     }
     StackLayout {
         id: stack
@@ -256,6 +256,12 @@ ApplicationWindow {
         property bool restartChecked: false
         property int resumeAt: 0
         onTriggered: {
+            if(Task.failureTest()){
+                if(Task.status.indexOf("Fixture collector denied startup")>=0){
+                    Task.finishTest(!Task.connected&&Task.processCount===0&&Object.keys(Task.snapshot).length===0,"Collector startup error is visible and readings are cleared");stop();
+                }
+                return;
+            }
             if(Task.samples<2){if(++waits>50)Task.finishTest(false,"Live collector did not update");return;}
             if(!restartChecked){restartChecked=true;resumeAt=Task.samples+2;if(Task.restartForTest())return;}
             if(Task.samples<resumeAt)return;

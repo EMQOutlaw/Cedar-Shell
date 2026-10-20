@@ -56,7 +56,7 @@ class TaskClient : public QObject {
     Q_PROPERTY(QVariantMap preferences READ preferences CONSTANT)
     ProcessModel model;ProcessProxy proxy;
     QLocalSocket socket;QProcess backend;QTimer reconnect,watchdog,actionTimer;QFileSystemWatcher watcher;
-    QByteArray buffer;QString root,socketPath,selectedId,stateText="Connecting…",resultText,serviceText="Not checked",gamingText;
+    QByteArray buffer;QString root,socketPath,selectedId,stateText="Connecting…",resultText,serviceText="Not checked",gamingText,backendProblem,backendDiagnostic;
     QVariantMap system,detail,hist,theme;QVariantList units;QString pending;QElapsedTimer lastSample;
     QSettings prefs;bool online=false,visible=true,test=false,servicePending=false;int sampleCount=0,retryMs=250;
     void read();void receive(QJsonObject);void send(QJsonObject);void disconnected();void loadStyle();void updateDetail();
@@ -79,6 +79,7 @@ public:
     Q_INVOKABLE void savePreferences(int width,int height,int page);
     Q_INVOKABLE void finishTest(bool ok,QString reason);
     Q_INVOKABLE bool exerciseModel();
+    Q_INVOKABLE bool failureTest()const{return test&&QCoreApplication::arguments().contains("--self-test-failure");}
     Q_INVOKABLE QString firstIdentity()const{return model.rows.isEmpty()?QString():model.rows.first().value("identity").toString();}
     Q_INVOKABLE bool capture(QQuickWindow *window){return test&&window&&window->grabWindow().save("/tmp/cedar-task-manager.png");}
 Q_SIGNALS:
