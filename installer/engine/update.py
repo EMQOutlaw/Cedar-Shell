@@ -11,11 +11,12 @@ older programmatic callers; all current front ends use managed channels.
 import contextlib
 import fcntl
 import hashlib
-import io
 import json
 import os
 from pathlib import Path
 import re
+import selectors
+import signal
 import subprocess
 import tarfile
 import tempfile
@@ -171,7 +172,8 @@ def content_digest(root):
     digest = hashlib.sha256()
     for path, rel in files(Path(root)):
         digest.update(str(rel).encode() + b'\0')
-        digest.update(hashlib.sha256(path.read_bytes()).digest())
+        with path.open('rb') as source:
+            digest.update(hashlib.file_digest(source, 'sha256').digest())
         digest.update(str(path.stat().st_mode & 0o111).encode() + b'\0')
     return digest.hexdigest()
 
@@ -487,7 +489,7 @@ class Updater:
             raise Guidance('Update cancelled', 'The prepared update was cancelled. Your installed CEDAR was not changed.',
                            retry=True, code='cancelled')
 
-    def managed_git(self, *args, binary=False, timeout=GIT_TIMEOUT):
+    def managed_git(self, *args, binary=False, timeout=GIT_TIMEOUT, output_file=None, max_output=8 * 1024 * 1024):
         self.check_cancelled()
         env = {**self.environ, 'GIT_TERMINAL_PROMPT': '0', 'LC_ALL': 'C'}
         # Ignore inherited per-command config and worktree overrides. Only this
@@ -497,30 +499,56 @@ class Updater:
                 env.pop(key)
         env.update({'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull})
         command = ['git', '--no-replace-objects', '-C', str(self.cache), *args]
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, start_new_session=True)
         started = time.monotonic()
+        out, err = bytearray(), bytearray()
+        output_size = 0
+        finished = False
         try:
-            while True:
-                self.check_cancelled()
-                if time.monotonic() - started > timeout:
-                    raise Guidance('The update timed out', 'GitHub did not finish responding. Your installed CEDAR was not changed.',
-                                   ['Check your connection and try again.'], retry=True, code='network')
-                try:
-                    out, err = proc.communicate(timeout=0.2)
-                    break
-                except subprocess.TimeoutExpired:
-                    pass
+            with selectors.DefaultSelector() as ready:
+                ready.register(proc.stdout, selectors.EVENT_READ)
+                ready.register(proc.stderr, selectors.EVENT_READ)
+                while ready.get_map() or proc.poll() is None:
+                    self.check_cancelled()
+                    if time.monotonic() - started > timeout:
+                        raise Guidance('The update timed out', 'GitHub did not finish responding. Your installed CEDAR was not changed.',
+                                       ['Check your connection and try again.'], retry=True, code='network')
+                    for key, _ in ready.select(timeout=0.1):
+                        block = os.read(key.fileobj.fileno(), 64 * 1024)
+                        if not block:
+                            ready.unregister(key.fileobj)
+                            continue
+                        if key.fileobj is proc.stdout:
+                            output_size += len(block)
+                            if output_size > max_output:
+                                raise Guidance('The update exceeds its size limit', 'Git output exceeded the bounded update budget. Nothing was installed.',
+                                               retry=False, code='archive' if output_file else 'output')
+                            if output_file is None:
+                                out.extend(block)
+                            else:
+                                output_file.write(block)
+                        else:
+                            # Drain diagnostics without keeping unbounded Git progress/error output.
+                            err.extend(block)
+                            del err[:-64 * 1024]
+                finished = True
         finally:
-            if proc.poll() is None:
-                proc.kill()
-                proc.communicate()
+            if not finished:
+                # Own Git's helper processes as well as its immediate child.
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            proc.wait()
+            proc.stdout.close()
+            proc.stderr.close()
         if proc.returncode:
             message = (err + out).decode('utf-8', 'replace')
             if 'couldn\'t find remote ref' in message.lower():
                 raise Guidance('This branch is not available', 'The repository does not publish the ' + self.branch + ' branch yet. Your installed CEDAR was not changed.',
                                ['Choose the other branch or try again after the branch is published.'], code='branch-missing')
             raise classify(message, self.cache, self.branch)
-        return out if binary else out.decode('utf-8', 'replace').strip()
+        return bytes(out) if binary else out.decode('utf-8', 'replace').strip()
 
     def channel_locate(self, ctx, op):
         self.check_cancelled()
@@ -557,7 +585,7 @@ class Updater:
         self.check_cancelled()
         commit = self.result['commit']
         parent = self.state_dir / 'update-sources' / self.channel
-        from scripts.distribution import private_directory
+        from scripts.distribution import private_directory, ARCHIVE_MEMBERS, ARCHIVE_PAYLOAD, ARCHIVE_STREAM
         private_directory(parent)
         target = parent / commit
         metadata = parent / (commit + '.json')
@@ -571,25 +599,33 @@ class Updater:
                 raise Guidance('The prepared update changed', 'A cached update no longer matches its verified source. It was not installed.',
                                ['Move ' + str(target) + ' aside and check for updates again.'], code='source-changed') from None
         else:
-            raw = self.managed_git('archive', '--format=tar', commit, binary=True)
-            self.check_cancelled()
             temporary = Path(tempfile.mkdtemp(prefix='.prepare-', dir=parent))
             try:
-                with tarfile.open(fileobj=io.BytesIO(raw), mode='r:') as archive:
-                    for member in archive:
-                        self.check_cancelled()
-                        rel = Path(member.name)
-                        if (rel.is_absolute() or '..' in rel.parts or '.git' in rel.parts
-                                or not (member.isfile() or member.isdir())):
-                            raise Guidance('The source archive is unsafe', 'The branch contains a link or an unsafe archive path.', retry=False, code='archive')
-                        destination = temporary / rel
-                        if member.isdir():
-                            destination.mkdir(parents=True, exist_ok=True)
-                        else:
-                            destination.parent.mkdir(parents=True, exist_ok=True)
-                            with archive.extractfile(member) as src, destination.open('xb') as dest:
-                                shutil.copyfileobj(src, dest)
-                            os.chmod(destination, member.mode & 0o777)
+                with tempfile.TemporaryFile(dir=parent) as raw:
+                    self.managed_git('archive', '--format=tar', commit, output_file=raw, max_output=ARCHIVE_STREAM)
+                    self.check_cancelled()
+                    raw.seek(0)
+                    with tarfile.open(fileobj=raw, mode='r:') as archive:
+                        count, total, seen = 0, 0, set()
+                        for member in archive:
+                            self.check_cancelled()
+                            count += 1
+                            total += member.size
+                            if count > ARCHIVE_MEMBERS or total > ARCHIVE_PAYLOAD:
+                                raise Guidance('The update exceeds its size limit', 'The branch archive exceeds the member or payload budget.', retry=False, code='archive')
+                            rel = Path(member.name)
+                            if (rel.is_absolute() or '..' in rel.parts or '.git' in rel.parts or rel in seen
+                                    or not (member.isfile() or member.isdir())):
+                                raise Guidance('The source archive is unsafe', 'The branch contains a link or an unsafe archive path.', retry=False, code='archive')
+                            seen.add(rel)
+                            destination = temporary / rel
+                            if member.isdir():
+                                destination.mkdir(parents=True, exist_ok=True)
+                            else:
+                                destination.parent.mkdir(parents=True, exist_ok=True)
+                                with archive.extractfile(member) as src, destination.open('xb') as dest:
+                                    shutil.copyfileobj(src, dest, length=64 * 1024)
+                                os.chmod(destination, member.mode & 0o777)
                 if not (temporary / 'installer/cedar_install.py').is_file():
                     raise Guidance('The branch has no installer', 'The selected branch does not contain the CEDAR installer.', retry=False, code='handoff')
                 digest = content_digest(temporary)

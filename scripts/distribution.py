@@ -19,7 +19,8 @@ def paths():
             'config':xdg('CONFIG','.config')/'cedar','cache':xdg('CACHE','.cache')/'cedar',
             'bin':Path.home()/'.local/bin/cedar'}
 
-def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+def digest(path):
+    with path.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
 def info(path):
     if path.is_symlink():return {'type':'link','target':os.readlink(path)}
     if not path.exists():return {'type':'absent'}
@@ -144,7 +145,8 @@ def files(root):
         p=root/rel
         if any((root/Path(*rel.parts[:i])).is_symlink() for i in range(1,len(rel.parts)+1)):raise Refused('Release source contains a symlink: '+name)
         if not p.is_file():raise Refused('Required release source is missing: '+name)
-        if p.read_bytes()[:80].startswith(b'version https://git-lfs.github.com/spec/'):raise Refused('Unresolved LFS asset: '+name)
+        with p.open('rb') as stream:
+            if stream.read(80).startswith(b'version https://git-lfs.github.com/spec/'):raise Refused('Unresolved LFS asset: '+name)
         result.append((p,rel))
     return result
 

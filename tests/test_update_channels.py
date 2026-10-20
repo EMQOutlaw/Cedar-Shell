@@ -228,6 +228,33 @@ class ChannelTests(unittest.TestCase):
             self.updater('development').run()
         self.assertEqual(stopped.exception.code, 'archive')
 
+    def test_archive_budgets_refuse_without_changing_installed_release(self):
+        from scripts import distribution
+        self.install(self.updater().run())
+        for constant, value in (('ARCHIVE_STREAM', 100), ('ARCHIVE_MEMBERS', 2), ('ARCHIVE_PAYLOAD', 10)):
+            with self.subTest(limit=constant), mock.patch.object(distribution, constant, value):
+                with self.assertRaises(update.Guidance) as stopped:
+                    self.updater('development').run()
+                self.assertEqual(stopped.exception.code, 'archive')
+                self.assertEqual(update.installed_channel(self.env), 'stable')
+                parent = self.state / 'update-sources/development'
+                self.assertEqual(list(parent.iterdir()), [])
+
+    def test_preparing_archive_does_not_return_payload_bytes_to_python(self):
+        updater = self.updater()
+        calls = []
+        original = updater.managed_git
+        def record(*args, **kwargs):
+            result = original(*args, **kwargs)
+            if args[0] == 'archive':
+                calls.append((kwargs['output_file'].tell(), len(result)))
+            return result
+        with mock.patch.object(updater, 'managed_git', side_effect=record):
+            self.install(updater.run())
+        self.assertEqual(len(calls), 1)
+        self.assertGreater(calls[0][0], 0)
+        self.assertEqual(calls[0][1], 0)
+
     def test_handoff_sessions_are_isolated_and_source_is_rechecked(self):
         self.env['CEDAR_INSTALLER_UPDATE_ID'] = 'a' * 32
         first = self.updater()
