@@ -13,7 +13,7 @@ CEDAR is a complete desktop shell for Hyprland: a bar, quick controls, a calenda
   <img src="docs/images/calendar.png" alt="Calendar" width="49%">
 </p>
 
-![Settings](docs/images/settings.png)
+![CEDAR Settings — Appearance and bundled themes](docs/images/settings.png)
 
 ## Requirements
 
