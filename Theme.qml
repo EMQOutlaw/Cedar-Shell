@@ -45,14 +45,14 @@ Singleton {
     readonly property color rule: token("rule", "#7898A8")
     readonly property color ruleMajor: token("ruleMajor", "#5F8394")
     readonly property color marginRule: token("marginRule", "#C0736A")
-    readonly property color blue: "#89BFCB"
-    readonly property color violet: "#BBA9D6"
-    readonly property color brightEmber: "#FFAB91"
-    readonly property color brightAmber: "#FFE0A0"
-    readonly property color brightBlue: "#B4DEEA"
-    readonly property color brightViolet: "#D7C6EF"
-    readonly property color brightTeal: "#9AF4E1"
-    readonly property color white: "#F4FFF8"
+    readonly property color blue: token("blue", "#89BFCB")
+    readonly property color violet: token("violet", "#BBA9D6")
+    readonly property color brightEmber: token("brightEmber", "#FFAB91")
+    readonly property color brightAmber: token("brightAmber", "#FFE0A0")
+    readonly property color brightBlue: token("brightBlue", "#B4DEEA")
+    readonly property color brightViolet: token("brightViolet", "#D7C6EF")
+    readonly property color brightTeal: token("brightTeal", "#9AF4E1")
+    readonly property color white: token("white", "#F4FFF8")
     readonly property color rootlineHighlight: "#80ffffff"
     // Strata's structural bar materials inherit the user's palette. The
     // restrained accent is mixed with the readable secondary ink rather than

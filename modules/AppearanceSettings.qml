@@ -34,7 +34,7 @@ ColumnLayout {
                     required property var modelData
                     readonly property bool selected:(root.preview?.name || root.current)===modelData.name
                     readonly property var palette:modelData.palette || ({})
-                    Layout.fillWidth:true;Layout.minimumWidth:0;implicitHeight:120
+                    Layout.fillWidth:true;Layout.minimumWidth:0;implicitHeight:140
                     text:modelData.label;checked:selected;enabled:!SettingsInfo.busy
                     onClicked:root.selectTheme(modelData.name)
                     background:ChamferFrame {cut:7;fill:tile.palette.background || Theme.background;stroke:tile.visualFocus ? Theme.green:Qt.alpha(Theme.strataAccent,tile.selected ? .7:.2);topLine:tile.selected;topLineColor:Theme.strataAccent}
@@ -45,7 +45,8 @@ ColumnLayout {
                             color:tile.palette.surface || Theme.surface
                             Row {anchors.centerIn:parent;spacing:6;Repeater {model:[tile.palette.green || Theme.green,tile.palette.teal || Theme.teal,tile.palette.amber || Theme.amber,tile.palette.text || Theme.text];Rectangle {required property color modelData;width:18;height:18;radius:9;color:modelData}}}
                         }
-                        GlowText {text:tile.modelData.label+(tile.modelData.name===root.current ? " · Active":"");font.family:Theme.labelFont;font.pixelSize:Theme.normal;Layout.fillWidth:true;elide:Text.ElideRight}
+                        GlowText {text:tile.modelData.label; color:tile.palette.text || Theme.text;font.family:Theme.labelFont;font.pixelSize:Theme.normal;Layout.fillWidth:true;elide:Text.ElideRight}
+                        GlowText {text:(tile.modelData.mode==="light" ? "Light":"Dark")+(tile.modelData.name===root.current ? " · Active":tile.selected ? " · Preview":"");color:tile.palette.muted || Theme.muted;font.pixelSize:Theme.small;Layout.fillWidth:true;elide:Text.ElideRight}
                     }
                 }
             }

@@ -18,7 +18,10 @@ from distribution import atomic, read_json, xdg
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE_SUFFIXES = {'.png', '.jpg', '.jpeg', '.webp', '.bmp'}
 COLORS = ('background', 'surface', 'elevated', 'border', 'green', 'brightGreen',
-          'teal', 'amber', 'ember', 'text', 'muted')
+          'teal', 'amber', 'ember', 'text', 'muted', 'blue', 'violet',
+          'brightEmber', 'brightAmber', 'brightBlue', 'brightViolet', 'brightTeal',
+          'white', 'paper', 'paperEdge', 'paperUnder', 'ink', 'inkSelection',
+          'rule', 'ruleMajor', 'marginRule')
 
 
 def omarchy():
@@ -129,32 +132,51 @@ def set_wallpaper(value):
 
 
 def themes():
+    """Bundled palettes first; a valid personal palette can override its namesake."""
     base = read_json(ROOT / 'themes/palettes/cedar.json')['colors']
-    items = [{'name': 'cedar', 'label': 'CEDAR', 'preview': (ROOT / 'themes/backgrounds/field-station.png').as_uri(), 'palette': base}]
-    for path in sorted((config() / 'themes').glob('*.json')):
-        try:
-            value = read_json(path)
-            validate_palette(value)
-            items.append({'name': path.stem, 'label': str(value.get('name', path.stem))[:80], 'preview': '', 'palette': {**base, **value['colors']}})
-        except (OSError, ValueError, TypeError):
-            continue
-    return items
+    items = {'cedar': {'name': 'cedar', 'label': 'CEDAR', 'mode': 'dark',
+                      'preview': (ROOT / 'themes/backgrounds/field-station.png').as_uri(),
+                      'colors': {}, 'palette': base}}
+    for directory in (ROOT / 'themes/palettes', config() / 'themes'):
+        for path in sorted(directory.glob('*.json')):
+            # CEDAR always remains an available reset to the shipped default.
+            if path.stem == 'cedar':
+                continue
+            try:
+                value = read_json(path)
+                colors = validate_palette(value)
+                items[path.stem] = {'name': path.stem,
+                    'label': str(value.get('name', path.stem))[:80],
+                    'mode': value.get('mode', 'dark'), 'preview': '',
+                    'colors': colors, 'palette': {**base, **colors}}
+            except (OSError, ValueError, TypeError):
+                continue
+    return list(items.values())
+
+
+def theme(name):
+    # Resolve only listed entries; never construct a filesystem path from input.
+    for item in themes():
+        if item['name'] == name:
+            return item
+    raise ValueError('That CEDAR theme is not installed.')
 
 
 def validate_palette(value):
     if not isinstance(value, dict) or not isinstance(value.get('colors'), dict):
         raise ValueError('Theme needs a colors object.')
     colors = value['colors']
+    if value.get('mode', 'dark') not in ('light', 'dark'):
+        raise ValueError('Theme mode must be light or dark.')
     if not colors or any(key not in COLORS or not isinstance(color, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', color) for key, color in colors.items()):
         raise ValueError('Theme colors must use named CEDAR tokens and six-digit hex colors.')
     return colors
 
 
 def set_theme(name):
-    if name not in [item['name'] for item in themes()]:
-        raise ValueError('That CEDAR theme is not installed.')
-    colors = {} if name == 'cedar' else validate_palette(read_json(config() / 'themes' / (name + '.json')))
-    atomic(config() / 'theme.json', (json.dumps({'name': name, 'colors': colors}, indent=2) + '\n').encode())
+    chosen = theme(name)
+    value = {key: chosen[key] for key in ('name', 'mode', 'colors')}
+    atomic(config() / 'theme.json', (json.dumps(value, indent=2) + '\n').encode())
 
 
 def shell_sources():

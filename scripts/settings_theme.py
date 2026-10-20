@@ -33,17 +33,16 @@ def locked():
 
 
 def preview(name, accent=''):
-    if name not in [t['name'] for t in runtime.themes()]:
-        raise ValueError('Theme is no longer installed.')
-    base = runtime.read_json(runtime.ROOT / 'themes/palettes/cedar.json')['colors']
-    colors = {} if name == 'cedar' else runtime.validate_palette(runtime.read_json(runtime.config() / 'themes' / (name + '.json')))
-    palette = {**base, **colors}
+    chosen = runtime.theme(name)
+    colors = dict(chosen['colors'])
+    palette = dict(chosen['palette'])
     if accent:
         if accent not in ('green', 'teal', 'amber', 'ember'):
             raise ValueError('Choose an accent from this theme.')
         colors = {**colors, 'green': palette[accent]}
         palette['green'] = palette[accent]
-    return {'name': name, 'accent': accent, 'colors': colors, 'palette': palette, 'expected': digest(contents())}
+    return {'name': name, 'mode': chosen['mode'], 'accent': accent, 'colors': colors,
+            'palette': palette, 'expected': digest(contents())}
 
 
 def can_restore():
@@ -60,7 +59,7 @@ def apply(request):
         if request.get('expected') != digest(before):
             raise ValueError('The theme changed outside Settings. Preview it again before applying.')
         chosen = preview(request.get('name'), request.get('accent', ''))
-        after = (json.dumps({'name': chosen['name'], 'colors': chosen['colors']}, indent=2) + '\n').encode()
+        after = (json.dumps({key: chosen[key] for key in ('name', 'mode', 'colors')}, indent=2) + '\n').encode()
         record = {'before': None if before is None else base64.b64encode(before).decode(), 'after': digest(after)}
         previous_journal = journal().read_bytes() if journal().exists() else None
         runtime.atomic(journal(), (json.dumps(record) + '\n').encode())

@@ -10,6 +10,17 @@ Qt, Quickshell, Hyprland, Linux services, fonts and optional tools are dependenc
 
 Weather comes from Open-Meteo and retains on-screen attribution. Existing woodland artwork is carried forward without a new licensing assertion. Screenshots used for tests contain synthetic fixtures, never exports of private desktop data.
 
+## Community palettes
+
+CEDAR's theme collection adapts the palette values credited in
+[THEMES.md](THEMES.md). Upstream notices for Catppuccin, Rosé Pine, Nord,
+Dracula and Everforest are retained in `themes/licenses/` (MIT); TokyoNight's
+Apache-2.0 license is retained there as well. CEDAR's mappings, surface and paper
+colors, and contrast adjustments are modifications. No upstream theme code,
+wallpapers, logos or fonts are included. Gruvbox identifies its palette project
+as MIT/X11 in its README; Decay provides a public palette reference with no
+license file.
+
 ## Scripture
 
 The locally approved Psalm 92:12 and John 3:16–17 wording uses the **King James Version (KJV)**. The technical acronym and “Rooted in faith. Built with care.” are original project wording, not Bible quotations. Values drawn from the cedar imagery are this project's interpretation and application.

@@ -10,6 +10,7 @@ Item {
     property bool active: false
     property bool expanded: false
     property var palette: ({})
+    readonly property bool palettePreview: Object.keys(palette).length > 0
     property real origin: .5
     property string previewText: "Preview"
     implicitHeight: expanded ? 220 : 120
@@ -29,9 +30,23 @@ Item {
     // Real bar renderer, disabled as a whole: no tray, workspace or media action
     // can reach the desktop from a preview. No second layer-shell window exists.
     StrataBarContents {
+        visible: !root.palettePreview
         x:24;y:27;width:Math.max(0,parent.width-48);height:Math.max(24,Config.barHeight-10)
         output:Quickshell.screens[0] || null
         enabled:false
+    }
+    // Palette previews use their own ink throughout without changing the live
+    // Theme singleton or instantiating another set of desktop controllers.
+    RowLayout {
+        visible: root.palettePreview
+        x:28; y:27; width:Math.max(0,parent.width-56); height:Math.max(24,Config.barHeight-10)
+        spacing:12
+        GlowText { text:"CEDAR"; color:root.palette.green || Theme.green; font.family:Theme.labelFont; font.bold:true }
+        GlowText { text:"1   2   3"; color:root.palette.muted || Theme.muted }
+        Item { Layout.fillWidth:true }
+        GlowText { text:"12:30"; color:root.palette.text || Theme.text; font.family:Theme.dataFont }
+        Item { Layout.fillWidth:true }
+        GlowText { text:"Wi-Fi  ·  80%"; color:root.palette.text || Theme.text }
     }
     DropFrame {
         x:12+root.targetRect.x; y:22+Config.barHeight-5

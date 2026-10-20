@@ -81,11 +81,19 @@ def compile_theme(palette=None, options=None):
     return result
 
 def presets():
-    return [{'id':'cedar','name':'CEDAR','mode':'dark'},{'id':'mist','name':'Morning Mist','mode':'light'},
-            {'id':'dusk','name':'Forest Dusk','mode':'dark'}]
+    result = [{'id':'cedar','name':'CEDAR','mode':'dark'},{'id':'mist','name':'Morning Mist','mode':'light'},
+              {'id':'dusk','name':'Forest Dusk','mode':'dark'}]
+    for path in sorted((ROOT / 'themes/palettes').glob('*.json')):
+        if path.stem == 'cedar':
+            continue
+        value = json.loads(path.read_text())
+        result.append({'id': path.stem, 'name': value['name'], 'mode': value['mode']})
+    return result
 
 def preset(name):
     if name=='cedar': return {'name':'CEDAR','mode':'dark'}
     if name=='mist': return {'name':'Morning Mist','mode':'light'}
     if name=='dusk': return {'name':'Forest Dusk','mode':'dark','colors':{'green':'#b9bd8e','teal':'#8db4b4','background':'#14191b','surface':'#1d2528','elevated':'#283335'}}
+    if name in {item['id'] for item in presets()}:
+        return json.loads((ROOT / 'themes/palettes' / (name + '.json')).read_text())
     raise ValueError('Unknown preset.')
