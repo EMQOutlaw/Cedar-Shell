@@ -313,7 +313,7 @@ def add_task_manager_shortcut(host, state, source):
     definition=read_json(Path(source)/'data/keybinds.json',{})
     choice=next((r for r in definition.get('optionalShortcuts',[]) if r.get('id')=='task-manager'),None)
     if not choice: return ''
-    def normalized(value): return {part.strip().upper() for part in value.split('+')}
+    def normalized(value): return {'ESCAPE' if part.strip().upper()=='ESC' else part.strip().upper() for part in value.split('+')}
     keys=normalized(choice['keys'])
     if any(normalized(row.get('keys',''))==keys for row in state.get('bindings',[])): return ''
     if not host.which('hyprctl'): return 'Task Manager shortcut deferred: Hyprland bindings are unavailable.'
@@ -321,7 +321,7 @@ def add_task_manager_shortcut(host, state, source):
     try: bindings=json.loads(out) if code==0 else None
     except ValueError: bindings=None
     if not isinstance(bindings,list): return 'Task Manager shortcut deferred: live bindings could not be verified.'
-    if any(not isinstance(row,dict) for row in bindings): return 'Task Manager shortcut deferred: invalid binding data.'
+    if any(not isinstance(row,dict) or not isinstance(row.get('modmask'),int) or not isinstance(row.get('key'),str) for row in bindings): return 'Task Manager shortcut deferred: invalid binding data.'
     if any(row.get('modmask')==65 and (str(row.get('key','')).upper() in ('ESCAPE','ESC') or row.get('keycode')==9) for row in bindings):
         return 'Super+Shift+Escape is already assigned; its existing action was kept.'
     state.setdefault('bindings',[]).append({k:choice[k] for k in ('keys','command','description')})

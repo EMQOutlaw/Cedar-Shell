@@ -8,11 +8,11 @@ from installer.engine.steps import add_task_manager_shortcut
 class TaskIntegration(unittest.TestCase):
     def host(self,rows,code=0):return SimpleNamespace(which=lambda _:True,run=lambda *a,**k:(code,json.dumps(rows),''))
     def test_existing_shortcut_is_never_replaced(self):
-        for row in ({'modmask':65,'key':'Escape'},{'modmask':65,'key':'ESC'}):
+        for row in ({'modmask':65,'key':'Escape'},{'modmask':65,'key':'ESC'},{'modmask':65,'key':'','keycode':9}):
             state={'bindings':[]};message=add_task_manager_shortcut(self.host([row]),state,ROOT)
             self.assertEqual(state,{'bindings':[]});self.assertIn('already assigned',message)
     def test_optional_shortcut_requires_a_successful_live_check(self):
-        for rows,code in (([],1),(None,0),(['bad row'],0)):
+        for rows,code in (([],1),(None,0),(['bad row'],0),([{}],0)):
             state={'bindings':[]};add_task_manager_shortcut(self.host(rows,code),state,ROOT);self.assertEqual(state['bindings'],[])
         state={'bindings':[]};add_task_manager_shortcut(self.host([]),state,ROOT)
         self.assertEqual(state['bindings'][0]['command'],'cedar-task-manager')

@@ -58,6 +58,8 @@ The final closing parenthesis in stat delimits names containing spaces or
 parentheses. Start time is rechecked after ancillary reads; disappearing or
 inaccessible processes are skipped. No environment variables are collected.
 No process snapshots or command lines are written to disk.
+Snapshots are bounded to 20,000 records and 24 MiB of process JSON. Any omitted
+records produce a visible warning; the UI never silently claims the list is complete.
 
 Disk rates use elapsed monotonic time and sector deltas. Physical leaf devices
 exclude partitions and stacked device-mapper layers from aggregates.

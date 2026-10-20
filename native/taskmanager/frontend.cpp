@@ -148,6 +148,9 @@ bool TaskClient::exerciseModel(){
     rows.removeLast();model.update(rows);updateDetail();ok&=detail.value("exited").toBool();qInfo()<<"6000-row batch/search/sort/selection ms"<<time.elapsed();model.update({});select("");filter("","",false,false);return ok;
 }
 int main(int argc,char **argv){
+    // Block before Qt creates any worker threads; every thread must inherit this
+    // mask so SIGTERM reaches signalfd instead of bypassing orderly teardown.
+    sigset_t mask;sigemptyset(&mask);sigaddset(&mask,SIGTERM);sigaddset(&mask,SIGINT);sigprocmask(SIG_BLOCK,&mask,nullptr);
     QGuiApplication app(argc,argv);QCoreApplication::setApplicationName("cedar-task-manager");QCoreApplication::setOrganizationName("CEDAR");QGuiApplication::setDesktopFileName("cedar-task-manager");QQuickStyle::setStyle("Basic");umask(0077);
     const auto args=app.arguments();auto at=args.indexOf("--source");QString root=at>=0&&at+1<args.size()?QFileInfo(args[at+1]).canonicalFilePath():QString();
     if(root.isEmpty()||!QFileInfo::exists(root+"/taskmanager/Main.qml")){qCritical()<<"Launch through cedar-task-manager or provide --source <CEDAR release>";return 1;}
@@ -166,7 +169,6 @@ int main(int argc,char **argv){
             QObject::connect(s,&QLocalSocket::disconnected,s,&QObject::deleteLater);QTimer::singleShot(1000,s,[s]{s->abort();s->deleteLater();});
         }});
         QObject::connect(&app,&QGuiApplication::lastWindowClosed,&app,&QCoreApplication::quit);
-        sigset_t mask;sigemptyset(&mask);sigaddset(&mask,SIGTERM);sigaddset(&mask,SIGINT);sigprocmask(SIG_BLOCK,&mask,nullptr);
         int sigfd=signalfd(-1,&mask,SFD_CLOEXEC|SFD_NONBLOCK);QSocketNotifier termination(sigfd,QSocketNotifier::Read);QObject::connect(&termination,&QSocketNotifier::activated,&app,&QCoreApplication::quit);
         int result=app.exec();if(sigfd>=0)::close(sigfd);focus.close();QLocalServer::removeServer(endpoint);return result;
     }catch(const std::exception &e){qCritical()<<e.what();return 1;}

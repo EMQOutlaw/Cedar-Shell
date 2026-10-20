@@ -44,6 +44,16 @@ set, CEDAR can use its installed preferred app; kitty is the first terminal
 fallback after your selected terminal, XDG terminal provider and `$TERMINAL`.
 These apps are optional and are not downloaded automatically.
 
+## Task Manager
+
+Open **Field Station → Task Manager**, find **CEDAR Task Manager** in your
+application launcher, or run `cedar-task-manager`. It opens independently with
+live hardware metrics, searchable processes, protected process controls and
+user-service inspection. Field Station keeps its existing Overview.
+
+See [Task Manager](docs/TASK-MANAGER.md) for source builds, optional NVIDIA
+telemetry, shortcut registration and process-control limitations.
+
 ## Update
 
 Open **Field Station → Update CEDAR**, or run:

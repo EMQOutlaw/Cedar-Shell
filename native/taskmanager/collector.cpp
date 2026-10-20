@@ -126,7 +126,7 @@ static int guardedPriority(qint64 pid,const QString &start,int value,int pidfd) 
     if(child<0){int error=errno;close(channel[0]);close(channel[1]);return error;}
     if(child==0){
         close(channel[0]);int result=0;
-        auto finish=[&](int error){::write(channel[1],&error,sizeof(error));_exit(0);};
+        auto finish=[&](int error){auto sent=::write(channel[1],&error,sizeof(error));_exit(sent==sizeof(error)?0:1);};
         if(ptrace(PTRACE_SEIZE,pid,nullptr,nullptr)<0)finish(errno);
         // Exiting this helper always detaches; EXITKILL is deliberately absent.
         pollfd live{pidfd,POLLIN,0};
@@ -248,12 +248,12 @@ QJsonObject Collector::sample() {
     if(omitted)errors.append(QString("Process table limit reached; %1 records omitted").arg(omitted));
     QJsonArray networks,disks,mounts;QHash<QString,QPair<quint64,quint64>> nextNet,nextIo;
     auto rate=[&](quint64 current,quint64 old,bool valid)->QJsonValue{return valid&&seconds>0&&current>=old?QJsonValue(double(current-old)/seconds):QJsonValue();};
-    double rxTotal=0,txTotal=0,readTotal=0,writeTotal=0;
+    double rxTotal=0,txTotal=0,readTotal=0,writeTotal=0;bool netValid=false,diskValid=false;
     auto netText=readFile(proc+"/net/dev");if(netText.isEmpty())errors.append("Network counters unavailable");
     for(const auto &line:netText.split('\n')){auto colon=line.indexOf(':');if(colon<0)continue;auto name=QString::fromUtf8(line.left(colon)).trimmed();auto w=words(line.mid(colon+1));if(w.size()<16)continue;
         auto rx=w[0].toULongLong(),tx=w[8].toULongLong();auto before=netBefore.value(name);bool valid=netBefore.contains(name);auto down=rate(rx,before.first,valid),up=rate(tx,before.second,valid);nextNet[name]={rx,tx};
         networks.append(QJsonObject{{"name",name},{"received",double(rx)},{"sent",double(tx)},{"download",down},{"upload",up},{"state",QString::fromUtf8(readFile(sys+"/class/net/"+name+"/operstate",64)).trimmed()}});
-        if(name!="lo"){rxTotal+=down.toDouble();txTotal+=up.toDouble();}
+        if(name!="lo"){rxTotal+=down.toDouble();txTotal+=up.toDouble();netValid|=!down.isNull()&&!up.isNull();}
     }netBefore=nextNet;
     auto diskText=readFile(proc+"/diskstats");if(diskText.isEmpty())errors.append("Disk counters unavailable");
     for(const auto &line:diskText.split('\n')){auto w=words(line);if(w.size()<14)continue;QString name=QString::fromLatin1(w[2]);
@@ -261,7 +261,7 @@ QJsonObject Collector::sample() {
         // Leaf block devices only: do not sum a device-mapper layer and its slaves.
         if(!QDir(sys+"/class/block/"+name+"/slaves").entryList(QDir::Dirs|QDir::NoDotAndDotDot).isEmpty())continue;
         auto rd=w[5].toULongLong()*512,wr=w[9].toULongLong()*512;auto before=ioBefore.value(name);bool valid=ioBefore.contains(name);auto read=rate(rd,before.first,valid),write=rate(wr,before.second,valid);nextIo[name]={rd,wr};
-        disks.append(QJsonObject{{"name",name},{"read",read},{"write",write},{"inFlight",w[11].toInt()}});readTotal+=read.toDouble();writeTotal+=write.toDouble();
+        disks.append(QJsonObject{{"name",name},{"read",read},{"write",write},{"inFlight",w[11].toInt()}});readTotal+=read.toDouble();writeTotal+=write.toDouble();diskValid|=!read.isNull()&&!write.isNull();
     }ioBefore=nextIo;
     // mountinfo provides device identity; duplicate bind mounts count once.
     QSet<QString> devices;
@@ -277,8 +277,8 @@ QJsonObject Collector::sample() {
     }
     return {{"cpu",QJsonObject{{"percent",totalCpu},{"cores",cores},{"model",cpuModel},{"logical",cores.size()},{"mhz",mhz},{"temperature",temperature},{"load",load}}},
         {"memory",memory},{"gpus",gpus},{"gpuStatus",gpuStatus},{"disks",disks},{"mounts",mounts},{"networks",networks},
-        {"diskRead",seconds>0?QJsonValue(readTotal):QJsonValue()},{"diskWrite",seconds>0?QJsonValue(writeTotal):QJsonValue()},
-        {"download",seconds>0?QJsonValue(rxTotal):QJsonValue()},{"upload",seconds>0?QJsonValue(txTotal):QJsonValue()},
+        {"diskRead",diskValid?QJsonValue(readTotal):QJsonValue()},{"diskWrite",diskValid?QJsonValue(writeTotal):QJsonValue()},
+        {"download",netValid?QJsonValue(rxTotal):QJsonValue()},{"upload",netValid?QJsonValue(txTotal):QJsonValue()},
         {"processes",processes},{"skippedProcesses",skipped},{"errors",errors},{"sampleMs",double(cost.nsecsElapsed())/1e6},{"monotonicMs",double(now)/1e6}};
 }
 }

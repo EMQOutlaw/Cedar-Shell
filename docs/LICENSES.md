@@ -8,6 +8,13 @@ Field Notes (`components/notes/*.js`, `components/Notes*.qml`, `modules/FieldNot
 
 Qt, Quickshell, Hyprland, Linux services, fonts and optional tools are dependencies with their own licenses; their binaries and fonts are not bundled. Rajdhani is preferred for interface text, JetBrainsMono Nerd Font for data; readable system sans-serif/monospace fallbacks are used when unavailable. Inspect the selected font distributor's license before adding font files to a future release.
 
+The native Task Manager independently implements Linux collection techniques
+reviewed against Aristocratos' btop (Apache 2.0). The pinned source reference,
+accounting decisions and reasons for avoiding terminal/UI dependencies are in
+[Task Manager](TASK-MANAGER.md). Attribution is retained in
+`native/taskmanager/NOTICE` and the upstream license in
+`licenses/btop-Apache-2.0.txt`. No btop executable or translation unit is bundled.
+
 Weather comes from Open-Meteo and retains on-screen attribution. Existing woodland artwork is carried forward without a new licensing assertion. Screenshots used for tests contain synthetic fixtures, never exports of private desktop data.
 
 ## Community palettes
