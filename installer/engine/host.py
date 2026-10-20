@@ -5,12 +5,15 @@ host; it asks a Host. Tests hand it a FakeHost with scripted files, commands
 and processes, so detection, planning, backup and resume are exercised
 against fixtures instead of the developer's real home directory.
 """
+import codecs
 import os
 from pathlib import Path
 import platform
 import shutil
+import selectors
 import subprocess
 import sys
+import time
 
 PROC = Path('/proc')
 MAX_READ = 2 * 1024 * 1024
@@ -103,16 +106,56 @@ class Host:
         return result.returncode, result.stdout, result.stderr
 
     def stream(self, argv, on_line, timeout=None, env=None, stdin=None):
-        """Run a long command, handing each output line to on_line; returns the exit code."""
-        process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        """Stream bounded lines with one deadline covering both reads and exit.
+
+        A package manager can stall without closing stdout, so a timeout on
+        wait() alone is insufficient. Long lines are delivered in fragments
+        instead of retaining unlimited output until a newline arrives.
+        """
+        process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                    stdin=stdin, env={**self.environ, **(env or {})})
+        deadline = None if timeout is None else time.monotonic() + timeout
+        decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+        pending = ''
+        limit = 64 * 1024
+
+        def remaining():
+            if deadline is None:
+                return None
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise subprocess.TimeoutExpired(argv, timeout)
+            return left
+
         try:
-            for line in process.stdout:
-                on_line(line.rstrip('\n'))
-            return process.wait(timeout=timeout)
+            with selectors.DefaultSelector() as ready:
+                ready.register(process.stdout, selectors.EVENT_READ)
+                while True:
+                    left = remaining()
+                    if not ready.select(None if left is None else min(left, 0.2)):
+                        continue
+                    block = os.read(process.stdout.fileno(), limit)
+                    pending += decoder.decode(block, final=not block)
+                    while pending:
+                        newline = pending.find('\n', 0, limit)
+                        if newline >= 0:
+                            on_line(pending[:newline].removesuffix('\r'))
+                            pending = pending[newline + 1:]
+                        elif len(pending) >= limit:
+                            on_line(pending[:limit])
+                            pending = pending[limit:]
+                        else:
+                            break
+                    if not block:
+                        if pending:
+                            on_line(pending)
+                        break
+            return process.wait(timeout=remaining())
         finally:
             if process.poll() is None:
                 process.kill()
+            process.wait()
+            process.stdout.close()
 
     # -- system facts --------------------------------------------------
     def os_release(self):
