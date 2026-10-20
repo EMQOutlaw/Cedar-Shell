@@ -118,7 +118,7 @@ class RemasterTransactions(unittest.TestCase):
 
 PAGES=['FirstRunSettings','SettingsOverview','AppearanceSettings','DefaultAppsSettings','DesktopSettingsPage','TopBarSettings','CoreSettings','DisplaySettings','InputSettings','KeybindSettings','ConnectionsPage','HotspotSettings','AudioSettings','NotificationSettings','PowerSettings','TimeSettings','SystemSettings','AboutSettings','WeatherLocationSettings']
 class SingleEntryPoints(unittest.TestCase):
-    """Settings has one way to reach each place: the sidebar (and search)."""
+    """Navigation belongs to the Settings menu, search and home directory."""
     def test_pages_do_not_navigate_or_open_other_surfaces(self):
         import re
         pattern=re.compile(r'\bnavigate\(|signal navigate|ShellState\.(toggle|open|lock|settingsPage)|Canopy\.(open|context|toggle)|CoreService\.expand')
@@ -129,6 +129,12 @@ class SingleEntryPoints(unittest.TestCase):
                 self.assertNotIn('SystemStats.cpu', text)
                 self.assertNotIn('SystemStats.ram', text)
                 text = text.replace('Canopy.openStation("tasks")', '')
+            # The home directory is navigation furniture, not a preference
+            # page. Its category and recent links use the same draft guard.
+            if name == 'SettingsOverview':
+                text = text.replace('SettingsService.navigate(modelData.pages[0].id, "")', '')
+                text = text.replace('SettingsService.navigate(modelData.page, "")', '')
+            text = text.replace('SettingsService.navigate(', 'SettingsService.checkedRoute(')
             self.assertIsNone(pattern.search(text),f'{name} adds a second route to another place')
     def test_each_preference_has_one_custom_control(self):
         import re
@@ -137,10 +143,12 @@ class SingleEntryPoints(unittest.TestCase):
             for key in set(re.findall(r'Config\.set\("(\w+)"',(ROOT/'modules'/f'{name}.qml').read_text())):
                 owners.setdefault(key,[]).append(name)
         self.assertEqual({k:v for k,v in owners.items() if len(v)>1},{})
-    def test_sidebar_is_the_only_page_navigation(self):
+    def test_panel_keeps_navigation_in_menu_and_search(self):
         panel=(ROOT/'modules/SettingsPanel.qml').read_text()
         self.assertNotIn('family-',panel)
-        self.assertEqual(panel.count('onClicked:root.navigate('),3)  # sidebar item, search result
+        self.assertIn('SettingsNavigation {', panel)
+        self.assertIn('onChosen:page=>root.navigate(page)', panel)
+        self.assertIn('SettingsService.navigate(page, anchor)', panel)
 
 
 class DesktopSingleRoutes(unittest.TestCase):

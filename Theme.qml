@@ -20,6 +20,7 @@ Singleton {
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
+        onLoadFailed: palette = ({})
         onLoaded: { try { palette = JSON.parse(text()).colors || ({}); } catch (_) { palette = ({}); } }
     }
     // The shared JSON palette is authoritative; literals are emergency loading fallbacks.

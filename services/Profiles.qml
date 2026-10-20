@@ -31,6 +31,10 @@ Singleton {
     property string queued: ""              // a profile waiting for the current one to restore
     property string error: ""
     property string trigger: ""             // manual | restored
+    // Settings uses an all-or-restore request. Existing direct profile clients
+    // retain their established partial-success presentation.
+    property string guardedProfile: ""
+    property string settingsFailure: ""
     property double activatedAt: 0
     property alias steps: tx.steps
     property alias busy: tx.busy
@@ -88,6 +92,11 @@ Singleton {
     readonly property string detail: failures.length ? failures.map(f => f.label + " could not be changed").join(" · ") : ""
 
     // ------------------------------------------------------------ activate
+    function activateChecked(id) {
+        if (anyBusy || ShellState.locked || !definition(id)) return;
+        settingsFailure = ""; guardedProfile = id;
+        activate(id);
+    }
     function toggle(id) { if (anyBusy) return; if (current === id) deactivate(); else activate(id); }
     function activate(id) {
         if (anyBusy || ShellState.locked) return;
@@ -238,6 +247,14 @@ Singleton {
         tx.setStep(key, "restored", "");
     }
     function settle() {
+        if (phase === "active" && guardedProfile === active) {
+            guardedProfile = "";
+            if (failures.length) {
+                settingsFailure = "Profile verification failed. Restoring prior values: " + failures.map(f => f.label).join(", ");
+                deactivate();
+                return;
+            }
+        }
         if (phase === "idle") {
             // A restore finished: nothing is held any more.
             Overrides.releaseAll(owner);
@@ -252,6 +269,16 @@ Singleton {
     // Gaming Mode is a profile: when it ends and one is waiting, apply it.
     Connections {
         target: Gaming
+        function onPhaseChanged() {
+            Qt.callLater(() => {
+                if (root.guardedProfile !== "gaming" || Gaming.busy || !Gaming.active) return;
+                root.guardedProfile = "";
+                if (Gaming.failures.length) {
+                    root.settingsFailure = "Gaming verification failed. Restoring prior values.";
+                    Gaming.deactivate();
+                }
+            });
+        }
         function onBusyChanged() { if (!Gaming.busy && !Gaming.active && root.queued && !root.busy) { const next = root.queued; root.queued = ""; Qt.callLater(() => root.activate(next)); } }
     }
 

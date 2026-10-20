@@ -1,112 +1,93 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Services.UPower
 import ".."
 import "../components"
 import "../services"
-// The desktop at a glance. Read-only: every destination lives in the sidebar.
 ColumnLayout {
     id: root
-    spacing: 16
-    readonly property var battery: UPower.displayDevice
-    readonly property var services: SettingsInfo.data.services || []
-    readonly property int failing: services.filter(s => s.status === "Failed").length
-    readonly property int healthy: services.filter(s => s.status === "Healthy").length
-    readonly property var monitors: (DesktopSettings.data.monitors || []).filter(m => !m.disabled)
-    readonly property var joined: (Network.data.networks || []).find(n => n.active) || null
-    readonly property int btConnected: BluetoothService.devices.filter(d => d.connected).length
-    SystemClock { id: clock; precision: SystemClock.Minutes }
-    function percent(v) { return v < 0 ? "—" : Math.round(v * 100) + "%"; }
-
-    // Station identity
-    Rectangle {
-        Layout.fillWidth: true; implicitHeight: hero.implicitHeight + 40; radius: Theme.cardRadius
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: Qt.alpha(Theme.green, .08) }
-            GradientStop { position: 1; color: Qt.alpha(Theme.teal, .02) }
+    objectName: "settingsHome"
+    property bool active: false
+    spacing: 18
+    readonly property var monitors: DesktopSettings.data.monitors.filter(m=>!m.disabled)
+    onActiveChanged: if(active && !Shield.ready) Shield.refresh()
+    Component.onCompleted: if(active && !Shield.ready) Shield.refresh()
+    component Summary: StationButton {
+        property string heading: ""
+        property string value: ""
+        property string detail: ""
+        property string symbol: ""
+        property string destination: ""
+        Layout.fillWidth: true; Layout.minimumWidth: 0
+        implicitHeight: Math.max(108, summaryBody.implicitHeight+28)
+        text: heading; hint: "Open " + heading
+        onClicked: SettingsService.navigate(destination, "")
+        background: ChamferFrame {
+            cut: 7; fill: Qt.alpha(Theme.strataSurface,.68)
+            stroke: parent.visualFocus ? Theme.green : Qt.alpha(Theme.strataAccent,.22)
+            strokeWidth: parent.visualFocus ? Theme.focusWidth : 1
+            topLine: parent.hovered; topLineColor: Theme.strataAccent; topLineFraction:.2
         }
-        border.color: Qt.alpha(Theme.green, .22)
-        GridLayout {
-            id: hero
-            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 20
-            columns: root.width < 640 ? 1 : 2; columnSpacing: 24; rowSpacing: 12
+        contentItem: RowLayout {
+            id:summaryBody; spacing:12
+            Text { text:parent.parent.symbol; font.family:Theme.labelFont; font.pixelSize:28; color:Theme.strataAccent; Layout.preferredWidth:30; horizontalAlignment:Text.AlignHCenter }
             ColumnLayout {
-                Layout.fillWidth: true; spacing: 4
-                GlowText { text: "STATION"; color: Theme.teal; font.pixelSize: 10; font.letterSpacing: 1.8 }
-                GlowText { text: SettingsInfo.data.hostname || "This computer"; font.family: Theme.labelFont; font.pixelSize: Math.round(36 * Theme.fontScale); color: Theme.green; Layout.fillWidth: true; elide: Text.ElideRight }
-                GlowText { text: [SettingsInfo.data.os, SettingsInfo.data.kernel].filter(Boolean).join("  ·  ") || "System details unavailable"; color: Theme.muted; font.pixelSize: Theme.small; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                Flow {
-                    Layout.fillWidth: true; Layout.topMargin: 6; spacing: 8
-                    StatusPill { text: "Up " + SystemStats.uptime; tone: Theme.teal }
-                    StatusPill { text: "CEDAR " + (SettingsInfo.data.version || "version unknown"); tone: Theme.teal }
-                    StatusPill { visible: root.services.length > 0; text: root.failing ? root.failing + " service" + (root.failing === 1 ? "" : "s") + " failing" : "Services healthy"; tone: root.failing ? Theme.amber : Theme.green }
+                spacing:5; Layout.fillWidth:true
+                GlowText { text:summaryBody.parent.heading; font.pixelSize:Theme.small; color:Theme.muted; Layout.fillWidth:true; elide:Text.ElideRight }
+                GlowText { text:summaryBody.parent.value; font.family:Theme.labelFont; font.pixelSize:21*Theme.fontScale; Layout.fillWidth:true; elide:Text.ElideRight }
+                GlowText { text:summaryBody.parent.detail; font.pixelSize:Theme.small-1; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap }
+            }
+        }
+    }
+    GridLayout {
+        Layout.fillWidth:true; columns:root.width<700 ? 2:4; columnSpacing:10; rowSpacing:10
+        Summary { heading:"Desktop Profile"; value:Profiles.current ? Profiles.currentLabel:"No profile"; detail:Profiles.anyBusy ? "Applying changes…":Profiles.settingsFailure || Profiles.failures.length || Gaming.failures.length ? "Needs attention":Profiles.current ? "Active":"Your current preferences"; symbol:"△"; destination:"profiles" }
+        Summary { heading:"Appearance"; value:SettingsInfo.data.theme || "Unknown"; detail:"CEDAR palette · "+(Config.saved.reducedMotion ? "Reduced motion":"Shared materials"); symbol:"◐"; destination:"appearance" }
+        Summary { heading:"System Version"; value:SettingsInfo.data.version || "Unavailable"; detail:SettingsInfo.data.channel || "Channel unavailable"; symbol:"♧"; destination:"about" }
+        Summary { heading:"Update Status"; value:SettingsInfo.action==="update-check" && SettingsInfo.busy ? "Checking…":({current:"Verified current",available:"Update available",error:"Check failed"})[SettingsInfo.data.updateStatus?.state] || "Not checked"; detail:SettingsInfo.data.updateStatus?.checkedAt ? "Checked "+Qt.formatDateTime(new Date(SettingsInfo.data.updateStatus.checkedAt*1000),"MMM d, HH:mm"):"Open Updates to verify"; symbol:"↻"; destination:"system" }
+    }
+    GridLayout {
+        Layout.fillWidth:true; columns:root.width<850 ? 1:2; columnSpacing:16; rowSpacing:16
+        SettingsSurface {
+            padding:18; selected:true
+            Layout.preferredWidth:Math.max(420,root.width*.68)
+            GlowText { text:"System at a glance"; font.family:Theme.labelFont; font.pixelSize:Theme.title }
+            Item {
+                Layout.fillWidth:true; implicitHeight:Math.max(160,Math.min(270,width*.34))
+                SettingsBackdrop { anchors.fill:parent; strength:.95 }
+            }
+            GridLayout {
+                Layout.fillWidth:true; columns:width<600 ? 2:4; columnSpacing:14; rowSpacing:14
+                Repeater {
+                    model:[
+                        {label:"Displays",value:root.monitors.length ? root.monitors.length+" connected":"Unavailable",detail:root.monitors.map(m=>m.width+"×"+m.height).join(" · "),icon:"▣"},
+                        {label:"Audio output",value:Audio.sink?.description || "Unavailable",detail:Audio.audio ? (Audio.muted ? "Muted":Math.round(Audio.volume*100)+"% volume"):"No output reported",icon:"♫"},
+                        {label:"Network",value:Network.data.available ? Network.label:"Unavailable",detail:Network.data.available ? Network.statusDescription:"Provider unavailable",icon:"⌁"},
+                        {label:"Shield",value:Shield.ready ? Shield.headline:"Not yet verified",detail:Shield.ready ? Shield.onCount+" protections active":"Open Privacy & Shield",icon:"⬡"}]
+                    ColumnLayout {
+                        required property var modelData
+                        Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
+                        GlowText { text:modelData.icon+"  "+modelData.label; color:Theme.strataAccent; font.pixelSize:Theme.small; Layout.fillWidth:true; elide:Text.ElideRight }
+                        GlowText { text:modelData.value; font.family:Theme.labelFont; font.pixelSize:Theme.normal; Layout.fillWidth:true; wrapMode:Text.WordWrap }
+                        GlowText { text:modelData.detail; color:Theme.muted; font.pixelSize:Theme.small-1; Layout.fillWidth:true; elide:Text.ElideRight }
+                    }
                 }
             }
-            ColumnLayout {
-                spacing: 0
-                GlowText { Layout.alignment: root.width < 640 ? Qt.AlignLeft : Qt.AlignRight; text: Config.formatTime(clock.date); font.family: Theme.labelFont; font.pixelSize: Math.round(44 * Theme.fontScale); color: Theme.text }
-                GlowText { Layout.alignment: root.width < 640 ? Qt.AlignLeft : Qt.AlignRight; text: Config.formatDate(clock.date); color: Theme.muted; font.pixelSize: Theme.small }
+        }
+        SettingsSurface {
+            Layout.preferredWidth:250; Layout.alignment:Qt.AlignTop
+            GlowText { text:"Quick actions"; font.family:Theme.labelFont; font.pixelSize:Theme.title }
+            Repeater {
+                model:[{label:"Change wallpaper",page:"desktop",icon:"▧"},{label:"Adjust bar settings",page:"bar",icon:"━"},{label:"Manage keybinds",page:"keybinds",icon:"⌘"},{label:"Check for updates",page:"system",icon:"↻"}]
+                StationButton {
+                    required property var modelData
+                    objectName:"settingsQuick-"+modelData.page
+                    Layout.fillWidth:true; implicitHeight:48
+                    text:modelData.icon+"   "+modelData.label+"   →"
+                    onClicked:SettingsService.navigate(modelData.page, "")
+                    background:ChamferFrame { cut:5; fill:Qt.alpha(Theme.background,.55); stroke:parent.visualFocus ? Theme.green:Qt.alpha(Theme.strataAccent,.17) }
+                }
             }
-        }
-    }
-
-    SettingsSection {
-        heading: "Field Station"
-        caption: "Live performance, processes and open applications are together in Field Station."
-        StrataButton { text: "Open tasks & performance"; onClicked: Canopy.openStation("tasks") }
-    }
-
-    // State of each area
-    GridLayout {
-        Layout.fillWidth: true; columns: root.width < 640 ? 1 : root.width < 900 ? 2 : 3; columnSpacing: 12; rowSpacing: 12
-        Readout {
-            label: "Displays"; lit: root.monitors.length > 0
-            value: root.monitors.length === 1 ? "1 display" : root.monitors.length + " displays"
-            detail: root.monitors.map(m => m.name + "  " + m.width + "×" + m.height + " @ " + Math.round(m.refreshRate) + " Hz").join("\n") || "Display information unavailable"
-        }
-        Readout {
-            label: "Network"; lit: Network.state === "connected"
-            value: !Network.data.available ? "Unavailable" : Network.state === "connected" ? Network.label : Network.state === "connecting" ? "Connecting…" : "Offline"
-            detail: Network.data.available ? Network.statusDescription : "NetworkManager is not reachable."
-        }
-        Readout {
-            label: "Bluetooth"; lit: BluetoothService.adapter?.enabled === true
-            value: !BluetoothService.adapter ? "No adapter" : !BluetoothService.adapter.enabled ? "Off" : root.btConnected ? root.btConnected + " connected" : "On"
-            detail: BluetoothService.devices.filter(d => d.connected).map(d => d.name || d.address).join(", ")
-        }
-        Readout {
-            label: "Sound"; lit: !!Audio.audio && !Audio.muted
-            value: !Audio.audio ? "No output" : Audio.muted ? "Muted" : Math.round(Audio.volume * 100) + "%"
-            detail: Audio.sink?.description || ""
-        }
-        Readout {
-            label: "Power"; lit: Controls.data.profile !== "" || (root.battery?.isPresent ?? false)
-            tone: (root.battery?.isPresent ?? false) && UPower.onBattery && root.battery.percentage < .2 ? Theme.amber : Theme.green
-            value: (root.battery?.isPresent ?? false) ? Math.round(root.battery.percentage * 100) + "% · " + (UPower.onBattery ? "battery" : "plugged in") : (Controls.data.profile ? Controls.data.profile.replace("-", " ") : "Profiles unavailable")
-            detail: (root.battery?.isPresent ?? false) && Controls.data.profile ? "Profile: " + Controls.data.profile.replace("-", " ") : ""
-        }
-        Readout {
-            label: "Attention"; lit: Config.saved.notificationsEnabled && !Config.saved.doNotDisturb
-            tone: Theme.green
-            value: !Config.saved.notificationsEnabled ? "Popups off" : Config.saved.doNotDisturb ? "Do Not Disturb" : "Popups on"
-            detail: NoticeStore.history.length + " in notification history"
-        }
-        Readout {
-            label: "Look"; lit: true; tone: Theme.teal
-            value: SettingsInfo.data.theme || "CEDAR"
-            detail: "CEDAR Strata bar  ·  " + (Config.saved.reducedMotion ? "Reduced Motion" : "Ambient " + Math.round(Config.saved.ambientIntensity * 100) + "%")
-        }
-        Readout {
-            label: "Privacy"; lit: Config.localOnly; tone: Theme.green
-            value: Config.localOnly ? "Local only" : "External allowed"
-            detail: [Config.saved.weatherEnabled && !Config.localOnly ? "weather on" : "", Config.saved.clipboardHistory ? "clipboard history on" : "", Config.saved.forestTrails ? "Trails on" : ""].filter(Boolean).join(" · ") || "No history or external requests"
-        }
-        Readout {
-            label: "Shortcuts"; lit: (DesktopSettings.data.bindings || []).length > 0; tone: Theme.teal
-            value: (DesktopSettings.data.bindings || []).length + " active"
-            detail: (DesktopSettings.data.owned?.bindings || []).length + " added in CEDAR"
+            GlowText { text:"Updates are reviewed before anything is installed."; font.pixelSize:Theme.small; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap }
         }
     }
 }

@@ -21,6 +21,16 @@ ColumnLayout {
         Readout { label:"Not here"; lit:false; value:String(root.services.filter(s=>s.status==="Unavailable").length); detail:"Not installed or not used on this computer" }
     }
 
+    SettingsSurface {
+        GlowText {text:"Updates & recovery";font.family:Theme.labelFont;font.pixelSize:Theme.title}
+        GlowText {text:"Check your CEDAR channel in the existing updater. It prepares and verifies a candidate before you choose whether to install. Nothing installs automatically.";Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Theme.muted}
+        GlowText {text:SettingsInfo.data.updateStatus?.detail || "Not checked";Layout.fillWidth:true;wrapMode:Text.WordWrap;color:SettingsInfo.data.updateStatus?.state==="error" ? Theme.warning:Theme.muted}
+        Flow {Layout.fillWidth:true;spacing:8
+            StrataButton {text:SettingsInfo.busy && SettingsInfo.action==="update-check" ? "Checking…":"Check for updates";enabled:!SettingsInfo.busy;onClicked:SettingsInfo.run({action:"update-check"})}
+            StrataButton {text:"Review in updater";onClicked:SettingsService.reviewUpdates()}
+        }
+        GlowText {text:"The diagnostics and signed-archive recovery tools below remain available offline.";Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Theme.muted;font.pixelSize:Theme.small}
+    }
     SettingsSection {
         heading: "Field Station"
         caption: "CPU, memory, storage and application readings live in Field Station. Filter the process table to inspect CEDAR's own resource use."

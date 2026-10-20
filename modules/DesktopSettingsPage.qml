@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import ".."
 import "../components"
@@ -6,52 +7,61 @@ import "../services"
 ColumnLayout {
     id:root
     property string highlightKey:""
-    readonly property var wallpapers: SettingsInfo.data.wallpapers || []
-    readonly property string current: SettingsInfo.data.wallpaper || ""
+    property string tab:"Wallpapers"
+    property string chosen:""
+    readonly property var wallpapers:SettingsInfo.data.wallpapers || []
+    readonly property string current:SettingsInfo.data.wallpaper || ""
+    readonly property string selected:chosen || current
+    readonly property bool dirty:chosen!=="" && chosen!==current
     spacing:16
-
-    SettingsSection {
-        objectName:"wallpaper"
-        heading:"Wallpaper"; caption:SettingsInfo.data.wallpaperFolder ? "Shown on every display. Choose an image from CEDAR’s backgrounds or your wallpaper folder." : "Shown on every display. Choose a bundled background, or set a wallpaper folder below to add your own images."
-        Rectangle {
-            Layout.fillWidth:true; implicitHeight:Math.min(280,width*.42); color:Theme.background; radius:10; clip:true; border.color:Qt.alpha(Theme.teal,.14)
-            Image { id:hero; anchors.fill:parent; anchors.margins:1; source:root.current ? Config.imageSource("file://"+root.current) : ""; fillMode:Config.saved.wallpaperMode==="fit" ? Image.PreserveAspectFit : Config.saved.wallpaperMode==="stretch" ? Image.Stretch : Image.PreserveAspectCrop; sourceSize.width:1280; asynchronous:true }
-            Rectangle {
-                anchors.left:parent.left; anchors.right:parent.right; anchors.bottom:parent.bottom; height:44
-                gradient:Gradient { GradientStop { position:0; color:Qt.alpha(Theme.background,0) } GradientStop { position:1; color:Qt.alpha(Theme.background,.85) } }
-                Text { anchors.left:parent.left; anchors.bottom:parent.bottom; anchors.margins:12; text:root.current.split("/").pop() || "No wallpaper selected"; textFormat:Text.PlainText; font.family:Theme.dataFont; font.pixelSize:Theme.small; color:Theme.text; elide:Text.ElideMiddle; width:parent.width-24 }
-            }
-        }
-        GridLayout {
-            Layout.fillWidth:true; columns:root.width<560 ? 3:5; columnSpacing:8; rowSpacing:8
-            Repeater {
-                model:root.wallpapers
-                StationButton {
-                    id:thumb
-                    required property var modelData
-                    readonly property bool inUse:modelData.path===root.current
-                    Layout.fillWidth:true; Layout.preferredWidth:120; implicitHeight:72
-                    checked:inUse; enabled:!SettingsInfo.busy
-                    hint:modelData.name || modelData.path.split("/").pop()
-                    onClicked:if(!inUse)SettingsInfo.run({action:"wallpaper",path:modelData.path})
-                    background:Rectangle { radius:8; color:Theme.background; border.width:thumb.inUse || thumb.visualFocus ? 2:1; border.color:thumb.inUse || thumb.visualFocus ? Theme.green : thumb.hovered ? Qt.alpha(Theme.teal,.5) : Qt.alpha(Theme.teal,.14) }
-                    contentItem:Item {
-                        Image { anchors.fill:parent; anchors.margins:-4; source:Config.imageSource(thumb.modelData.thumb || ("file://"+thumb.modelData.path)); fillMode:Image.PreserveAspectCrop; sourceSize.width:320; asynchronous:true; layer.enabled:false }
-                    }
+    function discard(){chosen="";}
+    onHighlightKeyChanged:if(highlightKey && highlightKey!=="wallpaper")tab="Settings"
+    SettingsTabs {tabs:["Wallpapers","Screensavers","Settings"];current:root.tab;onChosen:tab=>root.tab=tab}
+    GridLayout {
+        visible:root.tab==="Wallpapers";Layout.fillWidth:true;columns:root.width<800 ? 1:2;columnSpacing:16;rowSpacing:16
+        GridView {
+            id:gallery
+            Layout.fillWidth:true;Layout.minimumWidth:0;Layout.preferredWidth:root.width*.58
+            implicitHeight:Math.min(440,Math.max(220,Math.ceil(root.wallpapers.length/Math.max(1,Math.floor(width/150)))*116))
+            cellWidth:width/Math.max(1,Math.floor(width/150));cellHeight:116
+            model:root.wallpapers;clip:true;cacheBuffer:116
+            ScrollBar.vertical:ScrollBar {}
+            delegate:StationButton {
+                id:tile
+                required property var modelData
+                width:gallery.cellWidth-8;height:gallery.cellHeight-8
+                text:modelData.name;hint:modelData.name;checked:root.selected===modelData.path
+                onClicked:root.chosen=modelData.path
+                background:ChamferFrame {cut:6;fill:Theme.surface;stroke:tile.visualFocus ? Theme.green:tile.checked ? Theme.strataAccent:Qt.alpha(Theme.border,.4);strokeWidth:tile.checked ? 2:1}
+                contentItem:ColumnLayout {
+                    spacing:5
+                    Image {Layout.fillWidth:true;Layout.fillHeight:true;source:Config.imageSource("file://"+tile.modelData.path);sourceSize.width:256;asynchronous:true;cache:true;fillMode:Image.PreserveAspectCrop;clip:true}
+                    GlowText {text:tile.modelData.name;font.pixelSize:Theme.small-1;Layout.fillWidth:true;elide:Text.ElideRight}
                 }
             }
         }
-        GlowText { visible:!root.wallpapers.length; text:SettingsInfo.data.wallpaperFolder ? "No images found in CEDAR’s backgrounds or your wallpaper folder." : "No images found. Set a wallpaper folder below to add your own."; color:Theme.muted; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }
-        SettingsFields { page:"desktop"; groups:["Background"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+        SettingsSurface {
+            Layout.preferredWidth:300;Layout.alignment:Qt.AlignTop
+            Image {
+                id:hero;Layout.fillWidth:true;Layout.preferredHeight:190
+                source:root.selected ? Config.imageSource("file://"+root.selected):""
+                sourceSize.width:900;asynchronous:true;cache:true
+                fillMode:Config.saved.wallpaperMode==="fit" ? Image.PreserveAspectFit:Config.saved.wallpaperMode==="stretch" ? Image.Stretch:Image.PreserveAspectCrop;clip:true
+            }
+            GlowText {text:root.wallpapers.find(w=>w.path===root.selected)?.name || "Select a wallpaper";font.family:Theme.labelFont;font.pixelSize:Theme.title;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+            GlowText {text:"Target: all displays\nFit: "+({crop:"Fill screen",fit:"Fit image",stretch:"Stretch"})[Config.saved.wallpaperMode]+"\nPer-display targeting is not supported by this provider.";font.pixelSize:Theme.small;color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+            Flow {Layout.fillWidth:true;spacing:8
+                StrataButton {text:SettingsInfo.busy ? "Applying…":"Apply wallpaper";enabled:root.dirty && !SettingsInfo.busy && hero.status===Image.Ready;onClicked:SettingsInfo.run({action:"wallpaper",path:root.selected})}
+                StrataButton {text:"Cancel";enabled:root.dirty && !SettingsInfo.busy;onClicked:root.discard()}
+            }
+        }
     }
-
-    WeatherLocationSettings { highlightKey:root.highlightKey }
-
-    SettingsSection {
-        heading:"Privacy"; badge:Config.localOnly ? "Local only" : "External allowed"; badgeColor:Config.localOnly ? Theme.green : Theme.amber
-        caption:"What CEDAR may contact on your behalf. Local desktop controls keep working either way."
-        SettingsFields { page:"desktop"; groups:["Privacy"]; cards:false; highlightKey:root.highlightKey; Layout.fillWidth:true }
+    GlowText {visible:root.tab==="Wallpapers" && !root.wallpapers.length;text:"No images were found. Add a wallpaper folder in Settings.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+    SettingsSurface {
+        visible:root.tab==="Screensavers"
+        GlowText {text:"Screensaver controls are not available";font.family:Theme.labelFont;font.pixelSize:Theme.title;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+        GlowText {text:"CEDAR has no independent screensaver backend in this version. Your existing desktop provider keeps control. Trailwatch is a secure lock screen, not a screensaver; its privacy controls are in Lock Screen & Security.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
     }
-
-    SettingsFields { page:"desktop"; groups:["Advanced"]; highlightKey:root.highlightKey; Layout.fillWidth:true }
+    SettingsFields {visible:root.tab==="Settings";page:"desktop";groups:["Background","Advanced"];highlightKey:root.highlightKey;Layout.fillWidth:true}
+    WeatherLocationSettings {visible:root.tab==="Settings";highlightKey:root.highlightKey;Layout.fillWidth:true}
 }

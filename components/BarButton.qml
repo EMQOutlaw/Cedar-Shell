@@ -37,23 +37,28 @@ AbstractButton {
     function publishAnchor() {
         if (!anchorTopic)
             return;
-        if (visible && anchorsCanopy)
+        // A disabled ancestor also disables the control. Settings renders a
+        // disabled miniature bar; it must not claim the live bar's origins.
+        if (visible && enabled && anchorsCanopy)
             Canopy.setAnchorProvider(anchorTopic, anchorOutput, root.anchorRect);
         else
             Canopy.clearAnchorProvider(anchorTopic, anchorOutput, root.anchorRect);
     }
-    Component.onCompleted: publishAnchor()
+    // Let inherited visibility/enabled bindings settle before registering a
+    // freshly constructed control (notably the disabled Settings preview).
+    Component.onCompleted: Qt.callLater(publishAnchor)
     Component.onDestruction: if (anchorTopic) Canopy.clearAnchorProvider(anchorTopic, anchorOutput, root.anchorRect)
-    onVisibleChanged: publishAnchor()
-    onAnchorTopicChanged: publishAnchor()
-    onAnchorOutputChanged: publishAnchor()
+    onVisibleChanged: Qt.callLater(publishAnchor)
+    onAnchorsCanopyChanged: Qt.callLater(publishAnchor)
+    onAnchorTopicChanged: Qt.callLater(publishAnchor)
+    onAnchorOutputChanged: Qt.callLater(publishAnchor)
     function updatePeek() {
         if (enabled && (hovered || visualFocus) && canopyTopic && Config.saved.canopyPeek) peekDelay.restart();
         else { peekDelay.stop(); Canopy.leavePeek(); }
     }
     onHoveredChanged: updatePeek()
     onVisualFocusChanged: updatePeek()
-    onEnabledChanged: updatePeek()
+    onEnabledChanged: { Qt.callLater(publishAnchor); updatePeek(); }
     Timer {id:peekDelay;interval:450;onTriggered:if(root.enabled && (root.hovered || root.visualFocus))Canopy.open(root.canopyTopic,root.canopyOutput,true)}
     implicitWidth: iconOnly ? 32 : Math.max(32, label.implicitWidth + 20)
     implicitHeight: Math.max(24, Config.barHeight - 16)

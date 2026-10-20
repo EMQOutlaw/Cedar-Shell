@@ -56,3 +56,9 @@ NotesTitleField 1.0 NotesTitleField.qml
 NotesTextNote 1.0 NotesTextNote.qml
 NotesBinderClip 1.0 NotesBinderClip.qml
 NotesPaper 1.0 NotesPaper.qml
+
+SettingsTabs 1.0 SettingsTabs.qml
+SettingsSurface 1.0 SettingsSurface.qml
+SettingsBackdrop 1.0 SettingsBackdrop.qml
+SettingsNavigation 1.0 SettingsNavigation.qml
+SettingsBarPreview 1.0 SettingsBarPreview.qml

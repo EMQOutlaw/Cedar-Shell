@@ -33,6 +33,10 @@ Singleton {
         if (page || anchor) navigate(page, anchor || "");
     }
     function openPage(page, anchor) { route(page, anchor, false); }
+    function reviewUpdates() {
+        if (ShellState.locked || Config.testMode) return;
+        Quickshell.execDetached(["python3", Quickshell.shellPath("installer/cedar_install.py"), "--update", "--gui"]);
+    }
     Connections { target: ShellState; function onLockedChanged() { if (ShellState.locked) root.windowOpen = false; } }
 
     // ------------------------------------------------------------ navigation

@@ -6,6 +6,8 @@ import "../services"
 BarButton {
     id: root
     property string outputName: ""
+    anchorTopic: "network"
+    canopyOutput: outputName
     // In a bar row the notice label takes its own space; beside Core it overflows
     // to the right so the pill never shifts.
     property bool inline: false
@@ -29,17 +31,6 @@ BarButton {
         const p = root.mapToItem(null, 0, 0);
         return { x: (win.screen.width - win.width) / 2 + p.x, width: Network.vpnActive ? 46 : 32 };
     }
-    readonly property string anchorOutput: outputName || CoreService.hostName
-    function publishAnchor() {
-        if (visible)
-            Canopy.setAnchorProvider("network", anchorOutput, root.anchorRect);
-        else
-            Canopy.clearAnchorProvider("network", anchorOutput, root.anchorRect);
-    }
-    Component.onCompleted: publishAnchor()
-    Component.onDestruction: Canopy.clearAnchorProvider("network", anchorOutput, root.anchorRect)
-    onVisibleChanged: publishAnchor()
-    onAnchorOutputChanged: publishAnchor()
     onNoticeChanged: {
         if (!notice)
             return;

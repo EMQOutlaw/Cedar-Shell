@@ -164,6 +164,33 @@ ShellRoot {
             y: 104
             output: Quickshell.screens[1]
         }
+        // Settings uses the same production renderer. Its smaller controls
+        // must never replace (or remove) either live output's pop-out origins.
+        Loader {
+            id: settingsPreview
+            active: false
+            x: 70; y: 55; width: window.width - 140
+            sourceComponent: SettingsBarPreview { active: true }
+        }
+        Timer {
+            id: previewLifecycle
+            property int step: 0
+            interval: 80
+            repeat: true
+            onTriggered: {
+                window.inspect(primary);
+                window.inspect(secondary);
+                if (step === 0) settingsPreview.visible = false;
+                else if (step === 1) settingsPreview.visible = true;
+                else if (step === 2) settingsPreview.active = false;
+                else {
+                    stop();
+                    window.save(primary);
+                    window.save(secondary);
+                }
+                step++;
+            }
+        }
         Timer {
             id: advance
             interval: 100
@@ -197,8 +224,9 @@ ShellRoot {
             onTriggered: {
                 window.inspect(primary);
                 window.inspect(secondary);
-                window.save(primary);
-                window.save(secondary);
+                settingsPreview.active = true;
+                previewLifecycle.step = 0;
+                previewLifecycle.start();
             }
         }
     }

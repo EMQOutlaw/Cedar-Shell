@@ -23,7 +23,8 @@ FocusScope {
     signal closed()
     property string page: "overview"
     property string detail: ""           // a protection id while a detail view is open
-    readonly property bool sidebar: width >= 860
+    property bool embedded: false
+    readonly property bool sidebar: !embedded && width >= 860
     readonly property int columns: width < 1180 && !sidebar ? (width < 640 ? 1 : 2) : width < 1180 ? 1 : 2
     readonly property var pages: [["overview", "Overview", "◇"], ["protections", "Protections", "⬡"], ["network", "Network", "⌁"], ["activity", "Activity", "◷"], ["settings", "Settings", "◈"]]
     function navigate(id) { page = id; detail = ""; }
@@ -224,7 +225,8 @@ FocusScope {
         checked: current
         accent: Theme.green
         implicitHeight: root.sidebar ? 38 : 32
-        implicitWidth: contentItem.implicitWidth + leftPadding + rightPadding
+        implicitWidth: navMetrics.advanceWidth + leftPadding + rightPadding + (root.sidebar ? 26 : 0)
+        TextMetrics { id: navMetrics; text: nav.modelData[1]; font.family: Theme.dataFont; font.pixelSize: Theme.small }
         padding: root.sidebar ? 12 : 8
         Layout.fillWidth: root.sidebar
         onClicked: root.navigate(modelData[0])
@@ -282,11 +284,10 @@ FocusScope {
             Layout.fillWidth: true; Layout.fillHeight: true
             spacing: 0
             // Tab strip when narrow.
-            RowLayout {
+            Flow {
                 visible: !root.sidebar
                 Layout.fillWidth: true; Layout.margins: 12; spacing: 6
                 Repeater { model: root.pages; NavButton {} }
-                Item { Layout.fillWidth: true }
                 StatusPill { text: Shield.ready ? Shield.headline : "Reading"; tone: root.postureTone }
             }
             Flickable {
