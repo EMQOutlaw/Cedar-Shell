@@ -6,7 +6,7 @@
 # scripts/build_packages.py arch injects the archive checksum into the copy it
 # builds and publishes, and scripts/publish_version.py keeps pkgver in step.
 pkgname=cedar-shell
-pkgver=1.8
+pkgver=1.9
 pkgrel=1
 pkgdesc='CEDAR desktop shell for Hyprland'
 arch=('any')
