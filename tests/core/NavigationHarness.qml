@@ -291,6 +291,9 @@ ShellRoot {
                     CoreService.remove("unified-fixture", false);
                 }
                 Config.set("reducedMotion", true);
+                // Host alerts (a low battery, a hot CPU) are sticky and outrank the OSD.
+                for (const row of CoreService.rows.filter(r => r.sticky))
+                    CoreService.remove(row.id, false);
                 ShellState.osd("VOLUME", .5, "50%");
                 mouseMove(header, header.width / 2, header.height / 2);
                 wait(800);
