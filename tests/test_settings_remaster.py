@@ -69,9 +69,18 @@ class RemasterTransactions(unittest.TestCase):
     def test_vrr_written_only_after_explicit_choice(self):
         live={'name':'DP-2','width':2560,'height':1440,'refreshRate':240,'vrr':False,'availableModes':['2560x1440@240.00Hz']}
         draft={'name':'DP-2','mode':'2560x1440@240.00','x':0,'y':0,'scale':1,'transform':0}
-        self.assertNotIn('vrr',d.render({'monitors':d.validate_monitors([draft],[live])}))
-        saved=d.validate_monitors([{**draft,'vrrPolicy':2}],[live])
-        self.assertIn('["vrr"]=2',d.render({'monitors':saved}))
+        # Select each format explicitly: the runner may have no Hyprland
+        # config, while a developer's machine may use Lua.
+        for syntax in ('lua', 'conf'):
+            with self.subTest(syntax=syntax), patch.object(d, 'MAIN', self.own / f'hyprland.{syntax}'):
+                for untouched in (draft, {**draft, 'vrrPolicy': -2}):
+                    saved=d.validate_monitors([untouched],[live])
+                    self.assertNotIn('vrr',d.render({'monitors':saved}))
+                for policy in (-1, 0, 1, 2, 3):
+                    with self.subTest(policy=policy):
+                        saved=d.validate_monitors([{**draft,'vrrPolicy':policy}],[live])
+                        expected=f'["vrr"]={policy}' if syntax == 'lua' else f', vrr, {policy}\n'
+                        self.assertIn(expected,d.render({'monitors':saved}))
         with self.assertRaises(ValueError):d.validate_monitors([{**draft,'vrrPolicy':99}],[live])
     def test_mirror_is_validated_and_rendered_in_both_syntaxes(self):
         live=[{'name':n,'width':1920,'height':1080,'refreshRate':60,'availableModes':['1920x1080@60.00Hz']} for n in ('DP-1','DP-2')]
@@ -118,10 +127,24 @@ class RemasterTransactions(unittest.TestCase):
 
 PAGES=['FirstRunSettings','SettingsOverview','AppearanceSettings','DefaultAppsSettings','DesktopSettingsPage','TopBarSettings','CoreSettings','DisplaySettings','InputSettings','KeybindSettings','ConnectionsPage','HotspotSettings','AudioSettings','NotificationSettings','PowerSettings','TimeSettings','SystemSettings','AboutSettings','WeatherLocationSettings']
 class SingleEntryPoints(unittest.TestCase):
-    """Navigation belongs to the Settings menu, search and home directory."""
-    def test_pages_do_not_navigate_or_open_other_surfaces(self):
+    """Page links use the shared draft guard; other surfaces keep one owner."""
+    def test_pages_only_use_reviewed_service_routes(self):
         import re
         pattern=re.compile(r'\bnavigate\(|signal navigate|ShellState\.(toggle|open|lock|settingsPage)|Canopy\.(open|context|toggle)|CoreService\.expand')
+        # The home summaries, quick actions and related-page links all pass
+        # through SettingsService's draft guard. Keep exceptions exact and
+        # scoped to their page so new or direct routes still fail this check.
+        routes = {
+            'SettingsOverview': (
+                'SettingsService.navigate(destination, "")',
+                'SettingsService.navigate(modelData.page, "")',
+            ),
+            'AppearanceSettings': ('SettingsService.navigate("animations", "effectIntensity")',),
+            'DefaultAppsSettings': ('SettingsService.navigate(tab==="Dictation" ? "dictation":"application-theming", "")',),
+            'TopBarSettings': ('SettingsService.navigate("time", "")',),
+            'InputSettings': ('SettingsService.navigate("keybinds", "")',),
+            'KeybindSettings': ('SettingsService.navigate("input", "")',),
+        }
         for name in PAGES:
             text=(ROOT/'modules'/f'{name}.qml').read_text()
             # Performance moved out of Settings; these links lead to its one owner.
@@ -129,11 +152,9 @@ class SingleEntryPoints(unittest.TestCase):
                 self.assertNotIn('SystemStats.cpu', text)
                 self.assertNotIn('SystemStats.ram', text)
                 text = text.replace('Canopy.openStation("tasks")', '')
-            # The home directory is navigation furniture, not a preference
-            # page. Its category and recent links use the same draft guard.
-            if name == 'SettingsOverview':
-                text = text.replace('SettingsService.navigate(modelData.pages[0].id, "")', '')
-                text = text.replace('SettingsService.navigate(modelData.page, "")', '')
+            for route in routes.get(name, ()):
+                self.assertEqual(text.count(route), 1, f'{name}: reviewed route changed: {route}')
+                text = text.replace(route, '')
             self.assertIsNone(pattern.search(text),f'{name} adds a second route to another place')
     def test_each_preference_has_one_custom_control(self):
         import re
