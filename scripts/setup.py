@@ -75,14 +75,12 @@ def main(args=None):
             print('Recommended font unavailable: '+font['id']+'. Using its readable fallback; installation can continue.')
     packages = d.package_plan(root)
     if packages['packages']:
-        upgrade = packages.get('upgradeRequired', True)
-        backend = packages.get('backend', 'pacman')
-        print('On '+packages['distribution']+', this installs the listed packages'+(' and performs a full system upgrade.' if upgrade else ' and their dependencies; no full system upgrade.'))
-        print('Review '+backend+'\'s transaction before confirming. No additional repositories or replacement desktop providers are added.')
-        reply = input(('Install these packages and perform that upgrade?' if upgrade else 'Install these packages?')+' [y/N] ').strip().lower()
+        print('On '+packages['distribution']+', this installs the listed packages and performs a full system upgrade.')
+        print('Review pacman\'s transaction before confirming. No additional repositories or replacement desktop providers are added.')
+        reply = input('Install these packages and perform that upgrade? [y/N] ').strip().lower()
         if reply not in ('y', 'yes'):
             raise d.Refused('Canceled. Your desktop was not changed. Use --approve-install-only to deliberately copy files without preparing dependencies.')
-        d.install_packages(packages, approve_upgrade=upgrade)
+        d.install_packages(packages, approve_upgrade=True)
     print('[3/6] Preparing verified backups')
     plan = d.plan_install(root)
     d.approve(plan)

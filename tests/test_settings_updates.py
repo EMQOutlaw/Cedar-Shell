@@ -10,9 +10,19 @@ import settings_updates as updates
 class UpdateStatus(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
-        self.env=patch.dict(os.environ,XDG_STATE_HOME=self.tmp.name);self.env.start();self.addCleanup(self.env.stop)
+        self.env=patch.dict(os.environ,XDG_STATE_HOME=self.tmp.name,CEDAR_INSTALLER_CHANNEL='');self.env.start();self.addCleanup(self.env.stop)
         self.identity=patch.object(updates,'content_digest',return_value='source-one');self.identity.start();self.addCleanup(self.identity.stop)
-        self.channel=patch.object(updates,'default_channel',return_value='stable');self.channel.start();self.addCleanup(self.channel.stop)
+        self.channel=patch.object(updates,'installed_channel',return_value='stable');self.channel.start();self.addCleanup(self.channel.stop)
+
+    def test_channel_selection_matches_installer(self):
+        for selected, installed, expected in (('', '', 'stable'), ('', 'development', 'development'), ('stable', 'development', 'stable')):
+            with self.subTest(selected=selected, installed=installed), \
+                 patch.dict(os.environ,CEDAR_INSTALLER_CHANNEL=selected), \
+                 patch.object(updates,'installed_channel',return_value=installed), \
+                 patch.object(updates,'Updater') as updater:
+                updater.return_value.run.return_value={'current':True}
+                self.assertEqual(updates.check()['channel'],expected)
+                updater.assert_called_once_with(updates.ROOT,channel=expected)
 
     def test_missing_state_is_unknown(self):
         self.assertEqual(updates.status()['state'],'unknown')

@@ -53,7 +53,7 @@ Item {
             font.pixelSize: Theme.small
             text: (root.model.installedChannel && root.model.installedChannel !== root.model.updateChannel
                 ? "Installed: " + root.model.channelLabel(root.model.installedChannel) + " · " + root.model.channelBranch(root.model.installedChannel) + "\nSelected: "
-                : root.model.updateChannel === "package" ? "Source: " : "Branch: ") + root.model.channelLabel(root.model.updateChannel) + " · " + root.model.updateBranch
+                : "Branch: ") + root.model.channelLabel(root.model.updateChannel) + " · " + root.model.updateBranch
         }
         Quiet {
             objectName: "updateChannelSwitch"
@@ -63,21 +63,12 @@ Item {
                 border.color: Qt.alpha(Theme.teal, parent.visualFocus ? 1 : .35)
                 border.width: parent.visualFocus ? Theme.focusWidth : 1
             }
-            // One other choice: from the system package or Development the way back is Stable; from Stable it is Development.
-            text: root.model.updateChannel === "stable" ? "Development Branch" : "Stable Branch"
-            hint: root.model.updateChannel === "stable" ? "Fetch dev and review the development installation plan" : "Fetch main and review the stable installation plan"
+            text: root.model.updateChannel === "development" ? "Stable Branch" : "Development Branch"
+            hint: root.model.updateChannel === "development" ? "Fetch main and review the stable installation plan" : "Fetch dev and review the development installation plan"
             enabled: !root.model.busy && (root.model.fixture || root.model.ready)
-            onClicked: root.model.startUpdate(root.model.updateChannel === "stable" ? "development" : "stable")
+            onClicked: root.model.startUpdate(root.model.updateChannel === "development" ? "stable" : "development")
         }
-        Quiet {
-            objectName: "updatePackageChannel"
-            visible: root.model.updateChannel !== "package"
-            text: "System package"
-            hint: "Use the CEDAR package installed by your package manager; no download"
-            enabled: !root.model.busy && (root.model.fixture || root.model.ready)
-            onClicked: root.model.startUpdate("package")
-        }
-        Lead { font.pixelSize: Theme.small; text: root.model.updateChannel === "package" ? "System package follows what pacman or dnf installed under /usr/share/cedar. Stable follows main. You can switch back here at any time." : "Development has the latest work. Stable follows main. You can switch back here at any time." }
+        Lead { font.pixelSize: Theme.small; text: "Development has the latest work. Stable follows main. You can switch back here at any time." }
     }
     // The operation list the install and update stages share: mark, title, and the running or final detail.
     component OperationRows: ColumnLayout {
@@ -142,7 +133,6 @@ Item {
                 model: root.model.update.summary || ["CEDAR desktop and maintenance updates"]
                 Row_ { required property string modelData; text: modelData; glyph: "•"; glyphColor: Theme.teal }
             }
-            UpdateChannel { Layout.topMargin: 6 }
             Item { Layout.fillHeight: true }
             RowLayout {
                 Layout.fillWidth: true
@@ -160,7 +150,7 @@ Item {
             Heading { text: "Updating CEDAR" }
             Lead { font.pixelSize: Theme.small; text: "Selected: " + root.model.channelLabel(root.model.updateChannel) + " · " + root.model.updateBranch }
             Lead { text: root.model.current ? (root.model.current.detail || root.model.current.description) : root.model.operations.length ? "Finishing…" : "Looking for the newest CEDAR…" }
-            Lead { text: root.model.updateChannel === "package" ? "Nothing on your desktop changes yet. The installed system package is checked and copied without a download; its installer then shows the plan." : "Nothing on your desktop changes yet. The newest CEDAR is fetched first; its installer then shows the plan before anything is installed."; font.pixelSize: Theme.small }
+            Lead { text: "Nothing on your desktop changes yet. The newest CEDAR is fetched first; its installer then shows the plan before anything is installed."; font.pixelSize: Theme.small }
             OperationRows { operations: root.model.operations }
             Item { Layout.fillHeight: true }
             ExpandableDetails {

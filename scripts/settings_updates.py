@@ -1,12 +1,13 @@
 """On-demand Settings view of the existing managed updater; never installs."""
 import json
+import os
 import sys
 import time
 from pathlib import Path
 import desktop_runtime as runtime
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from installer.engine.update import Updater, default_channel, content_digest
+from installer.engine.update import Updater, installed_channel, content_digest
 
 
 def state_path():
@@ -26,7 +27,7 @@ def status():
 
 
 def check():
-    channel=default_channel(ROOT)
+    channel=os.environ.get('CEDAR_INSTALLER_CHANNEL') or installed_channel() or 'stable'
     record={'sourceDigest':content_digest(ROOT),'channel':channel,'state':'error'}
     try:
         result=Updater(ROOT,channel=channel).run()

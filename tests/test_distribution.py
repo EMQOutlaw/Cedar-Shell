@@ -160,11 +160,6 @@ class Distribution(unittest.TestCase):
         with patch.object(d,'command',side_effect=d.Refused('bad signature')),patch.object(d,'safe_extract') as extract:
             with self.assertRaises(d.Refused):d.update(Path('archive'),Path('sig'),Path('key'))
             extract.assert_not_called()
-    def test_explicit_archive_update_keeps_the_signed_archive_dispatch(self):
-        with patch.object(d,'update') as archive_update,patch.object(d.os,'getuid',return_value=1000),patch.object(d.os,'execv') as execute:
-            d.main(['update','archive.tar.gz','--signature','archive.sig','--trusted-key','public.pem'])
-        archive_update.assert_called_once_with(Path('archive.tar.gz'),Path('archive.sig'),Path('public.pem'))
-        execute.assert_not_called()
     def test_standalone_recovery_cli_reports_session_refusals(self):
         recovery=self.root/'standalone recovery';recovery.mkdir()
         for name in ('distribution.py','omarchy_session.py','omarchy_providers.py','portable_session.py','portable_providers.py','portable_controls.py','adoption_plan.py','startup_graph.py'):
@@ -175,35 +170,6 @@ class Distribution(unittest.TestCase):
             self.assertIn('CEDAR: No CEDAR trial is running.',result.stderr)
             self.assertIn('cedar try',result.stderr)
             self.assertNotIn('Traceback',result.stderr)
-    def test_installer_from_a_system_package_opens_this_tree_when_nothing_is_installed(self):
-        # /usr/bin/cedar from a distribution package runs /usr/share/cedar/scripts/distribution.py;
-        # before the first per-user installation there is no installed copy to hand off to.
-        calls=[]
-        def fake_exec(exe,argv):calls.append(argv);raise SystemExit(0)
-        with patch.object(d.os,'execv',side_effect=fake_exec),patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaises(SystemExit):d.main(['installer','--dry-run','--no-gui'])
-        self.assertEqual(calls,[[sys.executable,str(d.ROOT/'installer/cedar_install.py'),'--dry-run','--no-gui']])
-        # An installed copy keeps winning, and root is still refused before anything runs.
-        with patch.object(d,'installed',return_value=Path('/installed/release')),patch.object(d.os,'execv',side_effect=fake_exec),patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaises(SystemExit):d.main(['installer','--update'])
-        self.assertEqual(calls[-1][1:],['/installed/release/installer/cedar_install.py','--update'])
-        with patch.object(d.os,'execv',side_effect=fake_exec) as execute,patch.object(d.os,'getuid',return_value=0):
-            with self.assertRaisesRegex(d.Refused,'never root'):d.main(['installer'])
-        execute.assert_not_called()
-        # The standalone recovery copy (~/.local/share/cedar/recovery) ships no installer: its refusal stands.
-        recovery=self.root/'recovery store';(recovery/'recovery').mkdir(parents=True)
-        with patch.object(d,'ROOT',recovery),patch.object(d.os,'execv',side_effect=fake_exec) as execute,patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaisesRegex(d.Refused,'No versioned CEDAR installation'):d.main(['installer'])
-        execute.assert_not_called()
-
-    def test_invalid_installed_release_never_falls_back_to_the_system_installer(self):
-        current=d.paths()['data']/'current'
-        current.parent.mkdir(parents=True)
-        current.symlink_to(self.root/'not-a-verified-release')
-        with patch.object(d.os,'execv') as execute,patch.object(d.os,'getuid',return_value=1000):
-            with self.assertRaisesRegex(d.Refused,'outside the owned release store'):d.main(['installer'])
-        execute.assert_not_called()
-
     def test_source_inventory_excludes_nested_clone_and_private_extras(self):
         source=self.root/'source';(source/'data').mkdir(parents=True)
         (source/'shell.qml').write_text('fixture shell')

@@ -215,7 +215,7 @@ def dependencies_run(ctx, op):
 def dependencies_verify(ctx, op):
     if not ctx.plan['packages']:
         return True
-    report = facts_module.dependency_report(ctx.host, ctx.source, ctx.facts['support'].get('packageKey', 'archPackage'))
+    report = facts_module.dependency_report(ctx.host, ctx.source)
     ctx.facts['dependencies'] = report
     ctx.facts['quickshellInstalled'] = bool(ctx.host.which('qs'))
     still = [p for p in report['missing'] if p in ctx.plan['packages']]
@@ -351,7 +351,8 @@ def migrate_run(ctx, op):
         shipped = ctx.source / 'themes' / ('keybinds.' + syntax)
         previous = ctx.host.data_home() / 'cedar/current/themes' / ('keybinds.' + syntax)
         previous_digest = backup.manifest.get('keybindsDefaults', {}).get(syntax) if backup else None
-        outcome = refresh_keybinds_copy(target, shipped, previous, state, previous_digest)
+        history = shipped_keybinds(ctx.source, syntax)
+        outcome = refresh_keybinds_copy(target, shipped, previous, state, previous_digest, history)
         if outcome == 'installed':
             if backup: backup.changed(target)
             imported.append('keybinds')
@@ -579,13 +580,24 @@ def file_digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def refresh_keybinds_copy(target, shipped, previous, state, previous_digest=None):
+def shipped_keybinds(source, syntax):
+    """Digests of every keybinds.<syntax> CEDAR has shipped (data/keybinds-shipped.json)."""
+    try:
+        return json.loads((Path(source) / 'data/keybinds-shipped.json').read_text(encoding='utf-8')).get(syntax, [])
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def refresh_keybinds_copy(target, shipped, previous, state, previous_digest=None, history=()):
     """Install CEDAR's keybind file at `target`, or bring an unmodified copy up to date.
 
     A copy is unmodified when it still matches the digest recorded at its
     install (`keybindsDigest`) or the file the installed release shipped
-    (`previous`), which also covers copies made before digests were recorded.
-    An edited copy is left alone, so personal changes survive an update.
+    (`previous`), which also covers copies made before digests were recorded,
+    or any version CEDAR has ever shipped (`history`, from
+    data/keybinds-shipped.json), which covers a copy several releases old or
+    from another branch. An edited copy is left alone, so personal changes
+    survive an update.
     Returns installed | current | updated | kept."""
     target, shipped = Path(target), Path(shipped)
     new = file_digest(shipped)
@@ -597,7 +609,7 @@ def refresh_keybinds_copy(target, shipped, previous, state, previous_digest=None
     if current == new:
         state['keybindsDigest'] = new
         return 'current'
-    known = {state.get('keybindsDigest'), previous_digest}
+    known = {state.get('keybindsDigest'), previous_digest, *history}
     if Path(previous).is_file():
         known.add(file_digest(previous))
     if current in known:
