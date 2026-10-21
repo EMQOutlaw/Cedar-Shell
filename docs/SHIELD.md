@@ -103,11 +103,11 @@ the last 100 entries in the state file. Nothing is invented to fill the page.
 
 | Protection | Subsystem | Detect | State | Change | Verify | Rollback |
 | --- | --- | --- | --- | --- | --- | --- |
-| Firewall | firewalld, UFW or an nftables ruleset service | installed binaries and unit files, in that order; an active or configured manager is the owner | unit active/enabled, `/etc/ufw/ufw.conf` `ENABLED=`, `/etc/firewalld/firewalld.conf`, `/etc/nftables.conf` | the owner's native command under `pkexec`: `ufw --force enable` + `systemctl enable --now ufw`, or `systemctl enable --now firewalld|nftables` | the same detection again | the opposite command if the state did not change; a dismissed prompt leaves everything as it was |
+| Firewall | firewalld, UFW or an nftables ruleset service | installed binaries and unit files, in that order; an active or configured manager is the owner | unit active/enabled, `/etc/ufw/ufw.conf` `ENABLED=`, `/etc/firewalld/firewalld.conf`, `/etc/nftables.conf` | the owner's native command under `pkexec`: `ufw --force enable` + `systemctl enable --now ufw`, or `systemctl enable --now firewalld|nftables` | the same detection again | capture active, boot-enabled and configured state; restore each independently on failure and verify the selected manager; report recovery failure explicitly |
 | Encrypted DNS | systemd-resolved behind NetworkManager | `/etc/resolv.conf` → stub, resolved active, NetworkManager active | `resolvectl status` per link (`+DNSOverTLS`, servers) and the active connection's `connection.dns-over-tls`, `ipv4/ipv6.dns`, `ignore-auto-dns` | `nmcli connection modify` on the default-route connection (strict `yes` or `opportunistic`, provider servers with their TLS names, auto DNS ignored), then `nmcli device reapply`, falling back to `connection up` | resolved reports DoT and the provider's servers on that link | the captured connection fields are written back and reapplied |
 | Private Wi-Fi address | NetworkManager Wi-Fi profile | a Wi-Fi device; the active or most recently used profile | `802-11-wireless.cloned-mac-address`: `stable`, `random`, `permanent` (hardware), `preserve` (system default) | `nmcli connection modify` on that profile | read back | the previous value is written back |
 | IPv6 privacy | NetworkManager `ipv6.ip6-privacy` on the active connection | a connection | `-1/0/1/2` plus the kernel's `use_tempaddr` | `nmcli connection modify` + `device reapply` | read back | previous value written back |
-| Network discovery | systemd-resolved mDNS/LLMNR responders (via NetworkManager `connection.mdns/llmnr`) and Avahi | resolved and the connection | `resolvectl status` Protocols flags, Avahi unit state | `nmcli connection modify` + reapply; Avahi stopped under pkexec when running | resolved flags and the unit read back | connection fields restored |
+| Network discovery | systemd-resolved mDNS/LLMNR responders (via NetworkManager `connection.mdns/llmnr`) and Avahi | resolved and the connection | `resolvectl status` Protocols flags, Avahi unit state | `nmcli connection modify` + reapply; Avahi stopped under pkexec when running | resolved flags and the unit read back | connection fields restored/reapplied and verified; both Avahi socket/service active and enabled states restored and checked |
 | Local exposure | the kernel's socket tables | always | `/proc/net/tcp`, `tcp6`, `udp`, `udp6` listeners classified as localhost / this network / every interface, with the owning process for this user's sockets | none (information) | — | — |
 | VPN, lock privacy, local-only | NetworkManager, CEDAR settings | — | read-only here; their switches stay on their own pages | — | — | — |
 
@@ -149,3 +149,21 @@ parsing, provider mapping, policy maps, per-provider commands),
 page at three widths). Live changes to the firewall, DNS and Wi-Fi are not
 exercised by tests; they are verified on a real machine with the provider's
 own tools.
+
+### Transaction recovery (2026-10-20)
+
+Wi-Fi, IPv6, discovery and firewall actions recover from command exceptions and
+timeouts as well as an unexpected verification result. Wi-Fi restores the exact
+saved MAC policy (including an empty default). IPv6 reapplies the captured profile
+and checks restored live kernel state. Discovery restores resolver fields/flags
+and both Avahi units; an enabled socket is handled even when its service is idle.
+Firewall recovery keeps runtime activity separate from boot enablement and UFW's
+persisted ENABLED flag. No recovery-success message is emitted when verification
+fails.
+
+Unit transactions require an observable stable active/inactive state and
+enabled/disabled/static/indirect enablement. Transitional, masked, runtime-only
+and unknown states refuse before modification; CEDAR does not unmask services or
+guess how to reconstruct custom unit relationships. Real privilege-dependent
+recovery still needs a controlled-machine acceptance run; the audit used only
+stateful command fixtures.

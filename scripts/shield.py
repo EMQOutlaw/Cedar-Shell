@@ -36,6 +36,8 @@ DOT_PROVIDERS = {
     'mullvad': dict(label='Mullvad', v4=['194.242.2.2#dns.mullvad.net'], v6=['2a07:e340::2#dns.mullvad.net']),
 }
 MAC_POLICIES = {'stable': 'stable', 'random': 'random', 'hardware': 'permanent', 'default': 'preserve'}
+OPERATION_ERRORS = (RuntimeError, OSError, subprocess.SubprocessError)
+MANAGED_UNITS = {'avahi-daemon.service', 'avahi-daemon.socket', 'ufw.service', 'firewalld.service', 'nftables.service'}
 
 
 def run(argv, timeout=20, check=True):
@@ -43,6 +45,13 @@ def run(argv, timeout=20, check=True):
     if check and p.returncode:
         raise RuntimeError((p.stderr or p.stdout).strip() or ' '.join(argv[:2]) + ' failed')
     return p.stdout
+
+
+def requested_enable(request):
+    value = request.get('enable')
+    if not isinstance(value, bool):
+        raise ValueError('enable must be a boolean.')
+    return value
 
 
 # ------------------------------------------------------------------ exposure
@@ -171,6 +180,73 @@ def nm_fields(uuid, fields):
     return {f: (values[i] if i < len(values) else '') for i, f in enumerate(fields)}
 
 
+def modify_connection(connection, values, device=''):
+    """Apply one captured profile; reapply live settings only when requested."""
+    argv = ['nmcli', 'connection', 'modify', connection]
+    for key, value in values.items():
+        argv.extend([key, value])
+    run(argv)
+    if device:
+        try:
+            run(['nmcli', 'device', 'reapply', device])
+        except RuntimeError:
+            run(['nmcli', 'connection', 'up', connection], timeout=45)
+
+
+def restore_connection(connection, values, device=''):
+    modify_connection(connection, values, device)
+    if nm_fields(connection, list(values)) != values:
+        raise RuntimeError('The restored connection profile did not verify.')
+
+
+def recover_or_raise(label, failure, restore):
+    try:
+        restore()
+    except OPERATION_ERRORS as error:
+        raise RuntimeError(label + ' could not be applied and the previous settings could not be restored: ' + str(error)) from failure
+    raise RuntimeError(label + ' could not be applied; the previous settings were restored.') from failure
+
+
+def capture_units(units):
+    """Only stable, reconstructable states may participate in a transaction."""
+    states = {}
+    for unit in units:
+        if unit not in MANAGED_UNITS:
+            raise ValueError('Unknown managed service.')
+        active, enabled = capabilities.unit_state(unit)
+        if enabled == 'not-found':
+            continue
+        if active not in ('active', 'inactive') or enabled not in ('enabled', 'disabled', 'static', 'indirect'):
+            raise RuntimeError('Cannot safely change ' + unit + ' while its state is ' + active + '/' + enabled + '.')
+        states[unit] = (active, enabled)
+    return states
+
+
+def restore_units(states):
+    """Restore enablement and activity independently; check every affected unit."""
+    errors = []
+    def attempt(argv):
+        try:
+            run(['pkexec', 'systemctl', *argv], timeout=120)
+        except OPERATION_ERRORS as error:
+            errors.append(str(error))
+    for unit, (_, enabled) in states.items():
+        current = capabilities.unit_state(unit)
+        if current[1] != enabled and enabled in ('enabled', 'disabled'):
+            attempt(['enable' if enabled == 'enabled' else 'disable', unit])
+    # Start first, then stop units that were inactive: dependencies may start
+    # another unit, so completion is determined by the final state read.
+    for wanted in ('active', 'inactive'):
+        for unit, (active, _) in states.items():
+            if active == wanted and capabilities.unit_state(unit)[0] != active:
+                attempt(['start' if active == 'active' else 'stop', unit])
+    for unit, before in states.items():
+        if capabilities.unit_state(unit) != before:
+            errors.append(unit + ' did not return to its captured active/enabled state')
+    if errors:
+        raise RuntimeError('; '.join(errors))
+
+
 DNS_FIELDS = ['connection.dns-over-tls', 'ipv4.dns', 'ipv4.ignore-auto-dns', 'ipv6.dns', 'ipv6.ignore-auto-dns']
 
 
@@ -295,11 +371,16 @@ def apply_wifi(request):
     before = wifi_profile()
     if not before.get('available') or not before.get('connection'):
         raise RuntimeError(before.get('reason', 'No Wi-Fi profile to change.'))
-    run(['nmcli', 'connection', 'modify', before['connection'], '802-11-wireless.cloned-mac-address', MAC_POLICIES[policy]])
-    after = wifi_profile()
-    if after.get('policy') != policy:
-        run(['nmcli', 'connection', 'modify', before['connection'], '802-11-wireless.cloned-mac-address', before.get('raw') or 'preserve'], check=False)
-        raise RuntimeError('The address policy did not verify; the previous policy was restored.')
+    field = '802-11-wireless.cloned-mac-address'
+    try:
+        modify_connection(before['connection'], {field: MAC_POLICIES[policy]})
+        after = wifi_profile()
+        if after.get('connection') != before['connection'] or after.get('policy') != policy:
+            raise RuntimeError('The address policy did not verify on the selected profile.')
+    except OPERATION_ERRORS as failure:
+        recover_or_raise('Wi-Fi address policy', failure,
+                         lambda: restore_connection(before['connection'], {field: before.get('raw', '')}))
+
     if after.get('connected'):
         after['note'] = 'Applies the next time this network connects.'
     return after
@@ -324,17 +405,24 @@ def ipv6_privacy(connection):
 
 
 def apply_ipv6(request):
-    enable = bool(request.get('enable'))
+    enable = requested_enable(request)
     connection = active_connection(default_device())
     if not connection:
         raise RuntimeError('No active NetworkManager connection to configure.')
-    before = nm_fields(connection['uuid'], ['ipv6.ip6-privacy']).get('ipv6.ip6-privacy', '-1')
-    run(['nmcli', 'connection', 'modify', connection['uuid'], 'ipv6.ip6-privacy', '2' if enable else '0'])
-    run(['nmcli', 'device', 'reapply', connection['device']], check=False)
-    after = ipv6_privacy(connection)
-    if after['active'] != enable:
-        run(['nmcli', 'connection', 'modify', connection['uuid'], 'ipv6.ip6-privacy', before], check=False)
-        raise RuntimeError('IPv6 privacy did not verify; the previous setting was restored.')
+    before = nm_fields(connection['uuid'], ['ipv6.ip6-privacy'])
+    before_live = ipv6_privacy(connection)
+    def restore():
+        restore_connection(connection['uuid'], before, connection['device'])
+        restored = ipv6_privacy(connection)
+        if before_live.get('kernel') and restored.get('kernel') != before_live['kernel']:
+            raise RuntimeError('The restored live IPv6 privacy setting did not verify.')
+    try:
+        modify_connection(connection['uuid'], {'ipv6.ip6-privacy': '2' if enable else '0'}, connection['device'])
+        after = ipv6_privacy(connection)
+        if after['active'] != enable or (after.get('kernel') and after['kernel'] != ('2' if enable else '0')):
+            raise RuntimeError('IPv6 privacy did not verify on the active connection.')
+    except OPERATION_ERRORS as failure:
+        recover_or_raise('IPv6 privacy', failure, restore)
     return after
 
 
@@ -359,31 +447,55 @@ def unit_state_pair(unit):
 
 
 def apply_discovery(request):
-    enable = bool(request.get('enable'))   # enable = answer queries; disable = quiet
+    enable = requested_enable(request)   # enable = answer queries; disable = quiet
     connection = active_connection(default_device())
     if not connection:
         raise RuntimeError('No active NetworkManager connection to configure.')
     before = nm_fields(connection['uuid'], ['connection.mdns', 'connection.llmnr'])
-    value = '2' if enable else '0'   # 2 resolve+answer, 0 off, per NetworkManager
-    run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', value, 'connection.llmnr', value])
-    run(['nmcli', 'device', 'reapply', connection['device']], check=False)
-    if not enable and unit_state_pair('avahi-daemon.service') == 'active':
-        if capabilities.privilege()['helper'] != 'pkexec':
-            run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
-            raise RuntimeError('Avahi is answering and pkexec is not installed to stop it; the resolver settings were restored.')
+    units = capture_units(('avahi-daemon.socket', 'avahi-daemon.service')) if not enable else {}
+    stop_avahi = any(active == 'active' or enabled == 'enabled' for active, enabled in units.values())
+    if stop_avahi and capabilities.privilege()['helper'] != 'pkexec':
+        raise RuntimeError('Avahi can answer and pkexec is not installed to stop it; nothing was changed.')
+    def link_state():
+        status = parse_resolvectl(run(['resolvectl', 'status']))
+        link = status.get(connection['device'])
+        if link is None:
+            raise RuntimeError('The active resolver link is unavailable.')
+        return link
+    before_link = link_state()
+    touched_units = False
+    def restore():
+        errors = []
         try:
-            run(['pkexec', 'systemctl', 'disable', '--now', 'avahi-daemon.socket', 'avahi-daemon.service'], timeout=120)
-        except RuntimeError as error:
-            run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
-            text = str(error)
-            reason = 'permission was not granted' if 'dismissed' in text.lower() or 'not authorized' in text.lower() else text
-            raise RuntimeError('Avahi could not be stopped (' + reason + '); the resolver settings were restored.')
-    status = parse_resolvectl(run(['resolvectl', 'status'], check=False))
-    after = discovery(connection, status.get(connection['device']) or {})
-    if after['answering'] == enable:
+            restore_connection(connection['uuid'], before, connection['device'])
+            restored_link = link_state()
+            if any(restored_link.get(key) != before_link.get(key) for key in ('mdns', 'llmnr')):
+                raise RuntimeError('The restored resolver flags did not verify.')
+        except OPERATION_ERRORS as error:
+            errors.append(str(error))
+        if touched_units:
+            try:
+                restore_units(units)
+            except OPERATION_ERRORS as error:
+                errors.append(str(error))
+        if errors:
+            raise RuntimeError('; '.join(errors))
+    value = '2' if enable else '0'
+    try:
+        modify_connection(connection['uuid'], {'connection.mdns': value, 'connection.llmnr': value}, connection['device'])
+        if stop_avahi:
+            touched_units = True
+            run(['pkexec', 'systemctl', 'disable', '--now', *units], timeout=120)
+        after = discovery(connection, link_state())
+        if after['answering'] != enable:
+            raise RuntimeError('Network discovery did not verify.')
+        if stop_avahi and any(capabilities.unit_state(unit)[0] != 'inactive'
+                              or capabilities.unit_state(unit)[1] == 'enabled' for unit in units):
+            raise RuntimeError('An Avahi unit can still answer or restart.')
         return after
-    run(['nmcli', 'connection', 'modify', connection['uuid'], 'connection.mdns', before.get('connection.mdns', '-1'), 'connection.llmnr', before.get('connection.llmnr', '-1')], check=False)
-    raise RuntimeError('Network discovery did not verify; the previous settings were restored.')
+    except OPERATION_ERRORS as failure:
+        recover_or_raise('Network discovery', failure, restore)
+
 
 
 # ------------------------------------------------------------------ firewall
@@ -398,26 +510,59 @@ def firewall_commands(provider, enable):
 
 
 def apply_firewall(request):
-    enable = bool(request.get('enable'))
+    enable = requested_enable(request)
     before = capabilities.firewall()
     provider = before['provider']
     if provider == 'nftables' and not any(f['configured'] for f in before['providers'] if f['provider'] == 'nftables'):
         raise RuntimeError('nftables has no ruleset at /etc/nftables.conf to enable.')
     if capabilities.privilege()['helper'] != 'pkexec':
         raise RuntimeError('pkexec is not installed, so the firewall cannot be changed from here.')
-    argv = ['pkexec'] + firewall_commands(provider, enable)
+    selected = next((row for row in before['providers'] if row['provider'] == provider), None)
+    if selected is None:
+        raise RuntimeError('The selected firewall manager is unavailable.')
+    unit = {'ufw': 'ufw.service', 'firewalld': 'firewalld.service', 'nftables': 'nftables.service'}[provider]
+    units = capture_units((unit,))
+    if unit not in units:
+        raise RuntimeError('The selected firewall service is unavailable.')
+    def selected_state():
+        snapshot = capabilities.firewall()
+        row = next((row for row in snapshot['providers'] if row['provider'] == provider), None)
+        if row is None:
+            raise RuntimeError('The selected firewall manager disappeared.')
+        return snapshot, row
+    def restore():
+        errors = []
+        # UFW's persisted ENABLED flag is independent of systemd's enablement.
+        # Attempt unit restoration even if its native rules command fails.
+        if provider == 'ufw':
+            try:
+                _, current = selected_state()
+                if current['configured'] != selected['configured']:
+                    run(['pkexec', 'ufw', *(['--force', 'enable'] if selected['configured'] else ['disable'])], timeout=120)
+            except OPERATION_ERRORS as error:
+                errors.append(str(error))
+        try:
+            restore_units(units)
+        except OPERATION_ERRORS as error:
+            errors.append(str(error))
+        try:
+            _, current = selected_state()
+            if any(current[key] != selected[key] for key in ('active', 'enabled', 'configured')):
+                errors.append('The firewall did not return to its captured configuration')
+        except OPERATION_ERRORS as error:
+            errors.append(str(error))
+        if errors:
+            raise RuntimeError('; '.join(errors))
     try:
-        run(argv, timeout=120)
-    except RuntimeError as error:
-        text = str(error)
-        if 'dismissed' in text.lower() or 'not authorized' in text.lower():
-            raise RuntimeError('Permission was not granted; the firewall was left as it was.' + ('' if capabilities.privilege()['agent'] else ' If no prompt appeared, no authentication agent is running: CEDAR provides one while it is the shell.'))
-        raise
-    after = capabilities.firewall()
-    if after['active'] != enable:
-        run(['pkexec'] + firewall_commands(provider, not enable), timeout=120, check=False)
-        raise RuntimeError(('Firewall could not be enabled' if enable else 'Firewall could not be disabled') + ': ' + provider + ' did not report the new state, so it was put back.')
-    return after
+        run(['pkexec'] + firewall_commands(provider, enable), timeout=120)
+        after, current = selected_state()
+        expected = ('active', 'enabled') if enable else ('inactive', 'disabled')
+        if current['active'] != enable or capabilities.unit_state(unit) != expected or (provider == 'ufw' and current['configured'] != enable):
+            raise RuntimeError('The selected firewall did not report the requested active/enabled state.')
+        return after
+    except OPERATION_ERRORS as failure:
+        recover_or_raise('Firewall', failure, restore)
+
 
 
 # ------------------------------------------------------------------ snapshot
