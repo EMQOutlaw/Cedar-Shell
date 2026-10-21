@@ -24,6 +24,7 @@ case "$CHANNEL" in
 esac
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/cedar/installer"
 MAX_DOWNLOAD=603979776  # 576 MiB, including archive headers/padding
+DOWNLOAD_SECONDS=900   # total time per download, including wget retries
 
 say() { printf '%s\n' "$*"; }
 fail() { say "CEDAR: $*" >&2; exit 1; }
@@ -33,9 +34,21 @@ need() { command -v "$1" >/dev/null 2>&1 || fail "$2"; }
 [ "$(uname -m)" = "x86_64" ] || fail "CEDAR is published for x86_64 only; $(uname -m) is not supported yet."
 [ "$(id -u)" -ne 0 ] || fail "Run this as your ordinary user, never root. CEDAR installs into your home directory."
 if command -v curl >/dev/null 2>&1; then
-    fetch_raw() { curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 900 "$1"; }
+    fetch_raw() { curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time "$DOWNLOAD_SECONDS" "$1"; }
 elif command -v wget >/dev/null 2>&1; then
-    fetch_raw() { wget -q --https-only --timeout=30 --tries=3 -O - "$1"; }
+    # wget's --timeout only bounds an idle interval. Python already belongs to
+    # the bootstrap requirements and supplies the overall deadline as well.
+    fetch_raw() {
+        python3 -c '
+import subprocess, sys
+try:
+    result = subprocess.run(["wget", "-q", "--https-only", "--timeout=30", "--tries=3", "-O", "-", sys.argv[1]], timeout=float(sys.argv[2]))
+except subprocess.TimeoutExpired:
+    print("CEDAR: Download timed out; the incomplete file was not used.", file=sys.stderr)
+    raise SystemExit(1)
+raise SystemExit(result.returncode)
+' "$1" "$DOWNLOAD_SECONDS"
+    }
 else
     fail "curl or wget is needed to download the installer."
 fi

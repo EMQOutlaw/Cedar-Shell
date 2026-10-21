@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -165,6 +166,23 @@ if os.environ.get('BOOTSTRAP_FAIL'):
         result = self.run_bootstrap()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Download exceeds', result.stderr)
+
+    def test_wget_has_a_total_deadline_even_without_idle_timeout(self):
+        (self.bin / 'curl').rename(self.bin / 'wget')
+        (self.bin / 'wget').write_text('#!/usr/bin/env python3\nimport sys,time\nfor i in range(100):\n sys.stdout.buffer.write(b"x"); sys.stdout.buffer.flush(); time.sleep(.1)\n')
+        for name in ('sh', 'uname', 'id', 'python3', 'cat', 'rm'):
+            (self.bin / name).symlink_to(shutil.which(name))
+        self.env['PATH'] = str(self.bin)
+        source = BOOTSTRAP.read_text()
+        self.assertIn('DOWNLOAD_SECONDS=900', source)
+        self.script = self.root / 'short-deadline-bootstrap.sh'
+        self.script.write_text(source.replace('DOWNLOAD_SECONDS=900', 'DOWNLOAD_SECONDS=1'))
+        started = time.monotonic()
+        result = self.run_bootstrap()
+        self.assertLess(time.monotonic() - started, 4)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Download timed out', result.stderr)
+        self.assertNotIn('CEDAR_SOURCE=', result.stdout)
 
 
 if __name__ == '__main__':
