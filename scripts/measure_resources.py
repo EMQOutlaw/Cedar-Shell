@@ -110,7 +110,8 @@ def diagnostic_command(argv, paths, source_roots):
     # is a different installed release or a cgroup supplied without source roots.
     diagnostic_roots = [*source_roots, SAMPLER_ROOT]
     return any((path.parent == root / 'scripts' and path.name in DIAGNOSTIC_SCRIPTS)
-               or path == root / 'tools/profiling/surface_stress.py'
+               or path in (root / 'tools/profiling/surface_stress.py',
+                           root / 'tools/profiling/task_manager_session.py')
                for path in paths for root in diagnostic_roots)
 
 

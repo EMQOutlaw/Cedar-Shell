@@ -117,6 +117,15 @@ hash/inventory allocations. Existing `scripts/audit_resources.py` produces a
 static timer/process/file-watcher ledger. A static site is not proof of runtime
 activity. Keep all heavy tools outside the ordinary startup path.
 
+`tools/profiling/task_manager_session.py --output /private/results/tasks.json`
+opens the real native Task Manager with private settings and software/offscreen
+rendering, samples its frontend and collector, then verifies both processes and
+their sockets disappear. Add `--shell-pid PID` to account for a running shell
+and descendants in the same samples. That shell is observed only. Record when
+the shell and Task Manager come from different source revisions; a combined
+fixture measurement is not a deployed-candidate acceptance test. The tool needs
+the native binaries built first and real Unix peer-credential access.
+
 ## Required matrix and release gates
 
 Record startup; ten-minute idle; daily bar/Signals use; Field Station; repeated
