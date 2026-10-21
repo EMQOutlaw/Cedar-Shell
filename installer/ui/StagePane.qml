@@ -80,8 +80,10 @@ Item {
                 required property var modelData
                 Layout.fillWidth: true; spacing: 12
                 Text { text: root.mark(modelData.state); textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: 13; color: root.tone(modelData.state); Layout.preferredWidth: 16; horizontalAlignment: Text.AlignHCenter
-                       Behavior on color { enabled: root.motion; ColorAnimation { duration: 140 } } }
-                GlowText { text: modelData.title; font.family: Theme.labelFont; font.pixelSize: Math.round(16 * Theme.fontScale); font.weight: modelData.state === "complete" ? Font.DemiBold : Font.Normal; color: modelData.state === "pending" ? Theme.muted : Theme.text; Layout.preferredWidth: 150 }
+                       Behavior on color { enabled: root.motion; ColorAnimation { duration: 140 } }
+                       RotationAnimation on rotation { running: root.visible && root.motion && modelData.state === "running"; from: 0; to: 360; duration: 2400; loops: Animation.Infinite }
+                       onTextChanged: rotation = 0 }
+                GlowText { text: modelData.title; font.family: Theme.labelFont; font.pixelSize: Math.round(16 * Theme.fontScale); font.weight: ["complete", "running"].includes(modelData.state) ? Font.DemiBold : Font.Normal; color: modelData.state === "running" ? Theme.teal : modelData.state === "pending" ? Theme.muted : Theme.text; Layout.preferredWidth: 150 }
                 GlowText { text: modelData.state === "running" ? (modelData.detail || "") : modelData.state === "skipped" || modelData.state === "warning" || modelData.state === "failed" || modelData.state === "complete" ? (modelData.detail || modelData.error || "") : ""; font.pixelSize: Theme.small; color: Theme.muted; Layout.fillWidth: true; elide: Text.ElideRight }
             }
         }

@@ -57,6 +57,7 @@ ShellRoot {
         }
         function shot(name) { body.grabToImage(r => r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/installer-" + name + ".png")); }
         property int step: 0
+        property real stoppedRotation: 0
         property var facts: ''' + json.dumps(FACTS) + '''
         property var plan: ''' + json.dumps(PLAN) + '''
         property var running: ''' + json.dumps(ops({'backup': 'complete', 'dependencies': 'running'})) + '''
@@ -154,6 +155,25 @@ ShellRoot {
                     window.shot("update-error-small"); break;
                 }
                 case 43:
+                    model.operations = window.running; model.stage = "install";
+                    model.prefersReducedMotion = false; break;
+                case 44:
+                    window.check(visual.animated === model.motion, "Activity follows the motion preference");
+                    window.check(Math.abs(visual.progress - model.progress) < .001, "Grove progress comes from engine operations");
+                    window.shot("install-small");
+                    model.prefersReducedMotion = true; break;
+                case 45:
+                    window.check(!visual.animated, "Reduced motion stops ambient animation");
+                    window.stoppedRotation = window.named(visual, "installerOrbit").rotation;
+                    window.shot("install-reduced-motion"); break;
+                case 46:
+                    window.check(window.named(visual, "installerOrbit").rotation === window.stoppedRotation, "Orbit remains still with reduced motion");
+                    model.prefersReducedMotion = false; visual.visible = false; break;
+                case 47:
+                    window.check(!visual.animated, "Hidden visuals stop animating");
+                    visual.visible = true; model.stage = "finish"; break;
+                case 48:
+                    window.check(!visual.animated && visual.progress === 1, "Completion settles the grove at full progress");
                     console.log("PASS: CEDAR Installer stages"); Qt.quit();
                 }
             }

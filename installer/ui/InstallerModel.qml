@@ -32,8 +32,21 @@ Item {
     property string version: ""
     // Let the first plan inherit the installed session's locker selection.
     property var options: ({ session: true, launcher: false, fonts: false, wallpapers: true, migrate: true, keybinds: false })
-    readonly property bool fixture: Quickshell.env("CEDAR_INSTALLER_FIXTURE") === "1"
-    readonly property bool motion: Quickshell.env("CEDAR_INSTALLER_REDUCED_MOTION") !== "1"
+    property bool fixture: Quickshell.env("CEDAR_INSTALLER_FIXTURE") === "1"
+    property bool prefersReducedMotion: false
+    readonly property bool motion: !prefersReducedMotion && Quickshell.env("CEDAR_INSTALLER_REDUCED_MOTION") !== "1"
+    // Read appearance preferences without loading Config and desktop services.
+    FileView {
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/cedar/settings.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoadFailed: model.prefersReducedMotion = false
+        onLoaded: {
+            try { model.prefersReducedMotion = JSON.parse(text()).reducedMotion === true; }
+            catch (_) { model.prefersReducedMotion = false; }
+        }
+    }
     readonly property string source: Quickshell.env("CEDAR_INSTALLER_SOURCE") || Quickshell.shellPath("../..")
     readonly property string python: Quickshell.env("CEDAR_INSTALLER_PYTHON") || "python3"
     readonly property string startWith: Quickshell.env("CEDAR_INSTALLER_START") || ""
