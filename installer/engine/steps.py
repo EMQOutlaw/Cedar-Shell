@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import sys
 import time
 
@@ -201,7 +202,10 @@ def dependencies_run(ctx, op):
             ctx.progress(op, min(0.95, 0.05 + seen / (len(missing) + 4)), line.strip()[:120])
         elif re.match(r'(?i)^(resolving|looking|checking|synchroni|retrieving)', line):
             ctx.progress(op, None, line.strip()[:120])
-    code = ctx.host.stream(argv, on_line, timeout=3600)
+    try:
+        code = ctx.host.stream(argv, on_line, timeout=3600)
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError('The package transaction exceeded its waiting deadline. Elevated package-manager processes may still be running or may have been interrupted. Check the package manager state and logs before retrying; do not start a second transaction or remove its lock file.') from error
     if code != 0:
         reason = package_providers.explain(tail, omarchy=ctx.facts['environment'].get('id') == 'omarchy')
         raise RuntimeError((reason + ' ' if reason else 'Package installation did not complete (exit ' + str(code) + '). ') + 'Nothing on your desktop was changed; your configuration backup is kept.')

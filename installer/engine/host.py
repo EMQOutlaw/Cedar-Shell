@@ -11,6 +11,7 @@ from pathlib import Path
 import platform
 import shutil
 import selectors
+import signal
 import subprocess
 import sys
 import time
@@ -112,12 +113,16 @@ class Host:
         wait() alone is insufficient. Long lines are delivered in fragments
         instead of retaining unlimited output until a newline arrives.
         """
+        # sudo's terminal fallback needs its controlling TTY and foreground
+        # group. Ordinary helpers get an owned session for descendant cleanup.
+        owned_group = Path(argv[0]).name not in ('sudo', 'pkexec')
         process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                   stdin=stdin, env={**self.environ, **(env or {})})
+                                   stdin=stdin, env={**self.environ, **(env or {})}, start_new_session=owned_group)
         deadline = None if timeout is None else time.monotonic() + timeout
         decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
         pending = ''
         limit = 64 * 1024
+        finished = False
 
         def remaining():
             if deadline is None:
@@ -150,9 +155,16 @@ class Host:
                         if pending:
                             on_line(pending)
                         break
-            return process.wait(timeout=remaining())
+            result = process.wait(timeout=remaining())
+            finished = True
+            return result
         finally:
-            if process.poll() is None:
+            if not finished and owned_group:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            elif process.poll() is None:
                 process.kill()
             process.wait()
             process.stdout.close()
