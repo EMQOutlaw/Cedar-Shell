@@ -66,6 +66,8 @@ Singleton {
     readonly property int strataInset: 5
     readonly property int strataCut: 10
     readonly property color transparent: Qt.alpha(background, 0)
+    // Persisted calendar identities stay stable when the desktop theme changes.
+    readonly property var calendarColors: ["#62b89a", "#79abd9", "#d7ac69", "#bb8aca"]
     // State tokens: what a thing is doing, not which hue it is. Shield, Gaming
     // and any future first-party surface read these, so a theme change reaches
     // them without a literal colour anywhere else.
