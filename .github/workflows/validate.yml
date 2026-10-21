@@ -83,5 +83,7 @@ jobs:
           python3 tests/check_station_tasks.py
           python3 tests/check_theme_palettes.py
           python3 tests/check_service_lifecycle.py
+          python3 tests/check_lock_auth.py
+          python3 tests/check_lock_wiring.py
           python3 -m unittest discover -s tests -p test_default_apps.py
 # No release publishing, secrets, elevated pull_request_target workflow, or user auto-update.

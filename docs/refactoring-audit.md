@@ -173,6 +173,20 @@ Immediate waking is a separate observation: the latest wake IRQ mapped to the
 touchpad. That register only identifies the latest cycle. No wake-source or
 system power setting was changed, and no memory-budget improvement is claimed.
 
+## Follow-up: standalone fingerprint detection (2026-10-21)
+
+Standalone native locking retained an old
+`Config.omarchyIntegration` condition around enrollment detection. The installed
+fingerprint PAM service and current-user enrollment were available, but that
+condition prevented any scan. Removed only the adapter condition; the existing
+capability helper, secure-lock prerequisite, PAM authentication, password fallback
+and cancellation behavior remain. The strengthened production QML wiring fixture
+fails against the original source and passes with this correction, including an
+asynchronous enrollment result, waiting for compositor confirmation and a delayed
+result after password unlock. The password-controller fixture also passes; both
+now run in the Quickshell CI job. Fixture results are not a claim of real sensor
+or PAM authentication success. No memory/performance improvement is claimed.
+
 ## Continuous engineering rules
 
 Future CEDAR changes follow these rules:

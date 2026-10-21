@@ -112,7 +112,9 @@ Scope {
         function onLockedChanged() {
             if (ShellState.locked && !Config.testMode) {
                 root.hadSecureLock = false;
-                if (Config.omarchyIntegration) fingerprintCheck.send({});
+                // Native locking can use the installed fingerprint PAM service
+                // even when the desktop is running without an Omarchy adapter.
+                fingerprintCheck.send({});
                 lock.locked = true;
                 root.clearInputs();
             }

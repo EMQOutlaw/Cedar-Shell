@@ -85,6 +85,27 @@ refused fast-forward; resolve that refusal without deleting your work.
 
 ## Lock and installer messages
 
+### Fingerprint works elsewhere but never starts in standalone CEDAR
+
+Older native-lock code checked enrollment only when the Omarchy adapter was
+enabled. After moving to standalone CEDAR, a valid enrolled print and installed
+`omarchy-lock-fingerprint` PAM service could therefore remain unused. The native
+lock now probes that capability on every lock, independent of the desktop
+adapter. Authentication still runs through PAM and only after compositor lock
+coverage; password unlock remains available concurrently.
+
+The enrollment-only diagnostic is:
+
+```sh
+python3 scripts/fingerprint_status.py
+```
+
+An `available: true` result establishes capability, not successful authentication.
+Use an attended lock/unlock to verify the sensor and PAM path. Re-enrollment or
+changing unrelated PAM services is not needed to fix the adapter-gating defect.
+The production lock-wiring test covers standalone enrollment discovery, password
+fallback, compositor readiness and late results after unlock.
+
 ### “Screen did not lock before suspend” with standalone CEDAR on Omarchy
 
 Omarchy's existing `omarchy-sleep-lock.service` sends `lock lock` and
