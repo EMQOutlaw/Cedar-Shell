@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import ".."
@@ -13,12 +14,13 @@ Overlay {
     property var wallpapers: []
     property string selectedPath: ""
     property string folder: ""
-    onVisibleChanged: if (visible) { refresh.running = true; } else { root.wallpapers = []; }
+    onVisibleChanged: if (visible) { refresh.running = true; } else { refresh.stop(); root.wallpapers = []; }
     Process {
         id: listWallpapers
         command: ["python3", Quickshell.shellPath("scripts/wallpapers.py")]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root.visible) return;
                 try { const data = JSON.parse(text); root.wallpapers = data.items; root.selectedPath = data.selected; root.folder = data.folder || ""; }
                 catch (_) { root.wallpapers = []; root.selectedPath = ""; root.folder = ""; }
             }
@@ -82,7 +84,11 @@ Overlay {
                     contentItem: Item {
                         Image {
                             anchors.fill: parent; source: "file://" + tile.modelData.path
-                            fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: true
+                            // Decode at the visible tile's physical resolution,
+                            // not the wallpaper's full desktop dimensions. These
+                            // transient images are released with the grid.
+                            sourceSize: Qt.size(Math.max(1, Math.ceil(width * Screen.devicePixelRatio)), Math.max(1, Math.ceil(height * Screen.devicePixelRatio)))
+                            fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false
                         }
                         Rectangle {
                             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
