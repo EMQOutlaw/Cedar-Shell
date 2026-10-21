@@ -57,7 +57,7 @@ independently authenticated automatic security updates.
 | SEC-01 | Bootstrap accepted a checksum manifest for an unrelated file, then executed the unverified release archive. Verification now accepts one digest naming exactly the expected asset and hashes that asset. | Stable asset names and `CEDAR_FETCH_ONLY` handoff protocol remain intact. A real-shell fixture reproduced acceptance before the fix and rejection afterward. |
 | SEC-02 | Bootstrap followed a cache symlink for chmod/writes, reused mutable version directories, and passed archives directly to tar without CEDAR member/type/size policy. It now validates cache ancestors/ownership/privacy, creates a private unique snapshot, rejects traversal, links, special/duplicate entries and multiple roots, caps member/payload/decompressed sizes, and preserves ordinary executable bits only. | Stable and development fixtures pass. A second invocation keeps a pending installer's source unchanged. Failure removes only its newly created snapshot. The verifier is embedded because downloaded code cannot authenticate itself. |
 | SEC-03 | Managed updates retained the entire tar archive in Python memory and had no archive count/payload budget. Git output now streams in 64 KiB blocks into a private temporary file; output, diagnostics, extraction count and payload are bounded. Cancellation/deadline failure reaps Git and its owned helper process group. | Managed branch selection, immutable commit handoff, rollback/provenance, and dirty user checkout preservation pass integration tests. Budget failures leave the installed stable release unchanged and remove temporary snapshots. |
-| SEC-04 | Installer `Host.stream()` checked its deadline only after a blocking output iterator ended, and did not always wait/close on exceptions. It now enforces one deadline while reading and waiting, caps unterminated output fragments, and reaps/closes its direct child. | Existing installer tests pass; real silent/noisy subprocess, partial UTF-8, callback failure, and long-line regressions pass with `ResourceWarning` treated as an error. Privileged grandchildren remain subject to OS permissions; this is not a general process supervisor. |
+| SEC-04 | Installer `Host.stream()` checked its deadline only after a blocking output iterator ended, and did not always wait/close on exceptions. It now enforces one deadline while reading and waiting, caps unterminated output fragments, and reaps/closes its direct child. Ordinary commands own a process group so their descendants are stopped on failure; sudo/pkexec retain the controlling terminal. | Existing installer tests pass; real silent/noisy subprocess, partial UTF-8, callback failure, and long-line regressions pass with `ResourceWarning` treated as an error. Privileged descendants remain subject to OS permissions and may continue or be interrupted; the package-timeout message requires checking package state/logs before retrying. PTY regression tests preserve terminal authentication semantics. |
 | SEC-05 | Shield DNS could persist changed settings if reapply/activation or verification raised before its old rollback branch. The full apply/verify operation now restores captured fields on command/timeouts/I/O failures, reapplies them, checks restored profile fields, and reports restore failure explicitly. | The provider interface and successful result are unchanged. Mocked reapply timeout, resolver failure, rollback timeout and successful update paths pass. No live DNS state was changed during this audit. |
 | SEC-07 | Wi-Fi/IPv6/discovery/firewall operations previously skipped recovery on exceptions, omitted live reapply/Avahi state, or restored the opposite firewall toggle rather than captured state. Shared checked NetworkManager apply/restore now verifies profiles; IPv6 verifies restored live state; discovery captures/restores both Avahi units and resolver flags; firewall restores active/boot-enabled/configured states independently. | Stateful fixtures inject partial-write timeouts, verification failures, denied recovery, socket activation and UFW persistence differences. Non-boolean enable requests are rejected. Unknown/transitional/masked/runtime-only unit states refuse before mutation rather than promise unreconstructable recovery. Live privileged acceptance remains outstanding. |
 | PERF-SEC-01 | Release inventory detection read each complete asset to inspect an 80-byte LFS header; file and source digests also retained whole files. Prefix checks now read 80 bytes, and SHA-256 reads incrementally. | Existing digest/source identity is byte-for-byte unchanged. A 16 MiB asset regression keeps traced allocation under 2 MiB. Repeated 64 MiB before/after measurements are reproducible with the command below. |
@@ -78,6 +78,23 @@ validation: importing a validator from an unverified download would cross the
 trust boundary before verification. General installed release hashing and
 inventory policy remain in the existing distribution module.
 
+Shield actions reserve 120 seconds for application and 120 seconds for recovery.
+The shared command deadline also caps capability probes and post-action refresh;
+expired budgets stop launching commands and report unresolved recovery. The QML
+watchdog is now 300 seconds (60 seconds of exit/IPC margin), so a slow permission
+prompt can leave the UI waiting longer than before, but it does not kill the
+backend at the old 150-second boundary during ordinary rollback. A timed-out
+privileged operation may outlive its wrapper: even if captured flags are observed
+again, the result explicitly says elevated work may still run. No completed
+rollback is claimed in that case.
+
+Live NetworkManager changes now recheck the captured connection UUID before
+reapplying. Recovery always attempts the saved profile fields, but refuses to
+reconnect an old profile over an independently changed active connection. The
+old automatic `connection up` fallback was removed from these transactions to
+avoid undoing a user's profile switch. A switch at the OS call boundary remains
+a race without a NetworkManager checkpoint; it is not claimed atomically isolated.
+
 ## Validation performed
 
 All commands below use fixture homes/remotes or disposable children. These
@@ -86,13 +103,13 @@ counts are the backend audit runs, separate from the complete repository checks.
 | Suite | Result |
 | --- | --- |
 | `test_bootstrap_security.py` | 9 tests pass; baseline had 9 failing assertions/subtests. Stable/development source, checksum substitution, mismatched checksum, traversal, private cache/symlink refusal, unsafe members, member budget and concurrent handoff preservation. |
-| `test_installer_stream.py` | 5 tests pass, with ResourceWarnings promoted to errors. Baseline did not enforce read deadlines and emitted resource warnings. |
+| `test_installer_stream.py` | 8 tests pass, with ResourceWarnings promoted to errors. Baseline did not enforce read deadlines and emitted resource warnings. |
 | `test_installer.py` | 51 tests pass. |
 | `test_distribution*.py` | 30 tests pass, including release installation/restoration fixtures and bounded allocation. |
 | `test_update_channels.py` | 23 tests pass, including source tamper, branch selection, exact revision, interrupted update, budget rejection and cleanup. |
 | `test_update_checkout.py` | 20 tests pass. |
 | `test_security_hardening.py` | 9 tests pass. |
-| `test_shield*.py` | 27 tests pass, including stateful Wi-Fi/IPv6/discovery/firewall recovery and input validation; three earlier DNS recovery cases failed before its fix. |
+| `test_shield*.py` | 33 tests pass, including stateful Wi-Fi/IPv6/discovery/firewall recovery, profile-switch guards, deadline reserve/exhaustion and input validation; three earlier DNS recovery cases failed before its fix. |
 | Shell syntax | `sh -n installer/bootstrap/install.sh` passes. |
 
 This is not evidence of real firewall/DNS transitions, a live privileged package

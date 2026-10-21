@@ -174,3 +174,10 @@ and lose runtime-only rules. A failed firewall transaction therefore reports
 that service state was restored **and runtime-only rules remain unverified**;
 it does not claim complete security-state rollback. Provider-specific runtime
 rules capture/restoration remains an acceptance gate.
+
+Provider commands and capability probes share a 120-second apply budget with a
+separate 120-second recovery reserve. The frontend watchdog is 300 seconds so
+recovery can return an explicit result. Budget exhaustion reports unresolved
+state; a timed-out privileged child may still run, even when a later read matches
+captured flags. Live profile application also rechecks the captured UUID and
+never reconnects an old profile over an independent user/network profile switch.

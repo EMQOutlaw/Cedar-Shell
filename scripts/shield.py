@@ -17,12 +17,16 @@ Nothing is polled: the shell asks when Shield opens, when the user refreshes,
 after an action, and when the network state materially changes.
 """
 import json
+import contextlib
+import contextvars
+import functools
 import os
 import re
 import socket
 import struct
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -38,10 +42,44 @@ DOT_PROVIDERS = {
 MAC_POLICIES = {'stable': 'stable', 'random': 'random', 'hardware': 'permanent', 'default': 'preserve'}
 OPERATION_ERRORS = (RuntimeError, OSError, subprocess.SubprocessError)
 MANAGED_UNITS = {'avahi-daemon.service', 'avahi-daemon.socket', 'ufw.service', 'firewalld.service', 'nftables.service'}
+APPLY_BUDGET_SECONDS = 120
+RECOVERY_BUDGET_SECONDS = 120
+_REQUEST_END = contextvars.ContextVar('shield_request_end', default=None)
+_PRIVILEGED_TIMEOUT = contextvars.ContextVar('shield_privileged_timeout', default=False)
+
+
+def transaction(action):
+    @functools.wraps(action)
+    def wrapped(*args, **kwargs):
+        started = time.monotonic()
+        request_end = started + capabilities.bounded_timeout(APPLY_BUDGET_SECONDS + RECOVERY_BUDGET_SECONDS)
+        end_token = _REQUEST_END.set(request_end)
+        uncertain_token = _PRIVILEGED_TIMEOUT.set(False)
+        try:
+            with capabilities.command_deadline(min(request_end, started + APPLY_BUDGET_SECONDS)):
+                return action(*args, **kwargs)
+        finally:
+            _PRIVILEGED_TIMEOUT.reset(uncertain_token)
+            _REQUEST_END.reset(end_token)
+    return wrapped
+
+
+@contextlib.contextmanager
+def recovery_budget():
+    end = time.monotonic() + RECOVERY_BUDGET_SECONDS
+    request_end = _REQUEST_END.get()
+    with capabilities.command_deadline(min(end, request_end) if request_end is not None else end):
+        yield
 
 
 def run(argv, timeout=20, check=True):
-    p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False, env={**os.environ, 'LC_ALL': 'C'})
+    timeout = capabilities.bounded_timeout(timeout)
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False, env={**os.environ, 'LC_ALL': 'C'})
+    except subprocess.TimeoutExpired:
+        if Path(argv[0]).name == 'pkexec':
+            _PRIVILEGED_TIMEOUT.set(True)
+        raise
     if check and p.returncode:
         raise RuntimeError((p.stderr or p.stdout).strip() or ' '.join(argv[:2]) + ' failed')
     return p.stdout
@@ -182,28 +220,38 @@ def nm_fields(uuid, fields):
 
 def modify_connection(connection, values, device=''):
     """Apply one captured profile; reapply live settings only when requested."""
+    if device and (active_connection(device) or {}).get('uuid') != connection:
+        raise RuntimeError('The active connection changed; the replacement connection was left untouched.')
     argv = ['nmcli', 'connection', 'modify', connection]
     for key, value in values.items():
         argv.extend([key, value])
     run(argv)
     if device:
-        try:
-            run(['nmcli', 'device', 'reapply', device])
-        except RuntimeError:
-            run(['nmcli', 'connection', 'up', connection], timeout=45)
+        if (active_connection(device) or {}).get('uuid') != connection:
+            raise RuntimeError('The active connection changed; the replacement connection was left untouched.')
+        run(['nmcli', 'device', 'reapply', device])
 
 
 def restore_connection(connection, values, device=''):
-    modify_connection(connection, values, device)
+    # Restore the captured persistent profile even if the user switched away,
+    # but never reconnect it over an independently selected live connection.
+    modify_connection(connection, values)
     if nm_fields(connection, list(values)) != values:
         raise RuntimeError('The restored connection profile did not verify.')
+    if device:
+        if (active_connection(device) or {}).get('uuid') != connection:
+            raise RuntimeError('The saved profile was restored, but the active connection changed and was left untouched.')
+        run(['nmcli', 'device', 'reapply', device])
 
 
 def recover_or_raise(label, failure, restore, restored_message='the previous settings were restored.'):
     try:
-        restore()
+        with recovery_budget():
+            restore()
     except OPERATION_ERRORS as error:
         raise RuntimeError(label + ' could not be applied and the previous settings could not be restored: ' + str(error)) from failure
+    if _PRIVILEGED_TIMEOUT.get():
+        raise RuntimeError(label + ' timed out. Captured state was observed again, but an elevated operation may still be running; recheck the system state before another change.') from failure
     raise RuntimeError(label + ' could not be applied; ' + restored_message) from failure
 
 
@@ -284,6 +332,7 @@ def dns(caps):
     return info
 
 
+@transaction
 def apply_dns(request, caps):
     """Capture → modify the connection → reapply → verify through resolved → roll back."""
     mode, provider = request.get('mode', 'off'), request.get('provider', 'cloudflare')
@@ -299,13 +348,7 @@ def apply_dns(request, caps):
     captured = nm_fields(uuid, DNS_FIELDS)
 
     def modify(values):
-        argv = ['nmcli', 'connection', 'modify', uuid]
-        for key, value in values.items():
-            argv += [key, value]
-        run(argv)
-        out = run(['nmcli', 'device', 'reapply', device], check=False)
-        if 'successfully' not in out.lower():
-            run(['nmcli', 'connection', 'up', uuid], timeout=45)
+        modify_connection(uuid, values, device)
 
     if mode == 'off':
         wanted = {'connection.dns-over-tls': 'default', 'ipv4.dns': '', 'ipv4.ignore-auto-dns': 'no', 'ipv6.dns': '', 'ipv6.ignore-auto-dns': 'no'}
@@ -325,11 +368,15 @@ def apply_dns(request, caps):
         # fails, not only when verification returns an unexpected value.
         restore = {k: (v if v not in ('', '-1') else ('default' if k == 'connection.dns-over-tls' else v)) for k, v in captured.items()}
         try:
-            modify(restore)
-            restored = nm_fields(uuid, DNS_FIELDS)
-            restored = {k: (v if v not in ('', '-1') else ('default' if k == 'connection.dns-over-tls' else v)) for k, v in restored.items()}
-            if restored != restore:
-                raise RuntimeError('The restored connection profile did not verify.')
+            with recovery_budget():
+                modify_connection(uuid, restore)
+                restored = nm_fields(uuid, DNS_FIELDS)
+                restored = {k: (v if v not in ('', '-1') else ('default' if k == 'connection.dns-over-tls' else v)) for k, v in restored.items()}
+                if restored != restore:
+                    raise RuntimeError('The restored connection profile did not verify.')
+                if (active_connection(device) or {}).get('uuid') != uuid:
+                    raise RuntimeError('The saved DNS profile was restored, but the active connection changed and was left untouched.')
+                run(['nmcli', 'device', 'reapply', device])
         except (RuntimeError, OSError, subprocess.SubprocessError) as error:
             raise RuntimeError('Encrypted DNS could not be applied and the previous settings could not be restored: ' + str(error)) from failure
         raise RuntimeError('Encrypted DNS could not be applied; the previous DNS settings were restored.') from failure
@@ -364,6 +411,7 @@ def wifi_profile():
     return info
 
 
+@transaction
 def apply_wifi(request):
     policy = request.get('policy')
     if policy not in MAC_POLICIES:
@@ -404,9 +452,10 @@ def ipv6_privacy(connection):
     return dict(available=True, setting=value, kernel=kernel, effective=effective, active=effective == '2', partial=effective == '1')
 
 
+@transaction
 def apply_ipv6(request):
     enable = requested_enable(request)
-    connection = active_connection(default_device())
+    connection = dict(active_connection(default_device()) or {})
     if not connection:
         raise RuntimeError('No active NetworkManager connection to configure.')
     before = nm_fields(connection['uuid'], ['ipv6.ip6-privacy'])
@@ -446,9 +495,10 @@ def unit_state_pair(unit):
     return capabilities.unit_state(unit)[0]
 
 
+@transaction
 def apply_discovery(request):
     enable = requested_enable(request)   # enable = answer queries; disable = quiet
-    connection = active_connection(default_device())
+    connection = dict(active_connection(default_device()) or {})
     if not connection:
         raise RuntimeError('No active NetworkManager connection to configure.')
     before = nm_fields(connection['uuid'], ['connection.mdns', 'connection.llmnr'])
@@ -509,6 +559,7 @@ def firewall_commands(provider, enable):
     raise RuntimeError('No firewall manager is installed. Install ufw, firewalld or nftables first.')
 
 
+@transaction
 def apply_firewall(request):
     enable = requested_enable(request)
     before = capabilities.firewall()
@@ -594,25 +645,28 @@ def snapshot(exposure_scan=True):
 
 def main():
     try:
-        request = json.loads(sys.stdin.readline() or '{}')
-        action = request.get('action', 'snapshot')
-        if action == 'snapshot':
-            data = snapshot()
-        elif action == 'exposure':
-            data = dict(exposure=exposure())
-        elif action == 'firewall':
-            apply_firewall(request); data = snapshot(exposure_scan=False)
-        elif action == 'dns':
-            apply_dns(request, capabilities.dns()); data = snapshot(exposure_scan=False)
-        elif action == 'wifi':
-            apply_wifi(request); data = snapshot(exposure_scan=False)
-        elif action == 'ipv6':
-            apply_ipv6(request); data = snapshot(exposure_scan=False)
-        elif action == 'discovery':
-            apply_discovery(request); data = snapshot(exposure_scan=False)
-        else:
-            raise ValueError('Unknown Shield action.')
-        print(json.dumps(dict(ok=True, data=data)))
+        # Bound the post-action refresh as well as provider probes; a completed
+        # action must not leave an unlimited refresh behind the UI watchdog.
+        with capabilities.command_deadline(time.monotonic() + APPLY_BUDGET_SECONDS + RECOVERY_BUDGET_SECONDS):
+            request = json.loads(sys.stdin.readline() or '{}')
+            action = request.get('action', 'snapshot')
+            if action == 'snapshot':
+                data = snapshot()
+            elif action == 'exposure':
+                data = dict(exposure=exposure())
+            elif action == 'firewall':
+                apply_firewall(request); data = snapshot(exposure_scan=False)
+            elif action == 'dns':
+                apply_dns(request, capabilities.dns()); data = snapshot(exposure_scan=False)
+            elif action == 'wifi':
+                apply_wifi(request); data = snapshot(exposure_scan=False)
+            elif action == 'ipv6':
+                apply_ipv6(request); data = snapshot(exposure_scan=False)
+            elif action == 'discovery':
+                apply_discovery(request); data = snapshot(exposure_scan=False)
+            else:
+                raise ValueError('Unknown Shield action.')
+            print(json.dumps(dict(ok=True, data=data)))
     except Exception as error:  # noqa: BLE001
         print(json.dumps(dict(ok=False, error=str(error))))
 

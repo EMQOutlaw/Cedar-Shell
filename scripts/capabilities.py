@@ -7,19 +7,43 @@ state and readable configuration. The shell caches the result and asks again
 only on an explicit refresh or when a provider's unit changes state.
 """
 import json
+import contextlib
+import contextvars
 import os
 import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ETC = Path('/etc')
+_COMMAND_DEADLINE = contextvars.ContextVar('cedar_command_deadline', default=None)
+
+
+@contextlib.contextmanager
+def command_deadline(deadline):
+    """Scope a shared deadline across a transaction's commands and probes."""
+    token = _COMMAND_DEADLINE.set(deadline)
+    try:
+        yield
+    finally:
+        _COMMAND_DEADLINE.reset(token)
+
+
+def bounded_timeout(timeout):
+    deadline = _COMMAND_DEADLINE.get()
+    if deadline is None:
+        return timeout
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError('The transaction deadline expired; no further command was started.')
+    return min(timeout, remaining)
 
 
 def run(argv, timeout=6):
     try:
-        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False,
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=bounded_timeout(timeout), check=False,
                            env={**os.environ, 'LC_ALL': 'C'})
         return p.returncode, p.stdout.strip()
     except (OSError, subprocess.TimeoutExpired):

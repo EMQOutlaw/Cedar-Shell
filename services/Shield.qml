@@ -134,7 +134,7 @@ Singleton {
     ServiceRequest {
         id: worker
         script: "scripts/shield.py"
-        timeoutMs: 150000              // a pkexec prompt waits for the user
+        timeoutMs: 300000              // 120s apply + 120s recovery + 60s exit/IPC margin
         onResult: value => {
             const first = !root.ready;
             root.data = Object.assign({}, root.data, value);

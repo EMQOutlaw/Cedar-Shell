@@ -129,6 +129,21 @@ class ShieldTransactions(unittest.TestCase):
                 shield.apply_ipv6({'enable': True})
         self.assertEqual(self.state(), before)
 
+    def test_profile_switch_is_not_overwritten_by_reapply_or_rollback(self):
+        before = dict(self.fields)
+        original = self.command
+        def switch_after_profile_write(argv, **kwargs):
+            result = original(argv, **kwargs)
+            if argv[:3] == ['nmcli', 'connection', 'modify']:
+                self.connection['uuid'] = 'independently-selected-profile'
+            return result
+        with patch.object(shield, 'run', side_effect=switch_after_profile_write):
+            with self.assertRaisesRegex(RuntimeError, 'active connection changed and was left untouched'):
+                shield.apply_ipv6({'enable': True})
+        self.assertEqual(self.fields, before)
+        self.assertEqual(self.connection['uuid'], 'independently-selected-profile')
+        self.assertFalse(any(argv[:3] in (['nmcli', 'device', 'reapply'], ['nmcli', 'connection', 'up']) for argv in self.commands))
+
     def test_live_ipv6_restore_mismatch_is_reported(self):
         before = self.ipv6(self.connection)
         self.fail_after = lambda argv: argv[:3] == ['nmcli', 'device', 'reapply']
