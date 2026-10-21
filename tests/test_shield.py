@@ -101,8 +101,9 @@ class DnsRecovery(unittest.TestCase):
                 raise shield.subprocess.TimeoutExpired(argv, 20)
             return 'successfully'
         with patch.object(shield, 'run', side_effect=run), patch.object(shield, 'dns') as verify:
-            with self.assertRaisesRegex(RuntimeError, 'previous DNS settings were restored'):
+            with self.assertRaisesRegex(RuntimeError, 'saved NetworkManager DNS profile was restored') as failure:
                 self.request()
+        self.assertIn('Live resolver overrides could not be verified', str(failure.exception))
         verify.assert_not_called()
         self.assertEqual(len(self.commands), 4)
         restored = dict(zip(self.commands[2][4::2], self.commands[2][5::2]))
@@ -112,7 +113,7 @@ class DnsRecovery(unittest.TestCase):
     def test_verification_failure_also_restores_the_profile(self):
         with patch.object(shield, 'run', side_effect=lambda argv, **kwargs: self.commands.append(argv) or 'successfully'), \
              patch.object(shield, 'dns', side_effect=OSError('resolver unavailable')):
-            with self.assertRaisesRegex(RuntimeError, 'previous DNS settings were restored'):
+            with self.assertRaisesRegex(RuntimeError, 'saved NetworkManager DNS profile was restored'):
                 self.request()
         self.assertEqual(len(self.commands), 4)
 

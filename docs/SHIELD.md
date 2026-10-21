@@ -181,3 +181,9 @@ recovery can return an explicit result. Budget exhaustion reports unresolved
 state; a timed-out privileged child may still run, even when a later read matches
 captured flags. Live profile application also rechecks the captured UUID and
 never reconnects an old profile over an independent user/network profile switch.
+
+DNS recovery verifies and reapplies the captured NetworkManager profile. A
+runtime-only systemd-resolved override may differ from that saved profile and is
+not reconstructed by this recovery. Failure messages therefore identify the
+saved-profile restoration and explicitly leave live resolver overrides
+unverified. Full live-DNS rollback remains a separate acceptance gate.

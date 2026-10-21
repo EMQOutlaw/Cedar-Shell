@@ -379,7 +379,7 @@ def apply_dns(request, caps):
                 run(['nmcli', 'device', 'reapply', device])
         except (RuntimeError, OSError, subprocess.SubprocessError) as error:
             raise RuntimeError('Encrypted DNS could not be applied and the previous settings could not be restored: ' + str(error)) from failure
-        raise RuntimeError('Encrypted DNS could not be applied; the previous DNS settings were restored.') from failure
+        raise RuntimeError('Encrypted DNS could not be applied; the saved NetworkManager DNS profile was restored and reapplied. Live resolver overrides could not be verified; recheck DNS before relying on this protection.') from failure
     return verified
 
 
