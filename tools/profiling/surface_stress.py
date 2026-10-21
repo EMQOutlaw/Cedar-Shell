@@ -164,6 +164,8 @@ def main():
                 events.append(json.loads(line.split('CEDAR_BENCH ', 1)[1]))
         errors = [line for line in text.splitlines() if re.search(r'FAIL:|ReferenceError|TypeError|Binding loop|Cannot assign|Unable to assign|Failed to load configuration', line)]
         warnings = [line for line in text.splitlines() if re.search(r'\bWARN\b|\bERROR\b', line)]
+        runtime_warnings = sum(bool(re.search(r'\bWARN\b', line)) for line in text.splitlines())
+        runtime_errors = sum(bool(re.search(r'\bERROR\b', line)) for line in text.splitlines())
         passed = code == 0 and not errors and 'PASS: isolated surface lifecycle benchmark' in text
         event_times = [(e['at'] - wall_started) / 1000 for e in events]
         for sample in samples:
@@ -177,6 +179,9 @@ def main():
                   'source': str(args.source.resolve()), 'renderer': 'native Wayland' if args.native else 'software/offscreen',
                   'cycles': args.cycles, 'holdMs': args.hold_ms, 'settleSeconds': args.settle_seconds,
                   'passed': passed, 'exitCode': code, 'errorCount': len(errors), 'warningLineCount': len(warnings),
+                  # Retain the older aggregate fields; distinguish assertions
+                  # from platform diagnostics such as unavailable PipeWire.
+                  'runtimeWarningLineCount': runtime_warnings, 'runtimeErrorLineCount': runtime_errors,
                   'errors': errors, 'events': events, 'samples': samples,
                   'summary': measure.summarize(samples, 500_000_000),
                   'closedAfterFirstSweep': measure.summarize(warm_closed, 500_000_000),
