@@ -22,6 +22,41 @@ DIAGNOSTIC_SCRIPTS = frozenset({'measure_resources.py', 'audit_resources.py', 'a
 SAMPLER_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _boottime():
+    try:
+        return time.clock_gettime(time.CLOCK_BOOTTIME)
+    except (AttributeError, OSError):
+        return None
+
+
+def clock_snapshot():
+    """Read optional clocks at a run boundary, with a non-atomic read bound."""
+    boot_before = _boottime()
+    monotonic = time.monotonic()
+    wall = time.time()
+    read_span = max(0.0, time.monotonic() - monotonic)
+    boot_after = _boottime()
+    # A suspend between clock reads must also widen the uncertainty. A purely
+    # monotonic read span would hide that boundary ambiguity on Linux.
+    available = boot_before is not None and boot_after is not None
+    if available:
+        read_span = max(read_span, boot_after - boot_before)
+    return {'monotonic': monotonic, 'wall': wall,
+            'boottime': boot_before if available else None, 'readSpan': read_span}
+
+
+def clock_metadata(start, end):
+    """Never infer suspend from wall time: it can move with clock corrections."""
+    awake = end['monotonic'] - start['monotonic']
+    boot_elapsed = (end['boottime'] - start['boottime']
+                    if start['boottime'] is not None and end['boottime'] is not None else None)
+    return {'wallElapsedSeconds': end['wall'] - start['wall'],
+            'boottimeElapsedSeconds': boot_elapsed,
+            'boottimeClock': 'CLOCK_BOOTTIME' if boot_elapsed is not None else None,
+            'inferredSuspendSeconds': max(0.0, boot_elapsed - awake) if boot_elapsed is not None else None,
+            'clockReadUncertaintySeconds': start['readSpan'] + end['readSpan']}
+
+
 def stat_fields(raw):
     head, tail = raw.rsplit(')', 1)
     fields = tail.split()
@@ -287,6 +322,7 @@ def main():
     parser.add_argument('--budget-mb', type=float, default=500, help='Decimal MB, not MiB; report only, never kill')
     parser.add_argument('--max-processes', type=int, default=0, help='Optional diagnostic limit; zero disables')
     parser.add_argument('--fail-on-budget', action='store_true', help='Exit nonzero on exceeded or unknown accounting after writing evidence')
+    parser.add_argument('--clock-metadata', action='store_true', help='Record run-boundary wall/boottime clocks and inferred suspend time; scheduling still uses monotonic time')
     args = parser.parse_args()
     if not (args.pid or args.cgroup or args.source_root):
         parser.error('Specify at least one root PID, cgroup or release directory')
@@ -316,13 +352,20 @@ def main():
                               'Descendants and cgroup members must be reviewed for unrelated user applications',
                               'Known source profiling tools and their subprocesses are excluded; other diagnostic roots require scope review'],
               'runs': []}
+    if args.clock_metadata:
+        report['limitations'].extend([
+            'Run duration, CPU rates and PSS slopes use monotonic time; Linux system suspend is excluded',
+            'Optional run clockMetadata excludes warmup; CLOCK_BOOTTIME includes Linux suspend when available',
+            'Wall elapsed can jump with clock corrections; suspend is estimated only from boottime minus monotonic',
+            'Clock reads are non-atomic; estimates within clockReadUncertaintySeconds are inconclusive, not proof of suspend'])
     ticks = os.sysconf('SC_CLK_TCK')
     failed = False
     for _ in range(args.runs):
         time.sleep(args.warmup)
         previous = snapshot(roots, cgroups=args.cgroup, source_roots=source_roots)
         tracked = set(previous)
-        started = last = time.monotonic()
+        clock_start = clock_snapshot() if args.clock_metadata else None
+        started = last = clock_start['monotonic'] if clock_start is not None else time.monotonic()
         samples = []
         run = {'warmupSeconds': args.warmup, 'intervalSeconds': args.interval, 'samples': samples}
         report['runs'].append(run)
@@ -341,7 +384,10 @@ def main():
                 run['error'] = 'An explicit root exited or changed identity; run is incomplete'
                 break
             previous, last = current, now
-        run['durationSeconds'] = time.monotonic() - started
+        clock_end = clock_snapshot() if args.clock_metadata else None
+        run['durationSeconds'] = (clock_end['monotonic'] if clock_end is not None else time.monotonic()) - started
+        if clock_start is not None:
+            run['clockMetadata'] = clock_metadata(clock_start, clock_end)
         run['summary'] = summarize(samples, args.budget_mb * 1000000, args.max_processes)
         run['summary']['observedIdentities'] = len(tracked)
         if run.get('error') and run['summary']['budgetStatus'] != 'exceeded':

@@ -66,6 +66,23 @@ its cgroup limits. Sampling is bounded to 10,000 observations and disabled durin
 ordinary shell operation. Files are written atomically into a private directory;
 raw command lines are classified in memory and are not written to reports.
 
+Add `--clock-metadata` when a run may span lid close or system suspend. Existing
+`durationSeconds`, sample `elapsedSeconds`, CPU rates and memory slopes continue
+to use monotonic time, which excludes Linux system suspend. Each run's optional
+`clockMetadata` adds wall-clock elapsed seconds, Linux `CLOCK_BOOTTIME` elapsed
+seconds when available, and inferred suspend seconds from boottime minus
+monotonic elapsed. These measurements start after warmup. The extra clocks are
+read only at run boundaries, with no new timer or per-sample work.
+
+Wall time can move forward or backward when the system clock is corrected; it
+is never used to infer suspend. Missing boottime support yields `null` for both
+boottime and suspend estimates. Clock reads are non-atomic: differences within
+the reported `clockReadUncertaintySeconds` bound are inconclusive; boottime
+brackets include any suspend occurring during those boundary reads. Suspend is
+an inference, not a sleep-event log; locked-but-awake time still counts toward
+monotonic duration. A 60-minute monotonic soak spanning suspend can take longer
+than 60 minutes of wall time, and reports contain no samples while suspended.
+
 ## Reproducible procedure
 
 Create a private results directory first, or let the collector create it. Replace

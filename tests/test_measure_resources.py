@@ -1,5 +1,7 @@
 """Accounting failures must not produce a false memory-budget pass."""
 import json
+import contextlib
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -11,6 +13,87 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import measure_resources as m
+
+
+class RunClocks(unittest.TestCase):
+    def test_optional_clocks_do_not_change_awake_sampling_or_cpu_rates(self):
+        before = {(123, 1): {'rss': 20, 'pss': 10, 'private': 10, 'ticks': 0}}
+        after = {(123, 1): {'rss': 20, 'pss': 10, 'private': 10, 'ticks': 100}}
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled), tempfile.TemporaryDirectory() as tmp:
+                argv = ['measure_resources.py', '--cgroup', '/fixture', '--output', str(Path(tmp) / 'report.json'),
+                        '--warmup', '0', '--seconds', '1', '--interval', '1', '--runs', '1']
+                if enabled:
+                    argv.append('--clock-metadata')
+                boundaries = [
+                    {'monotonic': 100, 'wall': 1000, 'boottime': 200, 'readSpan': 0},
+                    {'monotonic': 101, 'wall': 1061, 'boottime': 261, 'readSpan': 0}]
+                with mock.patch.object(sys, 'argv', argv), \
+                        mock.patch.object(m, 'snapshot', side_effect=[before, after]), \
+                        mock.patch.object(m, 'cgroup_metrics', return_value={}), \
+                        mock.patch.object(m, 'clock_snapshot', side_effect=boundaries) as clocks, \
+                        mock.patch.object(m.time, 'sleep'), \
+                        mock.patch.object(m.time, 'monotonic', side_effect=[100, 101] if enabled else [100, 100, 101, 101]), \
+                        mock.patch.object(m.os, 'sysconf', return_value=100), \
+                        mock.patch.object(m.d, 'write_json') as write, contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(m.main(), 0)
+                    run = write.call_args.args[1]['runs'][0]
+                    self.assertEqual(run['durationSeconds'], 1)
+                    self.assertEqual(run['samples'][0]['elapsedSeconds'], 1)
+                    self.assertEqual(run['samples'][0]['cpuOneCorePercent'], 100)
+                    self.assertEqual(len(run['samples']), 1)
+                    self.assertEqual(clocks.call_count, 2 if enabled else 0)
+                    if enabled:
+                        self.assertEqual(run['clockMetadata']['inferredSuspendSeconds'], 60)
+                    else:
+                        self.assertNotIn('clockMetadata', run)
+
+    def test_suspend_estimate_uses_boottime_not_adjusted_wall_clock(self):
+        start = {'monotonic': 10, 'wall': 1000, 'boottime': 100, 'readSpan': .001}
+        end = {'monotonic': 70, 'wall': 500, 'boottime': 460, 'readSpan': .002}
+        clocks = m.clock_metadata(start, end)
+        self.assertEqual(clocks['wallElapsedSeconds'], -500)
+        self.assertEqual(clocks['boottimeElapsedSeconds'], 360)
+        self.assertEqual(clocks['inferredSuspendSeconds'], 300)
+        self.assertAlmostEqual(clocks['clockReadUncertaintySeconds'], .003)
+
+    def test_missing_boottime_at_either_boundary_leaves_suspend_unknown(self):
+        for first, last in ((None, None), (None, 200), (100, None)):
+            with self.subTest(first=first, last=last):
+                clocks = m.clock_metadata(
+                    {'monotonic': 10, 'wall': 1000, 'boottime': first, 'readSpan': 0},
+                    {'monotonic': 70, 'wall': 2000, 'boottime': last, 'readSpan': 0})
+                self.assertEqual(clocks['wallElapsedSeconds'], 1000)
+                self.assertIsNone(clocks['boottimeElapsedSeconds'])
+                self.assertIsNone(clocks['boottimeClock'])
+                self.assertIsNone(clocks['inferredSuspendSeconds'])
+
+    def test_non_atomic_clock_jitter_cannot_report_negative_suspend(self):
+        clocks = m.clock_metadata(
+            {'monotonic': 10, 'wall': 10, 'boottime': 20.001, 'readSpan': .002},
+            {'monotonic': 70, 'wall': 70, 'boottime': 80, 'readSpan': .002})
+        self.assertEqual(clocks['inferredSuspendSeconds'], 0)
+        self.assertGreater(clocks['clockReadUncertaintySeconds'], .001)
+
+    def test_suspend_during_boundary_reads_widens_uncertainty(self):
+        with mock.patch.object(m.time, 'monotonic', side_effect=[10, 10.001]), \
+                mock.patch.object(m.time, 'time', return_value=1060), \
+                mock.patch.object(m, '_boottime', side_effect=[100, 160]):
+            clocks = m.clock_snapshot()
+            self.assertEqual(clocks['boottime'], 100)
+            self.assertEqual(clocks['readSpan'], 60)
+
+    def test_unavailable_boottime_clock_is_optional(self):
+        for failure in (AttributeError('unsupported clock'), OSError('clock unavailable')):
+            with self.subTest(failure=type(failure).__name__), \
+                    mock.patch.object(m.time, 'monotonic', side_effect=[10, 10.001]), \
+                    mock.patch.object(m.time, 'time', return_value=1000), \
+                    mock.patch.object(m.time, 'clock_gettime', side_effect=failure, create=True):
+                clocks = m.clock_snapshot()
+                self.assertEqual(clocks['monotonic'], 10)
+                self.assertEqual(clocks['wall'], 1000)
+                self.assertIsNone(clocks['boottime'])
+                self.assertAlmostEqual(clocks['readSpan'], .001)
 
 
 class Accounting(unittest.TestCase):
@@ -181,10 +264,14 @@ class Accounting(unittest.TestCase):
         output = self.proc / 'private' / 'report.json'
         completed = subprocess.run([sys.executable, str(ROOT / 'scripts/measure_resources.py'),
             '--cgroup', '/cedar-nonexistent-accounting-test', '--output', str(output),
-            '--warmup', '0', '--seconds', '1', '--interval', '1', '--runs', '1', '--fail-on-budget'],
+            '--warmup', '0', '--seconds', '1', '--interval', '1', '--runs', '1', '--fail-on-budget', '--clock-metadata'],
             capture_output=True, text=True, timeout=10)
         self.assertEqual(completed.returncode, 2, completed.stderr)
-        self.assertEqual(json.loads(output.read_text())['runs'][0]['summary']['budgetStatus'], 'unknown')
+        run = json.loads(output.read_text())['runs'][0]
+        self.assertEqual(run['summary']['budgetStatus'], 'unknown')
+        self.assertGreater(run['durationSeconds'], 0)
+        self.assertGreater(run['clockMetadata']['wallElapsedSeconds'], 0)
+        self.assertIn('inferredSuspendSeconds', run['clockMetadata'])
         self.assertEqual(output.stat().st_mode & 0o777, 0o600)
 
     def test_cli_rejects_cgroup_aliases_that_could_select_the_whole_host(self):
