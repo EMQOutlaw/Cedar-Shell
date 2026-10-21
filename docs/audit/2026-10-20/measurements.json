@@ -1,0 +1,1612 @@
+{
+  "format": 1,
+  "units": "bytes, seconds, percent of one logical CPU",
+  "baseline": "058aace7c8da6be810350557a8d65e58077caed3",
+  "installedRelease": "1.15-81f0f1f9bd0424f6",
+  "privacy": "Paths, command lines, numeric process identities and user cgroups omitted. Per-process aliases are local to each scenario.",
+  "installed": {
+    "installed-10m": {
+      "rawReportSha256": "4846512e93c71b367c520852f86909f1d21e68faa185817d9c8b2c3bb0e1fe33",
+      "startedUtc": "2026-10-20T23:02:14Z",
+      "durationSeconds": 600.0184044210005,
+      "summary": {
+        "sampleCount": 120,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 0.5976468799396395,
+        "maxCpuOneCorePercent": 4.183743739877032,
+        "peakPssBytes": 376282112,
+        "medianPssBytes": 359707648.0,
+        "peakRssSumBytes": 506200064,
+        "peakPrivateBytes": 347127808,
+        "retentionDeltaBytes": -13707264.0,
+        "pssSlopeBytesPerHour": -47375228.85403275,
+        "budgetStatus": "within-sampled-scope",
+        "observedIdentities": 5
+      },
+      "processes": [
+        {
+          "alias": "qs-1",
+          "firstObservedSeconds": 5.018779038000048,
+          "samplesObserved": 120,
+          "lastObservedSeconds": 600.0183466140002,
+          "maximum_rss_bytes": 423137280,
+          "maximum_pss_bytes": 332475392,
+          "maximum_private_bytes": 306909184,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 487309312
+        },
+        {
+          "alias": "python3-2",
+          "firstObservedSeconds": 5.018779038000048,
+          "samplesObserved": 120,
+          "lastObservedSeconds": 600.0183466140002,
+          "maximum_rss_bytes": 36995072,
+          "maximum_pss_bytes": 19987456,
+          "maximum_private_bytes": 18247680,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 36995072
+        },
+        {
+          "alias": "python3-3",
+          "firstObservedSeconds": 5.018779038000048,
+          "samplesObserved": 120,
+          "lastObservedSeconds": 600.0183466140002,
+          "maximum_rss_bytes": 30437376,
+          "maximum_pss_bytes": 17126400,
+          "maximum_private_bytes": 15851520,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 30437376
+        },
+        {
+          "alias": "python3-4",
+          "firstObservedSeconds": 5.018779038000048,
+          "samplesObserved": 120,
+          "lastObservedSeconds": 600.0183466140002,
+          "maximum_rss_bytes": 13533184,
+          "maximum_pss_bytes": 6469632,
+          "maximum_private_bytes": 5910528,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 13533184
+        },
+        {
+          "alias": "wl-paste-5",
+          "firstObservedSeconds": 5.018779038000048,
+          "samplesObserved": 120,
+          "lastObservedSeconds": 600.0183466140002,
+          "maximum_rss_bytes": 2097152,
+          "maximum_pss_bytes": 226304,
+          "maximum_private_bytes": 208896,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 2097152
+        }
+      ],
+      "cgroupMaximumCounters": {
+        "memory.current": 570241024,
+        "memory.peak": 649039872
+      }
+    },
+    "installed-soak-60m": {
+      "rawReportSha256": "4d1ecc065c3b3bec2a8b209d522d5444cb432965eeb23c3dba978213afec2bb9",
+      "startedUtc": "2026-10-20T23:02:13Z",
+      "durationSeconds": 3600.03362283,
+      "summary": {
+        "sampleCount": 716,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 405,
+        "maxProcesses": 6,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 0.7943647951302031,
+        "maxCpuOneCorePercent": 5.778350369083796,
+        "peakPssBytes": 530299904,
+        "medianPssBytes": 504274944.0,
+        "peakRssSumBytes": 684990464,
+        "peakPrivateBytes": 501911552,
+        "retentionDeltaBytes": 146098176,
+        "pssSlopeBytesPerHour": 156548431.51111907,
+        "budgetStatus": "exceeded",
+        "observedIdentities": 13
+      },
+      "processes": [
+        {
+          "alias": "qs-1",
+          "firstObservedSeconds": 5.01796972000011,
+          "samplesObserved": 716,
+          "lastObservedSeconds": 3600.033533978,
+          "maximum_rss_bytes": 570380288,
+          "maximum_pss_bytes": 475479040,
+          "maximum_private_bytes": 451420160,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 587952128
+        },
+        {
+          "alias": "python3-2",
+          "firstObservedSeconds": 5.01796972000011,
+          "samplesObserved": 716,
+          "lastObservedSeconds": 3600.033533978,
+          "maximum_rss_bytes": 36995072,
+          "maximum_pss_bytes": 20013056,
+          "maximum_private_bytes": 18247680,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 36995072
+        },
+        {
+          "alias": "python3-3",
+          "firstObservedSeconds": 5.01796972000011,
+          "samplesObserved": 716,
+          "lastObservedSeconds": 3600.033533978,
+          "maximum_rss_bytes": 30470144,
+          "maximum_pss_bytes": 17159168,
+          "maximum_private_bytes": 15884288,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 30470144
+        },
+        {
+          "alias": "python3-4",
+          "firstObservedSeconds": 5.01796972000011,
+          "samplesObserved": 716,
+          "lastObservedSeconds": 3600.033533978,
+          "maximum_rss_bytes": 13533184,
+          "maximum_pss_bytes": 6469632,
+          "maximum_private_bytes": 5910528,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 13533184
+        },
+        {
+          "alias": "wl-paste-5",
+          "firstObservedSeconds": 5.01796972000011,
+          "samplesObserved": 134,
+          "lastObservedSeconds": 672.5146543100004,
+          "maximum_rss_bytes": 2097152,
+          "maximum_pss_bytes": 226304,
+          "maximum_private_bytes": 208896,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 2097152
+        },
+        {
+          "alias": "python3-6",
+          "firstObservedSeconds": 793.338409937,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 793.338409937,
+          "maximum_rss_bytes": 20606976,
+          "maximum_pss_bytes": 9928704,
+          "maximum_private_bytes": 9158656,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 20606976
+        },
+        {
+          "alias": "powerprofilesct-7",
+          "firstObservedSeconds": 793.338409937,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 793.338409937,
+          "maximum_rss_bytes": 23523328,
+          "maximum_pss_bytes": 13102080,
+          "maximum_private_bytes": 12398592,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 23601152
+        },
+        {
+          "alias": "python3-8",
+          "firstObservedSeconds": 1513.2501889210002,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 1513.2501889210002,
+          "maximum_rss_bytes": 20520960,
+          "maximum_pss_bytes": 9904128,
+          "maximum_private_bytes": 9138176,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 20520960
+        },
+        {
+          "alias": "powerprofilesct-9",
+          "firstObservedSeconds": 1513.2501889210002,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 1513.2501889210002,
+          "maximum_rss_bytes": 25391104,
+          "maximum_pss_bytes": 14475264,
+          "maximum_private_bytes": 13725696,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 25464832
+        },
+        {
+          "alias": "python3-10",
+          "firstObservedSeconds": 2263.24292404,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 2263.24292404,
+          "maximum_rss_bytes": 20504576,
+          "maximum_pss_bytes": 9900032,
+          "maximum_private_bytes": 9129984,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 20504576
+        },
+        {
+          "alias": "powerprofilesct-11",
+          "firstObservedSeconds": 2263.24292404,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 2263.24292404,
+          "maximum_rss_bytes": 19644416,
+          "maximum_pss_bytes": 11254784,
+          "maximum_private_bytes": 10702848,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 19714048
+        },
+        {
+          "alias": "python3-12",
+          "firstObservedSeconds": 3013.2106590099997,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 3013.2106590099997,
+          "maximum_rss_bytes": 23744512,
+          "maximum_pss_bytes": 12710912,
+          "maximum_private_bytes": 11964416,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 23744512
+        },
+        {
+          "alias": "python3-13",
+          "firstObservedSeconds": 3013.2106590099997,
+          "samplesObserved": 1,
+          "lastObservedSeconds": 3013.2106590099997,
+          "maximum_rss_bytes": 20512768,
+          "maximum_pss_bytes": 9838592,
+          "maximum_private_bytes": 9125888,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 20512768
+        }
+      ],
+      "cgroupMaximumCounters": {
+        "memory.current": 687890432,
+        "memory.peak": 772427776
+      }
+    },
+    "installed-after-unlock-10m": {
+      "rawReportSha256": "169b83f2ae641d8acff5cc758cea4fe7516ee735f76542a506902729e0a9bf7c",
+      "startedUtc": "2026-10-21T00:34:02Z",
+      "durationSeconds": 600.0589864869999,
+      "summary": {
+        "sampleCount": 119,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 3.1765344703761147,
+        "maxCpuOneCorePercent": 6.718884975143312,
+        "peakPssBytes": 479855616,
+        "medianPssBytes": 471362560,
+        "peakRssSumBytes": 609660928,
+        "peakPrivateBytes": 449908736,
+        "retentionDeltaBytes": 74155008,
+        "pssSlopeBytesPerHour": 584433397.5582639,
+        "budgetStatus": "within-sampled-scope",
+        "observedIdentities": 5
+      },
+      "processes": [
+        {
+          "alias": "qs-1",
+          "firstObservedSeconds": 5.038581090999287,
+          "samplesObserved": 119,
+          "lastObservedSeconds": 600.0588719290008,
+          "maximum_rss_bytes": 526536704,
+          "maximum_pss_bytes": 435709952,
+          "maximum_private_bytes": 409628672,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 587952128
+        },
+        {
+          "alias": "python3-2",
+          "firstObservedSeconds": 5.038581090999287,
+          "samplesObserved": 119,
+          "lastObservedSeconds": 600.0588719290008,
+          "maximum_rss_bytes": 36995072,
+          "maximum_pss_bytes": 20103168,
+          "maximum_private_bytes": 18247680,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 36995072
+        },
+        {
+          "alias": "python3-3",
+          "firstObservedSeconds": 5.038581090999287,
+          "samplesObserved": 119,
+          "lastObservedSeconds": 600.0588719290008,
+          "maximum_rss_bytes": 30498816,
+          "maximum_pss_bytes": 17269760,
+          "maximum_private_bytes": 15912960,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 30498816
+        },
+        {
+          "alias": "python3-4",
+          "firstObservedSeconds": 5.038581090999287,
+          "samplesObserved": 119,
+          "lastObservedSeconds": 600.0588719290008,
+          "maximum_rss_bytes": 13533184,
+          "maximum_pss_bytes": 6543360,
+          "maximum_private_bytes": 5910528,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 13533184
+        },
+        {
+          "alias": "wl-paste-5",
+          "firstObservedSeconds": 5.038581090999287,
+          "samplesObserved": 119,
+          "lastObservedSeconds": 600.0588719290008,
+          "maximum_rss_bytes": 2097152,
+          "maximum_pss_bytes": 229376,
+          "maximum_private_bytes": 208896,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 2097152
+        }
+      ],
+      "cgroupMaximumCounters": {
+        "memory.current": 634548224,
+        "memory.peak": 772427776
+      }
+    },
+    "task-manager-with-installed-shell": {
+      "rawReportSha256": "4a1365e7e2329f63a34165249b7435f7dac819f7e09374409596179e075b3185",
+      "startedUtc": "2026-10-21T00:41:56Z",
+      "durationSeconds": 30.025039305000973,
+      "summary": {
+        "sampleCount": 29,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 29,
+        "maxProcesses": 7,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 7.705481873209802,
+        "maxCpuOneCorePercent": 9.623631808744923,
+        "peakPssBytes": 524227584,
+        "medianPssBytes": 523785216,
+        "peakRssSumBytes": 721387520,
+        "peakPrivateBytes": 481898496,
+        "retentionDeltaBytes": 953856.0,
+        "pssSlopeBytesPerHour": 101949847.93171827,
+        "budgetStatus": "exceeded",
+        "observedIdentities": 7
+      },
+      "processes": [
+        {
+          "alias": "qs-1",
+          "firstObservedSeconds": 1.035631545000797,
+          "samplesObserved": 29,
+          "lastObservedSeconds": 30.025014780001584,
+          "maximum_rss_bytes": 526344192,
+          "maximum_pss_bytes": 427961344,
+          "maximum_private_bytes": 403714048,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 587952128
+        },
+        {
+          "alias": "python3-2",
+          "firstObservedSeconds": 1.035631545000797,
+          "samplesObserved": 29,
+          "lastObservedSeconds": 30.025014780001584,
+          "maximum_rss_bytes": 36995072,
+          "maximum_pss_bytes": 19887104,
+          "maximum_private_bytes": 18247680,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 36995072
+        },
+        {
+          "alias": "python3-3",
+          "firstObservedSeconds": 1.035631545000797,
+          "samplesObserved": 29,
+          "lastObservedSeconds": 30.025014780001584,
+          "maximum_rss_bytes": 30498816,
+          "maximum_pss_bytes": 17119232,
+          "maximum_private_bytes": 15912960,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 30498816
+        },
+        {
+          "alias": "python3-4",
+          "firstObservedSeconds": 1.035631545000797,
+          "samplesObserved": 29,
+          "lastObservedSeconds": 30.025014780001584,
+          "maximum_rss_bytes": 13533184,
+          "maximum_pss_bytes": 6422528,
+          "maximum_private_bytes": 5910528,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 13533184
+        },
+        {
+          "alias": "wl-paste-5",
+          "firstObservedSeconds": 1.035631545000797,
+          "samplesObserved": 29,
+          "lastObservedSeconds": 30.025014780001584,
+          "maximum_rss_bytes": 2097152,
+          "maximum_pss_bytes": 229376,
+          "maximum_private_bytes": 208896,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 2097152
+        },
+        {
+          "alias": "cedar-task-mana-6",
+          "firstObservedSeconds": 1.035631545000797,
+          "samplesObserved": 29,
+          "lastObservedSeconds": 30.025014780001584,
+          "maximum_rss_bytes": 89755648,
+          "maximum_pss_bytes": 45817856,
+          "maximum_private_bytes": 32808960,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 89755648
+        },
+        {
+          "alias": "cedar-taskd-7",
+          "firstObservedSeconds": 1.035631545000797,
+          "samplesObserved": 29,
+          "lastObservedSeconds": 30.025014780001584,
+          "maximum_rss_bytes": 22630400,
+          "maximum_pss_bytes": 7051264,
+          "maximum_private_bytes": 5341184,
+          "maximum_swapPss_bytes": 0,
+          "maximum_rssPeak_bytes": 22630400
+        }
+      ],
+      "cgroupMaximumCounters": {},
+      "fixture": {
+        "renderer": "software/offscreen",
+        "cleanupPassed": true,
+        "socketCountAfterClose": 0,
+        "limitations": "Real read-only collector; no process actions, native rendering or full-shell replacement.",
+        "realCollectorPresentAllSamples": true
+      }
+    }
+  },
+  "surfacePairs": [
+    {
+      "variant": "before",
+      "run": 1,
+      "rawReportSha256": "ffa5ff780e3c326d14a81e786b372117f9bd3aa37ed584a73314ac2a2a72df2b",
+      "renderer": "software/offscreen",
+      "cycles": 200,
+      "holdMs": 300,
+      "settleSeconds": 15,
+      "passed": true,
+      "exitCode": 0,
+      "errorCount": 0,
+      "warningLineCount": 6,
+      "runtimeWarningLineCount": 5,
+      "runtimeErrorLineCount": 1,
+      "summary": {
+        "sampleCount": 476,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 6.555270030291169,
+        "maxCpuOneCorePercent": 101.27153577163685,
+        "peakPssBytes": 135909376,
+        "medianPssBytes": 120656896.0,
+        "peakRssSumBytes": 206069760,
+        "peakPrivateBytes": 117870592,
+        "retentionDeltaBytes": 8152064,
+        "pssSlopeBytesPerHour": 246428023.42028028,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "closedAfterFirstSweep": {
+        "sampleCount": 241,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 4,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 3.3459440290812124,
+        "maxCpuOneCorePercent": 32.753655320189125,
+        "peakPssBytes": 133772288,
+        "medianPssBytes": 120674304,
+        "peakRssSumBytes": 200232960,
+        "peakPrivateBytes": 115990528,
+        "retentionDeltaBytes": -129024.0,
+        "pssSlopeBytesPerHour": 30938113.924717657,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "timeToHarnessReadySeconds": 1.2688955078125,
+      "limitations": "Not full shell, live backends, real monitor hotplug, frame timing, or whole-desktop acceptance."
+    },
+    {
+      "variant": "after",
+      "run": 1,
+      "rawReportSha256": "d62f08aecd8ee8eeadb6d410fcf4eacba0239255fb5c7dc11298d5b226630fa7",
+      "renderer": "software/offscreen",
+      "cycles": 200,
+      "holdMs": 300,
+      "settleSeconds": 15,
+      "passed": true,
+      "exitCode": 0,
+      "errorCount": 0,
+      "warningLineCount": 7,
+      "runtimeWarningLineCount": 6,
+      "runtimeErrorLineCount": 1,
+      "summary": {
+        "sampleCount": 471,
+        "completePss": false,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 6.666424586537653,
+        "maxCpuOneCorePercent": 72.61225606156994,
+        "peakPssBytes": 137680896,
+        "medianPssBytes": 122547200.0,
+        "peakRssSumBytes": 206295040,
+        "peakPrivateBytes": 120000512,
+        "retentionDeltaBytes": 6138880,
+        "pssSlopeBytesPerHour": 203896124.05024007,
+        "budgetStatus": "unknown"
+      },
+      "closedAfterFirstSweep": {
+        "sampleCount": 249,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 1,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 3.3056260714462042,
+        "maxCpuOneCorePercent": 43.02413396508955,
+        "peakPssBytes": 131875840,
+        "medianPssBytes": 122554368,
+        "peakRssSumBytes": 182239232,
+        "peakPrivateBytes": 115441664,
+        "retentionDeltaBytes": -3286016.0,
+        "pssSlopeBytesPerHour": -63066637.24778137,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "timeToHarnessReadySeconds": 1.26808984375,
+      "limitations": "Not full shell, live backends, real monitor hotplug, frame timing, or whole-desktop acceptance."
+    },
+    {
+      "variant": "before",
+      "run": 2,
+      "rawReportSha256": "9129a5a75f16fa30b5eb05134640835d36accaae344400fc83ca5b50f7dc2ca2",
+      "renderer": "software/offscreen",
+      "cycles": 200,
+      "holdMs": 300,
+      "settleSeconds": 15,
+      "passed": true,
+      "exitCode": 0,
+      "errorCount": 0,
+      "warningLineCount": 6,
+      "runtimeWarningLineCount": 5,
+      "runtimeErrorLineCount": 1,
+      "summary": {
+        "sampleCount": 466,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 7.201401567596536,
+        "maxCpuOneCorePercent": 72.10399837625224,
+        "peakPssBytes": 137176064,
+        "medianPssBytes": 122822656.0,
+        "peakRssSumBytes": 205504512,
+        "peakPrivateBytes": 119263232,
+        "retentionDeltaBytes": 12127232.0,
+        "pssSlopeBytesPerHour": 308339782.5237615,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "closedAfterFirstSweep": {
+        "sampleCount": 228,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 3.663564564790726,
+        "maxCpuOneCorePercent": 40.25455384296869,
+        "peakPssBytes": 137176064,
+        "medianPssBytes": 123375616.0,
+        "peakRssSumBytes": 205504512,
+        "peakPrivateBytes": 119263232,
+        "retentionDeltaBytes": 229376.0,
+        "pssSlopeBytesPerHour": 78433891.185231,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "timeToHarnessReadySeconds": 1.263048828125,
+      "limitations": "Not full shell, live backends, real monitor hotplug, frame timing, or whole-desktop acceptance."
+    },
+    {
+      "variant": "after",
+      "run": 2,
+      "rawReportSha256": "93e33f974a8d58c651adb2176eb257d568e0f00616ae22b15b6afe6133a097eb",
+      "renderer": "software/offscreen",
+      "cycles": 200,
+      "holdMs": 300,
+      "settleSeconds": 15,
+      "passed": true,
+      "exitCode": 0,
+      "errorCount": 0,
+      "warningLineCount": 6,
+      "runtimeWarningLineCount": 5,
+      "runtimeErrorLineCount": 1,
+      "summary": {
+        "sampleCount": 466,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 6.509590545546692,
+        "maxCpuOneCorePercent": 70.77683739881655,
+        "peakPssBytes": 138304512,
+        "medianPssBytes": 122765312.0,
+        "peakRssSumBytes": 207708160,
+        "peakPrivateBytes": 120451072,
+        "retentionDeltaBytes": 10942464.0,
+        "pssSlopeBytesPerHour": 280328217.2466167,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "closedAfterFirstSweep": {
+        "sampleCount": 242,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 1,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 3.27148362012778,
+        "maxCpuOneCorePercent": 35.394517052629666,
+        "peakPssBytes": 132521984,
+        "medianPssBytes": 122771456.0,
+        "peakRssSumBytes": 184279040,
+        "peakPrivateBytes": 116101120,
+        "retentionDeltaBytes": -919552.0,
+        "pssSlopeBytesPerHour": 53470709.75549857,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "timeToHarnessReadySeconds": 1.2602197265625,
+      "limitations": "Not full shell, live backends, real monitor hotplug, frame timing, or whole-desktop acceptance."
+    },
+    {
+      "variant": "before",
+      "run": 3,
+      "rawReportSha256": "998a9f16d42639ad8c1fc320e92cb5fa1be7e290e630568b81e292761fb05de0",
+      "renderer": "software/offscreen",
+      "cycles": 200,
+      "holdMs": 300,
+      "settleSeconds": 15,
+      "passed": true,
+      "exitCode": 0,
+      "errorCount": 0,
+      "warningLineCount": 6,
+      "runtimeWarningLineCount": 5,
+      "runtimeErrorLineCount": 1,
+      "summary": {
+        "sampleCount": 465,
+        "completePss": false,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 7.104542219827518,
+        "maxCpuOneCorePercent": 82.32960102472951,
+        "peakPssBytes": 138162176,
+        "medianPssBytes": 121998336.0,
+        "peakRssSumBytes": 206278656,
+        "peakPrivateBytes": 120258560,
+        "retentionDeltaBytes": 10235904.0,
+        "pssSlopeBytesPerHour": 302394800.6168125,
+        "budgetStatus": "unknown"
+      },
+      "closedAfterFirstSweep": {
+        "sampleCount": 233,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 6.383870971253781,
+        "maxCpuOneCorePercent": 42.90504772209902,
+        "peakPssBytes": 138162176,
+        "medianPssBytes": 122080256,
+        "peakRssSumBytes": 206278656,
+        "peakPrivateBytes": 120258560,
+        "retentionDeltaBytes": 1155072,
+        "pssSlopeBytesPerHour": 86758039.81776427,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "timeToHarnessReadySeconds": 1.207213134765625,
+      "limitations": "Not full shell, live backends, real monitor hotplug, frame timing, or whole-desktop acceptance."
+    },
+    {
+      "variant": "after",
+      "run": 3,
+      "rawReportSha256": "8e837893e66cfde0d166c95663bfd0d113ac5b5196f40895c9e20a6db092bda0",
+      "renderer": "software/offscreen",
+      "cycles": 200,
+      "holdMs": 300,
+      "settleSeconds": 15,
+      "passed": true,
+      "exitCode": 0,
+      "errorCount": 0,
+      "warningLineCount": 6,
+      "runtimeWarningLineCount": 5,
+      "runtimeErrorLineCount": 1,
+      "summary": {
+        "sampleCount": 486,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 5,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 7.163904341455215,
+        "maxCpuOneCorePercent": 69.76540596634678,
+        "peakPssBytes": 133176320,
+        "medianPssBytes": 120159744.0,
+        "peakRssSumBytes": 202113024,
+        "peakPrivateBytes": 115888128,
+        "retentionDeltaBytes": 10022400.0,
+        "pssSlopeBytesPerHour": 247034699.51869535,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "closedAfterFirstSweep": {
+        "sampleCount": 248,
+        "completePss": true,
+        "budgetBytes": 500000000,
+        "budgetViolations": 0,
+        "maxProcesses": 1,
+        "processLimitViolations": null,
+        "medianCpuOneCorePercent": 3.589786063057585,
+        "maxCpuOneCorePercent": 32.43177713517817,
+        "peakPssBytes": 129209344,
+        "medianPssBytes": 120162304.0,
+        "peakRssSumBytes": 179404800,
+        "peakPrivateBytes": 112943104,
+        "retentionDeltaBytes": 1675776.0,
+        "pssSlopeBytesPerHour": 33161950.25490403,
+        "budgetStatus": "within-sampled-scope"
+      },
+      "timeToHarnessReadySeconds": 1.285080322265625,
+      "limitations": "Not full shell, live backends, real monitor hotplug, frame timing, or whole-desktop acceptance."
+    }
+  ],
+  "wallpapers": {
+    "before": {
+      "baseline_ref": "058aace",
+      "scope": "isolated wallpaper fixture Quickshell process",
+      "backend": "offscreen software",
+      "sample_interval_seconds": 0.05,
+      "sampled_peak": {
+        "rss_kib": 375744,
+        "pss_kib": 325562,
+        "private_kib": 315392
+      },
+      "phases": [
+        {
+          "phase": "idle",
+          "rss_kib": 100064,
+          "pss_kib": 55252,
+          "private_kib": 46604
+        },
+        {
+          "phase": "open-0",
+          "rss_kib": 375876,
+          "pss_kib": 325646,
+          "private_kib": 315460
+        },
+        {
+          "phase": "closed-0",
+          "rss_kib": 142408,
+          "pss_kib": 92181,
+          "private_kib": 81992
+        },
+        {
+          "phase": "open-1",
+          "rss_kib": 365700,
+          "pss_kib": 315473,
+          "private_kib": 305284
+        },
+        {
+          "phase": "closed-1",
+          "rss_kib": 142460,
+          "pss_kib": 92233,
+          "private_kib": 82044
+        },
+        {
+          "phase": "open-2",
+          "rss_kib": 365824,
+          "pss_kib": 315597,
+          "private_kib": 305408
+        },
+        {
+          "phase": "closed-2",
+          "rss_kib": 142576,
+          "pss_kib": 92200,
+          "private_kib": 82160
+        },
+        {
+          "phase": "open-3",
+          "rss_kib": 365856,
+          "pss_kib": 315464,
+          "private_kib": 305440
+        },
+        {
+          "phase": "closed-3",
+          "rss_kib": 142604,
+          "pss_kib": 92223,
+          "private_kib": 82188
+        },
+        {
+          "phase": "open-4",
+          "rss_kib": 365668,
+          "pss_kib": 315287,
+          "private_kib": 305252
+        },
+        {
+          "phase": "closed-4",
+          "rss_kib": 141804,
+          "pss_kib": 91423,
+          "private_kib": 81388
+        }
+      ]
+    },
+    "after": {
+      "baseline_ref": null,
+      "scope": "isolated wallpaper fixture Quickshell process",
+      "backend": "offscreen software",
+      "sample_interval_seconds": 0.05,
+      "sampled_peak": {
+        "rss_kib": 177792,
+        "pss_kib": 127232,
+        "private_kib": 117936
+      },
+      "phases": [
+        {
+          "phase": "idle",
+          "rss_kib": 100192,
+          "pss_kib": 55326,
+          "private_kib": 47296
+        },
+        {
+          "phase": "open-0",
+          "rss_kib": 145112,
+          "pss_kib": 94529,
+          "private_kib": 85240
+        },
+        {
+          "phase": "closed-0",
+          "rss_kib": 145188,
+          "pss_kib": 94605,
+          "private_kib": 85316
+        },
+        {
+          "phase": "open-1",
+          "rss_kib": 145152,
+          "pss_kib": 94564,
+          "private_kib": 85280
+        },
+        {
+          "phase": "closed-1",
+          "rss_kib": 145144,
+          "pss_kib": 94551,
+          "private_kib": 85272
+        },
+        {
+          "phase": "open-2",
+          "rss_kib": 145152,
+          "pss_kib": 94559,
+          "private_kib": 85280
+        },
+        {
+          "phase": "closed-2",
+          "rss_kib": 145100,
+          "pss_kib": 95038,
+          "private_kib": 85252
+        },
+        {
+          "phase": "open-3",
+          "rss_kib": 145060,
+          "pss_kib": 94488,
+          "private_kib": 85204
+        },
+        {
+          "phase": "closed-3",
+          "rss_kib": 145060,
+          "pss_kib": 94487,
+          "private_kib": 85204
+        },
+        {
+          "phase": "open-4",
+          "rss_kib": 145080,
+          "pss_kib": 94507,
+          "private_kib": 85224
+        },
+        {
+          "phase": "closed-4",
+          "rss_kib": 144616,
+          "pss_kib": 94032,
+          "private_kib": 84760
+        }
+      ]
+    },
+    "afterScale2": {
+      "baseline_ref": null,
+      "scope": "isolated wallpaper fixture Quickshell process",
+      "backend": "offscreen software",
+      "sample_interval_seconds": 0.05,
+      "sampled_peak": {
+        "rss_kib": 232040,
+        "pss_kib": 181402,
+        "private_kib": 171616
+      },
+      "phases": [
+        {
+          "phase": "idle",
+          "rss_kib": 116480,
+          "pss_kib": 71526,
+          "private_kib": 63116
+        },
+        {
+          "phase": "open-0",
+          "rss_kib": 193180,
+          "pss_kib": 142510,
+          "private_kib": 132764
+        },
+        {
+          "phase": "closed-0",
+          "rss_kib": 179248,
+          "pss_kib": 128271,
+          "private_kib": 118832
+        },
+        {
+          "phase": "open-1",
+          "rss_kib": 193192,
+          "pss_kib": 142206,
+          "private_kib": 132768
+        },
+        {
+          "phase": "closed-1",
+          "rss_kib": 179176,
+          "pss_kib": 128190,
+          "private_kib": 118752
+        },
+        {
+          "phase": "open-2",
+          "rss_kib": 193168,
+          "pss_kib": 144530,
+          "private_kib": 133440
+        },
+        {
+          "phase": "closed-2",
+          "rss_kib": 179164,
+          "pss_kib": 130526,
+          "private_kib": 119436
+        },
+        {
+          "phase": "open-3",
+          "rss_kib": 193240,
+          "pss_kib": 144602,
+          "private_kib": 133512
+        },
+        {
+          "phase": "closed-3",
+          "rss_kib": 179236,
+          "pss_kib": 130598,
+          "private_kib": 119508
+        },
+        {
+          "phase": "open-4",
+          "rss_kib": 194812,
+          "pss_kib": 146174,
+          "private_kib": 135084
+        },
+        {
+          "phase": "closed-4",
+          "rss_kib": 180816,
+          "pss_kib": 132178,
+          "private_kib": 121088
+        }
+      ]
+    }
+  },
+  "releaseValidation": {
+    "reference_commit": "eb60f2c4b1116bc1243e2f04819c87413f413020",
+    "asset_bytes": 67108864,
+    "metrics": "Python traced allocations and worker peak RSS; not shell process-group PSS",
+    "before": [
+      {
+        "seconds": 0.025710491000154434,
+        "python_peak_bytes": 67110577,
+        "process_peak_rss_kib": 91568,
+        "sha256": "3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351"
+      },
+      {
+        "seconds": 0.02604216899999301,
+        "python_peak_bytes": 67110633,
+        "process_peak_rss_kib": 87632,
+        "sha256": "3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351"
+      },
+      {
+        "seconds": 0.031018169000162743,
+        "python_peak_bytes": 67110633,
+        "process_peak_rss_kib": 87600,
+        "sha256": "3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351"
+      }
+    ],
+    "after": [
+      {
+        "seconds": 0.017301636999945913,
+        "python_peak_bytes": 395159,
+        "process_peak_rss_kib": 22432,
+        "sha256": "3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351"
+      },
+      {
+        "seconds": 0.01722927199989499,
+        "python_peak_bytes": 395159,
+        "process_peak_rss_kib": 22288,
+        "sha256": "3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351"
+      },
+      {
+        "seconds": 0.017192749000059848,
+        "python_peak_bytes": 395159,
+        "process_peak_rss_kib": 22376,
+        "sha256": "3b6a07d0d404fab4e23b6d34bc6696a6a312dd92821332385e5af7c01c421351"
+      }
+    ]
+  },
+  "trailwatchExploratory": {
+    "returnCode": 0,
+    "startedUnix": 1792544494.1251178,
+    "endedUnix": 1792544521.0278354,
+    "backend": "offscreen/software",
+    "size": [
+      1920,
+      1200
+    ],
+    "scale": 1.5,
+    "rows": [
+      {
+        "step": 0,
+        "viewers": 0,
+        "stats": null,
+        "memory": {
+          "Rss": 133509120,
+          "Pss": 91446272,
+          "Pss_Dirty": 77799424,
+          "Pss_Anon": 77799424,
+          "Pss_File": 13646848,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 55250944,
+          "Shared_Dirty": 0,
+          "Private_Clean": 458752,
+          "Private_Dirty": 77799424,
+          "Referenced": 133509120,
+          "Anonymous": 77799424,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 62914560,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544496.6150734
+      },
+      {
+        "step": 1,
+        "viewers": 1,
+        "stats": {
+          "items": 1895,
+          "visible": 306,
+          "canvases": [
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1607.3999999999999,
+              "height": 1607.3999999999999,
+              "visible": true
+            },
+            {
+              "width": 846,
+              "height": 846,
+              "visible": true
+            }
+          ],
+          "complications": 12
+        },
+        "memory": {
+          "Rss": 270786560,
+          "Pss": 223010816,
+          "Pss_Dirty": 207499264,
+          "Pss_Anon": 207499264,
+          "Pss_File": 15511552,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62820352,
+          "Shared_Dirty": 0,
+          "Private_Clean": 466944,
+          "Private_Dirty": 207499264,
+          "Referenced": 270786560,
+          "Anonymous": 207499264,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 184549376,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544498.5087461
+      },
+      {
+        "step": 2,
+        "viewers": 0,
+        "stats": {
+          "items": 1895,
+          "visible": 306,
+          "canvases": [
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1607.3999999999999,
+              "height": 1607.3999999999999,
+              "visible": true
+            },
+            {
+              "width": 846,
+              "height": 846,
+              "visible": true
+            }
+          ],
+          "complications": 12
+        },
+        "memory": {
+          "Rss": 272265216,
+          "Pss": 224489472,
+          "Pss_Dirty": 208977920,
+          "Pss_Anon": 208977920,
+          "Pss_File": 15511552,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62820352,
+          "Shared_Dirty": 0,
+          "Private_Clean": 466944,
+          "Private_Dirty": 208977920,
+          "Referenced": 272265216,
+          "Anonymous": 208977920,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 184549376,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544500.5089645
+      },
+      {
+        "step": 3,
+        "viewers": 0,
+        "stats": null,
+        "memory": {
+          "Rss": 202461184,
+          "Pss": 154641408,
+          "Pss_Dirty": 139108352,
+          "Pss_Anon": 139108352,
+          "Pss_File": 15533056,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62885888,
+          "Shared_Dirty": 0,
+          "Private_Clean": 466944,
+          "Private_Dirty": 139108352,
+          "Referenced": 202461184,
+          "Anonymous": 139108352,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 106954752,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544502.4986272
+      },
+      {
+        "step": 4,
+        "viewers": 0,
+        "stats": null,
+        "memory": {
+          "Rss": 193794048,
+          "Pss": 145976320,
+          "Pss_Dirty": 130441216,
+          "Pss_Anon": 130441216,
+          "Pss_File": 15535104,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62885888,
+          "Shared_Dirty": 0,
+          "Private_Clean": 466944,
+          "Private_Dirty": 130441216,
+          "Referenced": 193794048,
+          "Anonymous": 130441216,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 98566144,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544504.499087
+      },
+      {
+        "step": 5,
+        "viewers": 1,
+        "stats": {
+          "items": 1895,
+          "visible": 306,
+          "canvases": [
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1607.3999999999999,
+              "height": 1607.3999999999999,
+              "visible": true
+            },
+            {
+              "width": 846,
+              "height": 846,
+              "visible": true
+            }
+          ],
+          "complications": 12
+        },
+        "memory": {
+          "Rss": 272883712,
+          "Pss": 225065984,
+          "Pss_Dirty": 209530880,
+          "Pss_Anon": 209530880,
+          "Pss_File": 15535104,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62885888,
+          "Shared_Dirty": 0,
+          "Private_Clean": 466944,
+          "Private_Dirty": 209530880,
+          "Referenced": 272883712,
+          "Anonymous": 209530880,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 161480704,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544506.5548024
+      },
+      {
+        "step": 6,
+        "viewers": 0,
+        "stats": {
+          "items": 1895,
+          "visible": 306,
+          "canvases": [
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1607.3999999999999,
+              "height": 1607.3999999999999,
+              "visible": true
+            },
+            {
+              "width": 846,
+              "height": 846,
+              "visible": true
+            }
+          ],
+          "complications": 12
+        },
+        "memory": {
+          "Rss": 269041664,
+          "Pss": 221223936,
+          "Pss_Dirty": 205688832,
+          "Pss_Anon": 205688832,
+          "Pss_File": 15535104,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62885888,
+          "Shared_Dirty": 0,
+          "Private_Clean": 466944,
+          "Private_Dirty": 205688832,
+          "Referenced": 269041664,
+          "Anonymous": 205688832,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 157286400,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544508.5081797
+      },
+      {
+        "step": 7,
+        "viewers": 0,
+        "stats": null,
+        "memory": {
+          "Rss": 196845568,
+          "Pss": 148918272,
+          "Pss_Dirty": 133492736,
+          "Pss_Anon": 133492736,
+          "Pss_File": 15425536,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62976000,
+          "Shared_Dirty": 0,
+          "Private_Clean": 376832,
+          "Private_Dirty": 133492736,
+          "Referenced": 196845568,
+          "Anonymous": 133492736,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 85983232,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544510.4969404
+      },
+      {
+        "step": 8,
+        "viewers": 0,
+        "stats": null,
+        "memory": {
+          "Rss": 186580992,
+          "Pss": 138619904,
+          "Pss_Dirty": 123228160,
+          "Pss_Anon": 123228160,
+          "Pss_File": 15391744,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62976000,
+          "Shared_Dirty": 0,
+          "Private_Clean": 376832,
+          "Private_Dirty": 123228160,
+          "Referenced": 186580992,
+          "Anonymous": 123228160,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 79691776,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544512.497511
+      },
+      {
+        "step": 9,
+        "viewers": 1,
+        "stats": {
+          "items": 1895,
+          "visible": 306,
+          "canvases": [
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1607.3999999999999,
+              "height": 1607.3999999999999,
+              "visible": true
+            },
+            {
+              "width": 846,
+              "height": 846,
+              "visible": true
+            }
+          ],
+          "complications": 12
+        },
+        "memory": {
+          "Rss": 270401536,
+          "Pss": 221915136,
+          "Pss_Dirty": 207048704,
+          "Pss_Anon": 207048704,
+          "Pss_File": 14866432,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62976000,
+          "Shared_Dirty": 0,
+          "Private_Clean": 376832,
+          "Private_Dirty": 207048704,
+          "Referenced": 270401536,
+          "Anonymous": 207048704,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 159383552,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544514.502313
+      },
+      {
+        "step": 10,
+        "viewers": 0,
+        "stats": {
+          "items": 1895,
+          "visible": 306,
+          "canvases": [
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1920,
+              "height": 1200,
+              "visible": true
+            },
+            {
+              "width": 1607.3999999999999,
+              "height": 1607.3999999999999,
+              "visible": true
+            },
+            {
+              "width": 846,
+              "height": 846,
+              "visible": true
+            }
+          ],
+          "complications": 12
+        },
+        "memory": {
+          "Rss": 270114816,
+          "Pss": 221250560,
+          "Pss_Dirty": 206761984,
+          "Pss_Anon": 206761984,
+          "Pss_File": 14488576,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62988288,
+          "Shared_Dirty": 0,
+          "Private_Clean": 364544,
+          "Private_Dirty": 206761984,
+          "Referenced": 270114816,
+          "Anonymous": 206761984,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 159383552,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544516.501133
+      },
+      {
+        "step": 11,
+        "viewers": 0,
+        "stats": null,
+        "memory": {
+          "Rss": 197763072,
+          "Pss": 149647360,
+          "Pss_Dirty": 134410240,
+          "Pss_Anon": 134410240,
+          "Pss_File": 15237120,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62976000,
+          "Shared_Dirty": 0,
+          "Private_Clean": 376832,
+          "Private_Dirty": 134410240,
+          "Referenced": 197763072,
+          "Anonymous": 134410240,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 88080384,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544518.4968994
+      },
+      {
+        "step": 12,
+        "viewers": 0,
+        "stats": null,
+        "memory": {
+          "Rss": 183222272,
+          "Pss": 135072768,
+          "Pss_Dirty": 119869440,
+          "Pss_Anon": 119869440,
+          "Pss_File": 15203328,
+          "Pss_Shmem": 0,
+          "Shared_Clean": 62996480,
+          "Shared_Dirty": 0,
+          "Private_Clean": 356352,
+          "Private_Dirty": 119869440,
+          "Referenced": 183222272,
+          "Anonymous": 119869440,
+          "KSM": 0,
+          "LazyFree": 0,
+          "AnonHugePages": 77594624,
+          "ShmemPmdMapped": 0,
+          "FilePmdMapped": 0,
+          "Shared_Hugetlb": 0,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0,
+          "Locked": 0
+        },
+        "time": 1792544520.4973361
+      }
+    ],
+    "limitations": "Exploratory authentication-stub preview, three cycles, software/offscreen; not native lock testing or whole-group accounting. Explicit GC is diagnostic only. Original fixture kept privately.",
+    "rawReportSha256": "2ae3626603a580121721310c74e14f496650ddb9463578e6f81f668f857b6dd2"
+  }
+}

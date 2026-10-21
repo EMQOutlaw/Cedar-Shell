@@ -86,19 +86,62 @@ or claim a performance gain. Validation: paths and references were compared with
 tracked files; registries/entry points and the feature owners above were read.
 No UI test or runtime resource test is represented by that documentation check.
 
-Implemented fixes and their evidence should be added here as they land; detailed
-resource comparisons belong in [performance results](performance-results.md),
-budget/accounting rules in [performance budget](performance-budget.md), and
-trust boundaries/security limitations in [security model](security-model.md).
+The following changes were implemented on the audit branch. Detailed figures,
+scope and comparison limitations are in [performance results](performance-results.md),
+accounting rules in [performance budget](performance-budget.md), and full
+trust boundaries in [security model](security-model.md).
+
+| Finding / change | Correction and compatibility | Validation and measured impact |
+| --- | --- | --- |
+| PERF-01: incomplete accounting | Expanded existing opt-in sampler with explicit source/cgroup ownership, process start identity, retained descendants, PSS/private details, bounded samples and unknown status for incomplete scope. Added isolated surface and Task Manager workloads; require the actual collector and verify cleanup. No production sampler daemon or kill-on-limit behavior. | Proc fixtures cover missing permissions, reuse/reparenting, scope exclusions and budgets. Real 60-minute group observation exceeded 500 MB; combined Task Manager group also exceeded. See results, not a budget pass. |
+| PERF-02: original-size wallpaper decoding | Bound source dimensions to thumbnail size × DPR and disable shared image cache for temporary delegates. Retain both existing wallpaper entry points and layout/animation behavior. | Five-cycle production-grid fixtures: first-open PSS 333.46→96.80 MB; sampled peak 333.38→130.29 MB at 1×; 2× fixture also ran. No retained-memory improvement claimed. |
+| PERF-03: broad Controls polling | Limit the existing shared provider's demand to actual control consumers; include floating Settings power page. No new service or duplicated timer. | Accelerated fixture: unrelated panel polls 3→0; quick controls, floating settings, navigation and lock lifecycle assertions pass. Native PowerProfiles consolidation remains deferred pending behavior parity. |
+| LIFE-01: Calendar busy timer | Let request completion schedule the pending latest month; do not restart the debounce timer while busy. | Busy-window wakeups 6→1; latest request delivery preserved. |
+| LIFE-01: CoreProbe retry ownership | Replace imperative `Process.running` assignments that broke its binding with an explicit restart gate owned by the enabled/lock policy. | Real 15 s retry then disable/re-enable fixture: disabled helper heartbeats 7→0; new owned helper starts on re-enable. |
+| SEC-01: unsafe bootstrap/cache/archive boundary | Unique private staging, checked archive entries/link types/sizes, exact asset checksum association, bounded response/download sizes and finite transport deadlines. Preserve supported curl/wget paths and bootstrap CLI. | Hostile archive/link/checksum and failed/trickling transport fixtures; publisher authenticity remains an explicit security blocker. |
+| SEC-01: whole-file release/archive allocations | Stream hashes, read only the LFS marker prefix and spool bounded git archives into private temporary storage before safe extraction. Preserve inventory digest and release layouts. | Three-pair 64 MiB validation fixture: ~67.11 MB→0.40 MB peak Python allocations; all digests match. Archive limits/cleanup and update-channel regressions pass. |
+| SEC-02: installer helper timeout/cleanup | Enforce elapsed deadlines while reading output, bound captured lines, reap direct children and ordinary process groups. Preserve terminal semantics for sudo/pkexec; explicitly report uncertain privileged descendant state. | Lifecycle, output and PTY fixtures. No live package operations; privileged descendant uncertainty remains documented. |
+| SEC-02: Shield failed changes/recovery | Save prior state, verify restoration results, check active connection UUID before live changes, reserve bounded recovery time and set frontend watchdog longer than backend budget. Report unresolved runtime firewall/DNS restoration instead of claiming success. | Failure/recovery, profile-switch and deadline fixtures; no live firewall/DNS edits. Saved-profile/service flags are verified, live runtime-only state remains a blocker. |
+| Calendar theme ownership | Move two existing literal colors into Theme properties; preserve exact values. Fix harness literals to use current contracts. | Baseline's pre-existing calendar token assertion resolved without changing palette appearance; calendar/theme and native invalidation suites pass. |
+| PERF-04: atmosphere crop candidate rejected | Reverted production Canvas crop after fractional-scale native pixel differences. Original painter, visuals and test tolerances retained. | Offscreen saving was about 27.9 MB PSS but native output differed; no delivered saving claimed. Restored native lifecycle suite passes with an existing engine-teardown incubation warning. |
+
+Public QML registries, root entry points, service APIs, versioned installed
+layout, release selection and profile restoration ownership remain in place.
+Shared-provider demand was narrowed without a directory migration or competing
+state service. Pure functionality was not deleted merely because it appeared
+duplicated. The current standalone/in-shell wallpaper behavior and independent
+Task Manager fault isolation prevent a justified blanket consolidation.
+
+Final local source validation: 748 Python tests; JavaScript geometry/transition
+and seven Notes test files; 19 QML regression suites plus final service,
+Shield, Calendar and Settings reruns; the native frontend and Task Manager
+integration suites described in the results. Exact-candidate archive checks
+passed, including fresh/repeated installation and recovery in disposable XDG
+directories. New regression suites are wired into CI, but remote CI was not
+executed. The source inventory and release-input privacy scan passed. These
+checks do not close the hardware, privileged recovery or memory gates below.
 
 ## Unresolved acceptance gates
 
-Acceptance remains conditional until the results document records the relevant
-executed checks. In particular, a unit-test pass cannot establish native frame
+Acceptance is **not achieved**: the unchanged installed group reached 530.30 MB
+PSS during its locked-state soak and 524.23 MB with Task Manager. The preferred
+idle/daily targets were also missed in the observed workloads. Source fixture
+improvements have not yet been measured in a deployed candidate. In particular,
+a unit-test pass cannot establish native frame
 pacing, a short smoke run cannot establish soak stability, an offscreen sample
 cannot establish GPU memory, and one process's RSS cannot establish the group
 PSS budget. Unavailable hardware/scenarios must be labelled untested and remain
 in the backlog. Do not convert an unobserved leak into a claim of leak freedom.
+
+| Unresolved item | Next required evidence/action |
+| --- | --- |
+| PERF-04 / TEST-01: locked/native memory | Trailwatch preview creation added 131.56 MB PSS in a headless diagnostic; 1,895 visual objects include 12 Complications retaining 72 kind layouts. Three cycles did not grow cumulatively. Test deferred layouts with native pixel/focus/authentication checks; inspect scene-graph allocations and repeat deployed lock/unlock cycles. Whole-hour growth with a lock transition and later plateau is not sufficient to label an unbounded leak. |
+| LIFE-02: maximum notes retention | Exercise supported sheet/stroke/undo bounds with long repeated close/reopen; quantify intentional retained state before changing lifetime. |
+| ARCH-01/02/03: coupling and remaining duplication | Retain documented ownership; compare power-provider and wallpaper contracts before extracting shared logic. Large-file count alone does not justify changes. |
+| SEC trust/recovery gates | Provision publisher authorization/signing policy; verify runtime-only firewall/DNS restore and privileged descendant cleanup on disposable real hosts. See numbered findings in security model. |
+| Long-lived cache policy | Define successful bootstrap snapshot and Git cache retention; no arbitrary deletion was introduced. |
+| Hardware/authentication matrix | Real multi-monitor/hotplug, 60 Hz comparison, frame-time capture, PAM/polkit, logout/login/reboot and supported distro clean-install runners. User's locked session is not a test target. |
+| Deployed repeat/4-hour soak | Run clock-aware identical before/after scenarios, including lid/suspend metadata, then the longer soak. The completed hour predates these deployed-source checks. |
 
 ## Continuous engineering rules
 
