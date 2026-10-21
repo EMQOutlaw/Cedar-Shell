@@ -21,6 +21,24 @@ import distribution as d
 import measure_resources as measure
 
 
+def fixture_scope(samples, root_identity):
+    """Remember observed fixture descendants even if they later reparent."""
+    identities = {root_identity}
+    valid = bool(samples)
+    for sample in samples:
+        rows = sample['processesDetail']
+        while True:
+            current_parents = {r['pid'] for r in rows if (r['pid'], r['start']) in identities}
+            children = {(r['pid'], r['start']) for r in rows if r['parent'] in current_parents}
+            if children <= identities:
+                break
+            identities |= children
+        fixture = [r for r in rows if (r['pid'], r['start']) in identities]
+        valid &= (any((r['pid'], r['start']) == root_identity for r in fixture)
+                  and sum(r['name'] == 'cedar-taskd' for r in fixture) == 1)
+    return identities, bool(valid)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, default=ROOT)
@@ -44,6 +62,7 @@ def main():
                'QSG_RENDER_LOOP': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QT_QPA_PLATFORMTHEME': 'basic',
                'HYPRLAND_INSTANCE_SIGNATURE': '', 'XDG_RUNTIME_DIR': str(base / 'runtime'),
                **{'XDG_' + name.upper() + '_HOME': str(base / name) for name in ('config', 'state', 'cache', 'data')}}
+        env.pop('CEDAR_TASK_TEST_LOCAL_COLLECTOR', None)
         with (base / 'runtime.log').open('w') as log:
             child = subprocess.Popen([str(binary), '--source', str(source)], env=env,
                                      stdout=log, stderr=log, start_new_session=True)
@@ -60,8 +79,13 @@ def main():
                 if not args.output.is_file():
                     raise RuntimeError(measured.stdout + measured.stderr + (base / 'runtime.log').read_text())
                 report = json.loads(args.output.read_text())
-                # Preserve only this fixture's identities for cleanup verification.
-                identities.update(measure.snapshot({child.pid: start}))
+                identities, fixture_valid = fixture_scope(report['runs'][0]['samples'], (child.pid, start))
+                if not fixture_valid:
+                    for run in report['runs']:
+                        summary = run['summary']
+                        if summary['budgetStatus'] != 'exceeded':
+                            summary['budgetStatus'] = 'unknown'
+                identities.update(measure.snapshot({child.pid: start}, tracked=identities))
                 completed_measurement = True
             finally:
                 child.terminate()
@@ -87,13 +111,14 @@ def main():
                 try: os.killpg(child.pid, signal.SIGKILL)
                 except ProcessLookupError: pass
             report['fixture'] = {'source': str(source), 'renderer': 'software/offscreen',
+                                 'validRealCollectorWorkload': fixture_valid,
                                  'shellRootsIncluded': args.shell_pid, 'cleanupPassed': not survivors and not sockets,
                                  'survivorsAtDeadline': survivors, 'socketCountAfterClose': len(sockets),
                                  'limitations': 'Real read-only collector; no process actions, native rendering or full-shell replacement.'}
             d.write_json(args.output, report)
             d.atomic(args.output.with_suffix('.log'), (base / 'runtime.log').read_bytes())
             print(json.dumps({'summary': report['runs'][0]['summary'], 'fixture': report['fixture']}, indent=2))
-            return measured.returncode if not survivors and not sockets else 1
+            return measured.returncode if fixture_valid and not survivors and not sockets else 1
 
 
 if __name__ == '__main__':
