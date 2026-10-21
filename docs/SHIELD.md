@@ -167,3 +167,10 @@ and unknown states refuse before modification; CEDAR does not unmask services or
 guess how to reconstruct custom unit relationships. Real privilege-dependent
 recovery still needs a controlled-machine acceptance run; the audit used only
 stateful command fixtures.
+
+Firewall recovery verifies manager/service flags, not a complete live ruleset.
+Restarting firewalld/nftables/UFW may rebuild rules from persistent configuration
+and lose runtime-only rules. A failed firewall transaction therefore reports
+that service state was restored **and runtime-only rules remain unverified**;
+it does not claim complete security-state rollback. Provider-specific runtime
+rules capture/restoration remains an acceptance gate.

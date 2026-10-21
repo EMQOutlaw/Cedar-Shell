@@ -167,15 +167,16 @@ class ShieldTransactions(unittest.TestCase):
     def test_firewall_failure_restores_independent_active_and_enabled_state(self):
         before = self.state()  # Active at runtime, deliberately disabled at boot.
         self.fail_after = lambda argv: argv[:3] == ['pkexec', 'systemctl', 'disable']
-        with self.assertRaisesRegex(RuntimeError, 'previous settings were restored'):
+        with self.assertRaisesRegex(RuntimeError, 'previous firewall service state was restored') as failure:
             shield.apply_firewall({'enable': False})
+        self.assertIn('Runtime-only rules could not be verified', str(failure.exception))
         self.assertEqual(self.state(), before)
         self.assertNotIn(['pkexec', 'systemctl', 'enable', '--now', 'firewalld.service'], self.commands)
 
     def test_same_requested_firewall_state_does_not_invert_rollback(self):
         before = self.state()
         self.fail_after = lambda argv: argv[:3] == ['pkexec', 'systemctl', 'enable']
-        with self.assertRaisesRegex(RuntimeError, 'previous settings were restored'):
+        with self.assertRaisesRegex(RuntimeError, 'previous firewall service state was restored'):
             shield.apply_firewall({'enable': True})
         self.assertEqual(self.state(), before)
 
@@ -185,7 +186,7 @@ class ShieldTransactions(unittest.TestCase):
         self.units['ufw.service'] = ('active', 'disabled')
         before = self.state()
         self.fail_after = lambda argv: argv[:3] == ['pkexec', '/bin/sh', '-c']
-        with self.assertRaisesRegex(RuntimeError, 'previous settings were restored'):
+        with self.assertRaisesRegex(RuntimeError, 'previous firewall service state was restored'):
             shield.apply_firewall({'enable': False})
         self.assertEqual(self.state(), before)
         self.assertIn(['pkexec', 'ufw', '--force', 'enable'], self.commands)

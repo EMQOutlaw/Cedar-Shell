@@ -199,12 +199,12 @@ def restore_connection(connection, values, device=''):
         raise RuntimeError('The restored connection profile did not verify.')
 
 
-def recover_or_raise(label, failure, restore):
+def recover_or_raise(label, failure, restore, restored_message='the previous settings were restored.'):
     try:
         restore()
     except OPERATION_ERRORS as error:
         raise RuntimeError(label + ' could not be applied and the previous settings could not be restored: ' + str(error)) from failure
-    raise RuntimeError(label + ' could not be applied; the previous settings were restored.') from failure
+    raise RuntimeError(label + ' could not be applied; ' + restored_message) from failure
 
 
 def capture_units(units):
@@ -561,7 +561,8 @@ def apply_firewall(request):
             raise RuntimeError('The selected firewall did not report the requested active/enabled state.')
         return after
     except OPERATION_ERRORS as failure:
-        recover_or_raise('Firewall', failure, restore)
+        recover_or_raise('Firewall', failure, restore,
+                         'the previous firewall service state was restored. Runtime-only rules could not be verified; review the firewall rules before relying on this protection.')
 
 
 
