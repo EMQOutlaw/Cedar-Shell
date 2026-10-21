@@ -187,6 +187,16 @@ result after password unlock. The password-controller fixture also passes; both
 now run in the Quickshell CI job. Fixture results are not a claim of real sensor
 or PAM authentication success. No memory/performance improvement is claimed.
 
+Attended verification on the affected laptop subsequently passed: a narrow
+derivative of the verified installed release contained only the corrected
+`LockScreen.qml` and updated wiring test. Normal installation validation passed,
+and the guarded session restart completed while unlocked. The user confirmed
+fingerprint-only unlock; the local PAM log recorded successful authentication
+with `omarchy-lock-fingerprint`, and the secure-unlock counter advanced from zero
+to one. Password PAM configuration was unchanged. The existing suspend-lock
+adapter still selected CEDAR and its delay inhibitor remained present. This
+records one real fingerprint cycle, not repeated suspend/resume or soak coverage.
+
 ## Continuous engineering rules
 
 Future CEDAR changes follow these rules:
