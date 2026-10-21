@@ -17,7 +17,8 @@ import distribution as d
 
 # These are developer tools, not shell services. Keep this narrow: for example
 # the installer and native build helper are real costs during an update.
-DIAGNOSTIC_SCRIPTS = frozenset({'measure_resources.py', 'audit_resources.py', 'audit_public.py', 'smoke.py'})
+DIAGNOSTIC_SCRIPTS = frozenset({'measure_resources.py', 'audit_resources.py', 'audit_public.py',
+                              'smoke.py', 'benchmark_release_validation.py'})
 SAMPLER_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -108,7 +109,8 @@ def diagnostic_command(argv, paths, source_roots):
     # Also exclude a second sampler from this checkout when the measured scope
     # is a different installed release or a cgroup supplied without source roots.
     diagnostic_roots = [*source_roots, SAMPLER_ROOT]
-    return any(path.parent == root / 'scripts' and path.name in DIAGNOSTIC_SCRIPTS
+    return any((path.parent == root / 'scripts' and path.name in DIAGNOSTIC_SCRIPTS)
+               or path == root / 'tools/profiling/surface_stress.py'
                for path in paths for root in diagnostic_roots)
 
 

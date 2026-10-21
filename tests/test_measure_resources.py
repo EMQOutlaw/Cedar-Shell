@@ -70,6 +70,12 @@ class Accounting(unittest.TestCase):
         self.assertEqual({pid for pid, start in selected}, {100, 101, 103})
         self.assertFalse(any('command' in r or 'argv' in r for r in selected.values()))
 
+    def test_new_benchmarks_are_excluded_from_runtime_discovery(self):
+        root = self.proc / 'release'
+        for relative in ('scripts/benchmark_release_validation.py', 'tools/profiling/surface_stress.py'):
+            with self.subTest(relative=relative):
+                self.assertFalse(m.owned_command(['python3', str(root / relative)], [root]))
+
     def test_concurrent_diagnostics_and_children_are_excluded_from_source_and_cgroup(self):
         root = self.proc / 'release'
         self.process(100, args=['python3', str(root / 'scripts/connections.py')], group='/cedar')
