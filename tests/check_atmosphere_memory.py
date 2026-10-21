@@ -4,7 +4,9 @@
 Compare --baseline-ref <commit> with the current checkout using the same width,
 height and QT_SCALE_FACTOR. This software-renderer fixture measures one
 Quickshell process, not the CEDAR group or native GPU/Wayland allocations.
-Rendered-pixel equivalence is checked by check_frontend_lifecycle.py.
+Allocation measurements do not establish visual equivalence. The attempted
+backing crop at b042e7a was reverted after native fractional-scale regressions;
+production retains the full backing until a visually equivalent fix is proven.
 """
 import argparse
 import json

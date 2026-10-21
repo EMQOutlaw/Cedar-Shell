@@ -9,11 +9,7 @@ Item {
     clip: true
     // Quiet fungal filaments at the edges leave the reading area clear.
     Canvas {
-        // Every filament is in the bottom 155 logical pixels. Bound the backing
-        // image to that strip instead of allocating a screen-sized transparent
-        // texture on each lock screen, Field Station and Canopy surface.
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-        height: Math.min(156, parent.height)
+        anchors.fill: parent
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
         // Canvas paint handlers do not track theme dependencies.

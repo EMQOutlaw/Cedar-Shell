@@ -63,26 +63,6 @@ ShellRoot {
                 for (const child of item.children || []) found = found.concat(canvases(child));
                 return found;
             }
-            function test_atmosphere_backing_bounds() {
-                Config.saved.reducedMotion = true;
-                for (const size of [[1200, 900], [480, 800], [400, 100]]) {
-                    window.implicitWidth = size[0]; window.implicitHeight = size[1];
-                    sample.width = size[0]; sample.height = size[1];
-                    sample.setSource(Qt.resolvedUrl("components/CedarAtmosphere.qml"), {active: false});
-                    sample.active = true; wait(150);
-                    const canvas = canvases(sample.item)[0];
-                    check(canvas.height === Math.min(156, size[1]), "Atmosphere bounds its transparent backing at " + size);
-                    const cropped = grabImage(sample.item);
-                    // Restore the old full-height backing on the same production
-                    // painter: both versions must render identical pixels.
-                    canvas.height = size[1]; canvas.requestPaint(); wait(150);
-                    check(cropped.equals(grabImage(sample.item)), "Cropping the atmosphere preserves every rendered pixel at " + size);
-                    sample.active = false;
-                }
-                window.implicitWidth = 600; window.implicitHeight = 300;
-                sample.width = 400; sample.height = 300;
-                console.log("PASS: atmosphere backing bounds and exact rendered-pixel equivalence");
-            }
             function test_canvas_palette() {
                 Config.saved.reducedMotion = true;
                 const original = Theme.palette;
@@ -314,7 +294,7 @@ QtObject {
         args.output.mkdir(parents=True, exist_ok=True)
         (args.output / 'lifecycle.log').write_text(output)
     print(output)
-    required = ['PASS: atmosphere backing bounds', 'PASS: Canvas theme invalidation', 'PASS: 200 visualizer lifecycles', 'PASS: workspace pointer drag', 'PASS: frontend lifecycle assertions completed']
+    required = ['PASS: Canvas theme invalidation', 'PASS: 200 visualizer lifecycles', 'PASS: workspace pointer drag', 'PASS: frontend lifecycle assertions completed']
     if args.native:
         required.append('PASS: native Canopy resize')
     if result.returncode or any(marker not in output for marker in required) or re.search(
