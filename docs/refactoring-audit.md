@@ -143,6 +143,36 @@ in the backlog. Do not convert an unobserved leak into a claim of leak freedom.
 | Hardware/authentication matrix | Real multi-monitor/hotplug, 60 Hz comparison, frame-time capture, PAM/polkit, logout/login/reboot and supported distro clean-install runners. User's locked session is not a test target. |
 | Deployed repeat/4-hour soak | Run clock-aware identical before/after scenarios, including lid/suspend metadata, then the longer soak. The completed hour predates these deployed-source checks. |
 
+## Follow-up: Omarchy suspend-lock routing (2026-10-21)
+
+On branch `fix/omarchy-suspend-lock`, investigated the user's recurring
+"Screen did not lock before suspend" warning. The live CEDAR shell provided
+native lock IPC, while Omarchy's monitor queried its stopped shell and exhausted
+its lock deadline. Implemented an on-demand owner-aware adapter and reversible,
+opt-in service drop-in installation. Preserved the stock monitor, warning,
+inhibitor, boot-lock priority, native authentication and clamshell helper.
+No QML layout, animation, installed release or system package was changed.
+
+Validation: 38 bridge/installer fixtures and the complete 786-test Python suite
+passed. Cases cover compositor/requested-state separation, ambiguous/missing
+owners, bounded IPC, process cleanup, symlinks, ownership, concurrent edits,
+idempotence and interrupted installation/restore. On the affected laptop the
+drop-in was activated without restarting CEDAR: the existing delay inhibitor
+returned, live status selected CEDAR, and Hyprland reported no configuration
+errors after the backed-up lid-binding edit. Real attended suspend results are
+recorded separately; read-only status is not a successful suspend test.
+
+An isolated fixture also executed the installed Omarchy sleep-lock wait script
+against fake desktop commands and the real adapter with a 750 ms budget. Secure
+acknowledgement completed in 227 ms without warning; requested-only, malformed
+and missing-provider cases returned failure with one warning each in 776–883 ms.
+The stock 100 ms polling tail and notification process account for possible
+deadline overshoot in this fixture. These were protocol tests, not real suspend.
+
+Immediate waking is a separate observation: the latest wake IRQ mapped to the
+touchpad. That register only identifies the latest cycle. No wake-source or
+system power setting was changed, and no memory-budget improvement is claimed.
+
 ## Continuous engineering rules
 
 Future CEDAR changes follow these rules:

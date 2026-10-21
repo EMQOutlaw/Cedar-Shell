@@ -83,7 +83,82 @@ The channel updater performs its fetch separately and then uses the same
 installer. Manual `git pull --ff-only` still preserves the checkout on a
 refused fast-forward; resolve that refusal without deleting your work.
 
-## Messages from older candidates
+## Lock and installer messages
+
+### “Screen did not lock before suspend” with standalone CEDAR on Omarchy
+
+Omarchy's existing `omarchy-sleep-lock.service` sends `lock lock` and
+`lock status` to its own shell. Standalone CEDAR retires that shell, so the
+monitor can spend its entire deadline querying a stopped process even when
+Trailwatch is already locked. The warning alone does not establish whether
+CEDAR's separate lock was secure. Do not silence the notification or disable
+the sleep inhibitor to resolve this mismatch.
+
+Check the providers without locking or suspending:
+
+```sh
+qs -c cedar ipc call shell sessionInfo
+omarchy-shell lock status
+systemctl --user status omarchy-sleep-lock.service
+```
+
+If CEDAR reports `externalLock: false` and `lockReady: true`, while Omarchy's
+shell is stopped, the optional adapter routes just the monitor's lock calls to
+the live CEDAR instance. From this source checkout, as the desktop user:
+
+```sh
+python3 scripts/lock_bridge_install.py --install
+```
+
+This writes a private independent adapter copy, a single user service drop-in,
+and a recovery receipt. It does not activate anything. While the session is
+unlocked, apply the drop-in without restarting CEDAR:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user restart omarchy-sleep-lock.service
+systemd-inhibit --list
+PATH="$HOME/.local/share/cedar/lock-bridge/lock-shim:$PATH" omarchy-shell lock status
+```
+
+The monitor retains Omarchy's sleep deadline and failure notification. The
+adapter uses live instance identities and only treats `lockSecure: true` as
+compositor-confirmed coverage; a requested lock or ready component is not
+secure coverage or proof of PAM configuration. Existing Omarchy boot-lock
+ownership takes precedence. Missing or ambiguous state returns an error and
+never asserts secure coverage. Logind can still suspend after its delay expires;
+the adapter does not promise to cancel an unsafe suspend. When
+CEDAR is absent or explicitly uses an external locker, an available stock
+Omarchy locker remains the fallback. No global command or packaged Omarchy
+file is replaced, and the ordinary shell source is not modified in place.
+
+An Omarchy lid-close binding can retain its original docked/clamshell behavior
+while using the same adapter for its early lock request: run the existing
+`omarchy-system-lid-close` command with the adapter directory prepended to
+that command's PATH only. Back up the binding, preserve its locked flag, and
+validate Hyprland's configuration after editing. The systemd drop-in covers
+sleep preparation independently of this early request.
+
+After reviewing the change, perform an attended lock/unlock and lid-close
+test. A read-only status check or a fixture cannot certify real suspend and
+authentication. Restore this adapter's most recent recorded installation with:
+
+```sh
+python3 scripts/lock_bridge_install.py --restore
+systemctl --user daemon-reload
+systemctl --user restart omarchy-sleep-lock.service
+```
+
+Restore preserves later user edits by refusing conflicting files. A separate
+manual lid-binding edit has its own backup and must also be restored. This
+opt-in repair is not automatically activated by an install-only operation.
+
+Repeated immediate wakes are a separate issue. Compare suspend/resume journal
+times and `/sys/power/pm_wakeup_irq` with the corresponding interrupt/device;
+that IRQ identifies only the most recent cycle. Do not infer the cause of all
+earlier wakes from it or disable unrelated wake sources.
+
+### Earlier installer messages
 
 - **“Omarchy activation requires omarchy.”** An old installed `cedar` command
   is still selected. Finish installing the current candidate, then run

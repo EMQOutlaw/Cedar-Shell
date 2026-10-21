@@ -13,6 +13,7 @@ not proof that every feature is active in a particular session. See
 | `shell.qml` | Main Quickshell `ShellRoot`; IPC routes, per-output bars and optional windows, notifications and lock ownership. |
 | `scripts/cedar` → `scripts/distribution.py` | Public CLI; install/release verification, activation, trial, recovery and diagnostics. |
 | `scripts/cedar_session.py` | Current session start/restart/reconciliation; launches the managed `cedar-shell` unit and handles overlapping Omarchy instances. |
+| `scripts/lock_bridge.py`, `scripts/lock_bridge_install.py` | Optional on-demand Omarchy lock IPC adapter and reversible installation helper. The existing Omarchy sleep monitor owns the inhibitor; CEDAR's native lock remains the lock owner. No new daemon. |
 | `scripts/portable_session.py`, `scripts/omarchy_session.py` | Compatibility/trial session supervisors and restoration paths. They remain relevant to existing installations. |
 | `scripts/cedar-task-manager` → `scripts/task_manager.py` | Launches the matching release's native Task Manager; `execv` replaces Python with `libexec/cedar-task-manager`, or the explicit source-build binary. |
 | `wallpaper-picker.qml`, `keymap.qml` | Separate Quickshell tools launched with `--no-duplicate`; their memory is additional to the main shell. |
@@ -39,6 +40,7 @@ flowchart TD
     Shell --> Core[CedarCore / CoreHost / CoreWindow]
     Shell --> Apps[ShieldApp / ProfilesApp / StationApp / Settings / FocusApp]
     Shell --> Lock[LockScreen / TrailwatchView / PermissionPrompt]
+    Sleep[Omarchy sleep monitor / optional lock adapter] --> Shell
     Bar --> CanopyState[Canopy service]
     Canopy --> CanopyState
     Canopy --> Field[FieldStation]
@@ -100,6 +102,7 @@ identified and reported as an additional owner; do not infer it from the word
 | Default applications/catalog | `DefaultApps.qml` → `scripts/default_apps.py --watch` | One application-info watcher, reused by launcher/settings. |
 | Clipboard | `Clipboard.qml` | `wl-paste --watch` invokes `clipboard_item.py` on clipboard changes; stopped while locked/disabled. |
 | Session ownership | `cedar_session.py`; compatibility supervisors where selected | `cedar-theme-guard.path` activates bounded reconciliation service; not a permanent timer daemon. |
+| Omarchy suspend locking | Existing `omarchy-sleep-lock.service` with optional `lock_bridge.py` adapter | Monitor retains its inhibitor and deadline. Adapter and bounded `qs` clients run only on lock/status requests; stock boot-lock ownership takes precedence. Install-only helper never activates services or edits lid bindings. |
 | Weather/calendar | `Weather`, `WeatherLocation`, `CalendarFeeds` | Configured fetches have separate weather/location/calendar freshness needs; do not merge their privacy or offline policies. |
 
 Count detached tools, Task Manager/backend, inhibitors and selected compatibility

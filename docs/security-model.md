@@ -95,6 +95,32 @@ old automatic `connection up` fallback was removed from these transactions to
 avoid undoing a user's profile switch. A switch at the OS call boundary remains
 a race without a NetworkManager checkpoint; it is not claimed atomically isolated.
 
+## Omarchy suspend-lock handoff repair (2026-10-21)
+
+Standalone CEDAR retires Omarchy's shell, but the existing sleep monitor still
+sent lock requests and secure-state polls to that stopped provider. Observed
+warnings followed its 12-second timeout. A warning from the wrong provider is
+not evidence that CEDAR's separate lock was or was not secure.
+
+The opt-in `scripts/lock_bridge.py` adapter pins the live Quickshell instance
+identity and translates only lock/status/isLocked calls. It respects an existing
+Omarchy boot-lock owner, refuses ambiguous or unreadable owner state, and uses
+CEDAR's compositor acknowledgement (`lockSecure`) rather than its requested-lock
+flag. Component readiness does not establish PAM configuration. IPC uses argument
+arrays, bounded output and deadlines; no cached heartbeat proves lock coverage.
+
+`scripts/lock_bridge_install.py` makes private independent copies and a single
+service-specific PATH drop-in using existing transaction/restore machinery. It
+refuses unowned files, unsafe symlinks/parents, foreign-owned managed directories
+and later edits. It runs no services and needs no root privilege. Activation and
+an optional command-specific lid-binding change are explicit separate steps;
+see [troubleshooting](TROUBLESHOOTING.md#lock-and-installer-messages).
+
+The existing sleep inhibitor, overall deadline and failure warning remain.
+Logind may suspend when its delay expires even after a lock failure; this repair
+does not add a guarantee that an unsafe suspend can be cancelled. Real attended
+lock, authentication and suspend checks remain distinct from fixture results.
+
 ## Validation performed
 
 All commands below use fixture homes/remotes or disposable children. These
