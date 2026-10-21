@@ -3,6 +3,7 @@ import hashlib
 import io
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -17,6 +18,7 @@ class BootstrapSecurity(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        self.script = BOOTSTRAP
         self.home = self.root / 'home'
         self.home.mkdir()
         self.bin = self.root / 'bin'
@@ -31,7 +33,12 @@ args = sys.argv[1:]
 with open(os.environ['BOOTSTRAP_CALLS'], 'a') as log:
     log.write(args[-1] + '\\n')
 source = os.environ['BOOTSTRAP_CHECKSUM' if args[-1].endswith('.sha256') else 'BOOTSTRAP_ARCHIVE']
-shutil.copyfile(source, args[args.index('-o') + 1])
+if '-o' in args:
+    shutil.copyfile(source, args[args.index('-o') + 1])
+else:
+    sys.stdout.buffer.write(pathlib.Path(source).read_bytes())
+if os.environ.get('BOOTSTRAP_FAIL'):
+    raise SystemExit(22)
 ''')
         curl.chmod(0o755)
         self.env = {**os.environ, 'HOME': str(self.home), 'XDG_CACHE_HOME': str(self.home / '.cache'),
@@ -55,7 +62,7 @@ shutil.copyfile(source, args[args.index('-o') + 1])
                                  '  cedar-1.2.3-x86_64.tar.gz\n')
 
     def run_bootstrap(self):
-        return subprocess.run(['sh', str(BOOTSTRAP)], env=self.env, capture_output=True, text=True, timeout=15)
+        return subprocess.run(['sh', str(self.script)], env=self.env, capture_output=True, text=True, timeout=15)
 
     def source(self, result):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
@@ -123,6 +130,41 @@ shutil.copyfile(source, args[args.index('-o') + 1])
         second = self.source(self.run_bootstrap())
         self.assertNotEqual(first, second)
         self.assertEqual(sentinel.read_text(), 'pending')
+
+    def test_transport_failure_is_preserved_across_bounded_pipeline(self):
+        self.env['BOOTSTRAP_FAIL'] = '1'
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Download failed', result.stderr)
+        self.assertNotIn('CEDAR_SOURCE=', result.stdout)
+
+    def test_checksum_download_is_stopped_at_its_byte_limit(self):
+        self.checksum.write_bytes(b'x' * 8192)
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Download exceeds', result.stderr)
+
+    def test_archive_download_stops_without_waiting_for_archive_parsing(self):
+        source = BOOTSTRAP.read_text()
+        self.assertIn('MAX_DOWNLOAD=603979776', source)
+        self.script = self.root / 'small-budget-bootstrap.sh'
+        self.script.write_text(source.replace('MAX_DOWNLOAD=603979776', 'MAX_DOWNLOAD=1024'))
+        self.archive.write_bytes(b'x' * 2048)
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Download exceeds', result.stderr)
+        self.assertNotIn('Verifying', result.stdout)
+
+    def test_wget_fallback_preserves_download_and_limit_behavior(self):
+        (self.bin / 'curl').rename(self.bin / 'wget')
+        for name in ('sh', 'uname', 'id', 'python3', 'cat', 'rm'):
+            (self.bin / name).symlink_to(shutil.which(name))
+        self.env['PATH'] = str(self.bin)
+        self.source(self.run_bootstrap())
+        self.checksum.write_bytes(b'x' * 8192)
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Download exceeds', result.stderr)
 
 
 if __name__ == '__main__':

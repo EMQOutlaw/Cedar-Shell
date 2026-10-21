@@ -23,6 +23,7 @@ case "$CHANNEL" in
     *) printf '%s\n' 'CEDAR: CEDAR_CHANNEL must be stable or development.' >&2; exit 1 ;;
 esac
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/cedar/installer"
+MAX_DOWNLOAD=603979776  # 576 MiB, including archive headers/padding
 
 say() { printf '%s\n' "$*"; }
 fail() { say "CEDAR: $*" >&2; exit 1; }
@@ -32,14 +33,39 @@ need() { command -v "$1" >/dev/null 2>&1 || fail "$2"; }
 [ "$(uname -m)" = "x86_64" ] || fail "CEDAR is published for x86_64 only; $(uname -m) is not supported yet."
 [ "$(id -u)" -ne 0 ] || fail "Run this as your ordinary user, never root. CEDAR installs into your home directory."
 if command -v curl >/dev/null 2>&1; then
-    fetch() { curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 900 -o "$2" "$1"; }
-    fetch_text() { curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 900 "$1"; }
+    fetch_raw() { curl -fsSL --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 900 "$1"; }
 elif command -v wget >/dev/null 2>&1; then
-    fetch() { wget -q --https-only --timeout=30 --tries=3 -O "$2" "$1"; }
-    fetch_text() { wget -q --https-only --timeout=30 --tries=3 -O - "$1"; }
+    fetch_raw() { wget -q --https-only --timeout=30 --tries=3 -O - "$1"; }
 else
     fail "curl or wget is needed to download the installer."
 fi
+
+fetch() {
+    # POSIX sh has no portable pipefail. Preserve producer failure separately;
+    # the consumer enforces a byte cap even without HTTP Content-Length.
+    (fetch_raw "$1" || { printf '%s\n' failed > "$2.failed"; exit 1; }) |
+        python3 -c '
+import os, sys
+limit = int(sys.argv[2])
+try:
+    with open(os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as target:
+        total = 0
+        while block := sys.stdin.buffer.read(min(64 * 1024, limit + 1 - total)):
+            total += len(block)
+            if total > limit:
+                raise ValueError("Download exceeds the permitted byte limit.")
+            target.write(block)
+except (OSError, ValueError) as error:
+    print("CEDAR: " + str(error), file=sys.stderr)
+    raise SystemExit(1)
+' "$2" "${3:-$MAX_DOWNLOAD}" || return $?
+    [ ! -e "$2.failed" ] || fail "Download failed; the incomplete file was not used."
+}
+
+fetch_text() {
+    fetch "$1" "$DIR/release-metadata.json" 1048576 || return $?
+    cat "$DIR/release-metadata.json"
+}
 if ! command -v python3 >/dev/null 2>&1 || ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)'; then
     say "CEDAR needs Python 3.11 or newer before its installer can run."
     if command -v pacman >/dev/null 2>&1; then say "  sudo pacman -S --needed python"; fi
@@ -202,7 +228,7 @@ else
     BASE="https://github.com/$REPO/releases/download/$TAG"
     say "Downloading CEDAR $VERSION…"
     fetch "$BASE/$ASSET" "$DIR/$ASSET"
-    fetch "$BASE/$ASSET.sha256" "$DIR/$ASSET.sha256"
+    fetch "$BASE/$ASSET.sha256" "$DIR/$ASSET.sha256" 4096
     say "Verifying the download…"
     SOURCE="$(prepare extract "$DIR" "$ASSET" "$CHANNEL")"
 fi
