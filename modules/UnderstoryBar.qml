@@ -35,9 +35,16 @@ PanelWindow {
     readonly property var activeWorkspace: monitor?.activeWorkspace || null
     readonly property string activeTitle: Config.moduleEnabled("activeWindow") && Hyprland.focusedMonitor?.name === outputName ? (Hyprland.activeToplevel?.title || ToplevelManager.activeToplevel?.title || "") : ""
     readonly property bool railOpen: Understory.shown && Understory.outputName === outputName
-    readonly property real inset: Theme.strataInset
+    // Flush: the material meets the screen's edge on three sides; only the
+    // right side is a seam, with the pill's cut at both of its corners.
+    readonly property real pad: 4
     readonly property real cut: Theme.strataCut
     function glyph(icon, fallback) { return nerd ? icon : fallback; }
+    // The drops that grow sideways out of this bar need to know where their
+    // control is along it: a screen-y rect in the anchor's x/width slots.
+    function sideAnchor(item) {
+        return () => { const p = item.mapToItem(null, 0, 0); return { x: p.y, width: item.height }; };
+    }
     SystemClock { id: clock; precision: SystemClock.Minutes }
 
     // ---- material ----------------------------------------------------------
@@ -47,49 +54,62 @@ PanelWindow {
         ShapePath {
             strokeWidth: 0; strokeColor: Theme.transparent
             fillGradient: LinearGradient {
-                x1: root.inset; y1: 0; x2: root.width - root.inset; y2: 0
+                x1: 0; y1: 0; x2: root.width; y2: 0
                 GradientStop { position: 0; color: Qt.alpha(Theme.strataSurface, Config.barOpacity) }
                 GradientStop { position: 1; color: Qt.alpha(Theme.strataFoundation, Config.barOpacity) }
             }
-            startX: root.inset; startY: root.inset
-            PathLine { x: root.width - root.inset - root.cut; y: root.inset }
-            PathLine { x: root.width - root.inset; y: root.inset + root.cut }
-            PathLine { x: root.width - root.inset; y: root.height - root.inset - root.cut }
-            PathLine { x: root.width - root.inset - root.cut; y: root.height - root.inset }
-            PathLine { x: root.inset; y: root.height - root.inset }
-            PathLine { x: root.inset; y: root.inset }
+            startX: -1; startY: -1
+            PathLine { x: root.width - root.cut; y: -1 }
+            PathLine { x: root.width - root.cut; y: 0 }
+            PathLine { x: root.width; y: root.cut }
+            PathLine { x: root.width; y: root.height - root.cut }
+            PathLine { x: root.width - root.cut; y: root.height }
+            PathLine { x: root.width - root.cut; y: root.height + 1 }
+            PathLine { x: -1; y: root.height + 1 }
+            PathLine { x: -1; y: -1 }
         }
-        // The edge: the whole seam, lit a little more while the rail is out.
+        // The seam: only the outer side has an edge, lit a little more while the rail is out.
         ShapePath {
             strokeWidth: 1; fillColor: Theme.transparent
             strokeColor: Qt.alpha(Theme.strataGrain, root.railOpen ? .5 : .28)
-            startX: root.inset; startY: root.inset
-            PathLine { x: root.width - root.inset - root.cut; y: root.inset }
-            PathLine { x: root.width - root.inset; y: root.inset + root.cut }
-            PathLine { x: root.width - root.inset; y: root.height - root.inset - root.cut }
-            PathLine { x: root.width - root.inset - root.cut; y: root.height - root.inset }
-            PathLine { x: root.inset; y: root.height - root.inset }
+            startX: root.width - root.cut; startY: 0
+            PathLine { x: root.width; y: root.cut }
+            PathLine { x: root.width; y: root.height - root.cut }
+            PathLine { x: root.width - root.cut; y: root.height }
         }
         // Grain: a partial inner lip along the outer side.
         ShapePath {
             strokeWidth: 1; fillColor: Theme.transparent
             strokeColor: Qt.alpha(Theme.strataGrain, .12)
-            startX: root.width - root.inset - 2; startY: root.inset + root.cut + 2
-            PathLine { x: root.width - root.inset - 2; y: root.height - root.inset - root.cut - 2 }
+            startX: root.width - 2; startY: root.cut + 2
+            PathLine { x: root.width - 2; y: root.height - root.cut - 2 }
         }
     }
 
     // ---- the column ----------------------------------------------------------
     component BarMark: StrataButton {
-        implicitWidth: root.width - 2 * root.inset - 8; implicitHeight: implicitWidth
+        id: mark
+        implicitWidth: root.width - 2 * root.pad; implicitHeight: implicitWidth
         iconOnly: true
         enabled: !ShellState.locked
+        // The Canopy topic that grows from this control, if any.
+        property string anchorTopic: ""
+        readonly property var provider: root.sideAnchor(mark)
+        function publish() {
+            if (!anchorTopic) return;
+            if (visible && enabled) Canopy.setAnchorProvider(anchorTopic, root.outputName, provider);
+            else Canopy.clearAnchorProvider(anchorTopic, root.outputName, provider);
+        }
+        Component.onCompleted: Qt.callLater(publish)
+        Component.onDestruction: if (anchorTopic) Canopy.clearAnchorProvider(anchorTopic, root.outputName, provider)
+        onVisibleChanged: Qt.callLater(publish)
+        onEnabledChanged: Qt.callLater(publish)
     }
 
     Column {
         id: head
-        x: root.inset + 4; y: root.inset + 6; spacing: 4
-        width: root.width - 2 * root.inset - 8
+        x: root.pad; y: 8; spacing: 4
+        width: root.width - 2 * root.pad
         StrataButton {
             objectName: "understoryBarMark"
             width: parent.width; height: width
@@ -106,6 +126,7 @@ PanelWindow {
             objectName: "understoryBarLauncher"
             visible: Config.stage >= 3 && Config.moduleEnabled("go")
             text: root.glyph("󰀻", "⊞"); hint: "Applications"
+            anchorTopic: "go"
             onClicked: { if (Config.saved.canopyEnabled) Canopy.toggleTopic("go", root.outputName); else Go.toggle("root"); }
         }
         Item { width: 1; height: 4 }
@@ -137,6 +158,7 @@ PanelWindow {
             BarMark {
                 visible: Config.stage >= 3 && Config.saved.canopyEnabled
                 text: "▣"; hint: "Workspace overview"
+                anchorTopic: "workspaces"
                 checked: Canopy.shown && Canopy.topic === "workspaces" && Canopy.outputName === root.outputName
                 onClicked: Canopy.toggleTopic("workspaces", root.outputName)
             }
@@ -149,7 +171,7 @@ PanelWindow {
     Item {
         id: titleSlot
         objectName: "understoryBarTitle"
-        x: root.inset + 4; width: root.width - 2 * root.inset - 8
+        x: root.pad; width: root.width - 2 * root.pad
         anchors.top: head.bottom; anchors.topMargin: 10
         anchors.bottom: foot.top; anchors.bottomMargin: 10
         visible: root.activeTitle !== "" && height > 60
@@ -166,9 +188,9 @@ PanelWindow {
     }
     Column {
         id: foot
-        x: root.inset + 4; spacing: 4
-        width: root.width - 2 * root.inset - 8
-        anchors.bottom: parent.bottom; anchors.bottomMargin: root.inset + 6
+        x: root.pad; spacing: 4
+        width: root.width - 2 * root.pad
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 8
         // Status: each reading opens the rail, where its control lives.
         BarMark {
             objectName: "understoryBarNetwork"
@@ -216,10 +238,16 @@ PanelWindow {
                 Text { width: foot.width; horizontalAlignment: Text.AlignHCenter; text: Qt.formatDateTime(clock.date, "mm"); textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small + 1; color: Theme.strataText }
             }
             onClicked: { if (Config.saved.canopyEnabled) Canopy.toggleTopic("calendar", root.outputName); else Understory.toggle(root.outputName); }
+            readonly property var provider: root.sideAnchor(this)
+            function publish() { if (visible) Canopy.setAnchorProvider("calendar", root.outputName, provider); else Canopy.clearAnchorProvider("calendar", root.outputName, provider); }
+            Component.onCompleted: Qt.callLater(publish)
+            Component.onDestruction: Canopy.clearAnchorProvider("calendar", root.outputName, provider)
+            onVisibleChanged: Qt.callLater(publish)
         }
         BarMark {
             objectName: "understoryBarPower"
             text: root.glyph("󰐥", "⏻"); hint: "Power & session"
+            anchorTopic: "power"
             accent: Theme.ember
             onClicked: { if (Config.saved.canopyEnabled) Canopy.open("power", root.outputName); else ShellState.toggle("power"); }
         }

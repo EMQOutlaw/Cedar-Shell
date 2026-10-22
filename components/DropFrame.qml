@@ -17,6 +17,10 @@ Item {
     property real cut: 12
     readonly property real longCut: Math.round(cut * 16 / 9)
     property real join: cut
+    // Sideways: the surface grows out of a bar on the left. The open edge is
+    // the left one, the fillets bend the bar's right edge into the panel's top
+    // and bottom, and the right side carries the pill's cuts (short above, long below).
+    property bool side: false
     property color fill: Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
     property color stroke: Qt.alpha(Theme.teal, .25)
     property real strokeWidth: 1
@@ -46,6 +50,7 @@ Item {
     SequentialAnimation { id: grainIn; PropertyAction { target: root; property: "grainReveal"; value: 0 } PauseAnimation { duration: VisualQuality.ms(80) } NumberAnimation { target: root; property: "grainReveal"; to: 1; duration: VisualQuality.ms(Theme.reveal); easing.type: Easing.OutCubic } }
     NumberAnimation { id: trace; target: root; property: "runner"; from: 0; to: 1; duration: VisualQuality.ms(Theme.morphGrow + Theme.reveal); easing.type: Easing.InOutQuad; onFinished: root.runner = -1 }
     Shape {
+        visible: !root.side
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
@@ -103,9 +108,74 @@ Item {
             PathArc { x: root.width + root.join; y: 0; radiusX: root.join; radiusY: root.join; direction: PathArc.Clockwise }
         }
     }
+    Shape {
+        visible: root.side
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeWidth: 0; strokeColor: "transparent"; fillColor: root.fill
+            startX: -1; startY: -root.join
+            PathLine { x: 0; y: -root.join }
+            PathArc { x: root.join; y: 0; radiusX: root.join; radiusY: root.join; direction: PathArc.Clockwise }
+            PathLine { x: root.width - root.cut; y: 0 }
+            PathLine { x: root.width; y: root.cut }
+            PathLine { x: root.width; y: root.height - root.longCut }
+            PathLine { x: root.width - root.longCut; y: root.height }
+            PathLine { x: root.join; y: root.height }
+            PathArc { x: 0; y: root.height + root.join; radiusX: root.join; radiusY: root.join; direction: PathArc.Clockwise }
+            PathLine { x: -1; y: root.height + root.join }
+            PathLine { x: -1; y: -root.join }
+        }
+        ShapePath {
+            strokeWidth: 1; strokeColor: root.grain ? Qt.alpha(root.grainColor, root.grainColor.a * root.grainReveal) : "transparent"; fillColor: "transparent"
+            startX: 2; startY: -root.join + 2
+            PathArc { x: root.join + 1; y: 2; radiusX: Math.max(1, root.join - 2); radiusY: Math.max(1, root.join - 2); direction: PathArc.Counterclockwise }
+            PathLine { x: root.width - root.cut - 1; y: 2 }
+            PathLine { x: root.width - 2; y: root.cut + 1 }
+            PathLine { x: root.width - 2; y: root.height - root.longCut - 1 }
+            PathLine { x: root.width - root.longCut - 1; y: root.height - 2 }
+            PathLine { x: root.join + 1; y: root.height - 2 }
+            PathArc { x: 2; y: root.height + root.join - 2; radiusX: Math.max(1, root.join - 2); radiusY: Math.max(1, root.join - 2); direction: PathArc.Counterclockwise }
+        }
+        // The Living Edge leaves the left open, so nothing draws a line down the bar.
+        ShapePath {
+            strokeWidth: root.strokeWidth; strokeColor: root.edge; fillColor: "transparent"
+            startX: 0; startY: -root.join
+            PathArc { x: root.join; y: 0; radiusX: root.join; radiusY: root.join; direction: PathArc.Clockwise }
+            PathLine { x: root.width - root.cut; y: 0 }
+            PathLine { x: root.width; y: root.cut }
+            PathLine { x: root.width; y: root.height - root.longCut }
+            PathLine { x: root.width - root.longCut; y: root.height }
+            PathLine { x: root.join; y: root.height }
+            PathArc { x: 0; y: root.height + root.join; radiusX: root.join; radiusY: root.join; direction: PathArc.Clockwise }
+        }
+        ShapePath {
+            strokeWidth: root.strokeWidth * 3; strokeColor: root.runner >= 0 ? Qt.alpha(Theme.green, Math.min(1, VisualQuality.effectIntensity)) : "transparent"; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+            strokeStyle: ShapePath.DashLine
+            dashPattern: [40, root.contourUnits]
+            dashOffset: 40 - root.runner * (root.contourUnits + 40)
+            startX: 0; startY: -root.join
+            PathArc { x: root.join; y: 0; radiusX: root.join; radiusY: root.join; direction: PathArc.Clockwise }
+            PathLine { x: root.width - root.cut; y: 0 }
+            PathLine { x: root.width; y: root.cut }
+            PathLine { x: root.width; y: root.height - root.longCut }
+            PathLine { x: root.width - root.longCut; y: root.height }
+            PathLine { x: root.join; y: root.height }
+            PathArc { x: 0; y: root.height + root.join; radiusX: root.join; radiusY: root.join; direction: PathArc.Clockwise }
+        }
+    }
+    Rectangle {
+        // Sideways, the leading edge is the right side.
+        visible: root.side && root.growing && VisualQuality.effects
+        x: root.width - 3; y: root.cut; width: 3; height: Math.max(0, root.height - root.cut - root.longCut)
+        gradient: Gradient { orientation: Gradient.Vertical
+            GradientStop { position: 0; color: "transparent" }
+            GradientStop { position: .5; color: Qt.alpha(Theme.green, Math.min(1, .85 * VisualQuality.effectIntensity)) }
+            GradientStop { position: 1; color: "transparent" } }
+    }
     Rectangle {
         // The leading edge: the bar's material arriving, lit along its front.
-        visible: root.growing && VisualQuality.effects
+        visible: !root.side && root.growing && VisualQuality.effects
         x: root.longCut; y: root.height - 3; width: Math.max(0, root.width - root.longCut - root.cut); height: 3
         gradient: Gradient { orientation: Gradient.Horizontal
             GradientStop { position: 0; color: "transparent" }

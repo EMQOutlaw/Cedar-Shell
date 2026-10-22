@@ -23,13 +23,18 @@ PanelWindow {
     readonly property bool morphing: VisualQuality.functionalMotion && !Config.testMode
     readonly property real sideInset: Config.barDetached ? Config.barMargin : 0
     // The bar frame sits five pixels inside the bar window; the drop joins its bottom edge.
-    readonly property real barJoin: Config.barVertical ? 0 : Config.barHeight - (Config.barStyle === "cedar" || Config.barIslands ? 5 : 0)
-    anchors { top: true; left: true; right: true }
+    readonly property real barJoin: side ? 0 : Config.barHeight - (Config.barStyle === "cedar" || Config.barIslands ? 5 : 0)
+    // With the bar on the left the drop grows sideways out of it: the geometry
+    // below runs along the bar (`along`/`span`) and away from it (`reach`),
+    // and these two flags decide which screen axis each one is.
+    readonly property bool side: Config.barVertical
+    anchors { top: true; left: true; right: !root.side; bottom: root.side }
     margins.top: Config.barDetached ? Config.barMargin : 0
     margins.left: sideInset + Config.barWidth
     margins.right: sideInset
     // Tall enough for Field Station; the surface is transparent and masked to the drop.
     implicitHeight: (modelData?.height || 800) - margins.top - 16
+    implicitWidth: (modelData?.width || 1200) - Config.barWidth - 8
     color: Theme.transparent
     exclusionMode: ExclusionMode.Ignore
     mask: Region { item: drop }
@@ -48,34 +53,39 @@ PanelWindow {
     // ---- targets -----------------------------------------------------------
     function topicWidth(topic) {
         const w = Canopy.peeking ? 360 : topic === "workspaces" ? 1040 : topic === "station" ? 760 : topic === "go" ? (Go.dmenuActive && Go.dmenuWidth ? Math.max(480, Math.min(720, Math.round(Go.dmenuWidth * 1.15))) : 480) : topic === "keybinds" ? 700 : topic === "power" ? 520 : drop.standalone ? 400 : ["audio", "system"].includes(topic) ? 760 : topic === "startup" ? 620 : topic === "quick" ? 560 : 520;
-        return Math.min(width - 24, w);
+        return Math.min(width - (side ? 16 : 24), w);
     }
     // A drop hugs its panel. The only ceiling is what fits under the bar on
     // this output, so an instrument shows whole wherever the screen allows;
     // only a panel taller than that (a long Connections list, every keybind)
     // scrolls inside the drop. A peek stays a glance.
     function topicHeight() {
-        const available = height - barJoin - 16;
+        const available = side ? height - 24 : height - barJoin - 16;
         const cap = Canopy.peeking ? Math.min(available, 160) : available;
         return Math.max(Canopy.peeking ? 120 : 160, Math.min(cap, panel.preferredHeight));
     }
     // Where the open panel sits: centred on its control, else centred on the
     // screen, decided by the geometry model and then only interpolated.
+    // The bar's length, the panel's size along it and away from it.
+    readonly property real extent: side ? height : width
+    function wantedSpan(topic) { return side ? topicHeight() : topicWidth(topic); }
+    function wantedReach(topic) { return side ? topicWidth(topic) : topicHeight(); }
     function targetFor(topic) {
-        return Strata.target({ barWidth: width, anchor: Canopy.anchorRect, wantedWidth: topicWidth(topic), wantedHeight: topicHeight(),
-                               availableHeight: height - barJoin - 16, sideInset: sideInset, edge: 12, minimumHeight: Canopy.peeking ? 120 : 160 });
+        return Strata.target({ barWidth: extent, anchor: Canopy.anchorRect, wantedWidth: wantedSpan(topic), wantedHeight: wantedReach(topic),
+                               availableHeight: side ? width - 16 : height - barJoin - 16, sideInset: side ? 0 : sideInset, edge: 12,
+                               minimumHeight: side ? Math.min(width - 16, 320) : Canopy.peeking ? 120 : 160 });
     }
-    function topicX(w) { return Strata.panelX(width, Canopy.anchorRect, w, sideInset, 12); }
+    function panelAlong(s) { return Strata.panelX(extent, Canopy.anchorRect, s, side ? 0 : sideInset, 12); }
     function setState(value) { Canopy.surfaceState = value; }
-    function snap(x, w, h) {
+    function snap(a, s, r) {
         drop.animate = false;
-        drop.x = x; drop.width = w; drop.height = h;
+        drop.along = a; drop.span = s; drop.reach = r;
         drop.animate = true;
     }
-    // Horizontal geometry settles first; only the height moves, top-down.
+    // Geometry along the bar settles first; only the reach moves, outwards.
     function aim() {
-        const w = topicWidth(drop.topic);
-        snap(topicX(w), w, drop.height);
+        const s = wantedSpan(drop.topic);
+        snap(panelAlong(s), s, drop.reach);
     }
     property bool switching: false
     function retarget(force = false) {
@@ -83,20 +93,21 @@ PanelWindow {
             return;
         const t = targetFor(drop.topic);
         Canopy.surfaceRect = t;
-        drop.growing = t.height > drop.height;
-        drop.x = t.x; drop.width = t.width; drop.height = t.height;
+        drop.growing = t.height > drop.reach;
+        drop.targetReach = t.height;
+        drop.along = t.x; drop.span = t.width; drop.reach = t.height;
     }
     function open() {
-        const continuing = mapped && drop.height > 0;
+        const continuing = mapped && drop.reach > 0;
         closeDelay.stop();
         openReveal.stop(); swap.stop(); morph.stop();
         switching = false;
         mapped = true;
         drop.topic = Canopy.topic;
         drop.standalone = Canopy.standalone;
-        const w = topicWidth(drop.topic);
+        const s = wantedSpan(drop.topic);
         if (!continuing) {
-            snap(topicX(w), w, 0);
+            snap(panelAlong(s), s, 0);
             drop.reveal = 0;
         }
         setState("opening");
@@ -113,7 +124,7 @@ PanelWindow {
         openReveal.stop();
         drop.growing = false;
         drop.reveal = 0;
-        drop.height = 0;
+        drop.reach = 0;
     }
     function shut() {
         swap.stop(); morph.stop();
@@ -125,7 +136,7 @@ PanelWindow {
         else { mapped = false; setState("collapsed"); }
     }
     onRequestedChanged: requested ? open() : shut()
-    Component.onCompleted: if (requested) { mapped = true; drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; drop.reveal = 1; snap(topicX(topicWidth(drop.topic)), topicWidth(drop.topic), topicHeight()); }
+    Component.onCompleted: if (requested) { mapped = true; drop.topic = Canopy.topic; drop.standalone = Canopy.standalone; drop.reveal = 1; const s = wantedSpan(drop.topic); drop.targetReach = wantedReach(drop.topic); snap(panelAlong(s), s, drop.targetReach); }
     // Follow late content heights and anchor moves, but never during a switch
     // or a close: deferred so `requested` has settled before it is read.
     function reaim() { Qt.callLater(root.retargetIfOpen); }
@@ -161,15 +172,25 @@ PanelWindow {
         property real reveal: 0
         readonly property real cut: Config.barStyle === "cedar" ? Theme.strataCut : 12
         readonly property real longCut: Math.round(cut * 16 / 9)
-        y: root.barJoin
+        // Position and size along the bar, and how far it has grown out of it.
+        property real along: 0
+        property real span: 0
+        property real reach: 0
+        property real targetReach: 0
+        x: root.side ? 0 : along
+        y: root.side ? along : root.barJoin
+        width: root.side ? reach : span
+        height: root.side ? span : reach
+        // Sideways the panel is laid out at its full reach and uncovered as the surface grows.
+        clip: root.side
         // Anchor providers can settle after the window is mapped. Never
         // interpolate that correction during a dropdown entrance: it makes
         // right-side controls sweep across the screen from the old origin.
         // Only an explicit in-place tab morph may animate horizontally.
         readonly property bool animateHorizontal: root.morphing && drop.animate && morph.running
-        Behavior on x { enabled: drop.animateHorizontal; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
-        Behavior on width { enabled: drop.animateHorizontal; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
-        Behavior on height {
+        Behavior on along { enabled: drop.animateHorizontal; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
+        Behavior on span { enabled: drop.animateHorizontal; NumberAnimation { duration: VisualQuality.ms(Theme.expand * .75); easing.type: Easing.OutCubic } }
+        Behavior on reach {
             enabled: root.morphing && drop.animate
             NumberAnimation {
                 duration: VisualQuality.ms(drop.growing ? Theme.morphGrow : Theme.morphShrink)
@@ -181,6 +202,7 @@ PanelWindow {
         // and becomes the drop's sides (components/DropFrame.qml).
         DropFrame {
             anchors.fill: parent
+            side: root.side
             cut: drop.cut
             join: drop.cut
             fill: Qt.alpha(Config.barStyle === "cedar" ? Theme.strataFoundation : Theme.background, Math.max(.96, Config.panelOpacity))
@@ -223,7 +245,8 @@ PanelWindow {
         Behavior on reveal { enabled: root.morphing && !openReveal.running && !swap.running && !morph.running; NumberAnimation { duration: VisualQuality.ms(Theme.conceal) } }
         CanopyPanel {
             id: panel
-            anchors.fill: parent
+            anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left
+            width: root.side ? drop.targetReach : drop.width
             framed: false
             topic: drop.topic
             standalone: drop.standalone

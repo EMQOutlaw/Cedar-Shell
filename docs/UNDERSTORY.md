@@ -41,9 +41,12 @@ Beside this bar the rail starts at the screen's top, flush to the bar, and
 wears the pill's cuts at both right corners. The tray moves into the rail
 (a TRAY section, menus opening to the right). The Core pill rests while the
 bar is on the left (`CoreService.enabled` is false) and its signals still
-arrive as notifications; Canopy drops that have no bar control to grow from
-(Applications, the workspace overview, clipboard, keybinds) descend from the
-screen's top edge, clear of the bar. Switching placement replaces the bar
+arrive as notifications; The Canopy drops grow sideways out of this bar,
+beside the control that opened them (Applications, the workspace overview,
+the clock's calendar, Power) or centred on the screen's height when nothing
+anchors them (clipboard, keybinds): the same geometry engine run along the
+bar and away from it, with `components/DropFrame.qml` drawing the sideways
+silhouette, the bar's edge bending into the panel's top and bottom. Switching placement replaces the bar
 windows in place; nothing restarts.
 
 ## Keep awake

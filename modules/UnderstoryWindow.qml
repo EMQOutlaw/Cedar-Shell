@@ -30,7 +30,7 @@ PanelWindow {
     readonly property real join: beside ? 0 : Theme.strataCut
     anchors { top: true; left: true; bottom: true }
     margins.top: beside ? 0 : (Config.barDetached ? Config.barMargin : 0) + barJoin
-    margins.left: beside ? Config.barWidth - Theme.strataInset : sideInset
+    margins.left: beside ? Config.barWidth : sideInset
     implicitWidth: railWidth + join + 2
     color: Theme.transparent
     exclusionMode: ExclusionMode.Ignore
