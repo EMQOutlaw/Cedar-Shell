@@ -7,7 +7,7 @@ import "../components/core/Activities.js" as Policy
 
 Singleton {
     id: root
-    readonly property bool enabled: Config.stage >= 3 && Config.saved.coreEnabled
+    readonly property bool enabled: Config.stage >= 3 && Config.saved.coreEnabled && !Config.barVertical
     property string fallbackOutput: Quickshell.screens[0]?.name || ""
     readonly property var hostScreen: Quickshell.screens.find(s => s.name === (Config.saved.coreMonitor || Config.saved.mainDisplay)) || Quickshell.screens.find(s => s.name === fallbackOutput) || Quickshell.screens[0] || null
     readonly property string hostName: hostScreen?.name || ""

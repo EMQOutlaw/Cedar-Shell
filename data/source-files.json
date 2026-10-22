@@ -336,6 +336,7 @@
   "modules/TopBarSettings.qml",
   "modules/TrailCanopy.qml",
   "modules/TrailwatchView.qml",
+  "modules/UnderstoryBar.qml",
   "modules/UnderstoryRail.qml",
   "modules/UnderstorySettings.qml",
   "modules/UnderstoryWindow.qml",

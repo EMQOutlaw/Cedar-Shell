@@ -23,10 +23,10 @@ PanelWindow {
     readonly property bool morphing: VisualQuality.functionalMotion && !Config.testMode
     readonly property real sideInset: Config.barDetached ? Config.barMargin : 0
     // The bar frame sits five pixels inside the bar window; the drop joins its bottom edge.
-    readonly property real barJoin: Config.barHeight - (Config.barStyle === "cedar" || Config.barIslands ? 5 : 0)
+    readonly property real barJoin: Config.barVertical ? 0 : Config.barHeight - (Config.barStyle === "cedar" || Config.barIslands ? 5 : 0)
     anchors { top: true; left: true; right: true }
     margins.top: Config.barDetached ? Config.barMargin : 0
-    margins.left: sideInset
+    margins.left: sideInset + Config.barWidth
     margins.right: sideInset
     // Tall enough for Field Station; the surface is transparent and masked to the drop.
     implicitHeight: (modelData?.height || 800) - margins.top - 16

@@ -48,6 +48,12 @@ ShellRoot {
                 check(ShellState.panel === "", "toggle closes (" + ShellState.panel + ")");
                 Understory.close();
                 check(ShellState.panel === "", "close is idempotent");
+                // The left bar: the Core pill rests, the rail stands beside the bar.
+                Config.saved.barPlacement = "understory";
+                check(Config.barVertical && Config.barWidth === Config.barHeight, "the bar placement reserves its width");
+                check(!CoreService.enabled, "the Core pill rests while the bar is on the left");
+                Config.saved.barPlacement = "top";
+                check(!Config.barVertical && Config.barWidth === 0, "the top bar reserves no width");
                 frame.grabToImage(r => {
                     r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/understory.png");
                     if (ok) console.log("PASS: Understory rail");

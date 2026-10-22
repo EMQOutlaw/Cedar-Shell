@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
 import ".."
 import "../components"
@@ -192,7 +193,7 @@ Item {
                 Mark { text: (root.daypart + (root.person ? ", " + root.person : "")).toUpperCase() }
                 RowLayout {
                     Layout.fillWidth: true; spacing: 6
-                    Text { objectName: "understoryClock"; text: Config.clock24 ? Qt.formatDateTime(clock.date, "HH:mm") : Qt.formatDateTime(clock.date, "h:mm"); textFormat: Text.PlainText; color: Theme.strataText; font.family: Theme.labelFont; font.pixelSize: 36; font.weight: Font.DemiBold }
+                    Text { objectName: "understoryClock"; text: Config.clock24 ? Qt.formatDateTime(clock.date, "HH:mm") : Qt.formatDateTime(clock.date, "h:mm AP").split(" ")[0]; textFormat: Text.PlainText; color: Theme.strataText; font.family: Theme.labelFont; font.pixelSize: 36; font.weight: Font.DemiBold }
                     Text { visible: !Config.clock24; text: Qt.formatDateTime(clock.date, "AP"); textFormat: Text.PlainText; color: Theme.strataMuted; font.family: Theme.dataFont; font.pixelSize: 11; Layout.alignment: Qt.AlignBottom; Layout.bottomMargin: 8 }
                     Item { Layout.fillWidth: true; Layout.minimumWidth: 4 }
                     // Lock and suspend act at once; log out and power off arm the
@@ -418,6 +419,38 @@ Item {
                             hint: modelData.line + (on ? " · tap to leave" : "")
                             Accessible.name: "Profile " + text + (on ? ", in use" : "")
                             onClicked: Profiles.toggle(modelData.id)
+                        }
+                    }
+                }
+            }
+
+            // TRAY: the applications that would sit on the top bar, while the bar stands on its end.
+            ColumnLayout {
+                readonly property var items: Config.barVertical && Config.moduleEnabled("tray") ? SystemTray.items.values.filter(item => item.status !== Status.Passive) : []
+                visible: items.length > 0
+                Layout.fillWidth: true; spacing: 8
+                opacity: root.beat(7.5)
+                transform: Translate { y: 6 * (1 - root.beat(7.5)) }
+                Mark { text: "TRAY" }
+                Flow {
+                    Layout.fillWidth: true; spacing: 6
+                    Repeater {
+                        model: parent.parent.items
+                        StrataButton {
+                            id: trayButton
+                            required property var modelData
+                            width: 32; height: 32; iconOnly: true
+                            hint: modelData.title || modelData.id || "Tray application"
+                            onClicked: { if (modelData.onlyMenu && modelData.hasMenu) trayMenu.open(); else modelData.activate(); }
+                            Keys.onMenuPressed: if (modelData.hasMenu) trayMenu.open()
+                            contentItem: Image { source: Config.imageSource(trayButton.modelData.icon); sourceSize.width: 18; sourceSize.height: 18; fillMode: Image.PreserveAspectFit; horizontalAlignment: Image.AlignHCenter; verticalAlignment: Image.AlignVCenter }
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.RightButton | Qt.MiddleButton
+                                onClicked: event => { if (event.button === Qt.MiddleButton) trayButton.modelData.secondaryActivate(); else if (trayButton.modelData.hasMenu) trayMenu.open(); }
+                                onWheel: event => trayButton.modelData.scroll(event.angleDelta.y, false)
+                            }
+                            QsMenuAnchor { id: trayMenu; menu: trayButton.modelData.menu; anchor.item: trayButton; anchor.edges: Edges.Right; anchor.gravity: Edges.Right }
                         }
                     }
                 }

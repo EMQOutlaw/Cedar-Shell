@@ -23,10 +23,14 @@ PanelWindow {
     // The bar frame sits five pixels inside the bar window; the rail joins its bottom edge.
     readonly property real barJoin: Config.barHeight - (Config.barStyle === "cedar" || Config.barIslands ? 5 : 0)
     readonly property int railWidth: 388
-    readonly property real join: Theme.strataCut
+    // Beside the Understory bar the rail is a panel in its own right: it
+    // starts at the screen's top, flush to the bar's outer edge, and wears
+    // the pill's cuts at both right corners instead of the fillet into the bar.
+    readonly property bool beside: Config.barVertical
+    readonly property real join: beside ? 0 : Theme.strataCut
     anchors { top: true; left: true; bottom: true }
-    margins.top: (Config.barDetached ? Config.barMargin : 0) + barJoin
-    margins.left: sideInset
+    margins.top: beside ? 0 : (Config.barDetached ? Config.barMargin : 0) + barJoin
+    margins.left: beside ? Config.barWidth - Theme.strataInset : sideInset
     implicitWidth: railWidth + join + 2
     color: Theme.transparent
     exclusionMode: ExclusionMode.Ignore
@@ -75,6 +79,7 @@ PanelWindow {
         // right side leaves the bar through a concave fillet and the bottom
         // right corner carries the pill's long cut.
         Shape {
+            visible: !root.beside
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
@@ -107,8 +112,44 @@ PanelWindow {
                 PathLine { x: 0; y: rail.height }
             }
         }
+        // Beside the bar: the short cut top right, the long cut bottom right, square where it meets the bar.
+        Shape {
+            visible: root.beside
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: 0; strokeColor: "transparent"
+                fillColor: Qt.alpha(Theme.strataFoundation, Math.max(.94, Config.panelOpacity))
+                startX: 0; startY: 0
+                PathLine { x: rail.width - rail.cut; y: 0 }
+                PathLine { x: rail.width; y: rail.cut }
+                PathLine { x: rail.width; y: rail.height - rail.longCut }
+                PathLine { x: rail.width - rail.longCut; y: rail.height }
+                PathLine { x: 0; y: rail.height }
+                PathLine { x: 0; y: 0 }
+            }
+            ShapePath {
+                strokeWidth: 1; strokeColor: Qt.alpha(Theme.border, .55); fillColor: "transparent"
+                startX: 2; startY: 2
+                PathLine { x: rail.width - rail.cut - 1; y: 2 }
+                PathLine { x: rail.width - 2; y: rail.cut + 1 }
+                PathLine { x: rail.width - 2; y: rail.height - rail.longCut - 1 }
+                PathLine { x: rail.width - rail.longCut - 1; y: rail.height - 2 }
+                PathLine { x: 2; y: rail.height - 2 }
+            }
+            ShapePath {
+                strokeWidth: 1; fillColor: "transparent"
+                strokeColor: Qt.alpha(Theme.strataAccent, .32 + .3 * (1 - Understory.ease(0, .5)))
+                startX: 0; startY: 0
+                PathLine { x: rail.width - rail.cut; y: 0 }
+                PathLine { x: rail.width; y: rail.cut }
+                PathLine { x: rail.width; y: rail.height - rail.longCut }
+                PathLine { x: rail.width - rail.longCut; y: rail.height }
+                PathLine { x: 0; y: rail.height }
+            }
+        }
         // The pill's mark: a short lit line where the rail leaves the bar.
-        Rectangle { x: rail.width - 1; y: rail.join + 6; width: 1; height: 34; color: Theme.green; opacity: .7 * Understory.ease(.1, .3) }
+        Rectangle { x: rail.width - 1; y: rail.join + rail.cut + 6; width: 1; height: 34; color: Theme.green; opacity: .7 * Understory.ease(.1, .3) }
         CedarAtmosphere {
             anchors.fill: parent
             active: root.requested && Config.saved.ambientIntensity > 0

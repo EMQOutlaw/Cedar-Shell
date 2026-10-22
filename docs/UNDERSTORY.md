@@ -25,6 +25,27 @@ Nothing here has a second owner. Every tile calls the same service the
 Quick Controls drop and the Core pill call, and shows that service's own
 reading: a transaction that fails says so on the tile.
 
+## The Understory bar
+
+Settings › Bar › Placement: Top keeps the Strata bar; Left rail replaces it
+with the Understory bar (`modules/UnderstoryBar.qml`), the same material
+stood on its end along the left edge of every output, reserving its width.
+Top to bottom: CEDAR's mark (the Heartwood; click to grow the rail),
+Applications, the workspaces with the active one marked along the outer
+edge and the overview button, the focused window's title read upwards,
+then network, audio (wheel adjusts), battery with its percentage, the
+clock stacked hours over minutes (opens the calendar drop), and Power and
+session. The status marks open the rail, where their controls live.
+
+Beside this bar the rail starts at the screen's top, flush to the bar, and
+wears the pill's cuts at both right corners. The tray moves into the rail
+(a TRAY section, menus opening to the right). The Core pill rests while the
+bar is on the left (`CoreService.enabled` is false) and its signals still
+arrive as notifications; Canopy drops that have no bar control to grow from
+(Applications, the workspace overview, clipboard, keybinds) descend from the
+screen's top edge, clear of the bar. Switching placement replaces the bar
+windows in place; nothing restarts.
+
 ## Keep awake
 
 `services/Awake.qml` holds one `systemd-inhibit --what=idle:sleep` process

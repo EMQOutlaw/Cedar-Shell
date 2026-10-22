@@ -480,8 +480,17 @@ ShellRoot {
         model: Quickshell.screens
         Scope {
             required property var modelData
-            Bar {
-                output: modelData
+            LazyLoader {
+                active: !Config.barVertical
+                component: Bar {
+                    output: modelData
+                }
+            }
+            LazyLoader {
+                active: Config.barVertical
+                component: UnderstoryBar {
+                    output: modelData
+                }
             }
             LazyLoader {
                 active: Config.stage >= 3 && !Config.testMode && !Config.externalBackground
