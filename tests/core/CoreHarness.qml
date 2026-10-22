@@ -190,6 +190,23 @@ ShellRoot {
                     break;
                 case 14:
                     window.check(core.height <= core.restingHeight + .5, "The pill folds back once the notice is gone");
+                    // Dictation: Voxtype's state drives the pill, its levels drive the line.
+                    Dictation.applyState("recording");
+                    for (let i = 0; i < 40; i++)
+                        Dictation.feed(Math.abs(Math.sin(i / 3)) * .4, Math.abs(Math.sin(i / 3)) * .18, i % 7 < 4);
+                    window.check(window.find(core, "coreDictation")?.visible === true, "Dictation replaces the pill text while listening");
+                    window.check(core.width > core.restWidth, "The pill widens for dictation");
+                    window.shot = "core-dictation";
+                    break;
+                case 15:
+                    Dictation.applyState("transcribing");
+                    window.check(window.find(core, "coreDictation")?.visible === true && !Dictation.listening, "Transcribing keeps the line and stops the levels");
+                    window.shot = "core-dictation-transcribing";
+                    break;
+                case 16:
+                    Dictation.applyState("idle");
+                    window.check(window.find(core, "coreDictation")?.visible === false, "The clock returns once dictation is idle");
+                    window.check(CoreService.rows.findIndex(r => r.id === "dictation") < 0, "The dictation row leaves with the state");
                     CoreService.collapse();
                     ShellState.osdOpen = false;
                     Config.set("coreEnabled", false);

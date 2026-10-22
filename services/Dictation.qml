@@ -43,6 +43,49 @@ Singleton {
     readonly property string label: !installed ? "Not installed" : !daemon ? "Stopped" : recording ? "Listening" : transcribing ? "Transcribing" : "Ready"
     readonly property string refusal: ShellState.locked ? "error: the session is locked" : !installed ? "error: voxtype is not installed" : !daemon ? "error: the voxtype daemon is not running" : ""
 
+    // ------------------------------------------------------------ the audio
+    // While Voxtype listens, its `voxtype-audio-bridge` sidecar reads the
+    // daemon's own level socket and prints one JSON line per frame
+    // ({"peak","rms","vad","ts_ms"}). CEDAR runs it only for the length of a
+    // recording and only while the Core pill shows dictation, reads levels and
+    // the daemon's voice-activity flag from it, and nothing else: no samples,
+    // no transcript. The bridge exits with the recording; it is never restarted
+    // on its own. When the levels are missing (no bridge on PATH, an older
+    // Voxtype), `listening` stays false and the pill shows a quiet line.
+    readonly property bool wantLevels: recording && Config.saved.coreDictation && Config.saved.coreEnabled && !ShellState.locked && !Config.testMode
+    readonly property bool listening: levels.running && levelsFresh
+    property bool levelsFresh: false
+    property real peak: 0
+    property real rms: 0
+    property bool voice: false
+    property real startedAt: 0
+    signal frame(real peak, real rms, bool voice)
+    function feed(p, r, v) {
+        peak = Math.max(0, Math.min(1, Number(p) || 0));
+        rms = Math.max(0, Math.min(1, Number(r) || 0));
+        voice = !!v;
+        levelsFresh = true;
+        frame(peak, rms, voice);
+    }
+    function clearLevels() { peak = 0; rms = 0; voice = false; levelsFresh = false; }
+    Process {
+        id: levels
+        command: ["voxtype-audio-bridge"]
+        running: root.wantLevels
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                const line = String(data || "").trim();
+                if (!line) return;
+                let obj;
+                try { obj = JSON.parse(line); } catch (e) { return; }
+                if (typeof obj.peak === "number" && typeof obj.rms === "number") root.feed(obj.peak, obj.rms, obj.vad);
+                else if (obj.status === "disconnected") root.levelsFresh = false;
+            }
+        }
+        onRunningChanged: if (!running) root.clearLevels()
+    }
+
     // ------------------------------------------------------ Voxtype's settings
     // Flat dotted keys → values, as `voxtype config get --json` reports them for
     // the keys scripts/dictation.py exposes; empty until Settings asks.
@@ -182,7 +225,11 @@ Singleton {
         }
     }
     onActiveChanged: { publishRow(); cancelForLock(); }
-    onRecordingChanged: if (active) publishRow()
+    onRecordingChanged: {
+        if (recording) startedAt = Date.now();
+        else clearLevels();
+        if (active) publishRow();
+    }
     Connections { target: Config.saved; function onCoreDictationChanged() { root.publishRow(); } }
     Connections {
         target: ShellState

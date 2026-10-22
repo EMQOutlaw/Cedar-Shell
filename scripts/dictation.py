@@ -42,6 +42,7 @@ KEYS = {
     'text.smart_auto_submit': ('bool', None),
     'text.filter_filler_words': ('bool', None),
     'vad.enabled': ('bool', None),
+    'osd.enabled': ('bool', None),
     'vad.threshold': ('float', (0, 1)),
 }
 MODEL_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')
