@@ -124,6 +124,28 @@ ShellRoot {
         model: Canopy.screen ? [Canopy.screen] : []
         CanopyWindow {}
     }
+    // The Understory on its chosen output; the window unmaps itself once closed.
+    Variants {
+        reloadableId: "cedar-understory-host"
+        model: Understory.screen ? [Understory.screen] : []
+        UnderstoryWindow {}
+    }
+    IpcHandler {
+        target: "understory"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                Understory.toggle();
+        }
+        function open(): void {
+            Understory.open();
+        }
+        function hide(): void {
+            Understory.close();
+        }
+        function status(): string {
+            return JSON.stringify(Understory.status());
+        }
+    }
     IpcHandler {
         target: "canopy"
         function show(topic: string): void {

@@ -10,8 +10,8 @@ ColumnLayout {
     property string highlightKey:""
     property string tab:"Layout"
     spacing:16
-    onHighlightKeyChanged:if(highlightKey)tab=highlightKey==="modules" ? "Modules":"Layout"
-    SettingsTabs {tabs:["Layout","Modules","Dynamic Island","Pop-outs","Behavior"];current:root.tab;onChosen:tab=>root.tab=tab}
+    onHighlightKeyChanged:if(highlightKey)tab=highlightKey==="modules" ? "Modules":highlightKey==="understory" ? "Understory":"Layout"
+    SettingsTabs {tabs:["Layout","Modules","Dynamic Island","Understory","Pop-outs","Behavior"];current:root.tab;onChosen:tab=>root.tab=tab}
     SettingsBarPreview {id:preview;active:root.active;Layout.fillWidth:true}
     SettingsSurface {
         visible:root.tab==="Layout"
@@ -33,6 +33,7 @@ ColumnLayout {
         }
     }
     CoreSettings {visible:root.tab==="Dynamic Island";highlightKey:root.highlightKey;Layout.fillWidth:true}
+    UnderstorySettings {visible:root.tab==="Understory";active:root.active&&visible;Layout.fillWidth:true}
     SettingsSurface {
         visible:root.tab==="Pop-outs"
         GlowText {text:"Surface geometry";font.family:Theme.labelFont;font.pixelSize:Theme.title}

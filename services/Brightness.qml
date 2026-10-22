@@ -33,7 +33,7 @@ Singleton {
     // Poll only while a brightness control is on screen. Key presses and the
     // OSD read on demand through change()/show(); nothing samples a hidden value.
     readonly property bool observed: !ShellState.locked && !Config.testMode && (
-        ShellState.panel === "control" ||
+        ShellState.panel === "control" || Understory.shown ||
         (SettingsService.open && SettingsService.page === "power") ||
         (Canopy.shown && Canopy.topic === "quick") ||
         (ShellState.osdOpen && ShellState.osdKind === "BRIGHTNESS"))

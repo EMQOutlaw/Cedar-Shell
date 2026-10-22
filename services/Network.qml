@@ -68,7 +68,7 @@ Singleton {
         noticeClear.restart();
     }
     Timer { id: noticeClear; onTriggered: root.notice = null }
-    readonly property bool expanded: !ShellState.locked && ((SettingsService.open && SettingsService.page === "connections") || (Canopy.shown && ["network", "quick"].includes(Canopy.topic)))
+    readonly property bool expanded: !ShellState.locked && ((SettingsService.open && SettingsService.page === "connections") || (Canopy.shown && ["network", "quick"].includes(Canopy.topic)) || Understory.shown)
     property string generation: ""
     property int sequence: 0
     property int retryDelay: 1000

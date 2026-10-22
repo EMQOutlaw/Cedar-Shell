@@ -24,7 +24,7 @@ Singleton {
     // Settings is a separate window; ShellState.panel does not own its lifetime.
     // Transactions and Trailwatch retain their explicit on-demand refreshes.
     readonly property bool observed: !ShellState.locked && !Config.testMode && (
-        ShellState.panel === "control" ||
+        ShellState.panel === "control" || Understory.shown ||
         (Canopy.shown && Canopy.topic === "quick") ||
         (SettingsService.open && ["power", "profiles"].includes(SettingsService.page)))
     Timer { interval: 10000; running: root.observed; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }

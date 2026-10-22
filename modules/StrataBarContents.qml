@@ -142,12 +142,16 @@ Item {
                 fontSize: Theme.small
                 letterSpacing: 2
                 accent: Theme.strataAccent
-                hint: "Field Station"
+                // The mark opens the Understory, the rail that grows from this end
+                // of the bar; Field Station keeps its place behind the rail's Heartwood.
+                hint: Config.stage >= 3 ? "Understory" : "Field Station"
                 enabled: Config.stage >= 2 && !ShellState.locked
-                anchorTopic: "station"
-                canopyOutput: root.outputName
-                checked: root.selected("station")
-                onClicked: root.openTopic("station", "hud")
+                anchorsCanopy: false
+                checked: Understory.shown && Understory.outputName === root.outputName
+                onClicked: {
+                    if (Config.stage >= 3) Understory.toggle(root.outputName);
+                    else root.openTopic("station", "hud");
+                }
             }
             BarButton {
                 objectName: "strataLauncher"

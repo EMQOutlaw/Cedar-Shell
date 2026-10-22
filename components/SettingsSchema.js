@@ -201,6 +201,7 @@ var extras = [
  {page:"appearance",key:"theme",label:"Theme",description:"Choose from installed desktop themes.",aliases:"colors palette"},
  {page:"desktop",key:"wallpaper",label:"Wallpaper",description:"Preview and change your desktop background."},
  {page:"bar",key:"modules",label:"Bar modules",description:"Choose which controls appear in the top bar."},
+ {page:"bar",key:"understory",label:"Understory",description:"The rail of controls that grows from the bar's left end, and its shortcut.",aliases:"sidebar rail control center keybind shortcut"},
  {page:"displays",key:"vrr",label:"Variable Refresh Rate",description:"Adaptive sync policy for compatible displays.",aliases:"VRR freesync gsync"},
  {page:"displays",key:"mainDisplay",label:"Main display",description:"Preferred output for CEDAR and the system startup screen.",aliases:"primary DP-2 monitor"},
  {page:"displays",key:"arrangement",label:"Display arrangement",description:"Drag your monitors into position.",aliases:"position monitor"},
