@@ -52,7 +52,7 @@ Singleton {
     // no transcript. The bridge exits with the recording; it is never restarted
     // on its own. When the levels are missing (no bridge on PATH, an older
     // Voxtype), `listening` stays false and the pill shows a quiet line.
-    readonly property bool wantLevels: recording && Config.saved.coreDictation && Config.saved.coreEnabled && !ShellState.locked && !Config.testMode
+    readonly property bool wantLevels: recording && Config.saved.coreDictation && (Config.saved.coreEnabled || Config.barVertical) && !ShellState.locked && !Config.testMode
     readonly property bool listening: levels.running && levelsFresh
     property bool levelsFresh: false
     property real peak: 0

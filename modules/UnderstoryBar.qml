@@ -97,7 +97,7 @@ PanelWindow {
         readonly property var provider: root.sideAnchor(mark)
         function publish() {
             if (!anchorTopic) return;
-            if (visible && enabled) Canopy.setAnchorProvider(anchorTopic, root.outputName, provider);
+            if (visible && (enabled || anchorTopic === "dictation")) Canopy.setAnchorProvider(anchorTopic, root.outputName, provider);
             else Canopy.clearAnchorProvider(anchorTopic, root.outputName, provider);
         }
         Component.onCompleted: Qt.callLater(publish)
@@ -210,6 +210,21 @@ PanelWindow {
             accent: Audio.muted ? Theme.amber : Theme.strataAccent
             onClicked: Understory.toggle(root.outputName)
             WheelHandler { onWheel: event => Audio.setVolume(Audio.volume + (event.angleDelta.y > 0 ? .05 : -.05)) }
+        }
+        // Dictation: Voxtype's microphone. Ember while it listens, amber while it
+        // transcribes; a click toggles, a right-click opens Settings › Dictation.
+        // Its filament grows out of the bar beside this mark (UnderstoryDictation).
+        BarMark {
+            objectName: "understoryBarDictation"
+            visible: Config.stage >= 3 && Dictation.installed && Config.moduleEnabled("dictation")
+            text: root.nerd ? (Dictation.transcribing ? "󰔟" : "󰍬") : (Dictation.transcribing ? "…" : "M")
+            hint: "Dictation · " + Dictation.label + " · Super+Ctrl+X toggles"
+            accent: Dictation.recording ? Theme.ember : Dictation.transcribing ? Theme.amber : Theme.strataAccent
+            checked: Dictation.active
+            enabled: !ShellState.locked && Dictation.available
+            anchorTopic: "dictation"
+            onClicked: Dictation.toggle()
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.RightButton; onClicked: Dictation.openSettings() }
         }
         Column {
             objectName: "understoryBarBattery"

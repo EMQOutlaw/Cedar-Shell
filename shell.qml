@@ -130,6 +130,12 @@ ShellRoot {
         model: Understory.screen ? [Understory.screen] : []
         UnderstoryWindow {}
     }
+    // Dictation's filament beside the Understory bar, on the main display, while Voxtype works.
+    Variants {
+        reloadableId: "cedar-understory-dictation"
+        model: Config.barVertical && CoreService.hostScreen ? [CoreService.hostScreen] : []
+        UnderstoryDictation {}
+    }
     IpcHandler {
         target: "understory"
         function toggle(): void {
