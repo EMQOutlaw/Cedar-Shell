@@ -196,6 +196,8 @@ PanelWindow {
             objectName: "understoryBarNetwork"
             visible: Config.moduleEnabled("network")
             text: root.nerd ? Network.glyph : Network.fallbackGlyph
+            // The Wi-Fi glyph's ink sits right of its advance; pull it back onto the frame's centre.
+            rightPadding: padding + (root.nerd && Network.kind === "wifi" && Network.state === "connected" ? 4 : 0)
             hint: Network.statusDescription
             accent: Network.state === "connected" ? Theme.strataAccent : Theme.strataMuted
             onClicked: Understory.toggle(root.outputName)
@@ -232,10 +234,11 @@ PanelWindow {
             hint: Config.formatDate(clock.date, false)
             enabled: !ShellState.locked
             background: Item {}
+            // The content item is inset by the button's padding; the lines span it, not the column.
             contentItem: Column {
                 spacing: -2
-                Text { width: foot.width; horizontalAlignment: Text.AlignHCenter; text: Config.clock24 ? Qt.formatDateTime(clock.date, "HH") : Qt.formatDateTime(clock.date, "h AP").split(" ")[0]; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small + 1; font.weight: Font.DemiBold; color: Theme.strataText }
-                Text { width: foot.width; horizontalAlignment: Text.AlignHCenter; text: Qt.formatDateTime(clock.date, "mm"); textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small + 1; color: Theme.strataText }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: Config.clock24 ? Qt.formatDateTime(clock.date, "HH") : Qt.formatDateTime(clock.date, "h AP").split(" ")[0]; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small + 1; font.weight: Font.DemiBold; color: Theme.strataText }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: Qt.formatDateTime(clock.date, "mm"); textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small + 1; color: Theme.strataText }
             }
             onClicked: { if (Config.saved.canopyEnabled) Canopy.toggleTopic("calendar", root.outputName); else Understory.toggle(root.outputName); }
             readonly property var provider: root.sideAnchor(this)
