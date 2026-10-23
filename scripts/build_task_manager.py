@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 PACKAGES=['Qt6Core','Qt6Network','Qt6Gui','Qt6Qml','Qt6Quick','Qt6QuickControls2','Qt6DBus']
 def build(root=ROOT, output=None):
     root=Path(root).resolve();output=Path(output or root/'.local/task-manager').resolve()
-    sources=sorted((root/'native/taskmanager').glob('*'))+sorted((root/'taskmanager').glob('*.qml'))+[root/'scripts/build_task_manager.py']
+    sources=sorted((root/'native/taskmanager').glob('*'))+sorted((root/'taskmanager').glob('*'))+[root/'components/core/Kinetic.js',root/'components/core/StrataGeometry.js']+[root/'scripts/build_task_manager.py']
     sources=[p for p in sources if p.is_file()]
     build_id=hashlib.sha256(b''.join(p.name.encode()+p.read_bytes() for p in sources)).hexdigest()[:16]
     tools={k:shutil.which(k) for k in ('g++','pkg-config')}

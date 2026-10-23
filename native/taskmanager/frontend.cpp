@@ -5,6 +5,8 @@
 #include <QQmlContext>
 #include <QPainter>
 #include <QPainterPath>
+#include <QQuickImageProvider>
+#include <QIcon>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/signalfd.h>
@@ -42,18 +44,62 @@ bool ProcessProxy::lessThan(const QModelIndex&a,const QModelIndex&b)const{
     if(sortKey=="name"||sortKey=="state"||sortKey=="user")return QString::localeAwareCompare(x.toString(),y.toString())<0;
     return x.toDouble()<y.toDouble();
 }
+// Desktop associations are indexed once per application lifetime. Only standard
+// desktop-entry icon values are used; unavailable icons use the QML fallback.
+class ApplicationIcons : public QQuickImageProvider {
+public:
+    static inline QHash<QString,QString> icons;
+    ApplicationIcons():QQuickImageProvider(QQuickImageProvider::Image){
+        if(QIcon::fallbackThemeName().isEmpty())QIcon::setFallbackThemeName("hicolor");
+        for(const auto &folder:QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation)){
+            QDirIterator files(folder,{"*.desktop"},QDir::Files,QDirIterator::Subdirectories);
+            while(files.hasNext()){
+                const auto path=files.next();QSettings entry(path,QSettings::IniFormat);entry.beginGroup("Desktop Entry");
+                const auto icon=entry.value("Icon").toString();if(icon.isEmpty()||entry.value("Hidden").toBool())continue;
+                if((QFileInfo(icon).isAbsolute()?QIcon(icon):QIcon::fromTheme(icon)).isNull())continue;
+                const auto exec=QProcess::splitCommand(entry.value("Exec").toString());
+                QStringList keys{QFileInfo(path).completeBaseName(),entry.value("StartupWMClass").toString()};
+                if(!exec.isEmpty()&&QFileInfo(exec.first()).fileName()!="env")keys<<QFileInfo(exec.first()).fileName();
+                for(const auto &key:keys)if(!key.isEmpty()&&!icons.contains(key.toLower()))icons[key.toLower()]=icon;
+            }
+        }
+    }
+    QImage requestImage(const QString &id,QSize *size,const QSize &requested) override {
+        const auto key=QUrl::fromPercentEncoding(id.toUtf8()).toLower();
+        const auto name=icons.value(key);const QSize dimensions=requested.isValid()?requested:QSize(32,32);
+        QIcon icon=QFileInfo(name).isAbsolute()?QIcon(name):QIcon::fromTheme(name);
+        if(name.isEmpty()||icon.isNull()){if(size)*size=dimensions;QImage empty(dimensions,QImage::Format_ARGB32_Premultiplied);empty.fill(Qt::transparent);return empty;}
+        auto result=icon.pixmap(dimensions).toImage();if(size)*size=result.size();return result;
+    }
+};
+QString TaskClient::iconSource(QString key) const {
+    return ApplicationIcons::icons.contains(key.toLower()) ? "image://applications/"+QString::fromLatin1(QUrl::toPercentEncoding(key)) : QString();
+}
 void HistoryGraph::paint(QPainter *p){
-    if(values.size()<2)return;double cap=ceiling;if(cap<=0){cap=1;for(const auto &v:values)if(!v.isNull())cap=std::max(cap,v.toDouble());}
-    p->setRenderHint(QPainter::Antialiasing);QPainterPath path;bool started=false;
-    for(int i=0;i<values.size();++i){if(values[i].isNull()){started=false;continue;}QPointF point(double(i)/119*width(),height()-std::clamp(values[i].toDouble()/cap,0.0,1.0)*(height()-4)-2);if(!started){path.moveTo(point);started=true;}else path.lineTo(point);}
-    p->setPen(QPen(ink,1.6));p->drawPath(path);
+    // Keep a stable upper scale for this mounted instrument. Never smooth or
+    // invent samples; null gaps remain gaps and the newest sample sits at right.
+    const double cap=upperBound();
+    p->setRenderHint(QPainter::Antialiasing);
+    QColor guide=ink;guide.setAlphaF(.10);p->setPen(QPen(guide,1));
+    for(double fraction:{0.0,.5,1.0})p->drawLine(QPointF(0,2+fraction*(height()-4)),QPointF(width(),2+fraction*(height()-4)));
+    const auto draw=[&](const QVariantList &list,QColor color){
+        QPainterPath path;bool started=false;QPointF last;bool lastValid=false;
+        for(int i=0;i<list.size();++i){
+            if(list[i].isNull()){started=false;lastValid=false;continue;}
+            QPointF point(double(120-list.size()+i)/119*(width()-4)+2,height()-std::clamp(list[i].toDouble()/cap,0.0,1.0)*(height()-4)-2);
+            if(!started){path.moveTo(point);started=true;}else path.lineTo(point);last=point;lastValid=true;
+        }
+        p->setBrush(Qt::NoBrush);p->setPen(QPen(color,1.35));p->drawPath(path);
+        if(lastValid){p->setBrush(color);p->setPen(Qt::NoPen);p->drawEllipse(last,2,2);}
+    };
+    draw(values,ink);if(!other.isEmpty())draw(other,otherInk);
 }
 static QString configPath(){return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)+"/cedar";}
 static QVariantMap jsonFile(const QString &p){return QJsonDocument::fromJson(readFile(p)).object().toVariantMap();}
 TaskClient::TaskClient(QString source,bool testing,QObject *p):QObject(p),model(this),proxy(this),root(std::move(source)),prefs(configPath()+"/task-manager.ini",QSettings::IniFormat),test(testing){
     proxy.setSourceModel(&model);proxy.sort(0,Qt::DescendingOrder);socketPath=runtimeDirectory()+"/taskd-"+CEDAR_BUILD_ID+".sock";
     reconnect.setSingleShot(true);actionTimer.setSingleShot(true);actionTimer.setInterval(5000);
-    connect(&actionTimer,&QTimer::timeout,this,[this]{pending.clear();resultText="Action reply timed out; outcome unknown. Refresh before retrying.";Q_EMIT changed();});
+    connect(&actionTimer,&QTimer::timeout,this,[this]{pending.clear();failedAction=true;resultText="Action reply timed out; outcome unknown. Refresh before retrying.";Q_EMIT changed();});
     connect(&reconnect,&QTimer::timeout,this,&TaskClient::connectBackend);
     connect(&socket,&QLocalSocket::connected,this,[this]{if(!sameUserPeer(socket.socketDescriptor())){socket.abort();return;}send({{"type","hello"},{"build",CEDAR_BUILD_ID}});});
     connect(&socket,&QLocalSocket::readyRead,this,&TaskClient::read);
@@ -83,7 +129,12 @@ void TaskClient::loadStyle(){
     for(auto it=overrides.begin();it!=overrides.end();++it)if(QColor::isValidColorName(it.value().toString()))theme[it.key()]=it.value();
     auto settings=jsonFile(configPath()+"/settings.json");theme["font"]=settings.value("interfaceFont","Rajdhani");theme["mono"]=settings.value("dataFont","JetBrainsMono Nerd Font");
     theme["fontScale"]=std::clamp(settings.value("fontScale",1).toDouble(),0.8,1.5);
-    theme["reducedMotion"]=settings.value("reducedMotion",false).toBool()||settings.value("motionPreset").toString()=="off"||settings.value("performanceMode").toString()=="on";
+    theme["reducedMotion"]=settings.value("reducedMotion",false).toBool()||settings.value("motionPreset").toString()=="off";
+    theme["efficient"]=settings.value("performanceMode").toString()=="on";
+    theme["visualMode"]=prefs.value("visualMode","auto");
+    theme["effectIntensity"]=settings.value("effectIntensity",1);
+    theme["kinetic"]=settings.value("barKinetic",true);
+    const auto preset=settings.value("motionPreset").toString();theme["motionScale"]=preset=="calm"?.7:preset=="expressive"?1.3:1.0;
     theme["radius"]=std::clamp(settings.value("panelRadius",16).toInt(),0,28);
     for(const auto &path:QStringList{configPath(),configPath()+"/settings.json",configPath()+"/theme.json"})if(QFileInfo::exists(path)&&!watcher.files().contains(path)&&!watcher.directories().contains(path))watcher.addPath(path);
     Q_EMIT styleChanged();
@@ -96,7 +147,7 @@ void TaskClient::connectBackend(){
 }
 void TaskClient::disconnected(){
     online=false;system.clear();model.update({});proxy.invalidate();detail.clear();hist.clear();buffer.clear();
-    if(!pending.isEmpty()){pending.clear();actionTimer.stop();resultText="Disconnected before action confirmation; outcome unknown";}
+    if(!pending.isEmpty()){pending.clear();actionTimer.stop();failedAction=true;resultText="Disconnected before action confirmation; outcome unknown";}
     stateText=backendProblem.isEmpty()?"Disconnected · reconnecting to the collector":backendProblem+" · reconnecting";if(!reconnect.isActive()){reconnect.start(retryMs);retryMs=std::min(retryMs*2,5000);}Q_EMIT changed();
 }
 void TaskClient::read(){
@@ -118,7 +169,7 @@ void TaskClient::receive(QJsonObject r){auto type=r["type"].toString();
         }else if(type=="processes"){
             model.update(r["rows"].toArray());proxy.invalidate();proxy.sort(0,proxy.descending?Qt::DescendingOrder:Qt::AscendingOrder);updateDetail();Q_EMIT changed();
         }else if(type=="action-result"){
-            if(r["id"].toString()==pending){pending.clear();actionTimer.stop();resultText=r["message"].toString();Q_EMIT changed();}
+            if(r["id"].toString()==pending){pending.clear();actionTimer.stop();resultText=r["message"].toString();failedAction=!r["ok"].toBool();Q_EMIT changed();}
         }else if(type=="error"){backendProblem=r["message"].toString().left(240);stateText=backendProblem;Q_EMIT changed();}
 }
 void TaskClient::visibility(bool value){visible=value;if(socket.state()==QLocalSocket::ConnectedState)send({{"type","visibility"},{"visible",value}});}
@@ -131,7 +182,7 @@ void TaskClient::updateDetail(){
 }
 void TaskClient::action(QString identity,QString operation,int nice,bool confirmed){
     if(!online||!pending.isEmpty())return;const auto parts=identity.split(':');if(parts.size()!=2)return;
-    pending=QUuid::createUuid().toString(QUuid::WithoutBraces);resultText="Sending action…";
+    pending=QUuid::createUuid().toString(QUuid::WithoutBraces);failedAction=false;resultText="Sending action…";
     send({{"type","action"},{"id",pending},{"pid",parts[0].toLongLong()},{"start",parts[1]},{"action",operation},{"nice",nice},{"confirmed",confirmed}});actionTimer.start();Q_EMIT changed();
 }
 void TaskClient::refreshServices(){
@@ -145,23 +196,36 @@ void TaskClient::refreshServices(){
         const QDBusArgument argument=qvariant_cast<QDBusArgument>(reply.arguments().first());argument.beginArray();while(!argument.atEnd()){
             QString name,description,load,active,sub,following,jobType;QDBusObjectPath path,jobPath;quint32 job;
             argument.beginStructure();argument>>name>>description>>load>>active>>sub>>following>>path>>job>>jobType>>jobPath;argument.endStructure();
-            if(name.endsWith(".service"))units.append(QVariantMap{{"name",name},{"description",description},{"state",active+" / "+sub}});
+            if(name.endsWith(".service"))units.append(QVariantMap{{"name",name},{"description",description},{"state",active+" / "+sub},{"active",active},{"sub",sub},{"load",load}});
         }argument.endArray();serviceText=QString::number(units.size())+" user services · read-only";Q_EMIT servicesChanged();
     });
+}
+void TaskClient::setVisualMode(QString mode){
+    if(!QStringList{"auto","full","reduced","minimal"}.contains(mode))return;
+    if(!test){prefs.setValue("visualMode",mode);prefs.sync();}theme["visualMode"]=mode;Q_EMIT styleChanged();
 }
 QVariantMap TaskClient::preferences()const{return {{"width",prefs.value("width",1180)},{"height",prefs.value("height",820)},{"page",prefs.value("page",0)}};}
 void TaskClient::savePreferences(int w,int h,int page){if(test)return;prefs.setValue("width",std::clamp(w,520,3840));prefs.setValue("height",std::clamp(h,400,2160));prefs.setValue("page",std::clamp(page,0,3));prefs.sync();}
 void TaskClient::finishTest(bool ok,QString reason){qInfo().noquote()<<(ok?"PASS: ":"FAIL: ")+reason;QCoreApplication::exit(ok?0:1);}
 bool TaskClient::exerciseModel(){
+    const auto oldKey=proxy.sortKey;const bool oldDescending=proxy.descending;
     QJsonArray rows;for(int i=0;i<6000;++i)rows.append(QJsonObject{{"identity",QString::number(i)+":1"},{"name",QString("fixture %1").arg(i)},{"pid",i},{"uid",qint64(getuid())},{"cpu",i%100},{"rss",i*1000},{"state","S"},{"group","fixture"}});
-    QElapsedTimer time;time.start();model.update(rows);filter("fixture 5999","",true,false);bool ok=proxy.rowCount()==1;
+    QElapsedTimer time;time.start();model.update(rows);
+    QPersistentModelIndex stable(model.index(5999));int resetCount=0,changeCount=0;
+    const auto resetConnection=connect(&model,&QAbstractItemModel::modelReset,this,[&]{++resetCount;});
+    const auto changeConnection=connect(&model,&QAbstractItemModel::dataChanged,this,[&]{++changeCount;});
+    auto changedRow=rows[5999].toObject();changedRow["cpu"]=42;rows[5999]=changedRow;model.update(rows);
+    bool ok=stable.isValid()&&stable.data(ProcessModel::Identity).toString()=="5999:1"&&stable.data(ProcessModel::Cpu).toInt()==42&&resetCount==0&&changeCount==1;
+    disconnect(resetConnection);disconnect(changeConnection);
+    filter("fixture 5999","",true,false);ok&=proxy.rowCount()==1;
     filter("","",false,true);sort("rss");ok&=proxy.rowCount()==6000&&proxy.index(0,0).data(ProcessModel::Pid).toInt()==5999;
     sort("rss");ok&=proxy.index(0,0).data(ProcessModel::Pid).toInt()==0;
     filter("5999","S",true,false);ok&=proxy.rowCount()==1;filter("","T",false,false);ok&=proxy.rowCount()==0;
     filter("","",false,false);select("5999:1");ok&=detail.value("pid").toInt()==5999;
-    rows.removeLast();model.update(rows);updateDetail();ok&=detail.value("exited").toBool();qInfo()<<"6000-row batch/search/sort/selection ms"<<time.elapsed();model.update({});select("");filter("","",false,false);return ok;
+    rows.removeLast();model.update(rows);updateDetail();ok&=detail.value("exited").toBool();qInfo()<<"6000-row batch/search/sort/selection ms"<<time.elapsed();model.update({});select("");proxy.sortKey=oldKey;proxy.descending=oldDescending;filter("","",false,false);return ok;
 }
 int main(int argc,char **argv){
+    QElapsedTimer startup;startup.start();
     // Block before Qt creates any worker threads; every thread must inherit this
     // mask so SIGTERM reaches signalfd instead of bypassing orderly teardown.
     sigset_t mask;sigemptyset(&mask);sigaddset(&mask,SIGTERM);sigaddset(&mask,SIGINT);sigprocmask(SIG_BLOCK,&mask,nullptr);
@@ -176,8 +240,21 @@ int main(int argc,char **argv){
         QLocalServer focus;focus.setSocketOptions(QLocalServer::UserAccessOption);struct stat info{};
         if(!lstat(QFile::encodeName(endpoint).constData(),&info)&&(!S_ISSOCK(info.st_mode)||info.st_uid!=getuid()))throw std::runtime_error("Unsafe focus socket");
         QLocalServer::removeServer(endpoint);if(!localTest&&!focus.listen(endpoint))throw std::runtime_error("Cannot create application focus socket");
-        TaskClient client(root,test);qmlRegisterType<HistoryGraph>("Cedar.TaskManager",1,0,"HistoryGraph");QQmlApplicationEngine engine;engine.rootContext()->setContextProperty("Task",&client);
+        TaskClient client(root,test);qmlRegisterType<HistoryGraph>("Cedar.TaskManager",1,0,"HistoryGraph");QQmlApplicationEngine engine;engine.addImageProvider("applications",new ApplicationIcons);engine.rootContext()->setContextProperty("Task",&client);
         engine.load(QUrl::fromLocalFile(root+"/taskmanager/Main.qml"));if(engine.rootObjects().isEmpty())return 1;auto *window=qobject_cast<QQuickWindow*>(engine.rootObjects()[0]);
+        QElapsedTimer frames;QVector<double> intervals;bool firstFrame=true;
+        if(test){
+            QObject::connect(window,&QQuickWindow::frameSwapped,&app,[&]{
+                if(firstFrame){qInfo()<<"PROFILE first-frame-ms"<<startup.elapsed();firstFrame=false;}
+                if(frames.isValid()){double interval=frames.nsecsElapsed()/1e6;if(interval<100)intervals.append(interval);}
+                frames.restart();
+            });
+            QObject::connect(&app,&QCoreApplication::aboutToQuit,&app,[&]{
+                std::sort(intervals.begin(),intervals.end());
+                if(!intervals.isEmpty())qInfo()<<"PROFILE contiguous-frame-delivery-ms (<100ms; excludes idle) count"<<intervals.size()<<"median"<<intervals[intervals.size()/2]<<"p95"<<intervals[std::min(intervals.size()-1,qsizetype(intervals.size()*.95))];
+            });
+        }
+
         QObject::connect(&focus,&QLocalServer::newConnection,&app,[&]{while(focus.hasPendingConnections()){auto *s=focus.nextPendingConnection();s->setReadBufferSize(64);if(!sameUserPeer(s->socketDescriptor())){s->abort();s->deleteLater();continue;}
             QObject::connect(s,&QLocalSocket::readyRead,&app,[s,window]{if(!s->canReadLine())return;auto line=s->readLine(64);if(line=="focus\n"){window->showNormal();window->raise();window->requestActivate();if(!qEnvironmentVariableIsEmpty("HYPRLAND_INSTANCE_SIGNATURE"))QProcess::startDetached("hyprctl",{"dispatch","focuswindow","class:^(cedar-task-manager)$"});}s->disconnectFromServer();});
             QObject::connect(s,&QLocalSocket::disconnected,s,&QObject::deleteLater);QTimer::singleShot(1000,s,[s]{s->abort();s->deleteLater();});

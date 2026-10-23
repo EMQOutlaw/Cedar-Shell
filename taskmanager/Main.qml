@@ -9,270 +9,155 @@ ApplicationWindow {
     width: Math.min(Task.preferences.width || 1180, Screen.desktopAvailableWidth || 1280)
     height: Math.min(Task.preferences.height || 820, Screen.desktopAvailableHeight || 900)
     minimumWidth: 520; minimumHeight: 440
-    visible: true
-    color: Task.style.background
-    font.family: Task.style.font || "sans-serif"
-    font.pixelSize: 14 * (Task.style.fontScale || 1)
-    palette.window: Task.style.background
-    palette.base: Task.style.surface
-    palette.button: Task.style.elevated
-    palette.text: Task.style.text
-    palette.buttonText: Task.style.text
-    palette.highlight: Task.style.teal
-    palette.highlightedText: Task.style.background
+    visible: true; color: TM.base
+    font.family: TM.font; font.pixelSize: 14*TM.scale
+    palette.window: TM.base; palette.base: TM.surface; palette.button: TM.elevated
+    palette.text: TM.text; palette.buttonText: TM.text; palette.windowText: TM.text
+    palette.highlight: TM.accent; palette.highlightedText: TM.base
     property int page: Task.preferences.page || 0
-    property bool exiting: false
+    property int performanceResource: 0
     property string confirmationIdentity: ""
     property string confirmationName: ""
-    readonly property var cpu: Task.snapshot.cpu || ({})
-    readonly property var memory: Task.snapshot.memory || ({})
-    readonly property var gpus: Task.snapshot.gpus || []
-    readonly property bool hasGpu: gpus.length > 0
-    readonly property var selected: Task.selected
-    readonly property bool inspector: !!selected.identity
-    readonly property bool canAct: Task.connected && inspector && !selected.exited && !selected.protected && !Task.actionPending
-    readonly property bool wide: width >= 1060 * Math.max(1, Task.style.fontScale || 1)
-    function known(v) { return v !== undefined && v !== null && isFinite(Number(v)); }
-    function percent(v) { return known(v) ? Number(v).toFixed(1) + "%" : "Unavailable"; }
-    function bytes(v) { if (!known(v)) return "—"; const units=["B","KiB","MiB","GiB","TiB"]; let n=Number(v),i=0; while(n>=1024 && i<4){n/=1024;i++;} return n.toFixed(i ? 1 : 0)+" "+units[i]; }
-    function rate(v) { return known(v) ? bytes(v)+"/s" : "Unavailable"; }
-    function optional(v,suffix) { return known(v) ? Number(v).toFixed(0)+suffix : "Unavailable"; }
-    function history(key) { return Task.history[key] || []; }
-    onVisibilityChanged: value => Task.visibility(visible && value !== Window.Minimized)
-    onPageChanged: { if(page===3) Task.refreshServices(); if(!Task.style.reducedMotion) pageFade.restart(); }
-    onClosing: event => {
-        Task.savePreferences(width,height,page);
-        if(!exiting && !Task.style.reducedMotion){event.accepted=false;closeAnimation.start();}
+    readonly property bool compactHeader: width<1000*TM.scale
+    readonly property var sections: ["Overview","Processes","Performance","Services"]
+    function forceStop(identity,name) { confirmationIdentity=identity;confirmationName=name;confirm.open(); }
+    onVisibilityChanged: value => Task.visibility(visible && value!==Window.Minimized)
+    onPageChanged: { if(page===3) Task.refreshServices(); if(TM.motion) pageEntrance.restart(); }
+    onClosing: Task.savePreferences(width,height,page)
+    Component.onCompleted: { if(page===3)Task.refreshServices();if(TM.motion)pageEntrance.restart(); }
+    ParallelAnimation {
+        id: pageEntrance
+        NumberAnimation { target: content; property: "opacity"; from: .65; to: 1; duration: TM.ms(180) }
+        NumberAnimation { target: content; property: "translation"; from: 5; to: 0; duration: TM.ms(220); easing.type: Easing.OutCubic }
     }
-    NumberAnimation { id: closeAnimation; target: win; property: "opacity"; to: 0; duration: 110; onFinished: {win.exiting=true;win.close();} }
-    Component.onCompleted: { if (!Task.style.reducedMotion) openAnimation.start(); }
-    NumberAnimation { id: openAnimation; target: win; property: "opacity"; from: 0; to: 1; duration: 140 }
-    NumberAnimation { id: pageFade; target: stack; property: "opacity"; from: 0.7; to: 1; duration: 140 }
     Shortcut { sequence: "Ctrl+W"; onActivated: win.close() }
-    Shortcut { sequence: "Escape"; onActivated: if(confirm.opened)confirm.close();else Task.select("") }
+    Shortcut { sequence: "Escape"; onActivated: { if(confirm.opened)confirm.close();else if(preferences.opened)preferences.close();else processes.dismiss(); } }
+    Shortcut { sequence: "Ctrl+F"; onActivated: {if(win.page>1)win.page=1;processes.openSearch();} }
     Shortcut { sequence: "Ctrl+1"; onActivated: win.page=0 }
     Shortcut { sequence: "Ctrl+2"; onActivated: win.page=1 }
     Shortcut { sequence: "Ctrl+3"; onActivated: win.page=2 }
     Shortcut { sequence: "Ctrl+4"; onActivated: win.page=3 }
-    header: ColumnLayout {
-        spacing: 12
-        RowLayout {
-            Layout.fillWidth: true; Layout.margins: 18
-            Rectangle { width: 4; height: 28; radius: 2; color: Task.style.teal }
-            Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: "CEDAR  |  TASK MANAGER"; color: Task.style.text; font.pixelSize: win.width<650 ? 16:22; font.letterSpacing: 1; elide: Text.ElideRight }
-            Rectangle { width: 7; height: 7; radius: 4; color: Task.connected ? Task.style.green : Task.style.amber }
-            Text { textFormat: Text.PlainText; visible: win.width>750; Layout.maximumWidth: win.width/2; elide: Text.ElideRight; text: Task.status; color: Task.style.muted; font.pixelSize: 12 }
+    header: Item {
+        implicitHeight: win.compactHeader ? 102 : 62
+        Rectangle { anchors.fill: parent; color: TM.surface }
+        Image { anchors.fill: parent; source: "grain.svg"; fillMode: Image.Tile; opacity: .025; visible: TM.effects }
+        Image { x: 18; y: 17; width: 27; height: 27; source: "../data/icons/cedar-station.svg"; sourceSize.width: 54; sourceSize.height: 54 }
+        Column {
+            x: 56; y: 14; spacing: 0
+            TMText { text: "CEDAR"; font.pixelSize: 16*TM.scale; font.letterSpacing: 3; color: TM.accent }
+            TMText { text: "TASK MANAGER"; technical: true; font.pixelSize: 9*TM.scale; font.letterSpacing: 1.5 }
         }
-        RowLayout {
-            Layout.fillWidth: true; Layout.leftMargin: 18; Layout.rightMargin: 18; Layout.bottomMargin: 12
-            Repeater {
-                model: ["Overview","Processes","Performance","Services"]
-                TMButton { required property string modelData; required property int index; Layout.fillWidth: true; text: modelData; checked: win.page===index; onClicked: win.page=index }
+        Rectangle {
+            id: navigation
+            x: win.compactHeader ? 18 : 235*TM.scale; y: win.compactHeader ? 62 : 14
+            width: win.compactHeader ? parent.width-36 : Math.min(430*TM.scale,parent.width-x-240)
+            height: 34; radius: 4; color: TM.base
+            Rectangle {
+                x: win.page*navigation.width/4+2; y: 2; width: navigation.width/4-4; height: navigation.height-4
+                radius: 3; color: TM.elevated
+                Behavior on x { enabled: TM.motion; NumberAnimation { duration: TM.ms(220); easing.type: Easing.OutCubic } }
+                LivingEdge { anchors.bottom: parent.bottom; width: parent.width; active: true }
+            }
+            Row {
+                anchors.fill: parent
+                Repeater { model: win.sections
+                    TMButton { required property int index; required property string modelData; width: navigation.width/4; height: navigation.height; text: modelData; checked: index===win.page
+                        onClicked: win.page=index
+                        background: Rectangle { radius: 4; color: "transparent"; border.width: parent.visualFocus ? 2 : 0; border.color: TM.accent }
+                        Accessible.role: Accessible.PageTab; Accessible.name: modelData; Accessible.description: "Ctrl+"+(index+1)
+                    }
+                }
             }
         }
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 18; y: 16; spacing: 12
+            Rectangle { width: 5; height: 5; radius: 3; y: 13; color: Task.connected ? TM.accent : TM.warning }
+            TMHeading { width: win.width<650 ? 85 : 120; height: 32; text: Task.connected ? "LIVE / "+((Task.snapshot.sampleIntervalMs || 1000)/1000)+" s" : "CONNECTING"; size: 11; color: Task.connected ? TM.accent : TM.warning; font.family: TM.mono }
+            TMButton { id: preferencesButton; text: "⋯"; implicitWidth: 32; onClicked: preferences.open(); Accessible.name: "Display preferences" }
+        }
+        LivingEdge { anchors.bottom: parent.bottom; width: parent.width; active: false }
     }
     footer: Rectangle {
-        implicitHeight: footerText.implicitHeight+20; color: Task.style.surface
-        Text { textFormat: Text.PlainText; id: footerText; anchors.fill: parent; anchors.margins: 10; color: Task.connected ? Task.style.muted : Task.style.amber; font.pixelSize: 12; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight; text: !Task.connected ? Task.status : Task.message || Task.gaming+" · CPU 100% = one logical core in Processes · History: 120 samples" }
+        implicitHeight: Math.max(30,footerText.implicitHeight+12); color: TM.base
+        Rectangle { height: 1; width: parent.width; color: Qt.alpha(TM.border,.4) }
+        TMText { id: footerText; x: 18; y: 6; width: parent.width-36; text: !Task.connected ? Task.status : Task.message || "CPU in Processes: 100% = one logical core   ·   "+Task.gaming; color: !Task.connected || Task.actionFailed ? TM.warning : TM.muted; font.pixelSize: 11*TM.scale; wrapMode: Text.WordWrap; maximumLineCount: 2 }
     }
-    StackLayout {
-        id: stack
-        anchors.fill: parent; anchors.margins: 18
-        currentIndex: win.page
-        ScrollView {
-            id: overview; clip: true; contentWidth: availableWidth
-            GridLayout {
-                width: overview.availableWidth; columns: width>=850 ? 2:1; columnSpacing: 14; rowSpacing: 14
-                ResourceCard { Layout.fillWidth: true; title: "CPU"; value: win.percent(win.cpu.percent); samples: win.history("cpu"); detail: (win.cpu.model||"Processor unavailable")+"\n"+win.optional(win.cpu.temperature,"°C")+" · "+win.optional(win.cpu.mhz," MHz") }
-                ResourceCard { Layout.fillWidth: true; title: "Memory"; value: win.percent(win.memory.percent); samples: win.history("memory"); detail: win.bytes(win.memory.used)+" / "+win.bytes(win.memory.total)+" · Used = total − available" }
-                Repeater {
-                    model: win.hasGpu ? win.gpus : [{name:"GPU unavailable",percent:null}]
-                    ResourceCard { required property var modelData; required property int index; Layout.fillWidth: true; title: modelData.name; value: win.percent(modelData.percent); samples: win.history("gpu"+index); detail: win.hasGpu ? "VRAM "+win.bytes(modelData.used)+" / "+win.bytes(modelData.total)+" · "+win.optional(modelData.temperature,"°C")+" · "+win.optional(modelData.power," W") : Task.snapshot.gpuStatus || "Waiting for GPU capabilities" }
-                }
-                ResourceCard { Layout.fillWidth: true; title: "Storage activity"; value: win.rate(Task.snapshot.diskRead); ceiling: 0; samples: win.history("diskRead"); detail: "Read · Write "+win.rate(Task.snapshot.diskWrite)+"\nPhysical devices; partitions and stacked devices excluded" }
-                ResourceCard { Layout.fillWidth: true; title: "Network"; value: win.rate(Task.snapshot.download); ceiling: 0; samples: win.history("download"); detail: "Download · Upload "+win.rate(Task.snapshot.upload)+"\nAll interfaces except loopback" }
-                Text { textFormat: Text.PlainText; Layout.fillWidth: true; Layout.columnSpan: parent.columns; text: (Task.snapshot.errors||[]).join("\n"); color: Task.style.amber; wrapMode: Text.WordWrap; visible: text.length>0 }
-            }
-        }
+    Item {
+        id: content; anchors.fill: parent; anchors.margins: win.width<650 ? 12 : 18
+        property real translation: 0
+        transform: Translate { y: content.translation }
         ColumnLayout {
-            id: processesPage; spacing: 10
-            RowLayout {
-                Layout.fillWidth: true
-                TextField { id: search; objectName: "processSearch"; Layout.fillWidth: true; placeholderText: "Search name, application or PID"; selectByMouse: true; onTextChanged: searchDelay.restart() }
-                ComboBox { id: state; model: ["All states","R","S","D","T","Z","I"]; onActivated: searchDelay.restart(); Accessible.name: "Filter process state" }
+            anchors.fill: parent; spacing: 10
+            RowLayout { Layout.fillWidth: true; Layout.preferredHeight: 26*TM.scale
+                TMHeading { text: win.sections[win.page]; size: 22; Layout.fillWidth: true }
+                TMText { text: win.page===0 ? "SYSTEM / LIVE INSTRUMENTS" : win.page===1 ? "PROCESS / CONTROL" : win.page===2 ? "RESOURCE / DIAGNOSTICS" : "SYSTEMD / USER SESSION"; technical: true; secondary: true; visible: win.width>720; font.letterSpacing: 1 }
             }
-            RowLayout {
-                Layout.fillWidth: true
-                CheckBox { id: own; text: "My processes"; onToggled: searchDelay.restart() }
-                CheckBox { id: grouped; text: "Group apps"; onToggled: searchDelay.restart() }
-                Item { Layout.fillWidth: true }
-                Text { textFormat: Text.PlainText; text: Task.processCount+" visible"; color: Task.style.muted; font.pixelSize: 12 }
-            }
-            Timer { id: searchDelay; interval: 160; onTriggered: Task.filter(search.text,state.currentIndex?state.currentText:"",own.checked,grouped.checked) }
-            RowLayout {
-                Layout.fillWidth: true; Layout.fillHeight: true; spacing: 14
-                ColumnLayout {
-                    visible: !win.inspector || win.wide
-                    Layout.fillWidth: true; Layout.fillHeight: true; spacing: 4
-                    RowLayout {
-                        Layout.fillWidth: true; Layout.leftMargin: 8; Layout.rightMargin: 8; spacing: 4
-                        Repeater {
-                            model: [{label:"Process",key:"name"},{label:"PID",key:"pid"},{label:"CPU",key:"cpu"},{label:"Memory",key:"rss"},{label:"State",key:"state"}].concat(win.hasGpu?[{label:"GPU",key:"gpuMemory"}]:[])
-                            TMButton { required property var modelData; Layout.fillWidth: modelData.key==="name"; Layout.preferredWidth: ({name:160,pid:54,cpu:64,rss:80,state:46,gpuMemory:75})[modelData.key]; Layout.minimumWidth: modelData.key==="name"?60:Layout.preferredWidth; Layout.maximumWidth: modelData.key==="name"?Infinity:Layout.preferredWidth; implicitWidth: 0; text: modelData.label; onClicked: Task.sort(modelData.key); Accessible.name: "Sort by "+modelData.label }
-                        }
-                    }
-                    ListView {
-                        id: table; objectName: "processTable"; Layout.fillWidth: true; Layout.fillHeight: true
-                        clip: true; reuseItems: true; model: Task.processes; spacing: 1; boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar {}
-                        section.property: grouped.checked ? "appGroup" : ""
-                        section.delegate: Rectangle { required property string section; width: table.width; height: 32; color: Task.style.elevated; Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; x: 10; text: parent.section; color: Task.style.teal; elide: Text.ElideRight; width: parent.width-20 } }
-                        delegate: ItemDelegate {
-                            id: row
-                            required property string identity
-                            required property string processName
-                            required property int pid
-                            required property var cpu
-                            required property double rss
-                            required property var gpuMemory
-                            required property string processState
-                            required property string owner
-                            width: table.width; height: 48; highlighted: win.selected.identity===identity
-                            onClicked: Task.select(identity)
-                            background: Rectangle { color: row.highlighted ? Task.style.elevated : row.hovered ? Task.style.surface : "transparent"; radius: 5 }
-                            contentItem: RowLayout {
-                                spacing: 4
-                                ColumnLayout { Layout.fillWidth: true; Layout.preferredWidth: 160; spacing: 1
-                                    Text { Layout.fillWidth: true; text: row.processName; textFormat: Text.PlainText; elide: Text.ElideRight; color: Task.style.text }
-                                    Text { Layout.fillWidth: true; text: row.owner; textFormat: Text.PlainText; elide: Text.ElideRight; color: Task.style.muted; font.pixelSize: 10 }
-                                }
-                                Text { textFormat: Text.PlainText; Layout.preferredWidth: 54; text: row.pid; color: Task.style.muted; font.family: Task.style.mono; font.pixelSize: 11 }
-                                Text { textFormat: Text.PlainText; Layout.preferredWidth: 64; text: win.known(row.cpu)?Number(row.cpu).toFixed(1)+"%":"—"; color: Task.style.teal; font.family: Task.style.mono; font.pixelSize: 11 }
-                                Text { textFormat: Text.PlainText; Layout.preferredWidth: 80; text: win.bytes(row.rss); color: Task.style.text; font.family: Task.style.mono; font.pixelSize: 11 }
-                                Text { textFormat: Text.PlainText; Layout.preferredWidth: 46; text: row.processState; color: Task.style.muted; font.pixelSize: 11 }
-                                Text { textFormat: Text.PlainText; visible: win.hasGpu; Layout.preferredWidth: 75; text: win.bytes(row.gpuMemory); color: Task.style.muted; font.pixelSize: 11 }
-                            }
-                        }
-                        Text { textFormat: Text.PlainText; anchors.centerIn: parent; visible: table.count===0; text: Task.connected ? "No matching processes" : "Waiting for collector"; color: Task.style.muted }
-                    }
-                }
-                Rectangle {
-                    id: inspectorPanel; objectName: "processInspector"; visible: win.inspector
-                    Layout.fillWidth: !win.wide; Layout.preferredWidth: win.wide ? 340 : -1; Layout.fillHeight: true
-                    color: Task.style.surface; radius: Task.style.radius; border.color: Task.style.border
-                    opacity: visible ? 1 : 0
-                    Behavior on opacity { enabled: !Task.style.reducedMotion; NumberAnimation { duration: 150 } }
-                    ScrollView {
-                        id: inspectorScroll; anchors.fill: parent; anchors.margins: 14; contentWidth: availableWidth; clip: true
-                        ColumnLayout {
-                            width: inspectorScroll.availableWidth; spacing: 10
-                            RowLayout { Layout.fillWidth: true
-                                Text { textFormat: Text.PlainText; text: "▣"; color: Task.style.teal; font.pixelSize: 24 }
-                                Text { Layout.fillWidth: true; text: win.selected.name||"Process"; textFormat: Text.PlainText; color: Task.style.text; font.pixelSize: 22; elide: Text.ElideRight }
-                                TMButton { text: "×"; implicitWidth: 36; onClicked: Task.select(""); Accessible.name: "Close process inspector" }
-                            }
-                            Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: win.selected.exited ? "Process exited" : "PID "+win.selected.pid+" · "+win.selected.user+" · "+win.selected.state; color: Task.style.muted; wrapMode: Text.WrapAnywhere }
-                            Text { Layout.fillWidth: true; text: win.selected.exe||"Executable unavailable"; textFormat: Text.PlainText; color: Task.style.text; wrapMode: Text.WrapAnywhere; font.pixelSize: 12 }
-                            Text { Layout.fillWidth: true; text: win.selected.command||"Command line inaccessible"; textFormat: Text.PlainText; color: Task.style.muted; wrapMode: Text.WrapAnywhere; font.pixelSize: 11 }
-                            Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: "CPU "+win.percent(win.selected.cpu)+" · RAM "+win.bytes(win.selected.rss)+"\nParent PID "+win.selected.ppid+" · Threads "+win.selected.threads+"\nRuntime "+win.optional(win.selected.runtime," s")+" · Nice "+win.selected.nice; color: Task.style.text; wrapMode: Text.WordWrap }
-                            HistoryGraph { Layout.fillWidth: true; Layout.preferredHeight: 75; samples: win.history("processCpu"); maximum: 0; color: Task.style.teal }
-                            Text { textFormat: Text.PlainText; text: "CPU · scale follows selected process"; color: Task.style.muted; font.pixelSize: 11 }
-                            HistoryGraph { Layout.fillWidth: true; Layout.preferredHeight: 55; samples: win.history("processMemory"); maximum: 0; color: Task.style.green }
-                            Text { textFormat: Text.PlainText; text: "Resident memory history"; color: Task.style.muted; font.pixelSize: 11 }
-                            Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: win.selected.protected||""; color: Task.style.amber; wrapMode: Text.WordWrap; visible: text.length>0 }
-                            Flow {
-                                Layout.fillWidth: true; spacing: 6
-                                TMButton { text: "End Process"; enabled: win.canAct; onClicked: Task.action(win.selected.identity,"term") }
-                                TMButton { text: "Force Stop"; enabled: win.canAct; danger: true; onClicked: {win.confirmationIdentity=win.selected.identity;win.confirmationName=win.selected.name+" (PID "+win.selected.pid+")";confirm.open();} }
-                                TMButton { text: "Suspend"; enabled: win.canAct; onClicked: Task.action(win.selected.identity,"stop") }
-                                TMButton { text: "Resume"; enabled: win.canAct; onClicked: Task.action(win.selected.identity,"continue") }
-                            }
-                            RowLayout { Layout.fillWidth: true
-                                SpinBox { id: priority; from: -20; to: 19; value: Number(win.selected.nice||0); editable: true; Accessible.name: "Nice value" }
-                                TMButton { Layout.fillWidth: true; text: "Set priority"; enabled: win.canAct; onClicked: Task.action(win.selected.identity,"nice",priority.value) }
-                            }
-                            Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: "Higher nice values lower priority. Raising priority may be denied by Linux."; color: Task.style.muted; font.pixelSize: 11; wrapMode: Text.WordWrap }
-                            Text { Layout.fillWidth: true; text: "Cgroup\n"+(win.selected.cgroup||"Unavailable"); textFormat: Text.PlainText; color: Task.style.muted; font.pixelSize: 11; wrapMode: Text.WrapAnywhere }
-                        }
-                    }
-                }
+            Item { Layout.fillWidth: true; Layout.fillHeight: true
+                ProcessWorkspace { id: processes; anchors.fill: parent; visible: win.page<2; overview: win.page===0; onForceStop: (identity,name)=>win.forceStop(identity,name) }
+                Loader { anchors.fill: parent; active: win.page===2; sourceComponent: PerformanceView { resource: win.performanceResource; onResourceChanged: win.performanceResource=resource } }
+                Loader { id: serviceLoader; anchors.fill: parent; active: win.page===3; sourceComponent: ServicesView {} }
             }
         }
-        ScrollView {
-            id: performance; clip: true; contentWidth: availableWidth
-            ColumnLayout {
-                width: performance.availableWidth; spacing: 14
-                ResourceCard { Layout.fillWidth: true; Layout.preferredHeight: 240; title: "Total CPU"; value: win.percent(win.cpu.percent); samples: win.history("cpu"); detail: (win.cpu.logical||0)+" logical CPUs · Load averages "+(win.cpu.load||[]).map(n=>Number(n).toFixed(2)).join(" / ") }
-                GridLayout {
-                    Layout.fillWidth: true; columns: Math.max(2,Math.floor(width/130)); columnSpacing: 8; rowSpacing: 8
-                    Repeater { model: win.cpu.cores||[]
-                        Rectangle { required property var modelData; Layout.fillWidth: true; implicitHeight: 52; radius: 6; color: Task.style.surface
-                            Text { textFormat: Text.PlainText; anchors.fill: parent; anchors.margins: 8; text: modelData.name+"\n"+win.percent(modelData.percent); color: Task.style.text; font.pixelSize: 12 }
-                            Rectangle { anchors.bottom: parent.bottom; height: 2; width: parent.width*Math.max(0,Number(parent.modelData.percent||0))/100; color: Task.style.teal; Behavior on width { enabled: !Task.style.reducedMotion; NumberAnimation { duration: 180 } } }
-                        }
-                    }
-                }
-                ResourceCard { Layout.fillWidth: true; title: "RAM"; value: win.bytes(win.memory.used)+" / "+win.bytes(win.memory.total); samples: win.history("memory"); detail: "Available "+win.bytes(win.memory.available)+" · Cache "+win.bytes(win.memory.cache)+" · Buffers "+win.bytes(win.memory.buffers) }
-                ResourceCard { Layout.fillWidth: true; title: "Swap"; value: win.bytes(win.memory.swapUsed)+" / "+win.bytes(win.memory.swapTotal); samples: win.history("swap"); detail: "No swap is shown as unavailable utilization" }
-                Repeater { model: win.gpus
-                    ColumnLayout { required property var modelData; required property int index; Layout.fillWidth: true
-                        ResourceCard { Layout.fillWidth: true; title: modelData.name; value: win.percent(modelData.percent); samples: win.history("gpu"+index); detail: win.optional(modelData.clock," MHz")+" · "+win.optional(modelData.temperature,"°C")+" · "+win.optional(modelData.power," W") }
-                        ResourceCard { Layout.fillWidth: true; title: "VRAM"; value: win.bytes(modelData.used)+" / "+win.bytes(modelData.total); samples: win.history("vram"+index); ceiling: Number(modelData.total||0) }
-                    }
-                }
-                ResourceCard { Layout.fillWidth: true; title: "Disk read"; value: win.rate(Task.snapshot.diskRead); samples: win.history("diskRead"); ceiling: 0 }
-                ResourceCard { Layout.fillWidth: true; title: "Disk write"; value: win.rate(Task.snapshot.diskWrite); samples: win.history("diskWrite"); ceiling: 0 }
-                Repeater { model: Task.snapshot.disks||[]; Text { textFormat: Text.PlainText; required property var modelData; Layout.fillWidth: true; text: modelData.name+" · Read "+win.rate(modelData.read)+" · Write "+win.rate(modelData.write); color: Task.style.text; wrapMode: Text.WordWrap } }
-                Repeater { model: Task.snapshot.mounts||[]; Text { textFormat: Text.PlainText; required property var modelData; Layout.fillWidth: true; text: modelData.path+" ("+modelData.filesystem+") · Used "+win.bytes(modelData.used)+" / "+win.bytes(modelData.total)+" · Available "+win.bytes(modelData.available); color: Task.style.muted; wrapMode: Text.WrapAnywhere } }
-                ResourceCard { Layout.fillWidth: true; title: "Download"; value: win.rate(Task.snapshot.download); samples: win.history("download"); ceiling: 0 }
-                ResourceCard { Layout.fillWidth: true; title: "Upload"; value: win.rate(Task.snapshot.upload); samples: win.history("upload"); ceiling: 0 }
-                Repeater { model: Task.snapshot.networks||[]; Text { textFormat: Text.PlainText; required property var modelData; Layout.fillWidth: true; text: modelData.name+" · "+modelData.state+" · ↓ "+win.rate(modelData.download)+" ↑ "+win.rate(modelData.upload)+"\nTransferred: "+win.bytes(modelData.received)+" received / "+win.bytes(modelData.sent)+" sent"; color: Task.style.text; wrapMode: Text.WordWrap } }
-            }
-        }
-        ColumnLayout {
-            RowLayout { Layout.fillWidth: true
-                Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: Task.serviceStatus; color: Task.style.muted; wrapMode: Text.WordWrap }
-                TMButton { text: "Refresh"; onClicked: Task.refreshServices() }
-            }
-            Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: "User services only. Management remains in CEDAR Station; no privilege elevation."; color: Task.style.muted; wrapMode: Text.WordWrap }
-            ListView { id: serviceList; Layout.fillWidth: true; Layout.fillHeight: true; clip: true; reuseItems: true; model: Task.services; spacing: 8; ScrollBar.vertical: ScrollBar {}
-                delegate: Rectangle { required property var modelData; width: serviceList.width; height: serviceText.implicitHeight+24; radius: 8; color: Task.style.surface
-                    Text { id: serviceText; x: 12; y: 12; width: parent.width-24; text: parent.modelData.name+" · "+parent.modelData.state+"\n"+parent.modelData.description; textFormat: Text.PlainText; color: Task.style.text; wrapMode: Text.WordWrap }
-                }
-            }
+    }
+    Popup {
+        id: preferences; x: Math.max(12,win.width-width-18); y: 55; width: Math.min(350,win.width-24); padding: 18; modal: false
+        background: Rectangle { color: TM.surface; border.color: TM.border; radius: 8 }
+        contentItem: ColumnLayout { spacing: 12
+            TMHeading { text: "Display preferences"; size: 21 }
+            TMText { Layout.fillWidth: true; text: "CEDAR’s theme, fonts and accessibility settings apply here."; secondary: true; wrapMode: Text.WordWrap }
+            ComboBox { Layout.fillWidth: true; model: ["Follow CEDAR","Full","Reduced","Minimal"]; currentIndex: Math.max(0,["auto","full","reduced","minimal"].indexOf(Task.style.visualMode || "auto")); onActivated: Task.setVisualMode(["auto","full","reduced","minimal"][currentIndex]); Accessible.name: "Effects level" }
+            TMText { Layout.fillWidth: true; text: "Reduced Motion always takes precedence. Minimal removes transitions and material effects."; secondary: true; font.pixelSize: 12*TM.scale; wrapMode: Text.WordWrap }
         }
     }
     Dialog {
-        id: confirm; title: "Force Stop process?"; modal: true; anchors.centerIn: parent; width: Math.min(win.width-40,450)
+        id: confirm; title: "Force stop process?"; modal: true; anchors.centerIn: parent; width: Math.min(win.width-40,450)
         standardButtons: Dialog.Cancel | Dialog.Yes
-        contentItem: Text { text: win.confirmationName+"\n\nUnsaved work may be lost. Send SIGKILL to this exact process?"; textFormat: Text.PlainText; wrapMode: Text.WordWrap; color: Task.style.text }
+        contentItem: TMText { text: win.confirmationName+"\n\nUnsaved work may be lost. Send SIGKILL to this exact process?"; wrapMode: Text.WordWrap }
         onAccepted: Task.action(win.confirmationIdentity,"kill",0,true)
     }
     Timer { interval: 28000; running: Task.testing; onTriggered: Task.finishTest(false,"UI test deadline; samples="+Task.samples) }
     Timer {
-        id: selfTest; interval: 350; repeat: true; running: Task.testing
+        id: selfTest; interval: 450; repeat: true; running: Task.testing
         property int step: 0
-        property int waits: 0
         property bool restartChecked: false
         property int resumeAt: 0
         onTriggered: {
-            if(Task.failureTest()){
-                if(Task.status.indexOf("Fixture collector denied startup")>=0){
-                    Task.finishTest(!Task.connected&&Task.processCount===0&&Object.keys(Task.snapshot).length===0,"Collector startup error is visible and readings are cleared");stop();
-                }
+            if(Task.failureTest()) {
+                if(Task.status.indexOf("Fixture collector denied startup")>=0) { Task.finishTest(!Task.connected&&Task.processCount===0&&Object.keys(Task.snapshot).length===0,"Collector startup error is visible and readings are cleared");stop(); }
                 return;
             }
-            if(Task.samples<2){if(++waits>50)Task.finishTest(false,"Live collector did not update");return;}
+            if(Task.samples<2)return;
             if(!restartChecked){restartChecked=true;resumeAt=Task.samples+2;if(Task.restartForTest())return;}
             if(Task.samples<resumeAt)return;
-            if(step===0){if(!Task.exerciseModel()){Task.finishTest(false,"Process batch/filter/sort/identity");return;}win.page=1;}
+            if(step===0){win.width=1180;win.height=820;if(!Task.exerciseModel()){Task.finishTest(false,"Process batch/filter/sort/identity");return;}win.page=1;}
             else if(step===1){if(!Task.firstIdentity())return;Task.select(Task.firstIdentity());}
-            else if(step===2){if(!inspectorPanel.visible){Task.finishTest(false,"Inspector did not open");return;}Task.select("");win.page=2;}
-            else if(step===3){win.width=520;win.height=440;win.page=3;}
-            else if(step===4){win.page=1;search.text="no-process-matches-this";}
-            else if(step===5){if(Task.processCount!==0){Task.finishTest(false,"Search debounce");return;}search.text="";}
-            else if(step===6){win.width=1180;win.height=820;win.page=0;}
-            else if(step===7){Task.finishTest(Task.capture(win),"Standalone views, live telemetry, 6000 process rows, search, sort, inspector and screenshot");stop();}
+            else if(step===2){if(!processes.inspecting){Task.finishTest(false,"Inspector did not open");return;}Task.capture(win,"processes");Task.select("");win.page=2;}
+            else if(step===3){Task.capture(win,"performance");win.page=3;}
+            else if(step===4){Task.capture(win,"services");win.width=520;win.height=440;win.page=1;Task.select(Task.firstIdentity());}
+            else if(step===5){Task.capture(win,"narrow-inspector");Task.select("");processes.searchField.text="no-process-matches-this";}
+            else if(step===6){if(Task.processCount!==0){Task.finishTest(false,"Search debounce");return;}processes.searchField.text="";}
+            else if(step===7){win.width=1180;win.height=820;win.page=0;}
+            else if(step===8){Task.capture(win,"overview");win.page=2;win.performanceResource=1;}
+            else if(step===9){Task.capture(win,"memory");win.performanceResource=2;}
+            else if(step===10){Task.capture(win,"gpu");win.performanceResource=3;}
+            else if(step===11){Task.capture(win,"storage");win.performanceResource=4;}
+            else if(step===12){Task.capture(win,"network");win.page=3;}
+            else if(step===13){if(serviceLoader.item && Task.services.length)serviceLoader.item.selectedName=Task.services[0].name;}
+            else if(step===14){Task.capture(win,"service-details");win.page=1;Task.select(Task.firstIdentity());}
+            else if(step>=15 && step<=24){
+                Task.select(step%2 ? "" : Task.firstIdentity());
+                if(step===23)Task.setVisualMode("minimal");
+                if(step===24){if(TM.tier!==2){Task.finishTest(false,"Minimal effects policy");return;}Task.capture(win,"minimal");Task.setVisualMode("reduced");}
+            }
+            else if(step===25){if(TM.tier!==(Task.style.reducedMotion?2:1)){Task.finishTest(false,"Reduced effects policy");return;}Task.setVisualMode("auto");Task.capture(win,"inspector-cycles");Task.select("");win.page=0;if(!Task.nativeRendering()){win.width=1920;win.height=1080;}}
+            else if(step===26){Task.capture(win,"desktop");if(!Task.nativeRendering()){win.width=2560;win.height=1440;}}
+            else if(step===27){Task.capture(win,"large");if(!Task.nativeRendering()){win.width=3440;win.height=1440;}}
+            else if(step===28){Task.capture(win,"ultrawide");win.width=1180;win.height=820;}
+            else if(step===29){win.width=520;win.height=440;win.page=0;}
+            else if(step===30){Task.capture(win,"narrow-overview");win.performanceResource=0;win.page=2;}
+            else if(step===31){Task.capture(win,"narrow-performance");win.page=3;}
+            else if(step===32){Task.capture(win,"narrow-services");win.page=0;win.width=1180;win.height=820;}
+            else if(step===33){Task.finishTest(Task.capture(win),"Standalone views, live telemetry, 6000 process rows, search, sort, inspector and screenshot");stop();}
             step++;
         }
     }

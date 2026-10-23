@@ -3,6 +3,7 @@
 #include <QtNetwork>
 #include <QtQuick>
 #include <QtDBus>
+#include <cmath>
 class ProcessModel : public QAbstractListModel {
     Q_OBJECT
 public:
@@ -25,14 +26,22 @@ public:
 class HistoryGraph : public QQuickPaintedItem {
     Q_OBJECT
     Q_PROPERTY(QVariantList samples READ samples WRITE setSamples NOTIFY samplesChanged)
+    Q_PROPERTY(QVariantList secondary READ secondary WRITE setSecondary NOTIFY samplesChanged)
     Q_PROPERTY(QColor color READ color WRITE setColor NOTIFY samplesChanged)
+    Q_PROPERTY(QColor secondaryColor READ secondaryColor WRITE setSecondaryColor NOTIFY samplesChanged)
     Q_PROPERTY(double maximum READ maximum WRITE setMaximum NOTIFY samplesChanged)
-    QVariantList values;QColor ink="#3fe0c5";double ceiling=100;
+    Q_PROPERTY(double upperBound READ upperBound NOTIFY samplesChanged)
+    QVariantList values,other;QColor ink,otherInk;double ceiling=100,heldCeiling=1;
+    void retainPeak(){for(const auto &list:{values,other})for(const auto &v:list)if(!v.isNull())heldCeiling=std::max(heldCeiling,v.toDouble());}
 public:
     explicit HistoryGraph(QQuickItem *p=nullptr):QQuickPaintedItem(p){setAntialiasing(true);}
-    QVariantList samples()const{return values;}void setSamples(QVariantList v){values=std::move(v);update();Q_EMIT samplesChanged();}
-    QColor color()const{return ink;}void setColor(QColor c){ink=c;update();Q_EMIT samplesChanged();}
-    double maximum()const{return ceiling;}void setMaximum(double c){ceiling=c;update();Q_EMIT samplesChanged();}
+    QVariantList samples()const{return values;}void setSamples(QVariantList v){if(values==v)return;values=std::move(v);retainPeak();update();Q_EMIT samplesChanged();}
+    QVariantList secondary()const{return other;}void setSecondary(QVariantList v){if(other==v)return;other=std::move(v);retainPeak();update();Q_EMIT samplesChanged();}
+    QColor color()const{return ink;}void setColor(QColor c){if(ink==c)return;ink=c;update();Q_EMIT samplesChanged();}
+    QColor secondaryColor()const{return otherInk;}void setSecondaryColor(QColor c){if(otherInk==c)return;otherInk=c;update();Q_EMIT samplesChanged();}
+    double maximum()const{return ceiling;}void setMaximum(double c){if(ceiling==c)return;ceiling=c;heldCeiling=1;retainPeak();update();Q_EMIT samplesChanged();}
+    double upperBound()const{return ceiling>0?ceiling:std::pow(2.0,std::ceil(std::log2(std::max(1.0,heldCeiling))));}
+    Q_INVOKABLE void resetScale(){heldCeiling=1;retainPeak();update();Q_EMIT samplesChanged();}
     void paint(QPainter *) override;
 Q_SIGNALS:void samplesChanged();
 };
@@ -47,6 +56,7 @@ class TaskClient : public QObject {
     Q_PROPERTY(QString status READ status NOTIFY changed)
     Q_PROPERTY(QString message READ message NOTIFY changed)
     Q_PROPERTY(bool connected READ connected NOTIFY changed)
+    Q_PROPERTY(bool actionFailed READ actionFailed NOTIFY changed)
     Q_PROPERTY(bool actionPending READ actionPending NOTIFY changed)
     Q_PROPERTY(bool testing READ testing CONSTANT)
     Q_PROPERTY(int samples READ samples NOTIFY changed)
@@ -58,14 +68,14 @@ class TaskClient : public QObject {
     QLocalSocket socket;QProcess backend;QTimer reconnect,watchdog,actionTimer;QFileSystemWatcher watcher;
     QByteArray buffer;QString root,socketPath,selectedId,stateText="Connecting…",resultText,serviceText="Not checked",gamingText,backendProblem,backendDiagnostic;
     QVariantMap system,detail,hist,theme;QVariantList units;QString pending;QElapsedTimer lastSample;
-    QSettings prefs;bool online=false,visible=true,test=false,servicePending=false;int sampleCount=0,retryMs=250;
+    QSettings prefs;bool online=false,visible=true,test=false,servicePending=false,failedAction=false;int sampleCount=0,retryMs=250;
     void read();void receive(QJsonObject);void send(QJsonObject);void disconnected();void loadStyle();void updateDetail();
 public:
     explicit TaskClient(QString source,bool testing,QObject *p=nullptr);
     ~TaskClient() override;
     QVariantMap snapshot()const{return system;}QVariantMap selected()const{return detail;}QVariantMap history()const{return hist;}
     QVariantMap style()const{return theme;}QVariantList services()const{return units;}QString serviceStatus()const{return serviceText;}
-    QString status()const{return stateText;}QString message()const{return resultText;}bool connected()const{return online;}bool actionPending()const{return !pending.isEmpty();}
+    QString status()const{return stateText;}QString message()const{return resultText;}bool connected()const{return online;}bool actionFailed()const{return failedAction;}bool actionPending()const{return !pending.isEmpty();}
     bool testing()const{return test;}int samples()const{return sampleCount;}QAbstractItemModel *processes(){return &proxy;}int processCount()const{return proxy.rowCount();}
     QString gaming()const{return gamingText;}QVariantMap preferences()const;
     Q_INVOKABLE void connectBackend();
@@ -76,12 +86,27 @@ public:
     Q_INVOKABLE void action(QString identity,QString action,int nice=0,bool confirmed=false);
     Q_INVOKABLE void refreshServices();
     Q_INVOKABLE bool restartForTest(){if(!test||qEnvironmentVariableIsSet("CEDAR_TASK_TEST_LOCAL_COLLECTOR"))return false;backend.kill();return true;}
+    Q_INVOKABLE bool nativeRendering() const { return QGuiApplication::platformName()!= "offscreen"; }
+    Q_INVOKABLE QString iconSource(QString key) const;
+    Q_INVOKABLE void setVisualMode(QString mode);
     Q_INVOKABLE void savePreferences(int width,int height,int page);
     Q_INVOKABLE void finishTest(bool ok,QString reason);
     Q_INVOKABLE bool exerciseModel();
     Q_INVOKABLE bool failureTest()const{return test&&QCoreApplication::arguments().contains("--self-test-failure");}
-    Q_INVOKABLE QString firstIdentity()const{return model.rows.isEmpty()?QString():model.rows.first().value("identity").toString();}
-    Q_INVOKABLE bool capture(QQuickWindow *window){return test&&window&&window->grabWindow().save("/tmp/cedar-task-manager.png");}
+    Q_INVOKABLE QString firstIdentity()const{return proxy.rowCount()?proxy.index(0,0).data(ProcessModel::Identity).toString():QString();}
+    Q_INVOKABLE bool capture(QQuickWindow *window,QString name=QString()){
+        if(!test||!window)return false;
+        int items=0,delegates=0,visibleRows=0;
+        const auto count=[&](auto &&self,QQuickItem *item)->void {
+            ++items;if(item->objectName()=="processRow"){++delegates;if(item->isVisible())++visibleRows;}
+            for(auto *child:item->childItems())self(self,child);
+        };
+        count(count,window->contentItem());
+        qInfo().noquote()<<"PROFILE capture"<<name<<"items"<<items<<"process-delegates"<<delegates<<"visible-delegates"<<visibleRows;
+        const auto folder=qEnvironmentVariable("CEDAR_TASK_CAPTURE_DIR","/tmp");
+        QDir().mkpath(folder);
+        return window->grabWindow().save(folder+"/cedar-task-manager"+(name.isEmpty()?QString():"-"+name)+".png");
+    }
 Q_SIGNALS:
     void changed();void styleChanged();void servicesChanged();
 };

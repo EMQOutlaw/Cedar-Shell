@@ -197,9 +197,9 @@ model and cleared telemetry.
 
 Hardware NVML, monitor changes, compositor focus, fractional scaling and
 long-duration rendering require a real desktop session. Service management
-is intentionally read-only. Hierarchical process trees and per-application
-icons are not implemented; grouping uses executable identity and the inspector
-has a generic process icon.
+is intentionally read-only. Hierarchical process trees are not implemented; grouping uses executable
+identity. Desktop-entry icons are now resolved by the standalone frontend,
+with a neutral CEDAR glyph for unmatched processes.
 
 ## Recorded engineering verification — 2026-10-20
 
@@ -252,3 +252,178 @@ sandbox exposed only four processes, so it is not a desktop-scale benchmark.
 No hardware-rendered FPS, multi-hour soak, live monitor hotplug, NVIDIA driver
 matrix or packaged Nix build has been certified. These remain reproducible
 desktop/package verification tasks, not claimed successes.
+
+## Signature frontend reconstruction — 2026-10-21
+
+The standalone frontend now uses CEDAR's Strata material vocabulary across all
+four views. The collector, process-control implementation, protocol, Field
+Station Overview, launcher, and desktop configuration are unchanged.
+
+### Changed files and responsibilities
+
+| Files | Responsibility |
+| --- | --- |
+| `taskmanager/Main.qml` | Integrated navigation, stable chrome, keyboard shortcuts, preferences, confirmation, view lifetime and visual test sequence. |
+| `taskmanager/TM.qml`, `qmldir`, `Format.js` | Small adapter over the existing palette/preferences and shared formatting; no parallel theme engine. |
+| `taskmanager/Material.qml`, `LivingEdge.qml`, `grain.svg` | Retained chamfered geometry, partial inner grain contour, event-driven edge light, shared 64×64 static material texture. |
+| `taskmanager/TMText.qml`, `TMHeading.qml`, `TMButton.qml`, `AppIcon.qml` | Typography, Kinetic heading resolution, focus-visible controls, genuine desktop-entry icons and neutral process fallback. |
+| `taskmanager/ResourceCard.qml`, `ResourceCluster.qml` | Four compact instruments and a slim network strip. |
+| `taskmanager/ProcessWorkspace.qml`, `ProcessTable.qml`, `ProcessInspector.qml` | Shared Overview/Processes workspace, virtualized rows, search/filter/sort, reversible integrated inspector and existing guarded controls. |
+| `taskmanager/PerformanceView.qml`, `ServicesView.qml` | Selected-resource diagnostics and compact service inspection. |
+| `native/taskmanager/frontend.h`, `frontend.cpp` | Desktop icon index, chart guides/scaling, paired network series, effects preferences, action-result semantics and test-only profiling. |
+| `scripts/build_task_manager.py`, `data/source-files.json` | Include every frontend asset and imported pure policy in the release payload/build fingerprint. |
+| `tools/profiling/task_manager_design.py` | Isolated before/after measurements and Wayland/offscreen capture harness. |
+| `docs/TASK-MANAGER.md` | Design, validation, measurement methodology and limitations. |
+
+### Shared design and interaction
+
+The implementation reads the existing `themes/palettes/cedar.json`, theme
+replacement and CEDAR settings through `Task.style`. It imports the actual
+`components/core/StrataGeometry.js` for pane constraints and
+`components/core/Kinetic.js` for typography transition policy. `Material.qml`
+adapts the retained silhouette and partial inner lip studied in
+`StrataBarFrame.qml`, `DropFrame.qml` and `CoreSurface.qml`; importing those
+Quickshell components directly would start an incompatible shell service graph
+inside this standalone application. No shared shell primitive was modified.
+
+At the default scale, Overview instruments are 150 logical pixels high in two
+columns above a 62-pixel network strip. Processes follow immediately, with a
+42-pixel row, native incremental model and bounded delegate cache. CPU,
+memory, GPU and storage accents come from the palette, including violet and
+blue tokens. Missing sensors remain unavailable. Network upload/download use
+one shared chart scale. Charts show real samples, gaps and a recent marker;
+throughput scales hold their peak rather than breathing on every update.
+
+The inspector retains its process identity and component instance while
+selection changes. On wide layouts it expands into the table's right edge;
+on narrow layouts it becomes an in-window bottom sheet with independent
+scrolling. A local tie line follows the selected row. Controls are gated until
+geometry settles. Existing PID/start identity, protection rules, pending-action
+handling, priority limits and Force Stop confirmation remain intact. Only a
+backend reply determines the action result.
+
+Performance loads the selected diagnostic details on demand, including CPU
+cores, memory/cache/swap, GPU/VRAM, physical storage/filesystems and interfaces.
+Services exposes actual active/sub/load state and a matching expandable detail
+surface. It retains the existing read-only management boundary.
+
+Navigation, headings, search and inspector geometry use the existing nominal
+120/180/220/320/200 ms CEDAR timing vocabulary with OutCubic transitions.
+Telemetry numbers are stable monospaced text and do not animate per digit.
+There are no ambient animation loops, new telemetry timers, per-row effects,
+or full-window blur layers. The small texture is shared through Qt's image
+cache. Full, Reduced and Minimal display modes are available; CEDAR Reduced
+Motion and the `off` motion preset always win. The default follows CEDAR's
+performance, kinetic, motion-preset and effect-intensity preferences.
+
+Shortcuts: Ctrl+1…4 switches views, Ctrl+F reveals process search, Escape
+closes the active confirmation/inspector/search, and Ctrl+W closes the window.
+The process table supports arrow-key selection and visible keyboard focus.
+
+### Reproducing visual and resource checks
+
+Build first, then run from this checkout:
+
+```sh
+python3 scripts/build_task_manager.py
+python3 tests/check_task_manager.py
+python3 -m unittest discover -s tests -p 'test_task_manager*.py'
+python3 tests/check_station_tasks.py
+python3 tools/profiling/task_manager_design.py --native --measure --output /tmp/cedar-task-design-review
+```
+
+The native harness requires an attended Wayland/Hyprland session and permission
+to connect to it. It uses private configuration, state, cache and socket paths,
+floats only its fixture window, captures each view and closes cleanly. It does
+not modify Hyprland rules or the installed CEDAR release. Without `--native`,
+it uses software/offscreen rendering. The accessibility pass uses 150% text
+and Reduced Motion. The visual sequence also exercises all five Performance
+resources, service detail, inspector reversals, runtime effect tiers and
+520×440 / 1180×820 / 1920×1080 / 2560×1440 / 3440×1440 logical sizes (large
+sizes are offscreen only).
+
+`--baseline /path/to/original/checkout --measure` compares isolated real
+collector workloads in the selected renderer; add `--measure-only` to skip
+the capture sequence. Each workload warms up for four seconds, then records
+13 samples over 12 seconds. Frontend and backend CPU are reported separately
+as a percentage of one logical core. RSS comes from `/proc/PID/stat`; PSS
+comes from `smaps_rollup`. No shell process is included. A short sample is not
+a sustained-memory, desktop-budget or FPS certification.
+
+The self-test reports time to first delivered frame, retained QQuickItem and
+process delegate counts at capture points, and median/p95 delivered-frame
+intervals below 100 ms. That frame statistic excludes idle gaps and includes
+test-driven captures and transitions; it is not GPU render time or a strict
+animation FPS benchmark.
+
+### Scope limits
+
+GPU provider coverage remains unchanged: optional NVIDIA NVML, no new AMD or
+Intel provider. This Intel laptop correctly reports unavailable GPU metrics.
+Services remains read-only; management stays in Field Station. Desktop icons
+are resolved once per launch from desktop entries and the system icon theme;
+newly installed icon associations appear after reopening the application.
+There is no multi-hour soak, GPU-driver matrix or physical ultrawide/monitor
+hotplug certification. The redesign is implemented and built in the source
+checkout; installation continues through the normal managed CEDAR updater.
+
+### Recorded reconstruction checks
+
+| Executed check | Result |
+| --- | --- |
+| Native build with installed Qt 6.11.2 | Passed. GCC reports the existing Qt `QBitArray` SFINAE header warning; no project compile errors. |
+| `tests/check_task_manager.py`, outside the sandbox | Passed real IPC, malformed/version/rate rejection, disposable TERM/KILL/STOP/CONT, priority/identity/protected-process safeguards, restart, search/sort, model updates, two lifecycles, 150% text, failed collector startup, installation and rollback. |
+| `test_task_manager*.py` | 8 tests passed. |
+| `test_distribution.py` | 29 tests passed. |
+| `tests/check_station_tasks.py` | Passed the existing Overview/utility/retired-route/lock-guard contract. |
+| Native visual harness | Passed on the 2880×1800, 120 Hz Wayland display at 160% output scaling; all four screens, every Performance resource, service detail, inspector cycles, Full/Reduced/Minimal and narrow windows captured. |
+| Accessibility visual harness | Passed at 150% text with Reduced Motion; 520×440 through 3440×1440 logical sizes. No QML reference/type/assignment/binding-loop errors in either harness. |
+| Release inventory and whitespace | Inventory checked through a disposable Git index; user's index unchanged. `git diff --check` passed. |
+
+In the final native capture sequence, C++ entry to first delivered frame was
+210 ms. The 6,000-row batch/filter/sort/selection exercise, including the added
+persistent-model-index/dataChanged/no-modelReset check, took 116 ms. The
+Processes screen retained 17 delegates for roughly 402 real processes. It
+contained 558 visual items both before and after five inspector close/open
+cycles; these are retained-item snapshots, not cumulative allocation counts.
+Across 1,220 contiguous delivered frame intervals below 100 ms, the median was
+8.31 ms and p95 was 9.07 ms. Captures and transitions are included; idle gaps
+are excluded. This supports responsive interaction on this machine without
+claiming a universal frame-rate guarantee.
+
+The initial matched software/offscreen measurement (four-second warmup,
+12-second sample, real desktop processes, default font scale) recorded:
+
+| Process / metric | Original | Reconstruction |
+| --- | ---: | ---: |
+| Frontend CPU, % of one core | 0.92% | 1.33% |
+| Frontend mean RSS | 84.30 MiB | 82.99 MiB |
+| Frontend mean PSS | 40.97 MiB | 39.92 MiB |
+| Backend CPU, % of one core | 1.83% | 2.41% |
+| Backend mean RSS | 21.25 MiB | 21.20 MiB |
+| Backend mean PSS | 6.39 MiB | 6.16 MiB |
+
+The additional visible process table costs some CPU in this short sample;
+frontend memory is slightly lower. Backend source is unchanged and the two
+sequential desktop workloads are not perfectly controlled. Both fixtures
+released their sockets. No whole-desktop memory budget is asserted.
+
+The subsequent native comparison used the same 880×1055 logical tiled window
+on the 160%-scaled Wayland display, with the same warmup/sample method:
+
+| Process / metric | Original | Reconstruction |
+| --- | ---: | ---: |
+| Frontend CPU, % of one core | 1.83% | 2.16% |
+| Frontend mean RSS | 139.54 MiB | 140.28 MiB |
+| Frontend mean PSS | 68.98 MiB | 70.73 MiB |
+| Backend CPU, % of one core | 2.66% | 1.58% |
+| Backend mean RSS | 21.06 MiB | 21.16 MiB |
+| Backend mean PSS | 6.34 MiB | 6.36 MiB |
+
+Native frontend RSS increased by 0.74 MiB and CPU by 0.33 percentage points of
+one core in this sample. The backend variation again illustrates why short
+sequential desktop measurements should not be treated as controlled CPU
+regression benchmarks. Both native fixtures closed and released their sockets.
+The four finished native screenshots, narrow inspector, service detail,
+validation logs and raw comparison JSON were saved locally under
+`~/Pictures/cedar-task-manager-redesign/`.
