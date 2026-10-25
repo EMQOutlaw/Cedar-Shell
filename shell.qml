@@ -195,6 +195,12 @@ ShellRoot {
         }
     }
     IpcHandler {
+        target: "forest"
+        function breadcrumb(label: string): void {
+            Forest.dropBreadcrumb(String(label).slice(0, 100) || "Marked " + Config.formatTime(new Date()));
+        }
+    }
+    IpcHandler {
         target: "keymap"
         function show(): void {
             if (Config.stage >= 3 && !ShellState.locked)

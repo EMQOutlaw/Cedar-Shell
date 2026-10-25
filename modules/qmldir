@@ -40,6 +40,7 @@ AudioCanopy 1.0 AudioCanopy.qml
 CalendarCanopy 1.0 CalendarCanopy.qml
 NotificationCanopy 1.0 NotificationCanopy.qml
 TrailCanopy 1.0 TrailCanopy.qml
+RewindCanopy 1.0 RewindCanopy.qml
 ClipboardCanopy 1.0 ClipboardCanopy.qml
 KeybindsCanopy 1.0 KeybindsCanopy.qml
 WeatherCanopy 1.0 WeatherCanopy.qml

@@ -185,7 +185,7 @@ class DesktopSingleRoutes(unittest.TestCase):
         # branches are executed below, so this exception cannot become another
         # always-visible Full Settings entry. The Understory's foot instrument is
         # the same entry as the Control Panel's: a surface that is itself opened on request.
-        allowed={'modules/UnderstoryRail.qml','modules/CalendarCanopy.qml','modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml','modules/StrataBarContents.qml'}
+        allowed={'modules/UnderstoryRail.qml','modules/CalendarCanopy.qml','modules/CanopyPanel.qml','modules/ControlPanel.qml','components/NetworkIndicator.qml','modules/TrailCanopy.qml','modules/RewindCanopy.qml','modules/StrataBarContents.qml'}
         found={name for name,text in self.sources().items() if route.search(text) and not name.startswith('modules/Settings')}
         self.assertEqual(found-allowed,set())
         self.assertEqual(len(route.findall(self.sources()['modules/StrataBarContents.qml'])),4,

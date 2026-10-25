@@ -105,6 +105,8 @@ ShellRoot {
                     Config.set("forestTrails", true);
                     Forest.record("settings", "Settings / Displays", "displays");
                     window.check(Forest.trails.length > 0, "Trails opt-in records navigation");
+                    Forest.dropBreadcrumb("Harness mark");
+                    window.check(Forest.trails[0].kind === "breadcrumb", "Breadcrumbs land on the trail");
                     Canopy.open("audio");
                     Canopy.pin();
                     ShellState.open("settings");
