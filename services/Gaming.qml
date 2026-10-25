@@ -282,7 +282,6 @@ Singleton {
 
     // ---------------------------------------------------- GameMode watch
     Process {
-        id: gameModeWatch
         running: Capabilities.gaming.gameModeAvailable && !Config.testMode
         command: ["python3", Quickshell.shellPath("scripts/gamemode_watch.py")]
         stdout: SplitParser {

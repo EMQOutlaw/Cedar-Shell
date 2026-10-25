@@ -8,7 +8,6 @@ import "../services"
 // It takes no input and no keyboard focus, and exists only while
 // Focus.hudShown is true.
 PanelWindow {
-    id: root
     screen: Quickshell.screens.find(s => s.name === Focus.hudScreen) || Quickshell.screens.find(s => s.name === Config.saved.mainDisplay) || Quickshell.screens[0] || null
     anchors.top: true
     margins.top: Math.round((screen ? screen.height : 1080) * 0.3)

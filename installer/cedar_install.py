@@ -29,7 +29,6 @@ HERE = Path(__file__).resolve().parent
 SOURCE = HERE.parent
 sys.path.insert(0, str(SOURCE))
 
-from installer.engine import operations as ops  # noqa: E402
 from installer.engine import plan as plan_module  # noqa: E402
 from installer.engine import update as update_module  # noqa: E402
 from installer.engine.host import Host  # noqa: E402
@@ -133,7 +132,7 @@ def update(source, args, argv):
     installer. In a terminal the same engine prints the same steps."""
     passthrough = update_arguments(argv)
     state_dir = Host().state_home() / 'cedar/installer'
-    if wants_window(args, None):
+    if wants_window(args):
         session_id = uuid.uuid4().hex
         code = launch_window(source, args, start='update', update_id=session_id)
         record = update_module.take_handoff(state_dir, session_id=session_id)
@@ -161,7 +160,7 @@ def update(source, args, argv):
     start_updated(result, passthrough)
 
 
-def wants_window(args, engine):
+def wants_window(args):
     if args.no_gui or args.dry_run or args.uninstall or args.repair or args.restore or args.last_log or args.json:
         return False
     if args.gui:
@@ -257,7 +256,7 @@ def main(argv=None):
     if args.last_log:
         path = engine.last_log()
         say(str(path) if path else 'No installer log yet.'); return 0 if path else 1
-    if wants_window(args, engine):
+    if wants_window(args):
         return launch_window(source, args)
 
     state = {'verbose': args.verbose}

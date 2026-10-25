@@ -63,7 +63,6 @@ Singleton {
                                 : {"month-first": "MMMM d, yyyy", "day-first": "d MMMM yyyy", "iso": "yyyy-MM-dd"};
         return (saved.showWeekday ? Qt.formatDateTime(date, compact ? "ddd" : "dddd") + ", " : "") + Qt.formatDateTime(date, formats[dateStyle]);
     }
-    function barClock(date) { return (saved.barShowDate ? formatDate(date, true) + "  " : "") + formatTime(date); }
     readonly property string timeFormat: clock24 ? "HH:mm" : "h:mm AP"
     function formatTime(date) { return Qt.formatDateTime(date, timeFormat); }
     function timeDigits(date) { return formatTime(date).split(" ")[0]; }

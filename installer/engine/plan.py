@@ -207,7 +207,7 @@ def _host_for_checks():
     return _check_host
 
 
-def render(plan, facts=None):
+def render(plan):
     """The plan as plain text for the terminal and --dry-run."""
     lines = ['CEDAR Installation Plan', '', 'Environment: ' + plan['environment']['name'] + ' (' + plan['environment']['stack'] + ')', '', 'SYSTEM']
     for row in plan['system']:

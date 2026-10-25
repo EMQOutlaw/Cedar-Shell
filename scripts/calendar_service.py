@@ -6,7 +6,7 @@ shared settings file.
 """
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import base64
 import fcntl
 import json

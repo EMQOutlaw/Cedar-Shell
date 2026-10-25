@@ -67,7 +67,6 @@ Item {
         }
     }
     Canvas {
-        id: orbit
         anchors.fill: parent
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()

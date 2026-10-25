@@ -27,6 +27,7 @@ Scope {
         }
         onLoadFailed: { root.externalLocked = true; root.apply(); }
     }
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: root.apply() }
+    // The staleness watchdog only matters while an unlocked session awaits a heartbeat.
+    Timer { interval: 1000; running: !root.externalLocked && root.updated > 0; repeat: true; onTriggered: root.apply() }
     Component.onCompleted: { ShellState.locked = true; Qt.callLater(root.apply); }
 }

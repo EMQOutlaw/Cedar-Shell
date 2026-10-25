@@ -7,9 +7,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
-import tomllib
-from .formats import block, ini_patch, ini_validate, toml_patch, jsonc_patch
+from .formats import block, ini_patch, toml_patch, jsonc_patch
 from .tokens import NAMES, rgb
 from .transaction import file_op, run, Conflict
 
@@ -25,7 +23,7 @@ def flat(text, values, separator=' '):
     """Only overwrite CEDAR's section; existing assignments remain owned by the user."""
     return block(text,'\n'.join(k+separator+str(v) for k,v in values.items()))
 
-def preferences(store,theme,id):
+def preferences(theme,id):
     if not shutil.which('gsettings') or not shutil.which('dconf'):raise ValueError('GSettings and dconf are required for this integration.')
     schema='org.gnome.desktop.interface'
     keys=set(run(['gsettings','list-keys',schema]).splitlines())
@@ -110,7 +108,7 @@ def generate(store,id,theme,config=None):
         if f['enabled']:vals['gtk-font-name']=f['ui']+' '+str(f['size'])
         if theme['iconTheme']:vals['gtk-icon-theme-name']=theme['iconTheme']
         patch(cfg/'gtk-3.0/settings.ini',{'Settings':vals})
-    elif id=='gtk4':ops.extend(preferences(store,theme,id))
+    elif id=='gtk4':ops.extend(preferences(theme,id))
     elif id=='alacritty':
         candidates=[cfg/'alacritty/alacritty.toml',cfg/'alacritty.toml',store.home/'.alacritty.toml']
         path=next((p for p in candidates if p.exists()),candidates[0])

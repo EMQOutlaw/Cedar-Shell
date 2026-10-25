@@ -46,8 +46,6 @@ Item {
     }
 
     Item {
-        id: art
-
         width: parent.width
         height: parent.height
         y: root.lifted ? -1 : 0

@@ -31,7 +31,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Top
     readonly property var monitor: Hyprland.monitorFor(screen)
     readonly property var battery: UPower.displayDevice
-    readonly property bool nerd: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    readonly property bool nerd: Theme.nerdFont
     readonly property var localWorkspaces: (Hyprland.workspaces?.values || []).filter(w => w.id > 0 && w.monitor?.name === outputName)
     readonly property var activeWorkspace: monitor?.activeWorkspace || null
     readonly property string activeTitle: Config.moduleEnabled("activeWindow") && Hyprland.focusedMonitor?.name === outputName ? (Hyprland.activeToplevel?.title || ToplevelManager.activeToplevel?.title || "") : ""
@@ -43,7 +43,6 @@ PanelWindow {
     function workspaceCapacity(totalHeight, lowerHeight) {
         return Math.max(0, totalHeight - lowerHeight - (root.width - 2 * root.pad) * 2 - Theme.spaceXxl * 2);
     }
-    function glyph(icon, fallback) { return nerd ? icon : fallback; }
     // The drops that grow sideways out of this bar need to know where their
     // control is along it: a screen-y rect in the anchor's x/width slots.
     function sideAnchor(item) {
@@ -135,7 +134,7 @@ PanelWindow {
         BarMark {
             objectName: "understoryBarLauncher"
             visible: Config.stage >= 3 && Config.moduleEnabled("go")
-            text: root.glyph("󰀻", "⊞"); hint: "Applications"
+            text: Theme.nerdGlyph("󰀻", "⊞"); hint: "Applications"
             anchorTopic: "go"
             onClicked: { if (Config.saved.canopyEnabled) Canopy.toggleTopic("go", root.outputName); else Go.toggle("root"); }
         }
@@ -235,7 +234,7 @@ PanelWindow {
         BarMark {
             objectName: "understoryBarAudio"
             visible: Config.moduleEnabled("audio") && Audio.audio !== null
-            text: Audio.muted ? root.glyph("󰝟", "×") : root.glyph("󰕾", "♪")
+            text: Audio.muted ? Theme.nerdGlyph("󰝟", "×") : Theme.nerdGlyph("󰕾", "♪")
             hint: "Output " + Audio.label + " · scroll adjusts"
             accent: Audio.muted ? Theme.amber : Theme.strataAccent
             onClicked: Understory.toggle(root.outputName)
@@ -294,7 +293,7 @@ PanelWindow {
         }
         BarMark {
             objectName: "understoryBarPower"
-            text: root.glyph("󰐥", "⏻"); hint: "Power & session"
+            text: Theme.nerdGlyph("󰐥", "⏻"); hint: "Power & session"
             anchorTopic: "power"
             accent: Theme.ember
             onClicked: { if (Config.saved.canopyEnabled) Canopy.open("power", root.outputName); else ShellState.toggle("power"); }

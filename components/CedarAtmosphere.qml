@@ -38,7 +38,6 @@ Item {
             width: 18; height: 18
             opacity: 0.12 + (index % 4) * 0.07
             Item {
-            id: motes
             width: parent.width; height: parent.height
             Rectangle { anchors.centerIn: parent; width: 14; height: 14; radius: 7; color: Qt.alpha(Theme.green, 0.06) }
             Rectangle { anchors.centerIn: parent; width: 5; height: 5; radius: 3; color: Qt.alpha(Theme.green, 0.15) }

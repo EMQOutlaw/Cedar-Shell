@@ -45,7 +45,6 @@ Singleton {
     readonly property int exposedCount: exposure ? exposure.exposed : 0
     readonly property bool vpn: Network.vpnActive
     readonly property string networkLabel: Network.label
-    readonly property string networkKind: Network.kind
     readonly property string connectionKey: connection ? String(connection.uuid || "") : ""
     readonly property string profile: connectionKey && store.profiles[connectionKey] ? store.profiles[connectionKey] : "trusted"
     readonly property bool publicNetwork: profile === "public"

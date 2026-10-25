@@ -19,6 +19,7 @@ ColumnLayout {
     spacing: 12
     SystemClock {
         id: clock
+        enabled: CoreService.expanded
         precision: SystemClock.Minutes
     }
     ColumnLayout {

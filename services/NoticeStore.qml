@@ -4,7 +4,6 @@ import Quickshell
 import ".."
 
 Singleton {
-    id: root
     // In-memory snapshots only: never retain a destroyed Notification object.
     property var history: []
     property var live: []

@@ -16,13 +16,12 @@ import "../services"
 ColumnLayout {
     id: root
     property bool active: false
-    readonly property bool nerd: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    readonly property bool nerd: Theme.nerdFont
     // The bar's audio control (Strata) scrolls the volume and opens the audio
     // instrument, so the level rows are only drawn where the bar has none.
     readonly property bool barAudio: Canopy.barRoute("audio")
     // Strata's battery/power control opens Power and session; the legacy bars have none.
     readonly property bool barPower: Config.barStyle === "cedar" && Config.moduleEnabled("battery")
-    function glyph(icon, fallback) { return nerd ? icon : fallback; }
     onActiveChanged: if (active)
         Controls.refresh()
     spacing: 12
@@ -150,7 +149,7 @@ ColumnLayout {
         Tile {
             order: 1
             visible: BluetoothService.available && BluetoothService.adapter !== null
-            mark: root.glyph("󰂯", "B")
+            mark: Theme.nerdGlyph("󰂯", "B")
             readonly property var connected: BluetoothService.devices.filter(d => d.connected)
             label: "Bluetooth"
             value: !(BluetoothService.adapter?.enabled ?? false) ? "Off" : connected.length === 0 ? "On · nothing connected" : connected.length === 1 ? (connected[0].name || connected[0].address) + " connected" : connected.length + " devices connected"
@@ -161,7 +160,7 @@ ColumnLayout {
         }
         Tile {
             order: 2
-            mark: Config.saved.doNotDisturb ? root.glyph("󰂛", "Z") : root.glyph("󰂚", "N")
+            mark: Config.saved.doNotDisturb ? Theme.nerdGlyph("󰂛", "Z") : Theme.nerdGlyph("󰂚", "N")
             label: "Quiet hours"
             value: Config.saved.doNotDisturb ? "On · notifications held" : "Off · notifications on"
             on: Config.saved.doNotDisturb
@@ -177,7 +176,7 @@ ColumnLayout {
             order: 3
             visible: !root.barAudio
             label: "Output"; sliderName: "quickVolume"
-            icon: Audio.muted ? root.glyph("󰝟", "×") : root.glyph("󰕾", "♪")
+            icon: Audio.muted ? Theme.nerdGlyph("󰝟", "×") : Theme.nerdGlyph("󰕾", "♪")
             enabled: Audio.audio !== null
             value: Audio.volume; muted: Audio.muted
             onMoved: value => Audio.setVolume(value)
@@ -186,7 +185,7 @@ ColumnLayout {
         LevelRow {
             order: 4
             label: "Microphone"
-            icon: Audio.microphone?.muted ? root.glyph("󰍭", "×") : root.glyph("󰍬", "M")
+            icon: Audio.microphone?.muted ? Theme.nerdGlyph("󰍭", "×") : Theme.nerdGlyph("󰍬", "M")
             visible: !root.barAudio && Audio.microphone !== null
             value: Audio.microphone?.volume ?? 0; muted: Audio.microphone?.muted ?? false
             onMoved: value => Audio.setMicrophone(value)
@@ -195,7 +194,7 @@ ColumnLayout {
         LevelRow {
             order: 5
             label: "Brightness"; canMute: false
-            icon: root.glyph("󰃠", "☼")
+            icon: Theme.nerdGlyph("󰃠", "☼")
             visible: Brightness.available
             value: Brightness.value
             onCommitted: v => Brightness.change(Math.round((v - Brightness.value) * 100))
@@ -238,7 +237,7 @@ ColumnLayout {
             Tile {
                 order: 6
                 visible: Controls.data.nightlight !== null
-                mark: root.glyph("󰖔", "N")
+                mark: Theme.nerdGlyph("󰖔", "N")
                 label: "Night light"; value: Controls.data.nightlight === true ? "On" : "Off"; on: Controls.data.nightlight === true
                 enabled: !Controls.busy
                 onClicked: Controls.run({action: "nightlight"})
@@ -246,7 +245,7 @@ ColumnLayout {
             // Shield: status and a way in; the full management lives in its own window.
             Tile {
                 order: 6.5
-                mark: root.glyph("󰒃", "S")
+                mark: Theme.nerdGlyph("󰒃", "S")
                 label: "Shield"
                 value: Shield.ready ? Shield.headline : "Shield"
                 on: Shield.posture === "protected"
@@ -256,7 +255,7 @@ ColumnLayout {
             // Desktop Profiles: the current stance and a way in.
             Tile {
                 order: 7
-                mark: root.glyph("󰙅", "P")
+                mark: Theme.nerdGlyph("󰙅", "P")
                 label: "Profile"
                 value: Profiles.anyBusy ? "…" : Profiles.current ? Profiles.currentLabel : "None"
                 on: !!Profiles.current
@@ -267,7 +266,7 @@ ColumnLayout {
             // the transaction's real result, never an optimistic ON.
             Tile {
                 order: 7.5
-                mark: root.glyph("󰊗", "G")
+                mark: Theme.nerdGlyph("󰊗", "G")
                 label: "Gaming"
                 value: Gaming.busy ? "…" : Gaming.active ? Gaming.activeCount + "/" + Gaming.totalCount + " active" : "Off"
                 on: Gaming.active
@@ -278,7 +277,7 @@ ColumnLayout {
             // Focus: a timed quiet session; the tile shows the time left and opens the window.
             Tile {
                 order: 8
-                mark: root.glyph("󰔛", "F")
+                mark: Theme.nerdGlyph("󰔛", "F")
                 label: "Focus"
                 value: Focus.busy ? "…" : Focus.active ? (Focus.paused ? "Paused" : Focus.minutes(Focus.remaining) + " left") : "Off"
                 on: Focus.active
@@ -290,7 +289,7 @@ ColumnLayout {
             // battery saver turned it on); a tap while off switches it on.
             Tile {
                 order: 8.5
-                mark: root.glyph("󱐋", "⚡")
+                mark: Theme.nerdGlyph("󱐋", "⚡")
                 label: "Performance"
                 value: Config.performanceActive ? (Config.performanceMode === "on" ? "On" : "Auto · " + (Config.powerSaving ? "battery saver" : "game"))
                      : (Config.performanceMode === "off" ? "Off" : "Auto")

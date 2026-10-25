@@ -1,6 +1,5 @@
 """Versioned read-only integration adapters. No unverified takeover recipes."""
 from pathlib import Path
-import json
 
 VERSION=3
 

@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 import selectors
 import signal
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -369,15 +370,15 @@ class Updater:
 
     def inspect_run(self, ctx, op):
         if self.kind != 'checkout':
-            missing = [tool for tool in ('tar', 'sha256sum') if not _which(tool)]
-            if not (_which('curl') or _which('wget')):
+            missing = [tool for tool in ('tar', 'sha256sum') if not shutil.which(tool)]
+            if not (shutil.which('curl') or shutil.which('wget')):
                 missing.append('curl')
             if missing:
                 raise Guidance('Tools for the download are missing', 'The release is downloaded, verified and unpacked with ' + ', '.join(missing) + ', which ' + ('is' if len(missing) == 1 else 'are') + ' not installed.',
                                ['Install them: `sudo pacman -S --needed ' + ' '.join('coreutils' if m == 'sha256sum' else m for m in missing) + '`.', 'Press Try again.'], retry=True, code='tools')
             op.detail = 'Download tools present'
             return
-        if not _which('git'):
+        if not shutil.which('git'):
             raise Guidance('Git is not installed', 'The checkout at ' + str(self.target) + ' can only be updated with Git.', ['Install it: `sudo pacman -S --needed git`.', 'Press Try again.'], retry=True, code='tools')
         self.clear_broken_scratch_ref(op)
         head = self.git('rev-parse', '--abbrev-ref', 'HEAD').stdout.strip()
@@ -558,7 +559,7 @@ class Updater:
 
     def channel_inspect(self, ctx, op):
         self.check_cancelled()
-        if not _which('git'):
+        if not shutil.which('git'):
             raise Guidance('Git is not installed', 'Branch updates need Git, including installations downloaded as an archive.',
                            ['Install it: `sudo pacman -S --needed git`.', 'Press Try again.'], code='tools')
         from scripts.distribution import private_directory
@@ -826,7 +827,3 @@ class _Context:
     def output(self, op, line):
         self.runner.emit('log', {'operation': op.id, 'line': line})
 
-
-def _which(name):
-    from shutil import which
-    return which(name)

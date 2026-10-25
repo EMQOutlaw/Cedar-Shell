@@ -60,7 +60,7 @@ FocusScope {
     Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
     function consumeRequest() { if (Shield.requestedPage) { navigate(Shield.requestedPage); Shield.requestedPage = ""; } }
     Connections { target: Shield; function onRequestedPageChanged() { root.consumeRequest(); } }
-    Component.onCompleted: { consumeRequest(); enter(1050); }
+    Component.onCompleted: { consumeRequest(); enter(VisualQuality.ms(Theme.entrance)); }
     onPageChanged: enter(700)
     onDetailChanged: enter(700)
 
@@ -472,7 +472,6 @@ FocusScope {
         ColumnLayout {
             readonly property var p: Shield.protection(root.detail) || Shield.protections[0]
             readonly property string id: p.id
-            readonly property bool hasControls: !!({ firewall: 1, dns: 1, wifi: 1, ipv6: 1, discovery: 1, exposure: 1, lock: 1, idle: 1, local: 1, clipboard: 1, trails: 1 })[id]
             spacing: 20
             PageTitle {
                 crumb: "PROTECTIONS / " + p.group.toUpperCase()

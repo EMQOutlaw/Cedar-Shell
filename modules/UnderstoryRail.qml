@@ -24,7 +24,7 @@ Item {
     readonly property bool compact: width < 360 * Theme.fontScale
     readonly property real contentLeft: compact ? Theme.spaceMd : 72
     clip: true
-    readonly property bool nerd: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    readonly property bool nerd: Theme.nerdFont
     readonly property var player: Media.player
     readonly property var battery: UPower.displayDevice
     readonly property string person: {
@@ -41,10 +41,9 @@ Item {
         if (pos.y < viewport.contentY) viewport.contentY = pos.y;
         else if (pos.y + control.height > viewport.contentY + viewport.height) viewport.contentY = pos.y + control.height - viewport.height;
     }
-    function glyph(icon, fallback) { return nerd ? icon : fallback; }
     function beat(order, span = .4) { return Understory.ease(.05 * order, span); }
     onActiveChanged: if (active) { Controls.refresh(); Brightness.drain(); }
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    SystemClock { id: clock; enabled: root.active; precision: SystemClock.Minutes }
 
     // A rail button: an instrument on the screen edge. Lit when its surface is open.
     component RailButton: StrataButton {
@@ -177,14 +176,14 @@ Item {
             onClicked: { Understory.close(); if (Config.saved.canopyEnabled) Canopy.open("station", root.outputName); else ShellState.open("hud"); }
         }
         Item { width: 1; height: 6 }
-        RailButton { order: 0; text: root.glyph("󰂚", "S"); hint: "Signals"; visible: CoreService.enabled; onClicked: { Understory.close(); CoreService.expand(); } }
-        RailButton { order: 1; text: root.glyph("󰒃", "⛨"); hint: Shield.ready ? "Shield · " + Shield.headline : "Shield"; accent: Shield.posture === "protected" ? Theme.green : Theme.strataAccent; checked: Shield.posture === "protected"; onClicked: { Understory.close(); Shield.openApp(); } }
-        RailButton { order: 2; text: root.glyph("󰓅", "H"); hint: "Station · health and diagnostics"; onClicked: { Understory.close(); Station.openApp(); } }
-        RailButton { order: 3; text: root.glyph("󰙅", "P"); hint: Profiles.current ? "Profiles · " + Profiles.currentLabel : "Profiles"; checked: !!Profiles.current; onClicked: { Understory.close(); Profiles.openApp(); } }
-        RailButton { order: 4; text: root.glyph("󰔛", "F"); hint: Focus.active ? "Focus · " + Focus.summary : "Focus"; checked: Focus.active; onClicked: { Understory.close(); Focus.openApp(); } }
-        RailButton { order: 5; text: root.glyph("󱞁", "N"); hint: "Field Notes"; onClicked: { Understory.close(); FieldNotes.toggle(); } }
-        RailButton { order: 6; text: root.glyph("󰌌", "K"); hint: "Keymap · the searchable active keymap"; onClicked: { Understory.close(); if (!Config.testMode) Quickshell.execDetached(["qs", "--no-duplicate", "-p", Quickshell.shellPath("keymap.qml")]); } }
-        RailButton { order: 7; text: root.glyph("󰒓", "⚙"); hint: "Settings"; onClicked: { Understory.close(); ShellState.toggle("settings"); } }
+        RailButton { order: 0; text: Theme.nerdGlyph("󰂚", "S"); hint: "Signals"; visible: CoreService.enabled; onClicked: { Understory.close(); CoreService.expand(); } }
+        RailButton { order: 1; text: Theme.nerdGlyph("󰒃", "⛨"); hint: Shield.ready ? "Shield · " + Shield.headline : "Shield"; accent: Shield.posture === "protected" ? Theme.green : Theme.strataAccent; checked: Shield.posture === "protected"; onClicked: { Understory.close(); Shield.openApp(); } }
+        RailButton { order: 2; text: Theme.nerdGlyph("󰓅", "H"); hint: "Station · health and diagnostics"; onClicked: { Understory.close(); Station.openApp(); } }
+        RailButton { order: 3; text: Theme.nerdGlyph("󰙅", "P"); hint: Profiles.current ? "Profiles · " + Profiles.currentLabel : "Profiles"; checked: !!Profiles.current; onClicked: { Understory.close(); Profiles.openApp(); } }
+        RailButton { order: 4; text: Theme.nerdGlyph("󰔛", "F"); hint: Focus.active ? "Focus · " + Focus.summary : "Focus"; checked: Focus.active; onClicked: { Understory.close(); Focus.openApp(); } }
+        RailButton { order: 5; text: Theme.nerdGlyph("󱞁", "N"); hint: "Field Notes"; onClicked: { Understory.close(); FieldNotes.toggle(); } }
+        RailButton { order: 6; text: Theme.nerdGlyph("󰌌", "K"); hint: "Keymap · the searchable active keymap"; onClicked: { Understory.close(); if (!Config.testMode) Quickshell.execDetached(["qs", "--no-duplicate", "-p", Quickshell.shellPath("keymap.qml")]); } }
+        RailButton { order: 7; text: Theme.nerdGlyph("󰒓", "⚙"); hint: "Settings"; onClicked: { Understory.close(); ShellState.toggle("settings"); } }
     }
     }
     Rectangle { visible: !root.compact; x: 58; y: 14; width: 1; height: parent.height - 36; color: Qt.alpha(Theme.border, .5) }
@@ -226,10 +225,10 @@ Item {
                     Item { Layout.fillWidth: true; Layout.minimumWidth: 4 }
                     // Lock and suspend act at once; log out and power off arm the
                     // session drop, which asks before anything ends.
-                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: root.glyph("󰌾", "L"); hint: "Lock · Trailwatch keeps your place"; enabled: !Config.testMode; onClicked: { Understory.close(); ShellState.lock(false); } }
-                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: root.glyph("󰤄", "Z"); hint: "Suspend · lock, then sleep"; enabled: !Config.testMode; onClicked: { Understory.close(); ShellState.lock(true); } }
-                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: root.glyph("󰍃", "⏏"); hint: "Log out · opens Power & session"; onClicked: root.session() }
-                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: root.glyph("󰐥", "⏻"); hint: "Power · opens Power & session"; accent: Theme.ember; onClicked: root.session() }
+                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: Theme.nerdGlyph("󰌾", "L"); hint: "Lock · Trailwatch keeps your place"; enabled: !Config.testMode; onClicked: { Understory.close(); ShellState.lock(false); } }
+                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: Theme.nerdGlyph("󰤄", "Z"); hint: "Suspend · lock, then sleep"; enabled: !Config.testMode; onClicked: { Understory.close(); ShellState.lock(true); } }
+                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: Theme.nerdGlyph("󰍃", "⏏"); hint: "Log out · opens Power & session"; onClicked: root.session() }
+                    StrataButton { Layout.preferredWidth: 30; Layout.preferredHeight: 30; iconOnly: true; text: Theme.nerdGlyph("󰐥", "⏻"); hint: "Power · opens Power & session"; accent: Theme.ember; onClicked: root.session() }
                 }
                 RowLayout {
                     Layout.fillWidth: true
@@ -268,7 +267,7 @@ Item {
                         order: 1.5
                         visible: BluetoothService.available && BluetoothService.adapter !== null
                         readonly property var connected: BluetoothService.devices.filter(d => d.connected)
-                        mark: root.glyph("󰂯", "B")
+                        mark: Theme.nerdGlyph("󰂯", "B")
                         objectName: "understoryBluetooth"
                         label: "Bluetooth"
                         value: !(BluetoothService.adapter?.enabled ?? false) ? "Off" : connected.length === 0 ? "On · nothing connected" : connected.length === 1 ? (connected[0].name || connected[0].address) : connected.length + " devices connected"
@@ -281,7 +280,7 @@ Item {
                     Tile {
                         order: 2
                         visible: Proton.data.installed || Network.vpnActive
-                        mark: root.glyph("󰌾", "V")
+                        mark: Theme.nerdGlyph("󰌾", "V")
                         objectName: "understoryVpn"
                         label: "VPN"
                         value: Proton.working ? Proton.working : Proton.connected ? "Proton · " + (Proton.server || "connected") : Network.vpnActive ? "Tunnel up" : Proton.data.installed ? (Proton.data.signedIn ? "Proton · off" : "Proton · signed out") : "Off"
@@ -293,7 +292,7 @@ Item {
                     Tile {
                         order: 2.5
                         visible: Controls.data.nightlight !== null
-                        mark: root.glyph("󰖔", "N")
+                        mark: Theme.nerdGlyph("󰖔", "N")
                         objectName: "understoryNightLight"
                         label: "Night light"; value: Controls.data.nightlight === true ? "On" : "Off"; on: Controls.data.nightlight === true
                         enabled: !Controls.busy
@@ -301,7 +300,7 @@ Item {
                     }
                     Tile {
                         order: 3
-                        mark: Config.saved.doNotDisturb ? root.glyph("󰂛", "Z") : root.glyph("󰂚", "Q")
+                        mark: Config.saved.doNotDisturb ? Theme.nerdGlyph("󰂛", "Z") : Theme.nerdGlyph("󰂚", "Q")
                         objectName: "understoryQuiet"
                         label: "Quiet hours"
                         value: Config.saved.doNotDisturb ? "On · notifications held" : "Off · notifications on"
@@ -312,7 +311,7 @@ Item {
                     Tile {
                         order: 3.5
                         objectName: "understoryAwake"
-                        mark: root.glyph("󰒲", "A")
+                        mark: Theme.nerdGlyph("󰒲", "A")
                         label: "Keep awake"
                         value: Awake.summary
                         on: Awake.held
@@ -322,7 +321,7 @@ Item {
                     }
                     Tile {
                         order: 4
-                        mark: root.glyph("󰊗", "G")
+                        mark: Theme.nerdGlyph("󰊗", "G")
                         objectName: "understoryGaming"
                         label: "Gaming"
                         value: Gaming.busy ? "…" : Gaming.active ? Gaming.activeCount + "/" + Gaming.totalCount + " active" : "Off"
@@ -333,7 +332,7 @@ Item {
                     }
                     Tile {
                         order: 4.5
-                        mark: root.glyph("󰔛", "F")
+                        mark: Theme.nerdGlyph("󰔛", "F")
                         objectName: "understoryFocus"
                         label: "Focus"
                         value: Focus.busy ? "…" : Focus.active ? (Focus.paused ? "Paused" : Focus.minutes(Focus.remaining) + " left") : "Off"
@@ -352,7 +351,7 @@ Item {
                 LevelRow {
                     order: 5
                     label: "Output"; sliderName: "understoryVolume"
-                    icon: Audio.muted ? root.glyph("󰝟", "×") : root.glyph("󰕾", "♪")
+                    icon: Audio.muted ? Theme.nerdGlyph("󰝟", "×") : Theme.nerdGlyph("󰕾", "♪")
                     visible: Audio.audio !== null
                     value: Audio.volume; muted: Audio.muted
                     onMoved: value => Audio.setVolume(value)
@@ -361,7 +360,7 @@ Item {
                 LevelRow {
                     order: 5.5
                     label: "Microphone"
-                    icon: Audio.microphone?.muted ? root.glyph("󰍭", "×") : root.glyph("󰍬", "M")
+                    icon: Audio.microphone?.muted ? Theme.nerdGlyph("󰍭", "×") : Theme.nerdGlyph("󰍬", "M")
                     visible: Audio.microphone !== null
                     value: Audio.microphone?.volume ?? 0; muted: Audio.microphone?.muted ?? false
                     onMoved: value => Audio.setMicrophone(value)
@@ -370,7 +369,7 @@ Item {
                 LevelRow {
                     order: 6
                     label: "Brightness"; canMute: false
-                    icon: root.glyph("󰃠", "☼")
+                    icon: Theme.nerdGlyph("󰃠", "☼")
                     visible: Brightness.available
                     value: Brightness.value
                     onCommitted: v => Brightness.change(Math.round((v - Brightness.value) * 100))
@@ -428,9 +427,9 @@ Item {
                         }
                         Row {
                             spacing: 4
-                            StrataButton { width: 28; height: 28; iconOnly: true; text: root.glyph("󰒮", "«"); hint: "Previous track"; enabled: root.player?.canGoPrevious ?? false; onClicked: root.player.previous() }
-                            StrataButton { width: 28; height: 28; iconOnly: true; text: root.player?.isPlaying ? root.glyph("󰏤", "‖") : root.glyph("󰐊", "▶"); hint: root.player?.isPlaying ? "Pause" : "Play"; enabled: root.player?.canTogglePlaying ?? false; onClicked: root.player.togglePlaying() }
-                            StrataButton { width: 28; height: 28; iconOnly: true; text: root.glyph("󰒭", "»"); hint: "Next track"; enabled: root.player?.canGoNext ?? false; onClicked: root.player.next() }
+                            StrataButton { width: 28; height: 28; iconOnly: true; text: Theme.nerdGlyph("󰒮", "«"); hint: "Previous track"; enabled: root.player?.canGoPrevious ?? false; onClicked: root.player.previous() }
+                            StrataButton { width: 28; height: 28; iconOnly: true; text: root.player?.isPlaying ? Theme.nerdGlyph("󰏤", "‖") : Theme.nerdGlyph("󰐊", "▶"); hint: root.player?.isPlaying ? "Pause" : "Play"; enabled: root.player?.canTogglePlaying ?? false; onClicked: root.player.togglePlaying() }
+                            StrataButton { width: 28; height: 28; iconOnly: true; text: Theme.nerdGlyph("󰒭", "»"); hint: "Next track"; enabled: root.player?.canGoNext ?? false; onClicked: root.player.next() }
                         }
                     }
                 }

@@ -14,7 +14,6 @@ import ".."
 // Decorative loops already rest through Theme.reducedMotion and Motion; this
 // policy drives that gate, so a single binding reaches every one of them.
 Singleton {
-    id: root
     readonly property string level: Gaming.active ? "gaming" : Config.performanceActive ? "efficient" : "normal"
     readonly property bool normal: level === "normal"
     readonly property bool efficient: level === "efficient"

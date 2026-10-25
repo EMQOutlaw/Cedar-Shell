@@ -127,7 +127,6 @@ ColumnLayout {
         Accessible.role: Accessible.Button
         Accessible.name: (empty ? "New workspace" : "Workspace " + workspace.name) + (current ? ", active" : "") + ", " + toplevels.length + " windows"
         ChamferFrame {
-            id: frame
             anchors.fill: parent; anchors.bottomMargin: 26
             cut: 8
             fill: tile.current ? Qt.alpha(Theme.green, .05) : hover.hovered ? Qt.alpha(Theme.elevated, .9) : Qt.alpha(Theme.surface, .85)

@@ -60,7 +60,6 @@ Singleton {
         ledger.setText(JSON.stringify(observations));
         whisper=text;whisperType=type;whisperUntil=now+6000;lastWhisper=now;
     }
-    function silenceWhisper(){if(whisperType)Config.set("whisper"+whisperType[0].toUpperCase()+whisperType.slice(1),false);whisper="";}
     function record(kind,label,target="") {
         if(!Config.saved.forestTrails || ShellState.locked)return;
         trails=Policy.trail(trails,{key:kind+"/"+target,label:String(label).slice(0,100),kind:kind,target:target},Date.now());

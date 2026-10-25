@@ -9,7 +9,6 @@ import "modules"
 import "services"
 
 ShellRoot {
-    readonly property bool applicationThemingEnabled: ApplicationTheming.enabled
     // The longest string argument the notes IPC target accepts (titles, notes and strokes are bounded further by the model).
     readonly property int notesArgumentLimit: 65536
 
@@ -181,6 +180,9 @@ ShellRoot {
                 Canopy.context();
         }
     }
+    // Eager handles: naming these singletons here instantiates them at shell
+    // start — Clipboard's wl-paste capture and Forest's whispers/idle
+    // monitors must run before their panels are ever opened. Not dead code.
     property var forestService: Forest
     property var clipboardService: Clipboard
     // Disable hot reload while locked: never replace the authentication engine.

@@ -80,6 +80,8 @@ Singleton {
     readonly property color veil: Qt.alpha(background, 0.88)
     readonly property color grid: Qt.alpha(teal, 0.045)
     readonly property var availableFonts: Qt.fontFamilies()
+    readonly property bool nerdFont: availableFonts.includes("JetBrainsMono Nerd Font")
+    function nerdGlyph(icon, fallback) { return nerdFont ? icon : fallback; }
     function resolveFont(requested, fallback) { return availableFonts.includes(requested) ? requested : fallback; }
     property string labelFont: resolveFont("Rajdhani", "sans-serif")
     property string dataFont: resolveFont("JetBrainsMono Nerd Font", "monospace")

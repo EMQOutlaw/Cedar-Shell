@@ -104,7 +104,6 @@ ColumnLayout {
             visible: root.picking && Proton.data.signedIn
             Layout.fillWidth: true; spacing: 6
             StrataField {
-                id: search
                 objectName: "protonCountry"
                 Layout.fillWidth: true
                 placeholderText: Proton.countries.length ? "Search " + Proton.countries.length + " countries" : "Loading countries…"

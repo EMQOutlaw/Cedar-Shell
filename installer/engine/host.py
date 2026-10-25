@@ -34,7 +34,6 @@ class Host:
     def config_home(self): return self.xdg('CONFIG', '.config')
     def data_home(self): return self.xdg('DATA', '.local/share')
     def state_home(self): return self.xdg('STATE', '.local/state')
-    def cache_home(self): return self.xdg('CACHE', '.cache')
 
     # -- files ---------------------------------------------------------
     def exists(self, path): return Path(path).exists()

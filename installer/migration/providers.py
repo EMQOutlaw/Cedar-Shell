@@ -3,7 +3,7 @@
 Weights: a folder or command alone scores 1 and never reaches the threshold of
 2; a running shell, a state file or an installed package scores 2.
 """
-from .base import Marker, MigrationProvider, VALIDATED, EXPERIMENTAL, PREVIEW
+from .base import Marker, MigrationProvider, EXPERIMENTAL
 
 
 class PlainHyprland(MigrationProvider):

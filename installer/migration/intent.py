@@ -7,7 +7,6 @@ configuration as code; includes are followed by name only, bounded, and a
 dynamic expression stops the walk for that file. The result is CEDAR's own
 monitor format (scripts/desktop.py state rows), not a copy of the old files.
 """
-import os
 from pathlib import Path
 import re
 

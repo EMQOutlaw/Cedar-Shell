@@ -121,7 +121,6 @@ Scope {
         }
     }
     PanelWindow {
-        id: testWindow
         visible: ShellState.authTest && !ShellState.locked
         onVisibleChanged: if (visible) testPassword.forceActiveFocus()
         screen: Quickshell.screens.find(s => s.name === ShellState.preferredOutput()) || Quickshell.screens[0]

@@ -178,7 +178,6 @@ Item {
             // The arriving run, letter by letter: each glyph drops into place a beat after the last, bright, then settles to the label's colour.
             Text { id: arriving; visible: false; x: run.baseX + prefix.implicitWidth; anchors.verticalCenter: parent.verticalCenter; text: run.plan.arriving; textFormat: Text.PlainText; font: label.font }
             Row {
-                id: cascade
                 x: run.baseX + prefix.implicitWidth; anchors.verticalCenter: parent.verticalCenter
                 Repeater {
                     model: Array.from(run.plan.arriving)

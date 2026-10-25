@@ -1,5 +1,4 @@
 """Validated semantic tokens, independent of Quickshell and adapter syntax."""
-import colorsys
 import hashlib
 import json
 from pathlib import Path

@@ -9,7 +9,6 @@ import "../services"
 // no input and no keyboard focus. It exists only while Profiles.hudShown is
 // true; shell.qml creates it for the transaction and releases it after the hold.
 PanelWindow {
-    id: root
     screen: Quickshell.screens.find(s => s.name === Profiles.hudScreen) || Quickshell.screens.find(s => s.name === Config.saved.mainDisplay) || Quickshell.screens[0] || null
     anchors.top: true
     margins.top: Math.round((screen ? screen.height : 1080) * 0.3)

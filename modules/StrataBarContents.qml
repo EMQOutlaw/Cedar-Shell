@@ -26,7 +26,7 @@ Item {
     readonly property var battery: UPower.displayDevice
     readonly property bool batteryPresent: battery?.isPresent ?? false
     readonly property int batteryPercent: Math.round((battery?.percentage ?? 0) * 100)
-    readonly property bool nerdIcons: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    readonly property bool nerdIcons: Theme.nerdFont
     readonly property bool networkShown: Config.moduleEnabled("network")
     readonly property bool audioShown: Config.moduleEnabled("audio")
     readonly property bool powerShown: Config.moduleEnabled("battery")
@@ -122,7 +122,6 @@ Item {
     }
 
     Item {
-        id: leftControls
         objectName: "barLeftControls"
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
@@ -207,7 +206,6 @@ Item {
                         model: root.shownWorkspaces
                         onCountChanged: Qt.callLater(workspaceRail.placeMark)
                         BarButton {
-                            id: workspaceButton
                             required property var modelData
                             width: root.workspaceCell
                             height: root.controlHeight
@@ -298,14 +296,12 @@ Item {
     }
 
     Item {
-        id: rightControls
         objectName: "barRightControls"
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         width: root.sideWidth
         height: parent.height
         Row {
-            id: statusRail
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             spacing: root.railGap
@@ -327,7 +323,6 @@ Item {
                 }
             }
             Row {
-                id: trayRow
                 visible: root.visibleTrayItems.length > 0
                 spacing: 2
                 Repeater {

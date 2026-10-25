@@ -117,24 +117,7 @@ Singleton {
             keybinds: "Keybinds"
         })[value] || "Canopy";
     }
-    readonly property string title: ({
-            audio: "Audio",
-            network: "Connections",
-            bluetooth: "Bluetooth",
-            power: "Power & Session",
-            system: "System",
-            weather: "Sky Watch",
-            calendar: "Time & Calendar",
-            clipboard: "Clipboard",
-            notifications: "Notifications",
-            quick: "Quick Controls",
-            trails: "Recent Trail",
-            station: "Field Station",
-            go: "Applications",
-            startup: "Startup",
-            workspaces: "Workspaces",
-            keybinds: "Keybinds"
-        })[topic] || "Canopy"
+    readonly property string title: titleFor(topic)
     function open(value, output = "", peek = false) {
         if (value === "system") { TaskManager.launch(); return; }
         if (!topics.includes(value) || ShellState.locked || (!Config.saved.canopyEnabled && value !== "go"))

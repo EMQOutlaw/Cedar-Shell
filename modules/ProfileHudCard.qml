@@ -6,7 +6,6 @@ import "../services"
 // The Desktop Profiles preparation card: the shared TransactionHudCard fed
 // from the Profiles transaction, in the profile's own accent.
 TransactionHudCard {
-    id: root
     readonly property string name: (Profiles.definition(Profiles.target || Profiles.active) || { label: "Profile" }).label
     leave: Profiles.hudMode === "leave"
     settled: Profiles.hudSettled

@@ -5,7 +5,6 @@ Static sites are evidence of ownership, not proof that an object is live. Use
 measure_resources.py and an isolated QML profiler to attach runtime evidence.
 """
 import argparse
-import json
 import re
 from pathlib import Path
 import distribution as d

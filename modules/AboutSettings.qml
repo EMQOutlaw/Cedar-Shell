@@ -5,7 +5,6 @@ import ".."
 import "../components"
 import "../services"
 ColumnLayout {
-    id: root
     spacing: 16
     Rectangle {
         Layout.fillWidth: true; implicitHeight: hero.implicitHeight + 48; radius: Theme.cardRadius

@@ -39,7 +39,7 @@ Rectangle {
         reveal = 0;
         entrance.start();
     }
-    NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: 1050 }
+    NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: VisualQuality.ms(Theme.entrance) }
     Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
     onActiveChanged: if (active) enter(); else { entrance.stop(); reveal = 1; }
     Component.onCompleted: if (active) enter()

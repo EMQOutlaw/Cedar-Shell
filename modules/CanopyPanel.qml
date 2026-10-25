@@ -58,7 +58,7 @@ Rectangle {
     readonly property bool secondaryActive: Canopy.tabs.indexOf(topic) >= primaryTabs
     property bool moreOpen: false
     onTopicChanged: moreOpen = false
-    readonly property bool nerd: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    readonly property bool nerd: Theme.nerdFont
     function tabLabel(value) {
         return ({ audio: "Audio", network: "Connections", bluetooth: "Bluetooth", power: "Power", system: "System", weather: "Sky", calendar: "Time",
                   clipboard: "Clipboard", notifications: "Notes", quick: "Controls", trails: "Trails", station: "Station", go: "Apps", startup: "Startup", workspaces: "Spaces", keybinds: "Keys" })[value] || value;
