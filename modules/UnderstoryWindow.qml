@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 import Quickshell
@@ -15,14 +16,20 @@ PanelWindow {
     id: root
     required property var modelData
     screen: modelData
-    readonly property bool requested: Understory.shown && Understory.screen === modelData
+    readonly property bool requested: !ShellState.locked && Understory.shown && Understory.screen === modelData
     property bool mapped: false
     visible: mapped
     readonly property bool sliding: VisualQuality.functionalMotion && !Config.testMode
     readonly property real sideInset: Config.barDetached ? Config.barMargin : 0
     // The bar frame sits five pixels inside the bar window; the rail joins its bottom edge.
     readonly property real barJoin: Config.barHeight - (Config.barStyle === "cedar" || Config.barIslands ? 5 : 0)
-    readonly property int railWidth: 388
+    // Output sizes are logical pixels already (do not divide by scale again).
+    function widthFor(outputWidth) {
+        const left = beside ? Config.barWidth : sideInset;
+        return Math.max(1, Math.min(388 + join + Theme.focusWidth, outputWidth - left));
+    }
+    readonly property int railWidth: Math.max(1, widthFor(modelData?.width || 388) - join - Theme.focusWidth)
+    readonly property bool contentLoaded: railContent.item !== null
     // Beside the Understory bar the rail is a panel in its own right: it
     // starts at the screen's top, flush to the bar's outer edge, and wears
     // the pill's cuts at both right corners instead of the fillet into the bar.
@@ -31,15 +38,20 @@ PanelWindow {
     anchors { top: true; left: true; bottom: true }
     margins.top: beside ? 0 : (Config.barDetached ? Config.barMargin : 0) + barJoin
     margins.left: beside ? Config.barWidth : sideInset
-    implicitWidth: railWidth + join + 2
+    implicitWidth: widthFor(modelData?.width || 388)
     color: Theme.transparent
     exclusionMode: ExclusionMode.Ignore
     mask: Region { item: rail }
     WlrLayershell.namespace: "cedar-understory"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: requested ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    readonly property alias focusGrab: focusGrab
     HyprlandFocusGrab {
-        windows: [root]
+        id: focusGrab
+        objectName: "understoryFocusGrab"
+        // The bar is an opener, not an outside-click dismissal target.
+        // Reuse the same registration lifetime as Canopy (incl. hotplug).
+        windows: [root].concat(Canopy.controlWindows)
         active: root.requested && !Config.testMode
         onCleared: if (root.visible) Understory.close()
     }
@@ -150,15 +162,22 @@ PanelWindow {
         }
         // The pill's mark: a short lit line where the rail leaves the bar.
         Rectangle { x: rail.width - 1; y: rail.join + rail.cut + 6; width: 1; height: 34; color: Theme.green; opacity: .7 * Understory.ease(.1, .3) }
-        CedarAtmosphere {
+        Loader {
+            id: railContent
             anchors.fill: parent
-            active: root.requested && Config.saved.ambientIntensity > 0
-            opacity: Config.saved.ambientIntensity * .6
-        }
-        UnderstoryRail {
-            anchors.fill: parent
-            active: root.requested
-            outputName: root.modelData?.name || ""
+            active: root.mapped
+            sourceComponent: Item {
+                CedarAtmosphere {
+                    anchors.fill: parent
+                    active: root.requested && Config.saved.ambientIntensity > 0
+                    opacity: Config.saved.ambientIntensity * .6
+                }
+                UnderstoryRail {
+                    anchors.fill: parent
+                    active: root.requested
+                    outputName: root.modelData?.name || ""
+                }
+            }
         }
     }
 }

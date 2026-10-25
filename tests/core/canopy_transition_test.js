@@ -28,15 +28,15 @@ function fixture(mapped, height, reveal) {
     });
     const context = {
         mapped, switching: false,
-        drop: { height, reveal, x: 36, width: 400, topic: "audio", standalone: false },
+        drop: { reach: height, reveal, along: 36, span: 400, topic: "audio", standalone: false },
         Canopy: { topic: "audio", standalone: false, enter() { calls.push("enter"); } },
         root: { requested: true, retarget() { calls.push("retarget"); } },
         Qt: { callLater(fn) { deferred.push(fn); } },
         closeDelay: animation("closeDelay"), openReveal: animation("openReveal"),
         swap: animation("swap"), morph: animation("morph"),
-        topicWidth() { return 560; }, topicX() { return 80; },
+        wantedSpan() { return 560; }, panelAlong() { return 80; },
         setState(value) { calls.push("state:" + value); },
-        snap(x, width, height) { Object.assign(context.drop, { x, width, height }); calls.push("snap"); }
+        snap(along, span, reach) { Object.assign(context.drop, { along, span, reach }); calls.push("snap"); }
     };
     vm.createContext(context);
     vm.runInContext(command("open"), context);
@@ -46,16 +46,16 @@ function fixture(mapped, height, reveal) {
 const first = fixture(false, 0, 0);
 first.context.open();
 assert.equal(first.context.mapped, true);
-assert.equal(first.context.drop.height, 0);
+assert.equal(first.context.drop.reach, 0);
 assert.equal(first.calls.filter(c => c === "snap").length, 1);
 first.flush();
 assert(first.calls.includes("retarget") && first.calls.includes("openReveal:restart"));
 
 const interrupted = fixture(true, 247, .42);
 interrupted.context.open();
-assert.equal(interrupted.context.drop.height, 247, "reopen retains the in-flight height");
+assert.equal(interrupted.context.drop.reach, 247, "reopen retains the in-flight height");
 assert.equal(interrupted.context.drop.reveal, .42, "reopen retains the in-flight content opacity");
-assert.equal(interrupted.context.drop.x, 36, "reopen does not teleport the visible surface");
+assert.equal(interrupted.context.drop.along, 36, "reopen does not teleport the visible surface");
 assert(!interrupted.calls.includes("snap"));
 interrupted.flush();
 assert(interrupted.calls.includes("retarget"));

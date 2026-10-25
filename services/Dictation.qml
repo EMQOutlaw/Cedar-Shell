@@ -52,7 +52,26 @@ Singleton {
     // no transcript. The bridge exits with the recording; it is never restarted
     // on its own. When the levels are missing (no bridge on PATH, an older
     // Voxtype), `listening` stays false and the pill shows a quiet line.
-    readonly property bool wantLevels: recording && Config.saved.coreDictation && (Config.saved.coreEnabled || Config.barVertical) && !ShellState.locked && !Config.testMode
+    // Who animates the filament: exactly one surface per placement. The Core
+    // pill only when it is actually hosted — Core is Strata (top-bar) only
+    // now, so a vertical bar never claims presenter even if Core is enabled;
+    // the bar's own sideways filament (UnderstoryDictation) takes over
+    // instead. shell.qml maps the bar filament from this, so the two never
+    // animate side by side.
+    readonly property string presenter: !Config.saved.coreDictation || Config.stage < 3 || ShellState.locked ? ""
+        : CoreService.enabled && !!CoreService.hostScreen && !Config.barVertical ? "core"
+        : Config.barVertical ? "understory" : ""
+    // Ownership (presenter) is not visibility. The bridge runs only while some
+    // filament is live to draw the levels: CoreDictation registers itself for
+    // as long as its host window is on screen. A covered pill (ember dot only),
+    // a legacy panel hiding the pill, or the lock leave no consumer, so the
+    // bridge exits and nothing polls for a drawing nobody sees. Dedup stays
+    // with the presenter; no second fallback appears while the pill is hidden.
+    property int levelConsumers: 0
+    function attachLevels() { levelConsumers += 1; }
+    function detachLevels() { levelConsumers = Math.max(0, levelConsumers - 1); }
+    readonly property bool levelsWanted: recording && presenter !== "" && levelConsumers > 0
+    readonly property bool wantLevels: levelsWanted && !Config.testMode
     readonly property bool listening: levels.running && levelsFresh
     property bool levelsFresh: false
     property real peak: 0
@@ -214,7 +233,11 @@ Singleton {
                 title: "Dictation",
                 subtitle: recording ? "Listening · speak, then stop to type it" : "Transcribing…",
                 persistent: true,
-                announce: !wasActive,
+                // The user started this themself: no attention alert, so a pill
+                // covered by a fullscreen window or Gaming Mode stays covered and
+                // shows only its ember dot. The pill at rest still shows the
+                // filament inline (CoreSurface.dictationInline reads the state).
+                announce: false,
                 data: { source: "voxtype" },
                 actions: recording ? [{ id: "dictation-stop", label: "Stop and type" }, { id: "dictation-cancel", label: "Cancel" }] : [{ id: "dictation-cancel", label: "Cancel" }]
             });

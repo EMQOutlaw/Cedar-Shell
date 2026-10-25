@@ -4,17 +4,32 @@ import Quickshell
 import ".."
 import "../components"
 import "../components/core/Activities.js" as Policy
+import "../components/core/StrataGeometry.js" as Strata
 
 Singleton {
     id: root
-    readonly property bool enabled: Config.stage >= 3 && Config.saved.coreEnabled && !Config.barVertical
+    // Core lives under both bar placements. Under the top bar the pill is
+    // integrated in the bar; beside the Understory (left) bar it floats at the
+    // top centre of the usable area. A placement switch therefore never resets
+    // the activity stack or the timer: `enabled` does not depend on it.
+    readonly property bool enabled: Config.stage >= 3 && Config.saved.coreEnabled
     property string fallbackOutput: Quickshell.screens[0]?.name || ""
     readonly property var hostScreen: Quickshell.screens.find(s => s.name === (Config.saved.coreMonitor || Config.saved.mainDisplay)) || Quickshell.screens.find(s => s.name === fallbackOutput) || Quickshell.screens[0] || null
     readonly property string hostName: hostScreen?.name || ""
+    // The pill window's place on its host: {left, top, width, maxHeight},
+    // decided by components/core/StrataGeometry.js and assigned by CoreWindow.
+    readonly property var placement: Strata.corePlacement({
+        screenWidth: hostScreen?.width || 0, screenHeight: hostScreen?.height || 0,
+        barVertical: Config.barVertical, barWidth: Config.barWidth, barMargin: Config.barMargin, barDetached: Config.barDetached,
+        barInset: Config.barStyle === "cedar" || Config.barIslands ? 5 : 0, barHeight: Config.barHeight,
+        wantedWidth: Math.min(620, hostScreen?.width || 620)
+    })
     readonly property int reserveWidth: Config.barStyle === "cedar"
         ? ((hostScreen?.width || 1000) < 800 ? 164 : (hostScreen?.width || 1000) < 1100 ? 208 : 272)
         : Math.min(360, Math.max(240, (hostScreen?.width || 1000) * .30))
-    readonly property bool available: enabled && !!hostScreen && !ShellState.locked && ["", "core", "canopy"].includes(ShellState.panel)
+    // The pill is Strata (top-bar) only now; Core has nothing to own while
+    // the bar is Understory (left), so nothing defers to it in that mode.
+    readonly property bool available: enabled && !!hostScreen && !ShellState.locked && !Config.barVertical && ["", "core", "canopy", "understory"].includes(ShellState.panel)
     readonly property bool expanded: ShellState.panel === "core"
     readonly property bool ownsOsd: available && Config.saved.coreVolume && ["VOLUME", "BRIGHTNESS"].includes(ShellState.osdKind)
     readonly property alias model: activities
@@ -34,6 +49,10 @@ Singleton {
     readonly property var recordings: probe.error ? [] : probe.data.recordings
     readonly property bool recording: recordings.length > 0
     readonly property var privacy: rows.filter(r => ["microphone", "camera"].includes(r.type))
+    // Anything taking the screen or the microphone right now: a screen
+    // recording, a privacy row, or a recording-type activity such as dictation.
+    // A covered pill (fullscreen, Gaming Mode) keeps its ember dot for this.
+    readonly property bool capturing: recording || privacy.length > 0 || rows.some(r => r.type === "recording")
     function allowed(type) {
         const key = ({
                 volume: "coreVolume",
@@ -85,7 +104,10 @@ Singleton {
         return "ok";
     }
     function expand(id = "") {
-        if (!enabled || ShellState.locked)
+        // The pill is Strata-only: with the bar on the left there is no Core
+        // window, so opening the hub would leave ShellState.panel = "core"
+        // with no surface to show it. Refuse here rather than strand it.
+        if (!enabled || Config.barVertical || ShellState.locked)
             return;
         activities.selectedId = id;
         ShellState.panel = "core";

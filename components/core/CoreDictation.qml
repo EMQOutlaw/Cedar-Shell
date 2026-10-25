@@ -17,12 +17,19 @@ import "../../services"
 // Voxtype is doing. Reduced Motion draws the levels without easing, at a slow
 // cadence, and shows a static amber line instead of the travelling light.
 // The sweep is bounded: it stops on its own after two minutes even if the
-// state never returns, and the moment the surface is hidden.
+// state never returns, and the moment the surface is hidden. "Hidden" is the
+// host window's own visibility (a covered pill, an unmapped drop, the lock),
+// not only the item's: an item inside a hidden window still reads visible.
 Item {
     id: root
     readonly property bool recording: Dictation.recording
     readonly property bool transcribing: Dictation.transcribing
-    readonly property bool live: visible && width > 0 && (recording || transcribing)
+    // The window this filament is drawn in is actually on screen.
+    readonly property bool hosted: Window.window ? Window.window.visible : false
+    readonly property bool live: visible && hosted && width > 0 && !ShellState.locked && (recording || transcribing)
+    // For tests and the resource ledger: the two loops this item may run.
+    readonly property bool painting: repaint.running
+    readonly property bool sweeping: travel.running
     readonly property bool animated: VisualQuality.functionalMotion
     readonly property int sampleCount: 56
     property var samples: []
@@ -74,9 +81,20 @@ Item {
     onRecordingChanged: {
         if (recording) { reset(); tick(); }
         else { speaking = false; voiceHold.stop(); }
+        syncLevels();
     }
     onTranscribingChanged: { capped = false; if (!transcribing) sweep = 0; }
-    onLiveChanged: { dirty = true; if (!live) reset(); }
+    // While live this filament consumes the level feed; the service runs the
+    // audio bridge only for registered consumers.
+    property bool attached: false
+    function syncLevels() {
+        const want = live && recording;
+        if (want === attached) return;
+        attached = want;
+        if (want) Dictation.attachLevels(); else Dictation.detachLevels();
+    }
+    onLiveChanged: { dirty = true; if (!live) reset(); syncLevels(); }
+    Component.onDestruction: if (attached) { attached = false; Dictation.detachLevels(); }
     // A colour change is rare and visible at once; levels wait for the tick.
     onLineColorChanged: if (live) canvas.requestPaint()
     onSweepChanged: dirty = true
@@ -95,6 +113,7 @@ Item {
     // One repaint per tick while live, never per frame: thirty a second with
     // motion, four without. Nothing repaints once the pill is back at rest.
     Timer {
+        id: repaint
         interval: root.animated ? 33 : 250
         repeat: true
         running: root.live
@@ -103,7 +122,7 @@ Item {
             if (root.dirty) { root.dirty = false; canvas.requestPaint(); }
         }
     }
-    Timer { interval: 1000; repeat: true; running: root.recording && root.visible; triggeredOnStart: true; onTriggered: root.tick() }
+    Timer { interval: 1000; repeat: true; running: root.recording && root.live; triggeredOnStart: true; onTriggered: root.tick() }
     // The travelling light: a loop with a lifetime, stopped by the state, the
     // surface or the two-minute cap, whichever comes first.
     property bool capped: false

@@ -1,4 +1,6 @@
+pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Hyprland
@@ -13,8 +15,7 @@ import "../services"
 // the chamfered ends) in one column: CEDAR's mark, Applications, the
 // workspaces, the focused window's title read upwards, then status, the
 // clock and the session at the foot. Clicking the mark grows the full
-// Understory rail out of it. The Core pill rests while this bar is in use;
-// its signals still arrive as notifications.
+// Understory rail out of it. The independent Core shares the activity service.
 PanelWindow {
     id: root
     required property var output
@@ -39,6 +40,9 @@ PanelWindow {
     // right side is a seam, with the pill's cut at both of its corners.
     readonly property real pad: 4
     readonly property real cut: Theme.strataCut
+    function workspaceCapacity(totalHeight, lowerHeight) {
+        return Math.max(0, totalHeight - lowerHeight - (root.width - 2 * root.pad) * 2 - Theme.spaceXxl * 2);
+    }
     function glyph(icon, fallback) { return nerd ? icon : fallback; }
     // The drops that grow sideways out of this bar need to know where their
     // control is along it: a screen-y rect in the anchor's x/width slots.
@@ -104,6 +108,9 @@ PanelWindow {
         Component.onDestruction: if (anchorTopic) Canopy.clearAnchorProvider(anchorTopic, root.outputName, provider)
         onVisibleChanged: Qt.callLater(publish)
         onEnabledChanged: Qt.callLater(publish)
+        onActiveFocusChanged: if (activeFocus && parent === footerColumn) {
+            foot.contentY = Math.max(0, Math.min(y, foot.contentHeight - foot.height));
+        }
     }
 
     Column {
@@ -113,14 +120,17 @@ PanelWindow {
         StrataButton {
             objectName: "understoryBarMark"
             width: parent.width; height: width
-            iconOnly: true; hint: "Understory"
+            iconOnly: true; hint: "Field Station"
             enabled: Config.stage >= 2 && !ShellState.locked
-            checked: root.railOpen
+            checked: Station.windowOpen
             background: Item {}
             contentItem: Item {
-                CedarHeartwood { anchors.centerIn: parent; size: Math.min(26, parent.width - 4); active: Config.saved.barHeartwood && !ShellState.locked; unfolding: root.railOpen; mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle" }
+                CedarHeartwood { anchors.centerIn: parent; size: Math.min(26, parent.width - 4); active: Config.saved.barHeartwood && !ShellState.locked; unfolding: Station.windowOpen; mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle" }
             }
-            onClicked: Understory.toggle(root.outputName)
+            // The mark opens Field Station, as it does on the top bar (owner
+            // directive 2026-10-24). The rail keeps its own entry points: the
+            // status marks below and the launcher still grow it.
+            onClicked: { if (Config.saved.canopyEnabled) Canopy.toggleTopic("station", root.outputName); else Station.toggleApp(); }
         }
         BarMark {
             objectName: "understoryBarLauncher"
@@ -131,10 +141,18 @@ PanelWindow {
         }
         Item { width: 1; height: 4 }
         // Workspaces: one cell each, the active one marked along the outer edge.
-        Column {
+        Flickable {
+            id: workspaceScroll
             objectName: "understoryBarWorkspaces"
             visible: Config.moduleEnabled("workspaces")
-            width: parent.width; spacing: 2
+            width: parent.width
+            height: Math.min(contentHeight, root.workspaceCapacity(root.height, foot.height))
+            contentHeight: workspaceColumn.height
+            clip: true; boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar {}
+        Column {
+            id: workspaceColumn
+            width: workspaceScroll.width; spacing: 2
             Rectangle { width: parent.width; height: 1; color: Qt.alpha(Theme.strataGrain, .5) }
             Repeater {
                 model: root.localWorkspaces
@@ -152,6 +170,9 @@ PanelWindow {
                             Behavior on height { enabled: VisualQuality.functionalMotion; NumberAnimation { duration: VisualQuality.ms(Theme.hover); easing.type: Easing.OutCubic } } }
                     }
                     contentItem: Text { text: workspaceButton.text; textFormat: Text.PlainText; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: workspaceButton.checked ? workspaceButton.accent : Theme.strataMuted }
+                    onActiveFocusChanged: if (activeFocus) {
+                        workspaceScroll.contentY = Math.max(0, Math.min(y, workspaceScroll.contentHeight - workspaceScroll.height));
+                    }
                     onClicked: modelData.activate()
                 }
             }
@@ -163,6 +184,7 @@ PanelWindow {
                 onClicked: Canopy.toggleTopic("workspaces", root.outputName)
             }
             Rectangle { width: parent.width; height: 1; color: Qt.alpha(Theme.strataGrain, .5) }
+        }
         }
     }
     // The focused window's title, read upwards, in whatever room is left.
@@ -186,11 +208,19 @@ PanelWindow {
             color: Theme.strataMuted
         }
     }
-    Column {
+    Flickable {
         id: foot
-        x: root.pad; spacing: 4
+        objectName: "understoryBarFooter"
+        x: root.pad
         width: root.width - 2 * root.pad
+        height: Math.min(contentHeight, Math.max(0, root.height * .55))
+        contentHeight: footerColumn.height
+        clip: true; boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar {}
         anchors.bottom: parent.bottom; anchors.bottomMargin: 8
+    Column {
+        id: footerColumn
+        width: foot.width; spacing: 4
         // Status: each reading opens the rail, where its control lives.
         BarMark {
             objectName: "understoryBarNetwork"
@@ -269,5 +299,6 @@ PanelWindow {
             accent: Theme.ember
             onClicked: { if (Config.saved.canopyEnabled) Canopy.open("power", root.outputName); else ShellState.toggle("power"); }
         }
+    }
     }
 }

@@ -90,7 +90,12 @@
       "tests": [
         "tests/check_core_ui.py",
         "tests/check_core_host.py",
-        "tests/check_core_persistence.py"
+        "tests/check_core_persistence.py",
+        "tests/check_surface_policy.py",
+        "tests/core/SurfacePolicyHarness.qml",
+        "tests/core/CoveredCoreHarness.qml",
+        "tests/core/core_placement_test.js",
+        "tests/check_understory.py"
       ],
       "releaseArtifacts": [
         "components/core/Activities.js",

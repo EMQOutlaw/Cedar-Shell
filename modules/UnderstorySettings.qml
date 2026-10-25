@@ -10,10 +10,13 @@ import "../services"
 ColumnLayout {
     id: root
     property bool active: false
+    onVisibleChanged: if (!visible) recording = false
+    Connections { target: ShellState; function onLockedChanged() { if (ShellState.locked) root.recording = false; } }
     readonly property string command: "qs -c cedar ipc call understory toggle"
     readonly property var bindings: DesktopSettings.data.bindings || []
     readonly property var shortcuts: bindings.filter(b => /ipc call understory toggle$/.test(b.arg || ""))
-    readonly property var conflicts: bindings.filter(b => !b.submap && b.keys === keys)
+    readonly property string normalizedKeys: keys.trim().toUpperCase().split(/\s*\+\s*/).join(" + ")
+    readonly property var conflicts: bindings.filter(b => !b.submap && String(b.keys || "").trim().toUpperCase().split(/\s*\+\s*/).join(" + ") === normalizedKeys)
     property string keys: ""
     property bool recording: false
     onActiveChanged: { recording = false; keys = ""; if (active) DesktopSettings.refresh(); }
@@ -56,10 +59,11 @@ ColumnLayout {
             Repeater {
                 model: root.shortcuts
                 RowLayout {
+                    id: shortcutRow
                     required property var modelData
                     spacing: 6
-                    Keycap { keys: modelData.keys; accent: Theme.green }
-                    StationButton { text: "Restore"; hint: "Remove this shortcut and return to your configuration"; enabled: !DesktopSettings.busy; onClicked: DesktopSettings.apply({ action: "remove-binding", keys: modelData.keys }) }
+                    Keycap { keys: shortcutRow.modelData.keys; accent: Theme.green }
+                    StationButton { text: "Restore"; hint: "Remove this shortcut and return to your configuration"; enabled: !DesktopSettings.busy && !ShellState.locked; onClicked: DesktopSettings.apply({ action: "remove-binding", keys: shortcutRow.modelData.keys }) }
                 }
             }
             StatusPill { visible: !root.shortcuts.length; text: "Not assigned"; tone: Theme.muted }
@@ -69,21 +73,22 @@ ColumnLayout {
             color: root.recording ? Qt.alpha(Theme.green, .06) : Theme.surface
             border.width: root.recording ? 2 : 1; border.color: root.recording ? Theme.green : Qt.alpha(Theme.teal, .18)
             Keycap { anchors.centerIn: parent; visible: root.keys !== "" && !root.recording; keys: root.keys; accent: root.conflicts.length ? Theme.amber : Theme.green; scale: 1.2 }
-            GlowText { anchors.centerIn: parent; visible: root.keys === "" || root.recording; text: root.recording ? "Press the shortcut now  ·  Esc cancels" : "No keys yet"; color: root.recording ? Theme.green : Theme.muted; font.pixelSize: Theme.small }
+            GlowText { width: parent.width - Theme.spaceXl; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; anchors.centerIn: parent; visible: root.keys === "" || root.recording; text: root.recording ? "Press the shortcut now  ·  Esc cancels" : "No keys yet"; color: root.recording ? Theme.green : Theme.muted; font.pixelSize: Theme.small }
         }
-        RowLayout {
-            Layout.fillWidth: true; spacing: 8
+        GridLayout {
+            columns: root.width < 420 * Theme.fontScale ? 1 : 3
+            Layout.fillWidth: true; columnSpacing: Theme.spaceSm; rowSpacing: Theme.spaceSm
             StationButton {
                 text: root.recording ? "Listening…" : "●  Record keys"; checked: root.recording; accent: Theme.green
-                enabled: !DesktopSettings.busy
+                enabled: !DesktopSettings.busy && !ShellState.locked
                 onClicked: { root.recording = true; forceActiveFocus(); }
                 Keys.onPressed: event => { if (root.recording) root.record(event); }
             }
             StationField { Layout.fillWidth: true; text: root.keys; placeholderText: "or type, e.g. SUPER + O"; Accessible.name: "Understory shortcut keys"; onCommit: value => root.keys = value.toUpperCase() }
             StationButton {
                 text: "Save"; accent: Theme.green; checked: enabled
-                enabled: !!root.keys && !root.conflicts.length && !DesktopSettings.busy
-                onClicked: DesktopSettings.apply({ action: "binding", keys: root.keys, original: "", previousCommand: "", command: root.command, description: "Toggle the Understory", replace: [] })
+                enabled: !!root.normalizedKeys && !root.conflicts.length && !DesktopSettings.busy && !ShellState.locked
+                onClicked: DesktopSettings.apply({ action: "binding", keys: root.normalizedKeys, original: "", previousCommand: "", command: root.command, description: "Toggle the Understory", replace: [] })
             }
         }
         GlowText { visible: root.conflicts.length > 0; text: "Already assigned to " + root.conflicts.map(b => b.description || b.dispatcher).join(", ") + ". Choose other keys, or replace it from Keybinds."; color: Theme.amber; Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.small }

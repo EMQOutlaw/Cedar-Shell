@@ -77,7 +77,8 @@ Singleton {
     readonly property bool barIslands: false
     readonly property int barHeight: Math.max(40, Math.min(72, saved.barHeight))
     // Where the bar lives: along the top, or down the left edge as the slim
-    // Understory bar that the rail grows from. The Core pill belongs to the top bar.
+    // Understory bar that the rail grows from. The Core pill is integrated in
+    // the top bar and floats top-centre of the usable area beside the left one.
     readonly property bool barVertical: saved.barPlacement === "understory"
     readonly property int barWidth: barVertical ? barHeight : 0
     readonly property real barOpacity: Math.max(0.1, Math.min(1, saved.barOpacity))

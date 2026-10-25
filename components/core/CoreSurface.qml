@@ -27,8 +27,9 @@ Item {
     // The slider owns the resting pill: label, dots, Heartwood and hint all yield to it.
     readonly property bool volumeInline: volume && !panel && !canopyHere
     // Dictation takes the resting pill the same way: the filament replaces the
-    // label while Voxtype listens or transcribes. A slider or a panel wins.
-    readonly property bool dictationInline: Dictation.active && Config.saved.coreDictation && !volumeInline && !panel && !canopyHere
+    // label while Voxtype listens or transcribes. A slider or a panel wins, and
+    // only the presenter the service named draws it (Dictation.presenter).
+    readonly property bool dictationInline: Dictation.active && Dictation.presenter === "core" && !volumeInline && !panel && !canopyHere
     property bool hoverDismissed: false
     readonly property bool peek: hovering && !hoverDismissed && !volume && !root.canopyHere
     // A notification arriving unfolds from the pill on its own for the popup

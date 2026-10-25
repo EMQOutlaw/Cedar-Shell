@@ -93,7 +93,10 @@ Singleton {
     readonly property real anchorX: anchorRect ? anchorRect.x + anchorRect.width / 2 : -1
     readonly property var screen: Quickshell.screens.find(s => s.name === outputName) || CoreService.hostScreen
     // Applications is the launcher, so its drop shows even with Canopy off.
-    readonly property bool shown: (Config.saved.canopyEnabled || topic === "go") && !ShellState.locked && (ShellState.panel === "canopy" || pinned)
+    // Shown only while the Canopy owns ShellState.panel: a pin keeps the drop
+    // open without the keyboard grab so desktop work continues, it does not
+    // let the drop outlive another surface taking the panel.
+    readonly property bool shown: (Config.saved.canopyEnabled || topic === "go") && !ShellState.locked && ShellState.panel === "canopy"
     function titleFor(value) {
         return ({
             audio: "Audio",
@@ -202,6 +205,14 @@ Singleton {
         function onLockedChanged() {
             if (ShellState.locked)
                 root.close();
+        }
+        // Another surface (Core hub, Understory, a legacy panel) took the panel:
+        // the pin is released with the drop so nothing reappears on its own.
+        function onPanelChanged() {
+            if (ShellState.panel !== "canopy") {
+                root.pinned = false;
+                root.peeking = false;
+            }
         }
     }
     Connections {

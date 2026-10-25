@@ -82,6 +82,15 @@ ShellRoot {
             wait(450);
             check(Controls.generation === lockedStart, "Locking stops visual power polling");
             SettingsService.open = false; ShellState.locked = false;
+            Understory.shown = true;
+            const railStart = Controls.generation;
+            wait(750);
+            check(Controls.generation >= railStart + 2, "Understory receives continuing power updates");
+            Understory.shown = false;
+            wait(100);
+            const railClosed = Controls.generation;
+            wait(450);
+            check(Controls.generation === railClosed, "Closing Understory stops visual power polling");
             console.log("PASS: controls visibility, settings navigation and lock lifecycle");
         }
         function test_probe_retry_retains_ownership() {
@@ -152,10 +161,12 @@ def main():
         (base / "services/qmldir").write_text("\n".join([
             "singleton Controls 1.0 Controls.qml", "singleton CalendarFeeds 1.0 CalendarFeeds.qml",
             "singleton Canopy 1.0 Canopy.qml", "singleton SettingsService 1.0 SettingsService.qml",
+            "singleton Understory 1.0 Understory.qml",
             "CoreProbe 1.0 CoreProbe.qml", "",
         ]))
         (base / "services/Canopy.qml").write_text('pragma Singleton\nimport QtQuick\nQtObject { property bool shown: false; property string topic: "" }\n')
         (base / "services/SettingsService.qml").write_text('pragma Singleton\nimport QtQuick\nQtObject { property bool open: false; property string page: "overview" }\n')
+        (base / 'services/Understory.qml').write_text('pragma Singleton\nimport QtQuick\nQtObject { property bool shown: false }\n')
         for name in ("Controls", "CalendarFeeds", "CoreProbe"):
             source = (ROOT / "services" / f"{name}.qml").read_text()
             if name == "Controls":

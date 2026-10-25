@@ -130,10 +130,12 @@ ShellRoot {
         model: Understory.screen ? [Understory.screen] : []
         UnderstoryWindow {}
     }
-    // Dictation's filament beside the Understory bar, on the main display, while Voxtype works.
+    // Dictation's filament beside the Understory bar, on the main display, while
+    // Voxtype works and the Core pill is not already presenting it (one
+    // animated presentation at a time; the service decides).
     Variants {
         reloadableId: "cedar-understory-dictation"
-        model: Config.barVertical && CoreService.hostScreen ? [CoreService.hostScreen] : []
+        model: Dictation.presenter === "understory" && CoreService.hostScreen ? [CoreService.hostScreen] : []
         UnderstoryDictation {}
     }
     IpcHandler {

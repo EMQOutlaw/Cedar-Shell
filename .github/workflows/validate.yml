@@ -56,6 +56,7 @@ jobs:
       - name: Bar geometry and interruptible transitions
         run: |
           node tests/core/strata_test.js
+          node tests/core/core_placement_test.js
           node tests/core/canopy_transition_test.js
           node --test tests/notes/*.test.js
       - name: Build and test exact candidate contents
@@ -83,6 +84,12 @@ jobs:
           python3 tests/check_station_tasks.py
           python3 tests/check_theme_palettes.py
           python3 tests/check_service_lifecycle.py
+          python3 tests/check_understory.py
+          python3 tests/check_surface_policy.py
+          python3 tests/check_canopy.py
+          python3 tests/check_core_host.py
+          python3 tests/check_core_persistence.py
+          python3 tests/check_navigation.py
           python3 tests/check_lock_auth.py
           python3 tests/check_lock_wiring.py
           python3 -m unittest discover -s tests -p test_default_apps.py
