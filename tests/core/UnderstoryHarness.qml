@@ -217,21 +217,16 @@ ShellRoot {
                     test.cycles++; break;
                 }
                 if (test.cycles === 26) {
-                    // Security follow-up: the left-bar mark opens Field Station,
-                    // never the rail (mirrors SurfacePolicyHarness step9).
+                    // The left-bar mark grows the Understory rail (owner directive
+                    // 2026-10-25); only the top bar's mark opens Field Station.
                     const mark = named(bar.contentItem, "understoryBarMark");
                     check(mark !== null, "left bar has its CEDAR mark");
-                    check(mark.hint === "Field Station", "left-bar mark advertises Field Station");
+                    check(mark.hint === "Understory", "left-bar mark advertises the Understory");
                     mark.clicked();
-                    check(Canopy.shown && Canopy.topic === "station" && ShellState.panel === "canopy", "left-bar mark opens the Field Station topic");
-                    check(ShellState.panel !== "understory" && !Understory.shown, "left-bar mark never opens the rail");
-                    Canopy.close();
-                    Config.saved.canopyEnabled = false;
+                    check(Understory.shown && mark.checked, "left-bar mark opens the rail");
+                    check(!(Canopy.shown && Canopy.topic === "station") && !Station.windowOpen, "left-bar mark does not open Field Station");
                     mark.clicked();
-                    check(Station.windowOpen, "without Canopy the mark opens the Station app");
-                    check(ShellState.panel !== "understory" && !Understory.shown, "Station route never opens the rail either");
-                    Station.closeApp();
-                    Config.saved.canopyEnabled = true;
+                    check(!Understory.shown && !mark.checked, "a second click closes the rail");
                     test.cycles++; break;
                 }
                 check(!host.contentLoaded, "no content after ten open/close cycles");

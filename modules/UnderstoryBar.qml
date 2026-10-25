@@ -120,17 +120,17 @@ PanelWindow {
         StrataButton {
             objectName: "understoryBarMark"
             width: parent.width; height: width
-            iconOnly: true; hint: "Field Station"
+            iconOnly: true; hint: "Understory"
             enabled: Config.stage >= 2 && !ShellState.locked
-            checked: Station.windowOpen
+            checked: root.railOpen
             background: Item {}
             contentItem: Item {
-                CedarHeartwood { anchors.centerIn: parent; size: Math.min(26, parent.width - 4); active: Config.saved.barHeartwood && !ShellState.locked; unfolding: Station.windowOpen; mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle" }
+                CedarHeartwood { anchors.centerIn: parent; size: Math.min(26, parent.width - 4); active: Config.saved.barHeartwood && !ShellState.locked; unfolding: root.railOpen; mode: Gaming.active ? "gaming" : Focus.active ? "focus" : "idle" }
             }
-            // The mark opens Field Station, as it does on the top bar (owner
-            // directive 2026-10-24). The rail keeps its own entry points: the
-            // status marks below and the launcher still grow it.
-            onClicked: { if (Config.saved.canopyEnabled) Canopy.toggleTopic("station", root.outputName); else Station.toggleApp(); }
+            // On the left bar the mark grows the Understory rail (owner
+            // directive 2026-10-25); the top bar's mark still opens Field
+            // Station, and the rail's own mark reaches Field Station from here.
+            onClicked: Understory.toggle(root.outputName)
         }
         BarMark {
             objectName: "understoryBarLauncher"
