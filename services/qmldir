@@ -34,6 +34,7 @@ singleton Capabilities 1.0 Capabilities.qml
 singleton VisualQuality 1.0 VisualQuality.qml
 singleton Gaming 1.0 Gaming.qml
 singleton Shield 1.0 Shield.qml
+singleton Thicket 1.0 Thicket.qml
 singleton Permission 1.0 Permission.qml
 singleton Overrides 1.0 Overrides.qml
 singleton Profiles 1.0 Profiles.qml
