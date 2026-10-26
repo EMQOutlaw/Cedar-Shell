@@ -240,12 +240,15 @@ evdev:name:Intel HID switches:dmi:*
  LIBINPUT_IGNORE_DEVICE=1
 """
 
-UDEV = """# CEDAR Convertible: give the logged-in seat user read access to the
-# tablet-mode switch (and nothing else) via logind's uaccess mechanism.
-# KERNEL=="event*" is required: udev tags/properties live on the event
-# nodes, not the parent input devices.
-SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Lenovo Yoga Tablet Mode Control switch", TAG+="uaccess"
-SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Intel HID switches", TAG+="uaccess"
+UDEV = """# CEDAR Convertible: give the shell's user read access to the tablet-mode
+# switch (and nothing else). KERNEL=="event*" is required: udev
+# tags/properties live on the event nodes, not the parent input devices.
+# Two independent grants, because they fail differently:
+#  - TAG+="uaccess" asks logind for a seat ACL (correct, but on this stack
+#    logind did not apply it to the already-added device);
+#  - the setfacl RUN line is deterministic and needs NO relogin.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{{name}}=="Lenovo Yoga Tablet Mode Control switch", TAG+="uaccess", RUN+="/usr/bin/setfacl -m u:{user}:r $env{{DEVNAME}}"
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{{name}}=="Intel HID switches", TAG+="uaccess", RUN+="/usr/bin/setfacl -m u:{user}:r $env{{DEVNAME}}"
 """
 
 APPLY = """\
@@ -265,14 +268,16 @@ sudo install -D -m 644 /dev/stdin /etc/udev/rules.d/99-cedar-convertible.rules <
 sudo systemd-hwdb update
 sudo udevadm control --reload
 sudo udevadm trigger --subsystem-match=input
-echo "Convertible rules installed."
-echo "ONE MORE STEP: log out and back in (or reboot) once — the running"
-echo "compositor only honours the hwdb ignore for devices it opens fresh."
+echo "Convertible rules installed — no relogin needed for switch access."
+echo "(A compositor restart is only needed if it started BEFORE the first"
+echo " hwdb install; anything after that opens devices with the ignore set.)"
 """
 
 
 def cmd_rules() -> int:
-    print(APPLY.format(hwdb=HWDB, udev=UDEV), end="")
+    import getpass
+    user = os.environ.get("CEDAR_CONVERTIBLE_USER") or getpass.getuser()
+    print(APPLY.format(hwdb=HWDB, udev=UDEV.format(user=user)), end="")
     return 0
 
 
