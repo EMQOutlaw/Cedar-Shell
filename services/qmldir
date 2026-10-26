@@ -55,3 +55,4 @@ singleton Dictation 1.0 Dictation.qml
 singleton TaskManager 1.0 TaskManager.qml
 singleton Understory 1.0 Understory.qml
 singleton Awake 1.0 Awake.qml
+singleton Nursery 1.0 Nursery.qml

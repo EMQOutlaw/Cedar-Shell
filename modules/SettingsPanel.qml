@@ -170,7 +170,7 @@ Rectangle {
                 Loader {
                     id:loader; objectName:"settingsPageLoader"; Layout.fillWidth:true; Layout.minimumWidth:0
                     asynchronous:true; active:root.active || root.hasOpened
-                    sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,about:about,animations:animations,windows:windows,profiles:profiles,privacy:privacy,security:security,advanced:advanced})[root.section] || overview
+                    sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,nursery:nurseryPage,about:about,animations:animations,windows:windows,profiles:profiles,privacy:privacy,security:security,advanced:advanced})[root.section] || overview
                     onLoaded:Qt.callLater(reveal.restart)
                 }
                 Flow {
@@ -202,6 +202,7 @@ Rectangle {
     Component { id:notesPage; FieldNotesSettings { highlightKey:root.highlightKey } }
     Component { id:dictationPage; DictationSettings { highlightKey:root.highlightKey } }
     Component { id:system; SystemSettings {} }
+    Component { id:nurseryPage; NurserySettings { active:root.active } }
     Component { id:about; AboutSettings {} }
     Component { id:animations; AnimationSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:windows; WindowsSettings {} }

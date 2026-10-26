@@ -19,6 +19,7 @@ var pages = [
  {id:"privacy",label:"Privacy & Shield",icon:"⬡",description:"Understand and control your protections."},
  {id:"security",label:"Lock Screen & Security",icon:"▢",description:"Privacy and controls while the desktop is locked."},
  {id:"system",label:"Updates & Recovery",icon:"↻",description:"Review updates, diagnose problems and recover safely."},
+ {id:"nursery",label:"Nursery",icon:"❀",description:"Companion services planted into the shell — CEDAR Ai first. Off until you say otherwise."},
  {id:"advanced",label:"Advanced",icon:"⌘",description:"Desktop setup and specialized CEDAR controls."},
  {id:"about",label:"About CEDAR",icon:"✧",description:"Contextual Environment & Desktop Automation Runtime."},
  // Existing deep links remain stable. Their owners are available as section tabs.
@@ -34,7 +35,7 @@ var menu = [
  {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows","core"]},
  {id:"interaction",label:"Interaction",description:"Input, attention and everyday tools.",pages:["input","keybinds","notifications","audio","apps","application-theming","dictation","time","notes"]},
  {id:"system",label:"System",description:"Profiles, power, connections and protection.",pages:["profiles","power","connections","privacy","security"]},
- {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","advanced","setup","about"]}
+ {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","nursery","advanced","setup","about"]}
 ];
 function menuOf(id) {
     for (var i = 0; i < menu.length; ++i) if (menu[i].pages.indexOf(id) !== -1) return menu[i].id;
