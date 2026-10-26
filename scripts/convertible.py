@@ -107,15 +107,18 @@ def owned_devices(devices: dict) -> list[str]:
 
 
 def set_enabled(name: str, enabled: bool) -> bool:
-    """Apply, then prove it by read-back — an accepted request is not success."""
-    value = "1" if enabled else "0"
-    subprocess.run(["hyprctl", "keyword", "device[%s]:enabled" % name, value],
-                   capture_output=True, text=True, timeout=10)
+    """Apply through the Lua config API (this Hyprland is non-legacy:
+    `hyprctl keyword` is refused outright). The honest limit: the API has
+    no getter for device enabled state, so success is the compositor's own
+    'ok' ack — the watch loop re-asserts posture on failure every poll,
+    which is the self-healing half of the design."""
+    lua = "hl.device({name=%s, enabled=%s})" % (json.dumps(name),
+                                                "true" if enabled else "false")
     try:
-        out = subprocess.run(["hyprctl", "getoption", "device[%s]:enabled" % name, "-j"],
+        out = subprocess.run(["hyprctl", "eval", lua],
                              capture_output=True, text=True, timeout=10)
-        return str(json.loads(out.stdout).get("int", "")) == value
-    except (ValueError, subprocess.SubprocessError):
+        return out.stdout.strip() == "ok"
+    except (OSError, subprocess.SubprocessError):
         return False
 
 
@@ -124,6 +127,7 @@ class Posture:
 
     def __init__(self):
         self.disabled: list[str] = []
+        self.failed: list[str] = []
 
     def apply(self, tablet: bool) -> dict:
         names = owned_devices(hypr_devices())
@@ -143,6 +147,7 @@ class Posture:
                     self.disabled.remove(name)
             else:
                 failed.append(name)
+        self.failed = failed
         return {"applied": applied, "failed": failed, "held": list(self.disabled)}
 
     def restore(self):
@@ -215,6 +220,12 @@ def cmd_watch() -> int:
                 tablet = current
                 result = posture.apply(tablet)
                 emit(kind="state", tablet=tablet, at=time.time(), **result)
+            elif posture.failed:
+                # A failed application is retried every poll: the compositor
+                # accepting nothing is not a reason to leave devices dead.
+                retry = posture.apply(tablet)
+                if not retry["failed"]:
+                    emit(kind="state", tablet=tablet, at=time.time(), retried=True, **retry)
     finally:
         os.close(fd)
         posture.restore()
@@ -231,8 +242,10 @@ evdev:name:Intel HID switches:dmi:*
 
 UDEV = """# CEDAR Convertible: give the logged-in seat user read access to the
 # tablet-mode switch (and nothing else) via logind's uaccess mechanism.
-SUBSYSTEM=="input", ATTRS{name}=="Lenovo Yoga Tablet Mode Control switch", TAG+="uaccess"
-SUBSYSTEM=="input", ATTRS{name}=="Intel HID switches", TAG+="uaccess"
+# KERNEL=="event*" is required: udev tags/properties live on the event
+# nodes, not the parent input devices.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Lenovo Yoga Tablet Mode Control switch", TAG+="uaccess"
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Intel HID switches", TAG+="uaccess"
 """
 
 APPLY = """\
@@ -241,6 +254,9 @@ APPLY = """\
 # libinput stops fighting CEDAR, and the seat user can read the switch
 # state without the input group. hwdb records are separated by BLANK
 # LINES — joining them makes hwdb reject every record after the first.
+# The trigger MUST cover the whole input subsystem: --sysname-match="input*"
+# only re-fires the parent devices, and both the hwdb properties and the
+# uaccess tag attach on the event* nodes.
 set -e
 sudo install -D -m 644 /dev/stdin /etc/udev/hwdb.d/99-cedar-convertible.hwdb <<'HWDB'
 {hwdb}HWDB
@@ -248,8 +264,10 @@ sudo install -D -m 644 /dev/stdin /etc/udev/rules.d/99-cedar-convertible.rules <
 {udev}RULES
 sudo systemd-hwdb update
 sudo udevadm control --reload
-sudo udevadm trigger --sysname-match="input*"
-echo "Convertible rules installed — the parked watcher picks this up within a minute."
+sudo udevadm trigger --subsystem-match=input
+echo "Convertible rules installed."
+echo "ONE MORE STEP: log out and back in (or reboot) once — the running"
+echo "compositor only honours the hwdb ignore for devices it opens fresh."
 """
 
 
