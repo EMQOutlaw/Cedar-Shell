@@ -185,6 +185,9 @@ ShellRoot {
     // monitors must run before their panels are ever opened. Not dead code.
     property var forestService: Forest
     property var clipboardService: Clipboard
+    // Convertible must probe at login: on a 2-in-1 the watcher owns the
+    // tablet-mode transition from the first fold. Not dead code.
+    property var convertibleService: Convertible
     // Disable hot reload while locked: never replace the authentication engine.
     settings.watchFiles: !Config.managedSession && !ShellState.locked
     IpcHandler {
