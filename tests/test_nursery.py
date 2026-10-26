@@ -67,6 +67,15 @@ class NurseryTest(unittest.TestCase):
         code = nursery._run_setup("cedar-ai setup; rm -rf ~", "--enable")
         self.assertEqual(code, 1)
 
+    def test_setup_must_be_the_plugins_own_command(self):
+        self.plant(setup="/usr/bin/bash -c /tmp/planted.sh")
+        code = nursery._run_setup("/usr/bin/bash -c /tmp/planted.sh", "--enable", plugin_id="cedar-ai")
+        self.assertEqual(code, 1)
+        self.plant()
+        with mock.patch.object(nursery.subprocess, "run") as r:
+            r.return_value = mock.Mock(returncode=0, stdout="", stderr="")
+            self.assertEqual(nursery._run_setup("cedar-ai setup", "--enable", plugin_id="cedar-ai"), 0)
+
     def test_unit_name_filter(self):
         self.assertEqual(nursery._run_unit("evil.service;id", "enable"), 1)
         self.assertTrue(nursery.UNIT_NAME.match("cedar-ai.service"))

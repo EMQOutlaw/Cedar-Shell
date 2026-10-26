@@ -112,10 +112,15 @@ def cmd_list(_args: list[str]) -> int:
     return 0
 
 
-def _run_setup(setup_cmd: str, flag: str) -> int:
+def _run_setup(setup_cmd: str, flag: str, plugin_id: str = "") -> int:
     argv = setup_cmd.split() + [flag]
     if not all(SAFE_ARGV.match(a) for a in argv):
         print(json.dumps({"ok": False, "error": "the setup command failed the safety filter"}))
+        return 1
+    # A descriptor may only drive its OWN command: argv[0]'s basename must be
+    # the plugin's id — a planted descriptor cannot borrow another binary.
+    if plugin_id and Path(argv[0]).name != plugin_id:
+        print(json.dumps({"ok": False, "error": "the setup command must be the plugin's own (" + plugin_id + ")"}))
         return 1
     out = subprocess.run(argv, capture_output=True, text=True, timeout=120)
     print(json.dumps({"ok": out.returncode == 0,
@@ -151,7 +156,7 @@ def cmd_toggle(plugin_id: str, verb: str) -> int:
         print(json.dumps({"ok": False, "error": "no such plugin"}))
         return 1
     if d.get("setup"):
-        return _run_setup(d["setup"], "--" + verb)
+        return _run_setup(d["setup"], "--" + verb, plugin_id=d["id"])
     if d.get("unit"):
         return _run_unit(d["unit"], verb)
     print(json.dumps({"ok": False, "error": "the descriptor names neither setup nor unit"}))
