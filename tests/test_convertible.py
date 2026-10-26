@@ -67,68 +67,116 @@ class IoctlTest(unittest.TestCase):
         self.assertTrue(state & (1 << convertible.SW_TABLET_MODE))
 
 
+def make_owned(root: Path):
+    for idx, (name, ev) in enumerate([("AT Translated Set 2 keyboard", "event3"),
+                                      ("ELAN06FA:00 04F3:3293 Touchpad", "event6"),
+                                      ("Logitech USB Receiver Mouse", "event7"),
+                                      ("Video Bus", "event8")]):
+        dev = root / ("input%d" % (20 + idx))
+        dev.mkdir(parents=True)
+        (dev / "name").write_text(name)
+        (dev / ev).write_text("")
+
+
 class OwnershipTest(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp(prefix="cedar-conv-own-"))
+        make_owned(self.root)
+
     def test_owns_internal_keyboard_and_touchpad_only(self):
-        names = convertible.owned_devices(DEVICES)
-        self.assertEqual(sorted(names), ["at-translated-set-2-keyboard", "elan06fa:00-04f3:3293-touchpad"])
+        nodes = convertible.owned_nodes(str(self.root))
+        self.assertEqual(sorted(d["name"] for d in nodes),
+                         ["AT Translated Set 2 keyboard", "ELAN06FA:00 04F3:3293 Touchpad"])
+        kinds = {d["name"]: d["kind"] for d in nodes}
+        self.assertEqual(kinds["AT Translated Set 2 keyboard"], "keyboard")
+        self.assertEqual(kinds["ELAN06FA:00 04F3:3293 Touchpad"], "touchpad")
+        self.assertEqual({d["node"] for d in nodes}, {"/dev/input/event3", "/dev/input/event6"})
 
     def test_env_override(self):
-        os.environ["CEDAR_CONVERTIBLE_TOUCHPADS"] = "usb-receiver"
+        os.environ["CEDAR_CONVERTIBLE_TOUCHPADS"] = "usb receiver"
         try:
-            names = convertible.owned_devices(DEVICES)
-            self.assertIn("logitech-usb-receiver-mouse", names)
+            names = [d["name"] for d in convertible.owned_nodes(str(self.root))]
+            self.assertIn("Logitech USB Receiver Mouse", names)
         finally:
             del os.environ["CEDAR_CONVERTIBLE_TOUCHPADS"]
 
 
 class PostureTest(unittest.TestCase):
+    """The grab model: fds opened + EVIOCGRAB 1 on fold, EVIOCGRAB 0 + close
+    on unfold. The kernel is faked at os.open / fcntl.ioctl / os.close."""
+
     def setUp(self):
-        self.applied = {}
-        patcher = mock.patch.object(convertible, "set_enabled",
-                                    side_effect=lambda n, e: self.applied.setdefault(n, e) is None or True)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-        devices = mock.patch.object(convertible, "hypr_devices", return_value=DEVICES)
-        devices.start()
-        self.addCleanup(devices.stop)
+        self.root = Path(tempfile.mkdtemp(prefix="cedar-conv-posture-"))
+        make_owned(self.root)
+        self.grabs = {}      # fd -> grab state
+        self.opened = {}     # fd -> node
+        self.closed = []
+        self.next_fd = 10
 
-    def test_fold_disables_both_and_remembers(self):
+        def fake_open(node, flags):
+            fd = self.next_fd; self.next_fd += 1
+            self.opened[fd] = node
+            return fd
+
+        def fake_ioctl(fd, req, arg, *rest):
+            self.assertEqual(req, convertible.EVIOCGRAB)
+            self.grabs[fd] = arg
+            return 0
+
+        def fake_close(fd):
+            self.closed.append(fd)
+
+        for target, fake in (("os.open", fake_open), ("fcntl.ioctl", fake_ioctl), ("os.close", fake_close)):
+            p = mock.patch("convertible." + target, side_effect=fake)
+            p.start(); self.addCleanup(p.stop)
+        real = convertible.owned_nodes
+        p = mock.patch("convertible.owned_nodes", side_effect=lambda root="unused": real(str(self.root)))
+        p.start(); self.addCleanup(p.stop)
+
+    def test_fold_grabs_both_and_holds_fds(self):
+        p = convertible.Posture()
+        result = p.apply(True)
+        self.assertEqual(sorted(result["applied"]), ["AT Translated Set 2 keyboard", "ELAN06FA:00 04F3:3293 Touchpad"])
+        self.assertEqual(set(self.opened.values()), {"/dev/input/event3", "/dev/input/event6"})
+        self.assertTrue(all(v == 1 for v in self.grabs.values()))
+        self.assertEqual(len(p.held), 2)
+
+    def test_unfold_releases_and_closes_only_what_it_held(self):
         p = convertible.Posture()
         p.apply(True)
-        self.assertEqual(self.applied, {"at-translated-set-2-keyboard": False,
-                                        "elan06fa:00-04f3:3293-touchpad": False})
-        self.assertEqual(len(p.disabled), 2)
-
-    def test_unfold_restores_only_what_it_disabled(self):
-        p = convertible.Posture()
-        p.apply(True)
-        self.applied.clear()
+        held_fds = set(p.held.values())
         p.apply(False)
-        self.assertEqual(self.applied, {"at-translated-set-2-keyboard": True,
-                                        "elan06fa:00-04f3:3293-touchpad": True})
-        self.assertEqual(p.disabled, [])
+        self.assertEqual(p.held, {})
+        self.assertEqual(set(self.closed), held_fds)
+        self.assertTrue(all(self.grabs[fd] == 0 for fd in held_fds))
 
     def test_repeated_fold_is_idempotent(self):
         p = convertible.Posture()
         p.apply(True)
-        self.applied.clear()
-        p.apply(True)  # a second fold event must not re-apply
-        self.assertEqual(self.applied, {})
+        opened_before = len(self.opened)
+        p.apply(True)
+        self.assertEqual(len(self.opened), opened_before)
 
-    def test_restore_on_exit_enables_everything_held(self):
+    def test_restore_releases_everything(self):
         p = convertible.Posture()
         p.apply(True)
-        self.applied.clear()
         p.restore()
-        self.assertTrue(all(v is True for v in self.applied.values()))
-        self.assertEqual(p.disabled, [])
+        self.assertEqual(p.held, {})
+        self.assertEqual(len(self.closed), 2)
 
-    def test_failed_apply_is_not_held(self):
-        with mock.patch.object(convertible, "set_enabled", return_value=False):
+    def test_failed_grab_is_reported_not_held(self):
+        with mock.patch("convertible.fcntl.ioctl", side_effect=OSError(16, "Device or resource busy")):
             p = convertible.Posture()
             result = p.apply(True)
-        self.assertEqual(p.disabled, [])
+        self.assertEqual(p.held, {})
         self.assertEqual(len(result["failed"]), 2)
+        self.assertIn("busy", result["failed"][0].lower())
+
+
+class IoctlConstantsTest(unittest.TestCase):
+    def test_eviocgrab_matches_the_kernel_macro(self):
+        # _IOW('E', 0x90, int) = dir 1<<30 | size 4<<16 | 'E' 0x45<<8 | 0x90
+        self.assertEqual(convertible.EVIOCGRAB, (1 << 30) | (4 << 16) | (0x45 << 8) | 0x90)
 
 
 class RulesTest(unittest.TestCase):

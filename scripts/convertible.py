@@ -43,7 +43,7 @@ INPUT_EVENT = struct.Struct("llHHi")  # timeval sec,usec + type + code + value
 
 # Devices we own: the INTERNAL keyboard and touchpad only — externals,
 # buttons and buses are never touched. Overridable via env for tests.
-KEYBOARD_PATTERNS = [r"^at-translated-set-2-keyboard$"]
+KEYBOARD_PATTERNS = [r"^AT Translated Set 2 keyboard$"]
 TOUCHPAD_PATTERNS = [r"touchpad", r"trackpad", r"clickpad", r"glidepoint"]
 
 POLL_SECONDS = 2.0  # state re-read cadence; events arrive faster
@@ -89,74 +89,72 @@ def switch_state(node: str) -> bool | None:
         return None
 
 
-def hypr_devices() -> dict:
-    out = subprocess.run(["hyprctl", "devices", "-j"], capture_output=True, text=True, timeout=10)
-    return json.loads(out.stdout or "{}")
-
-
-def owned_devices(devices: dict) -> list[str]:
-    names = []
+def owned_nodes(root: str = "/sys/class/input") -> list[dict]:
+    """The INTERNAL keyboard and touchpad as evdev nodes, matched by the
+    kernel's device name (stable across sessions; event numbers are not).
+    Externals, buttons and buses are never touched. Patterns overridable
+    via CEDAR_CONVERTIBLE_KEYBOARDS / CEDAR_CONVERTIBLE_TOUCHPADS."""
     kb_re = [re.compile(p, re.I) for p in os.environ.get("CEDAR_CONVERTIBLE_KEYBOARDS", "").split(",") if p] or \
             [re.compile(p, re.I) for p in KEYBOARD_PATTERNS]
     tp_re = [re.compile(p, re.I) for p in os.environ.get("CEDAR_CONVERTIBLE_TOUCHPADS", "").split(",") if p] or \
             [re.compile(p, re.I) for p in TOUCHPAD_PATTERNS]
-    for dev in devices.get("keyboards", []):
-        if any(r.search(dev.get("name", "")) for r in kb_re):
-            names.append(dev["name"])
-    for dev in devices.get("mice", []):
-        if any(r.search(dev.get("name", "")) for r in tp_re):
-            names.append(dev["name"])
-    return names
+    out = []
+    for name_file in sorted(Path(root).glob("input*/name")):
+        try:
+            name = name_file.read_text().strip()
+        except OSError:
+            continue
+        kind = "keyboard" if any(r.search(name) for r in kb_re) else \
+               "touchpad" if any(r.search(name) for r in tp_re) else ""
+        if not kind:
+            continue
+        events = sorted(name_file.parent.glob("event*"))
+        if events:
+            out.append({"name": name, "kind": kind, "node": "/dev/input/" + events[0].name})
+    return out
 
 
-def set_enabled(name: str, enabled: bool) -> bool:
-    """Apply through the Lua config API (this Hyprland is non-legacy:
-    `hyprctl keyword` is refused outright). The honest limit: the API has
-    no getter for device enabled state, so success is the compositor's own
-    'ok' ack — the watch loop re-asserts posture on failure every poll,
-    which is the self-healing half of the design."""
-    lua = "hl.device({name=%s, enabled=%s})" % (json.dumps(name),
-                                                "true" if enabled else "false")
-    try:
-        out = subprocess.run(["hyprctl", "eval", lua],
-                             capture_output=True, text=True, timeout=10)
-        return out.stdout.strip() == "ok"
-    except (OSError, subprocess.SubprocessError):
-        return False
+EVIOCGRAB = 0x40044590  # _IOW('E', 0x90, int)
 
 
 class Posture:
-    """Applies and remembers what IT disabled, so exit always restores."""
+    """Owns the devices at the kernel: EVIOCGRAB takes exclusive hold of a
+    node's events, so the compositor's libinput sees nothing while held.
+    Deterministic and compositor-independent — the grab fails loudly
+    (EBUSY) if anyone else holds the device, and closing the fd releases
+    the grab, so a dead watcher can never leave a device captured."""
 
     def __init__(self):
-        self.disabled: list[str] = []
+        self.held: dict[str, int] = {}   # node -> fd
         self.failed: list[str] = []
 
     def apply(self, tablet: bool) -> dict:
-        names = owned_devices(hypr_devices())
         applied, failed = [], []
-        for name in names:
-            target = not tablet
-            already = name in self.disabled
-            if tablet and already:
-                continue
-            if not tablet and not already:
-                continue
-            if set_enabled(name, target):
-                applied.append(name)
-                if tablet:
-                    self.disabled.append(name)
-                elif name in self.disabled:
-                    self.disabled.remove(name)
-            else:
-                failed.append(name)
+        if tablet:
+            for dev in owned_nodes():
+                if dev["node"] in self.held:
+                    continue
+                try:
+                    fd = os.open(dev["node"], os.O_RDONLY | os.O_NONBLOCK)
+                    fcntl.ioctl(fd, EVIOCGRAB, 1)
+                    self.held[dev["node"]] = fd
+                    applied.append(dev["name"])
+                except OSError as e:
+                    failed.append(dev["name"] + ": " + (e.strerror or str(e)))
+        else:
+            for node, fd in list(self.held.items()):
+                try:
+                    fcntl.ioctl(fd, EVIOCGRAB, 0)
+                except OSError:
+                    pass  # closing the fd releases it regardless
+                os.close(fd)
+                del self.held[node]
+                applied.append(node)
         self.failed = failed
-        return {"applied": applied, "failed": failed, "held": list(self.disabled)}
+        return {"applied": applied, "failed": failed, "held": list(self.held)}
 
     def restore(self):
-        for name in list(self.disabled):
-            if set_enabled(name, True):
-                self.disabled.remove(name)
+        self.apply(False)
 
 
 def emit(**row):
@@ -175,18 +173,37 @@ def find_osk() -> str:
 def cmd_state() -> int:
     sw = find_switch()
     tablet = switch_state(sw["node"]) if sw["detected"] else None
+    owned = []
+    for dev in owned_nodes():
+        try:
+            fd = os.open(dev["node"], os.O_RDONLY | os.O_NONBLOCK)
+            os.close(fd)
+            owned.append(dict(dev, reachable=True))
+        except OSError:
+            owned.append(dict(dev, reachable=False))
     emit(kind="state", detected=sw["detected"], device=sw["name"], node=sw["node"],
-         tablet=tablet, osk=find_osk(),
+         tablet=tablet, osk=find_osk(), owned=owned,
          note="" if tablet is not None or not sw["detected"]
          else "switch unreadable — run the `rules` step for seat access")
     return 0
 
 
 def cmd_laptop() -> int:
-    posture = Posture()
-    devices = owned_devices(hypr_devices())
-    failed = [n for n in devices if not set_enabled(n, True)]
-    emit(kind="laptop", enabled=[n for n in devices if n not in failed], failed=failed)
+    """Laptop posture is the ABSENCE of a grab: a fresh process holds none,
+    and a dying watcher releases its own. So this verb reports whether the
+    owned nodes are reachable (the rules step) rather than pretending to
+    toggle anything — honest about what a grab-based design can do."""
+    nodes = owned_nodes()
+    reachable, failed = [], []
+    for dev in nodes:
+        try:
+            fd = os.open(dev["node"], os.O_RDONLY | os.O_NONBLOCK)
+            os.close(fd)
+            reachable.append(dev["name"])
+        except OSError as e:
+            failed.append(dev["name"] + ": " + (e.strerror or str(e)))
+    emit(kind="laptop", reachable=reachable, failed=failed,
+         note="" if not failed else "run the `rules` step: the watcher needs read access to grab these")
     return 1 if failed else 0
 
 
@@ -254,14 +271,17 @@ evdev:name:Intel HID switches:dmi:*
 """
 
 UDEV = """# CEDAR Convertible: give the shell's user read access to the tablet-mode
-# switch (and nothing else). KERNEL=="event*" is required: udev
-# tags/properties live on the event nodes, not the parent input devices.
+# switch and to the internal keyboard + touchpad it owns during the
+# transition (an EVIOCGRAB needs an open fd). KERNEL=="event*" is required:
+# udev tags/properties live on the event nodes, not the parent devices.
 # Two independent grants, because they fail differently:
 #  - TAG+="uaccess" asks logind for a seat ACL (correct, but on this stack
 #    logind did not apply it to the already-added device);
 #  - the setfacl RUN line is deterministic and needs NO relogin.
 SUBSYSTEM=="input", KERNEL=="event*", ATTRS{{name}}=="Lenovo Yoga Tablet Mode Control switch", TAG+="uaccess", RUN+="/usr/bin/setfacl -m u:{user}:r $env{{DEVNAME}}"
 SUBSYSTEM=="input", KERNEL=="event*", ATTRS{{name}}=="Intel HID switches", TAG+="uaccess", RUN+="/usr/bin/setfacl -m u:{user}:r $env{{DEVNAME}}"
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{{name}}=="AT Translated Set 2 keyboard", TAG+="uaccess", RUN+="/usr/bin/setfacl -m u:{user}:r $env{{DEVNAME}}"
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{{name}}=="*Touchpad", TAG+="uaccess", RUN+="/usr/bin/setfacl -m u:{user}:r $env{{DEVNAME}}"
 """
 
 APPLY = """\
