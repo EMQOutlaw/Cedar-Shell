@@ -16,6 +16,7 @@ Singleton {
     property bool detected: false
     property string device: ""
     property bool tabletMode: false
+    property string osk: ""
     property string error: ""
     readonly property bool busy: probe.running || watcher.running
 
@@ -37,6 +38,7 @@ Singleton {
                     root.detected = row.detected === true;
                     root.device = row.device || "";
                     root.tabletMode = row.tablet === true;
+                    root.osk = row.osk || "";
                     if (row.note) root.error = row.note;
                 } catch (_) {
                     root.error = "Convertible detection returned an unreadable response.";
@@ -70,6 +72,15 @@ Singleton {
         id: forceLaptop
         command: ["python3", Quickshell.shellPath("scripts/convertible.py"), "laptop"]
         running: false
+    }
+
+    // The on-screen keyboard rides the transition: up while folded into a
+    // tablet, gone the moment the physical keyboard returns. It never runs
+    // while locked (Trailwatch has the physical keyboard force-enabled).
+    Process {
+        id: osk
+        command: root.osk !== "" ? [root.osk] : ["true"]
+        running: root.tabletMode && root.osk !== "" && !Config.testMode && !ShellState.locked
     }
 
     Process {

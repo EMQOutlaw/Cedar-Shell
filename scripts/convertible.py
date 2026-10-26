@@ -29,6 +29,7 @@ import json
 import os
 import re
 import select
+import shutil
 import signal
 import struct
 import subprocess
@@ -162,11 +163,21 @@ def emit(**row):
     print(json.dumps(row), flush=True)
 
 
+def find_osk() -> str:
+    """The on-screen keyboard for tablet mode, first available wins."""
+    for name in ("squeekboard", "wvkbd"):
+        path = shutil.which(name)
+        if path:
+            return path
+    return ""
+
+
 def cmd_state() -> int:
     sw = find_switch()
     tablet = switch_state(sw["node"]) if sw["detected"] else None
     emit(kind="state", detected=sw["detected"], device=sw["name"], node=sw["node"],
-         tablet=tablet, note="" if tablet is not None or not sw["detected"]
+         tablet=tablet, osk=find_osk(),
+         note="" if tablet is not None or not sw["detected"]
          else "switch unreadable — run the `rules` step for seat access")
     return 0
 
