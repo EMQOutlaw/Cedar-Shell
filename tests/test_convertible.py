@@ -49,6 +49,24 @@ class DiscoveryTest(unittest.TestCase):
         self.assertEqual(row["node"], "")
 
 
+class IoctlTest(unittest.TestCase):
+    def test_eviocgsw_request_matches_the_kernel_macro(self):
+        # EVIOCGSW(2) = _IOC(_IOC_READ=2, 'E'=0x45, 0x1b, 2). Shipped once
+        # with 0x21 and got EINVAL on the real switch; pin the encoding.
+        captured = {}
+
+        def fake_ioctl(fd, req, buf, mutate):
+            captured["req"] = req
+            buf[0] = 0b10  # SW_TABLET_MODE asserted
+            return 0
+
+        with mock.patch("convertible.fcntl.ioctl", side_effect=fake_ioctl):
+            state = convertible._eviocgsw(0)
+        expected = (2 << 30) | (2 << 16) | (0x45 << 8) | 0x1B
+        self.assertEqual(captured["req"], expected)
+        self.assertTrue(state & (1 << convertible.SW_TABLET_MODE))
+
+
 class OwnershipTest(unittest.TestCase):
     def test_owns_internal_keyboard_and_touchpad_only(self):
         names = convertible.owned_devices(DEVICES)

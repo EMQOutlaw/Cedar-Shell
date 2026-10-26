@@ -68,8 +68,11 @@ def find_switch(root: str = "/sys/class/input") -> dict:
 
 
 def _eviocgsw(fd: int, count: int = 0x10) -> int:
+    # linux/input.h: EVIOCGSW(len) = _IOC(_IOC_READ, 'E', 0x1b, len)
+    # dir 2<<30 | size<<16 | type 'E' (0x45) << 8 | nr 0x1b — a wrong type
+    # byte is an EINVAL on the real device (shipped as 0x21 once; pinned below).
     buf = bytearray((count + 7) // 8)
-    req = 0x80000000 | (len(buf) << 16) | (0x21 << 8) | 0x1B
+    req = (2 << 30) | (len(buf) << 16) | (0x45 << 8) | 0x1B
     fcntl.ioctl(fd, req, buf, True)
     return int.from_bytes(buf, "little")
 
@@ -78,12 +81,11 @@ def switch_state(node: str) -> bool | None:
     """True = tablet asserted; None = unreadable (said plainly, never guessed)."""
     try:
         fd = os.open(node, os.O_RDONLY | os.O_NONBLOCK)
+        state = bool(_eviocgsw(fd) & (1 << SW_TABLET_MODE))
+        os.close(fd)
+        return state
     except OSError:
         return None
-    try:
-        return bool(_eviocgsw(fd) & (1 << SW_TABLET_MODE))
-    finally:
-        os.close(fd)
 
 
 def hypr_devices() -> dict:
