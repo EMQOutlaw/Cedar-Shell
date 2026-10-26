@@ -85,7 +85,7 @@ class NurseryTest(unittest.TestCase):
         self.plant()
         with mock.patch.object(nursery, "_run_setup", return_value=0) as rs:
             self.assertEqual(nursery.cmd_toggle("cedar-ai", "enable"), 0)
-            rs.assert_called_once_with("cedar-ai setup", "--enable")
+            rs.assert_called_once_with("cedar-ai setup", "--enable", plugin_id="cedar-ai")
 
     def test_toggle_falls_back_to_unit_verbs(self):
         self.plant(setup="")
