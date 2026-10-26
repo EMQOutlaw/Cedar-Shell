@@ -131,13 +131,20 @@ class RulesTest(unittest.TestCase):
             self.assertTrue(all(l.startswith(" ") for l in lines[1:]))
 
     def test_apply_script_is_pure_shell(self):
-        # The first user run executed prose lines as commands; the script
-        # must contain nothing a shell would choke on.
+        # The first user run executed prose lines as commands; outside the
+        # heredoc payloads, the script must contain nothing but shell.
         script = convertible.APPLY.format(hwdb=convertible.HWDB, udev=convertible.UDEV)
+        heredoc = None
         for line in script.splitlines():
-            if line and not line.startswith(("#", "sudo", "echo", "set ", " ", "}")):
-                self.assertTrue(line.endswith(("HWDB", "RULES")) or "<<" in line,
-                                "non-shell line leaked into the rules script: " + line)
+            if heredoc:
+                if line == heredoc:
+                    heredoc = None
+                continue
+            if "<<" in line:
+                heredoc = line.rsplit("'", 2)[-2]
+                continue
+            if line and not line.startswith(("#", "sudo", "echo", "set ")):
+                self.fail("non-shell line leaked into the rules script: " + line)
 
 
 if __name__ == "__main__":
