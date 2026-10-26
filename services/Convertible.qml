@@ -82,17 +82,28 @@ Singleton {
                     const row = JSON.parse(line);
                     if (row.kind === "state")
                         root.tabletMode = row.tablet === true;
-                    if (row.kind === "error")
+                    if (row.kind === "error") {
                         root.error = row.error || "Convertible watcher error.";
+                        // An unreadable switch means the one-time rules step
+                        // is pending — wait for it, never hot-loop a respawn.
+                        if (root.error.indexOf("unreadable") !== -1 || root.error.indexOf("cannot open") !== -1)
+                            root.rulesPending = true;
+                    }
                 } catch (_) {}
             }
         }
         onExited: (code, status) => {
             // The script restores devices itself on exit; if it died and the
-            // session is unlocked, bring the watcher back after a breath.
-            if (root.detected && !Config.testMode && !ShellState.locked)
+            // session is unlocked, bring the watcher back after a breath —
+            // unless it is waiting on the one-time rules step.
+            if (root.detected && !root.rulesPending && !Config.testMode && !ShellState.locked)
                 restart.start();
         }
     }
+    property bool rulesPending: false
     Timer { id: restart; interval: 2000; onTriggered: watcher.running = true }
+    // While the rules step is pending, re-probe occasionally: the user runs
+    // the sudo step once and the watcher comes up on its own.
+    Timer { interval: 60000; running: root.rulesPending && !Config.testMode; repeat: true
+            onTriggered: { root.rulesPending = false; watcher.running = root.detected && !ShellState.locked; } }
 }
