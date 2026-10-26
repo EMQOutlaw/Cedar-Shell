@@ -120,6 +120,25 @@ class RulesTest(unittest.TestCase):
         self.assertIn("uaccess", convertible.UDEV)
         self.assertIn("systemd-hwdb update", convertible.APPLY)
 
+    def test_hwdb_records_are_blank_line_separated(self):
+        # hwdb rejects every record after the first when they run together —
+        # this regression actually shipped and was caught by the user's run.
+        records = [r for r in convertible.HWDB.split("\n\n") if "evdev:" in r]
+        self.assertEqual(len(records), 2)
+        for record in records:
+            lines = [l for l in record.splitlines() if l and not l.startswith("#")]
+            self.assertTrue(lines[0].startswith("evdev:"))
+            self.assertTrue(all(l.startswith(" ") for l in lines[1:]))
+
+    def test_apply_script_is_pure_shell(self):
+        # The first user run executed prose lines as commands; the script
+        # must contain nothing a shell would choke on.
+        script = convertible.APPLY.format(hwdb=convertible.HWDB, udev=convertible.UDEV)
+        for line in script.splitlines():
+            if line and not line.startswith(("#", "sudo", "echo", "set ", " ", "}")):
+                self.assertTrue(line.endswith(("HWDB", "RULES")) or "<<" in line,
+                                "non-shell line leaked into the rules script: " + line)
+
 
 if __name__ == "__main__":
     unittest.main()

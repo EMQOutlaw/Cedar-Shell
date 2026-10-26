@@ -224,6 +224,7 @@ HWDB = """# CEDAR Convertible: libinput must not suspend the keyboard/touchpad o
 # tablet-mode switch — CEDAR's convertible.py owns the transition instead.
 evdev:name:Lenovo Yoga Tablet Mode Control switch:dmi:*
  LIBINPUT_IGNORE_DEVICE=1
+
 evdev:name:Intel HID switches:dmi:*
  LIBINPUT_IGNORE_DEVICE=1
 """
@@ -235,6 +236,12 @@ SUBSYSTEM=="input", ATTRS{name}=="Intel HID switches", TAG+="uaccess"
 """
 
 APPLY = """\
+#!/bin/sh
+# CEDAR Convertible — one-time sudo step.
+# libinput stops fighting CEDAR, and the seat user can read the switch
+# state without the input group. hwdb records are separated by BLANK
+# LINES — joining them makes hwdb reject every record after the first.
+set -e
 sudo install -D -m 644 /dev/stdin /etc/udev/hwdb.d/99-cedar-convertible.hwdb <<'HWDB'
 {hwdb}HWDB
 sudo install -D -m 644 /dev/stdin /etc/udev/rules.d/99-cedar-convertible.rules <<'RULES'
@@ -242,14 +249,12 @@ sudo install -D -m 644 /dev/stdin /etc/udev/rules.d/99-cedar-convertible.rules <
 sudo systemd-hwdb update
 sudo udevadm control --reload
 sudo udevadm trigger --sysname-match="input*"
+echo "Convertible rules installed — the parked watcher picks this up within a minute."
 """
 
 
 def cmd_rules() -> int:
-    print("One-time sudo step — libinput stops fighting CEDAR, and the seat user")
-    print("can read the switch state without the input group:")
-    print()
-    print(APPLY.format(hwdb=HWDB, udev=UDEV))
+    print(APPLY.format(hwdb=HWDB, udev=UDEV), end="")
     return 0
 
 
