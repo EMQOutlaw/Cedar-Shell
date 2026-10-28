@@ -5,12 +5,16 @@ host; it asks a Host. Tests hand it a FakeHost with scripted files, commands
 and processes, so detection, planning, backup and resume are exercised
 against fixtures instead of the developer's real home directory.
 """
+import codecs
 import os
 from pathlib import Path
 import platform
 import shutil
+import selectors
+import signal
 import subprocess
 import sys
+import time
 
 PROC = Path('/proc')
 MAX_READ = 2 * 1024 * 1024
@@ -30,7 +34,6 @@ class Host:
     def config_home(self): return self.xdg('CONFIG', '.config')
     def data_home(self): return self.xdg('DATA', '.local/share')
     def state_home(self): return self.xdg('STATE', '.local/state')
-    def cache_home(self): return self.xdg('CACHE', '.cache')
 
     # -- files ---------------------------------------------------------
     def exists(self, path): return Path(path).exists()
@@ -103,16 +106,67 @@ class Host:
         return result.returncode, result.stdout, result.stderr
 
     def stream(self, argv, on_line, timeout=None, env=None, stdin=None):
-        """Run a long command, handing each output line to on_line; returns the exit code."""
-        process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                   stdin=stdin, env={**self.environ, **(env or {})})
+        """Stream bounded lines with one deadline covering both reads and exit.
+
+        A package manager can stall without closing stdout, so a timeout on
+        wait() alone is insufficient. Long lines are delivered in fragments
+        instead of retaining unlimited output until a newline arrives.
+        """
+        # sudo's terminal fallback needs its controlling TTY and foreground
+        # group. Ordinary helpers get an owned session for descendant cleanup.
+        owned_group = Path(argv[0]).name not in ('sudo', 'pkexec')
+        process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   stdin=stdin, env={**self.environ, **(env or {})}, start_new_session=owned_group)
+        deadline = None if timeout is None else time.monotonic() + timeout
+        decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
+        pending = ''
+        limit = 64 * 1024
+        finished = False
+
+        def remaining():
+            if deadline is None:
+                return None
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise subprocess.TimeoutExpired(argv, timeout)
+            return left
+
         try:
-            for line in process.stdout:
-                on_line(line.rstrip('\n'))
-            return process.wait(timeout=timeout)
+            with selectors.DefaultSelector() as ready:
+                ready.register(process.stdout, selectors.EVENT_READ)
+                while True:
+                    left = remaining()
+                    if not ready.select(None if left is None else min(left, 0.2)):
+                        continue
+                    block = os.read(process.stdout.fileno(), limit)
+                    pending += decoder.decode(block, final=not block)
+                    while pending:
+                        newline = pending.find('\n', 0, limit)
+                        if newline >= 0:
+                            on_line(pending[:newline].removesuffix('\r'))
+                            pending = pending[newline + 1:]
+                        elif len(pending) >= limit:
+                            on_line(pending[:limit])
+                            pending = pending[limit:]
+                        else:
+                            break
+                    if not block:
+                        if pending:
+                            on_line(pending)
+                        break
+            result = process.wait(timeout=remaining())
+            finished = True
+            return result
         finally:
-            if process.poll() is None:
+            if not finished and owned_group:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            elif process.poll() is None:
                 process.kill()
+            process.wait()
+            process.stdout.close()
 
     # -- system facts --------------------------------------------------
     def os_release(self):

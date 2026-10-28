@@ -108,9 +108,9 @@ also observes balanced and expressive Rootline/Heartwood responses in real Qt,
 their fully rested states while hover remains held, and cancellation of
 in-flight Rootline, Heartwood and DropFrame effects when hidden or disabled.
 The Canopy harness renders its 14 production pages at 960px and 480px widths.
-Field Station’s Tasks & performance page has a separate narrow-layout,
-sorting and filtering harness. See [Station](STATION.md) for data sources
-and process-sampling semantics.
+Field Station’s regression harness checks its preserved Overview and standalone
+Task Manager launch action. See [Task Manager](TASK-MANAGER.md) for the native
+collector and process-table tests.
 
 Run the actual Quickshell layout harness:
 

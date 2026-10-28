@@ -19,6 +19,7 @@ var pages = [
  {id:"privacy",label:"Privacy & Shield",icon:"⬡",description:"Understand and control your protections."},
  {id:"security",label:"Lock Screen & Security",icon:"▢",description:"Privacy and controls while the desktop is locked."},
  {id:"system",label:"Updates & Recovery",icon:"↻",description:"Review updates, diagnose problems and recover safely."},
+ {id:"nursery",label:"Nursery",icon:"❀",description:"Companion services planted into the shell — CEDAR Ai first. Off until you say otherwise."},
  {id:"advanced",label:"Advanced",icon:"⌘",description:"Desktop setup and specialized CEDAR controls."},
  {id:"about",label:"About CEDAR",icon:"✧",description:"Contextual Environment & Desktop Automation Runtime."},
  // Existing deep links remain stable. Their owners are available as section tabs.
@@ -34,7 +35,7 @@ var menu = [
  {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows","core"]},
  {id:"interaction",label:"Interaction",description:"Input, attention and everyday tools.",pages:["input","keybinds","notifications","audio","apps","application-theming","dictation","time","notes"]},
  {id:"system",label:"System",description:"Profiles, power, connections and protection.",pages:["profiles","power","connections","privacy","security"]},
- {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","advanced","setup","about"]}
+ {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","nursery","advanced","setup","about"]}
 ];
 function menuOf(id) {
     for (var i = 0; i < menu.length; ++i) if (menu[i].pages.indexOf(id) !== -1) return menu[i].id;
@@ -110,7 +111,7 @@ var fields = [
 {"page": "core", "group": "Activities", "key": "coreNotifications", "label": "Notifications", "description": "Notifications unfold from the Core pill and gather in Signals. Off: they appear as cards at the top right instead.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreScreenshots", "label": "Screenshot actions", "description": "Show Open, Copy and Reveal for saved Omarchy screenshot notifications.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreConnections", "label": "Connections", "description": "Bluetooth changes in Core; network and VPN changes on the network button.", "type": "toggle", "defaultValue": true},
-{"page": "core", "group": "Activities", "key": "coreDictation", "label": "Dictation", "description": "A row with Stop and Cancel while Voxtype is listening or transcribing. The bar button and keybinds work either way.", "type": "toggle", "defaultValue": true, "aliases": "voxtype voice speech"},
+{"page": "core", "group": "Activities", "key": "coreDictation", "label": "Dictation", "description": "The pill becomes the microphone's filament while Voxtype listens, carries a light while it transcribes, and keeps a Signals row with Stop and Cancel. The bar button and keybinds work either way.", "type": "toggle", "defaultValue": true, "aliases": "voxtype voice speech"},
 {"page": "core", "group": "Activities", "key": "corePower", "label": "Power", "description": "Battery warnings, power connection and system profile changes.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "corePrivacy", "label": "Privacy indicators", "description": "Active PipeWire links from identifiable microphones and cameras. Direct hardware access outside PipeWire is not monitored.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreWorkspaces", "label": "Workspace changes", "description": "Brief feedback when the focused workspace changes.", "type": "toggle", "defaultValue": false},
@@ -146,6 +147,7 @@ var fields = [
  {page:"desktop",group:"Field Station weather",key:"longitude",label:"Longitude",description:"Optional manual override. Clear both coordinates to return to automatic location.",type:"text",defaultValue:"",placeholder:"-81.7",aliases:"weather location"},
  {page:"desktop",group:"Field Station weather",key:"temperatureUnit",label:"Temperature unit",description:"Weather temperature in Field Station.",type:"choice",options:[{value:"fahrenheit",label:"Fahrenheit · °F"},{value:"celsius",label:"Celsius · °C"}],defaultValue:"fahrenheit"},
  {page:"desktop",group:"Advanced",key:"diskPath",label:"Storage reading",description:"Path used for Field Station’s disk-usage reading. Empty uses your home folder.",type:"text",defaultValue:"",aliases:"disk telemetry"},
+ {page:"bar",group:"Placement",key:"barPlacement",label:"Bar placement",description:"Along the top as the Strata bar with the Core pill, or down the left edge as the slim Understory bar: Heartwood, workspaces, the focused window, status and the clock in one column, with the full rail growing from it. The Core pill rests while the bar is on the left.",type:"choice",options:[{value:"top",label:"Top"},{value:"understory",label:"Left rail"}],defaultValue:"top",aliases:"vertical sidebar left understory caelestia"},
  {page:"bar",group:"Geometry",key:"barHeight",label:"Bar height",description:"Overall height of the top bar.",type:"slider",min:40,max:72,step:2,unit:" px",defaultValue:44},
  {page:"bar",group:"Appearance",key:"barOpacity",label:"Bar opacity",description:"Background opacity for the Strata bar.",type:"slider",min:.1,max:1,step:.01,factor:100,unit:"%",defaultValue:.94,aliases:"transparency"},
  {page:"notifications",group:"Popups",key:"notificationsEnabled",label:"Notification popups",description:"Let notifications unfold from the Core pill (or show as cards when Core is off). History continues to record messages.",type:"toggle",defaultValue:true,aliases:"enable disable alerts"},
@@ -201,6 +203,7 @@ var extras = [
  {page:"appearance",key:"theme",label:"Theme",description:"Choose from installed desktop themes.",aliases:"colors palette"},
  {page:"desktop",key:"wallpaper",label:"Wallpaper",description:"Preview and change your desktop background."},
  {page:"bar",key:"modules",label:"Bar modules",description:"Choose which controls appear in the top bar."},
+ {page:"bar",key:"understory",label:"Understory",description:"The rail of controls that grows from the bar's left end, and its shortcut.",aliases:"sidebar rail control center keybind shortcut"},
  {page:"displays",key:"vrr",label:"Variable Refresh Rate",description:"Adaptive sync policy for compatible displays.",aliases:"VRR freesync gsync"},
  {page:"displays",key:"mainDisplay",label:"Main display",description:"Preferred output for CEDAR and the system startup screen.",aliases:"primary DP-2 monitor"},
  {page:"displays",key:"arrangement",label:"Display arrangement",description:"Drag your monitors into position.",aliases:"position monitor"},

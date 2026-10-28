@@ -20,7 +20,7 @@ ShellRoot {
             check(settingsWindow.implicitWidth <= Math.max(SettingsService.minimumWidth, settingsWindow.screen.width) &&
                   settingsWindow.implicitHeight <= Math.max(SettingsService.minimumHeight, settingsWindow.screen.height),
                   "remembered size is clamped to the logical screen");
-            SettingsInfo.themePreview = { name:"catppuccin-mocha", palette:{background:"#1e1e2e"} };
+            SettingsInfo.themePreview = { name:"catppuccin-mocha", palette:{background:String(Theme.background)} };
             // implicitSize is an initial hint for FloatingWindow. Resize its
             // real QWindow to simulate the compositor delivering a resize.
             const nativeWindow = settingsWindow.contentItem.Window.window;

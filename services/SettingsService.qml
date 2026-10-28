@@ -55,7 +55,6 @@ Singleton {
     property var history: []
     readonly property bool canGoBack: history.length > 0
     readonly property var pageInfo: Schema.pages.find(p => p.id === page) || Schema.pages[0]
-    readonly property string pageLabel: pageInfo.label
     readonly property string menuId: Schema.menuOf(page)
     function label(id) { const found = Schema.pages.find(p => p.id === id); return found ? found.label : id; }
     function navigate(id, key) {

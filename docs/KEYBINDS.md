@@ -103,3 +103,8 @@ For local changes, use `Hyprland --verify-config -c <main-config>`, then
 `hyprctl reload` and `hyprctl configerrors`. Physical dragging, focus restoration,
 real application clipboard behavior and native session locking also require
 interactive verification; isolated tests do not certify them.
+
+The installer optionally adds **Super+Shift+Escape** for `cedar-task-manager`
+through the owned desktop binding list. It first checks live Hyprland bindings;
+an occupied shortcut or unavailable inspection leaves existing bindings intact.
+This optional action is not part of the replacement keybind preset.

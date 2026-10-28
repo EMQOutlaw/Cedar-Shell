@@ -34,6 +34,7 @@ singleton Capabilities 1.0 Capabilities.qml
 singleton VisualQuality 1.0 VisualQuality.qml
 singleton Gaming 1.0 Gaming.qml
 singleton Shield 1.0 Shield.qml
+singleton Thicket 1.0 Thicket.qml
 singleton Permission 1.0 Permission.qml
 singleton Overrides 1.0 Overrides.qml
 singleton Profiles 1.0 Profiles.qml
@@ -50,3 +51,9 @@ singleton CalendarFeeds 1.0 CalendarFeeds.qml
 
 singleton FieldNotes 1.0 FieldNotes.qml
 singleton Dictation 1.0 Dictation.qml
+
+singleton TaskManager 1.0 TaskManager.qml
+singleton Understory 1.0 Understory.qml
+singleton Awake 1.0 Awake.qml
+singleton Nursery 1.0 Nursery.qml
+singleton Convertible 1.0 Convertible.qml

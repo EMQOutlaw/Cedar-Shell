@@ -194,6 +194,7 @@ def action(req):
         code, out, err = cli('config', 'set', key, value, timeout=20)
         if code != 0:
             raise RuntimeError(failure(err, out, 'Proton refused the setting.'))
+    # Not wired to a QML control; kept as a manual escape hatch via the script CLI.
     elif kind == 'signout':
         code, out, err = cli('signout', timeout=20)
         if code != 0:

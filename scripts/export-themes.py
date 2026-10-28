@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Export legacy app assets from the shared CEDAR palette."""
 from pathlib import Path
-import re
 import json
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -5,7 +5,7 @@ import ".."
 
 Singleton {
     id: root
-    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces", "keybinds"]
+    readonly property var topics: ["quick", "audio", "network", "bluetooth", "power", "weather", "calendar", "clipboard", "notifications", "trails", "rewind", "station", "go", "startup", "workspaces", "keybinds"]
     // One route per destination: a topic with a visible bar button gets no tab.
     // Cedar has a dedicated right-side Quick control; its center opens Signals.
     // Topics the bar routes itself (its own control, or the pill for Signals-owned
@@ -29,10 +29,11 @@ Singleton {
         controlWindows = controlWindows.filter(w => w !== window);
     }
     property string topic: "quick"
-    property string stationPage: "overview"
+    readonly property string stationPage: "overview"
     function openStation(page = "overview") {
         if (ShellState.locked) return;
-        stationPage = page === "tasks" ? "tasks" : "overview";
+        if (page === "tasks") { TaskManager.launch(); return; }
+        if (page !== "overview") return;
         if (Config.saved.canopyEnabled) open("station"); else ShellState.open("hud");
     }
     // The surface controller's state, driven by CanopyWindow:
@@ -92,7 +93,10 @@ Singleton {
     readonly property real anchorX: anchorRect ? anchorRect.x + anchorRect.width / 2 : -1
     readonly property var screen: Quickshell.screens.find(s => s.name === outputName) || CoreService.hostScreen
     // Applications is the launcher, so its drop shows even with Canopy off.
-    readonly property bool shown: (Config.saved.canopyEnabled || topic === "go") && !ShellState.locked && (ShellState.panel === "canopy" || pinned)
+    // Shown only while the Canopy owns ShellState.panel: a pin keeps the drop
+    // open without the keyboard grab so desktop work continues, it does not
+    // let the drop outlive another surface taking the panel.
+    readonly property bool shown: (Config.saved.canopyEnabled || topic === "go") && !ShellState.locked && ShellState.panel === "canopy"
     function titleFor(value) {
         return ({
             audio: "Audio",
@@ -106,6 +110,7 @@ Singleton {
             notifications: "Notifications",
             quick: "Quick Controls",
             trails: "Recent Trail",
+            rewind: "Trail Rewind",
             station: "Field Station",
             go: "Applications",
             startup: "Startup",
@@ -113,26 +118,9 @@ Singleton {
             keybinds: "Keybinds"
         })[value] || "Canopy";
     }
-    readonly property string title: ({
-            audio: "Audio",
-            network: "Connections",
-            bluetooth: "Bluetooth",
-            power: "Power & Session",
-            system: "System",
-            weather: "Sky Watch",
-            calendar: "Time & Calendar",
-            clipboard: "Clipboard",
-            notifications: "Notifications",
-            quick: "Quick Controls",
-            trails: "Recent Trail",
-            station: "Field Station",
-            go: "Applications",
-            startup: "Startup",
-            workspaces: "Workspaces",
-            keybinds: "Keybinds"
-        })[topic] || "Canopy"
+    readonly property string title: titleFor(topic)
     function open(value, output = "", peek = false) {
-        if (value === "system") { if (ShellState.locked) return; stationPage = "tasks"; value = "station"; }
+        if (value === "system") { TaskManager.launch(); return; }
         if (!topics.includes(value) || ShellState.locked || (!Config.saved.canopyEnabled && value !== "go"))
             return;
         if (peek && (pinned || (ShellState.panel !== "" && !peeking)))
@@ -201,6 +189,14 @@ Singleton {
         function onLockedChanged() {
             if (ShellState.locked)
                 root.close();
+        }
+        // Another surface (Core hub, Understory, a legacy panel) took the panel:
+        // the pin is released with the drop so nothing reappears on its own.
+        function onPanelChanged() {
+            if (ShellState.panel !== "canopy") {
+                root.pinned = false;
+                root.peeking = false;
+            }
         }
     }
     Connections {

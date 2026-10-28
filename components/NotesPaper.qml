@@ -677,8 +677,6 @@ Item {
         }
 
         Rectangle {
-            id: eraserRing
-
             z: 16
             visible: root.currentTool === "eraser" && editorPointer.containsMouse && root.editingObjectId === "" && !root.exporting
             x: editorPointer.mouseX - width / 2
@@ -746,8 +744,6 @@ Item {
             }
 
             NotesHeaderLabel {
-                id: paperLabel
-
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.paperLabels[root.paperType] || "GRAPH 16"
                 theme: root.theme

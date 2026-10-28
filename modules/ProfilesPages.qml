@@ -15,7 +15,6 @@ FocusScope {
     signal closed()
     readonly property int columns: width < 700 ? 1 : width < 1100 ? 2 : 3
     readonly property string current: Profiles.current
-    readonly property var currentDef: Profiles.definition(current)
     readonly property color currentAccent: current ? Profiles.accentOf(current) : Theme.teal
     function tone(state) { return state === "active" || state === "restored" ? Theme.success : state === "failed" ? Theme.danger : state === "applying" ? Theme.teal : state === "unavailable" ? Theme.muted : Theme.inactive; }
     function word(state) { return ({ active: "Active", restored: "Restored", failed: "Failed", unavailable: "Unavailable", off: "Off", pending: "Waiting", applying: "Applying" })[state] || state; }
@@ -25,7 +24,7 @@ FocusScope {
     function ease(start, span) { const t = Math.max(0, Math.min(1, (reveal - start) / span)); return 1 - Math.pow(1 - t, 3); }
     function beat(order, span = .4) { return ease(.06 * order, span); }
     function enter() { entrance.stop(); if (Theme.reducedMotion || Config.testMode) { reveal = 1; return; } reveal = 0; entrance.start(); }
-    NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: 1050 }
+    NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: VisualQuality.ms(Theme.entrance) }
     Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
     Component.onCompleted: enter()
     Keys.onPressed: event => {

@@ -290,7 +290,6 @@ ColumnLayout {
         }
         // The favourite mark: amber when set, faint while hovering, click to toggle.
         Text {
-            id: star
             anchors.top: parent.top; anchors.right: parent.right
             anchors.topMargin: 6; anchors.rightMargin: 8
             text: tile.favourite ? "★" : "☆"

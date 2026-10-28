@@ -34,7 +34,7 @@ ColumnLayout {
     SettingsSection {
         heading: "Field Station"
         caption: "CPU, memory, storage and application readings live in Field Station. Filter the process table to inspect CEDAR's own resource use."
-        StrataButton { text: "Open tasks & performance"; onClicked: Canopy.openStation("tasks") }
+        StrataButton { text: "Open Task Manager"; onClicked: TaskManager.launch() }
     }
 
     SettingsSection {

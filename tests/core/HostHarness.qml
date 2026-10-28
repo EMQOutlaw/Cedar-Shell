@@ -14,6 +14,12 @@ ShellRoot {
         }
     }
     function host(name) {
+        // The Core pill is Strata-only: beside the left bar there is no host at
+        // all. Anything else would mean a pill where the owner wants none.
+        if (Config.barVertical) {
+            check(core.instances.length === 0, "no Core host while the bar is on the left");
+            return;
+        }
         check(core.instances.length === 1, "exactly one host");
         check(core.instances[0].modelData.name === name, "host must use " + name);
         // Offscreen places floating windows on its first screen regardless of
@@ -84,7 +90,30 @@ ShellRoot {
                 return;
             case 7:
                 test.host("DP-2");
-                console.log("PASS: Core host identity, output changes, fallback, disable/enable and two reloads");
+                // The Understory placement has no Core pill at all: the host model
+                // is empty. The activity stack survives; the pill's dormant
+                // geometry stays correct for a future placement.
+                test.original = core.instances[0];
+                test.check(CoreService.publish({ id: "test/kept", type: "keyboard", title: "Kept", persistent: true, timeout: 0 }), "publish before the placement switch");
+                Config.set("barPlacement", "understory");
+                test.check(CoreService.enabled && Config.barVertical, "Core stays enabled with the bar on the left");
+                test.host("DP-2");
+                test.check(core.instances.length === 0, "no Core host window instantiated when the bar is on the left");
+                test.check(CoreService.rows.some(r => r.id === "test/kept"), "placement switch retains the activity stack");
+                test.check(CoreService.placement.left >= Config.barWidth && CoreService.placement.left + CoreService.placement.width <= 1920, "dormant floating geometry lies inside DP-2's usable area (" + JSON.stringify(CoreService.placement) + ")");
+                Config.set("coreMonitor", "DP-1");
+                break;
+            case 8:
+                test.host("DP-1");
+                test.check(CoreService.placement.left + CoreService.placement.width <= 1280, "floating pill fits the smaller DP-1 (" + JSON.stringify(CoreService.placement) + ")");
+                Config.set("coreMonitor", "");
+                Config.set("barPlacement", "top");
+                break;
+            case 9:
+                test.host("DP-2");
+                test.check(!Config.barVertical && CoreService.rows.some(r => r.id === "test/kept"), "back on the top bar with the stack intact");
+                test.check(core.instances.length === 1, "the Core host window is instantiated again when the bar is on top");
+                console.log("PASS: Core host identity, output changes, fallback, disable/enable, two reloads and placement switches");
                 Qt.quit();
                 return;
             }

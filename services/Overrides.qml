@@ -20,7 +20,7 @@ Singleton {
     id: root
     property var state: Stack.create()
     property bool writing: false
-    readonly property var watched: ["doNotDisturb", "idleLockSeconds", "ambientIntensity", "performanceMode", "forestWhispers"]
+    readonly property var watched: ["doNotDisturb", "idleLockSeconds", "ambientIntensity", "performanceMode", "forestWhispers", "lockPrivacy"]
 
     function hold(key, owner, previous, value) { state = Stack.hold(state, key, owner, previous, value); }
     function external(key, current) { state = Stack.external(state, key, current); }
@@ -58,5 +58,6 @@ Singleton {
         function onAmbientIntensityChanged() { if (!root.writing) root.external("ambientIntensity", Config.saved.ambientIntensity); }
         function onPerformanceModeChanged() { if (!root.writing) root.external("performanceMode", Config.saved.performanceMode); }
         function onForestWhispersChanged() { if (!root.writing) root.external("forestWhispers", Config.saved.forestWhispers); }
+        function onLockPrivacyChanged() { if (!root.writing) root.external("lockPrivacy", Config.saved.lockPrivacy); }
     }
 }

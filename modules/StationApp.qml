@@ -6,7 +6,6 @@ import "../services"
 
 // CEDAR Station's window: a regular toplevel over the Station service.
 FloatingWindow {
-    id: root
     title: "CEDAR Station"
     color: Theme.background
     implicitWidth: 1120

@@ -34,13 +34,13 @@ ShellRoot {
                     const y = panel.month.getFullYear(), m = panel.month.getMonth();
                     const dateKey = day => Qt.formatDateTime(new Date(y, m, day), "yyyy-MM-dd");
                     CalendarFeeds.sources = [
-                        { id: "one", name: "Work", provider: "google", color: "#79abd9", enabled: true, updatedAt: Date.now(), status: "ready", error: "", kind: "subscription", webUrl: "https://calendar.google.com/" },
-                        { id: "two", name: "Personal", provider: "proton", color: "#62b89a", enabled: true, updatedAt: Date.now(), status: "error", error: "Provider unavailable. Saved events are shown.", kind: "subscription", webUrl: "https://calendar.proton.me/" },
-                        { id: "three", name: "Family", provider: "nextcloud", color: "#d7ac69", enabled: true, updatedAt: Date.now(), status: "ready", error: "", kind: "subscription", webUrl: "https://cloud.example.org/index.php/apps/calendar/" }
+                        { id: "one", name: "Work", provider: "google", color: Theme.calendarColors[1], enabled: true, updatedAt: Date.now(), status: "ready", error: "", kind: "subscription", webUrl: "https://calendar.google.com/" },
+                        { id: "two", name: "Personal", provider: "proton", color: Theme.calendarColors[0], enabled: true, updatedAt: Date.now(), status: "error", error: "Provider unavailable. Saved events are shown.", kind: "subscription", webUrl: "https://calendar.proton.me/" },
+                        { id: "three", name: "Family", provider: "nextcloud", color: Theme.calendarColors[2], enabled: true, updatedAt: Date.now(), status: "ready", error: "", kind: "subscription", webUrl: "https://cloud.example.org/index.php/apps/calendar/" }
                     ];
                     CalendarFeeds.events = [
-                        { id: "meeting", title: "Planning meeting", start: new Date(y,m,5,9).toISOString(), end: new Date(y,m,5,10).toISOString(), allDay: false, startDate: "", endDate: "", location: "Studio", description: "Review the week's plans.", sourceId: "one", calendar: "Work", color: "#79abd9", stale: false },
-                        { id: "trip", title: "Weekend away", start: new Date(y,m,4).toISOString(), end: new Date(y,m,7).toISOString(), allDay: true, startDate: dateKey(4), endDate: dateKey(7), location: "", description: "", sourceId: "two", calendar: "Personal", color: "#62b89a", stale: true }
+                        { id: "meeting", title: "Planning meeting", start: new Date(y,m,5,9).toISOString(), end: new Date(y,m,5,10).toISOString(), allDay: false, startDate: "", endDate: "", location: "Studio", description: "Review the week's plans.", sourceId: "one", calendar: "Work", color: Theme.calendarColors[1], stale: false },
+                        { id: "trip", title: "Weekend away", start: new Date(y,m,4).toISOString(), end: new Date(y,m,7).toISOString(), allDay: true, startDate: dateKey(4), endDate: dateKey(7), location: "", description: "", sourceId: "two", calendar: "Personal", color: Theme.calendarColors[0], stale: true }
                     ];
                     window.check(panel.agenda.length === 2, "selected day combines connected calendars");
                 } else if (window.step === 1) {

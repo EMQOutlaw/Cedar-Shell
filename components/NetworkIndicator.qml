@@ -18,7 +18,7 @@ BarButton {
     readonly property bool noticing: !!notice
     readonly property color tone: notice?.tone === "lost" ? Theme.amber : Theme.teal
     implicitWidth: (Network.vpnActive ? 46 : 32) + (inline && noticeLabel.reveal > 0 ? Math.round(noticeLabel.width + 8) : 0)
-    text: Theme.availableFonts.includes("JetBrainsMono Nerd Font") ? Network.glyph : Network.fallbackGlyph
+    text: Theme.nerdFont ? Network.glyph : Network.fallbackGlyph
     hint: (noticing && notice.detail ? notice.title + " · " + notice.detail + " · " : "") + Network.statusDescription + " · Open Connections"
     accent: noticing ? tone : Network.state === "connected" ? Theme.teal : Theme.muted
     checked: Canopy.shown && Canopy.topic === "network" && !Canopy.peeking

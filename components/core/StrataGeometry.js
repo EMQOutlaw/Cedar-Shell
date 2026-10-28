@@ -48,3 +48,51 @@ function progress(from, to, current) {
     if (!from || !to || to.height === from.height) return 1;
     return Math.max(0, Math.min(1, (current - from.height) / (to.height - from.height)));
 }
+
+// Where the Core pill's window sits on its output: {left, top, width,
+// maxHeight} in logical pixels. Under the top bar the pill is integrated:
+// centred on the monitor at the bar frame's inset. Beside the Understory
+// (left) bar it floats: centred in the usable area that remains once the bar
+// and its margin are reserved, at the same inset from the top edge. Pure
+// arithmetic so the window only assigns the result.
+function corePlacement(input) {
+    const num = (v, fallback) => (Number.isFinite(v) && v > 0 ? v : fallback);
+    const screenWidth = num(input.screenWidth, 1920);
+    const screenHeight = num(input.screenHeight, 1080);
+    const barHeight = num(input.barHeight, 44);
+    const inset = Number.isFinite(input.barInset) ? Math.max(0, input.barInset) : 5;
+    const margin = input.barDetached ? num(input.barMargin, 0) : 0;
+    const vertical = !!input.barVertical;
+    const wanted = Math.round(num(input.wantedWidth, 620));
+    // Height: what remains under the bar (none when it is on the left) minus
+    // 60 px of breathing room, floored at 200 — but a tiny output never
+    // promises more than it has, and the box ends inside the output.
+    const available = Math.max(1, Math.round(screenHeight - (vertical ? 0 : barHeight)));
+    let maxHeight = available > 60 ? Math.max(Math.min(200, available), available - 60) : available;
+    // The pill's own resting height, used only to centre the window's top
+    // edge vertically; the hub still expands downward from there within
+    // maxHeight.
+    const restingHeight = num(input.restingHeight, 40);
+    let left, width, top;
+    if (vertical) {
+        // Floating: docked just beside the bar with a small gutter, and
+        // vertically centred on the output rather than pinned to the top.
+        // A bar wider than the output leaves no usable area; the pill then
+        // stays at the right edge, never past it.
+        const reserved = num(input.barWidth, 0) + margin;
+        const usable = Math.max(0, screenWidth - reserved);
+        const gutter = usable > 16 ? 4 : 0;
+        width = Math.max(1, Math.min(wanted, Math.round(usable - gutter)));
+        left = Math.round(reserved + gutter);
+        top = Math.round((screenHeight - restingHeight) / 2);
+    } else {
+        // Integrated: the historical geometry, exactly: min(620, monitor) centred.
+        width = Math.max(1, Math.min(wanted, Math.round(screenWidth)));
+        left = Math.round((screenWidth - width) / 2);
+        top = margin + inset;
+    }
+    left = Math.max(0, Math.min(left, Math.round(screenWidth) - width));
+    top = Math.max(0, Math.min(top, Math.round(screenHeight) - 1));
+    maxHeight = Math.max(1, Math.min(maxHeight, Math.round(screenHeight) - top));
+    return { left: left, top: top, width: width, maxHeight: maxHeight };
+}

@@ -23,6 +23,8 @@ import desktop
 
 class Portable(unittest.TestCase):
     def setUp(self):
+        native = patch.object(d, "prepare_task_manager", return_value=None)
+        native.start(); self.addCleanup(native.stop)  # Native install is exercised by check_task_manager.py.
         temp = tempfile.TemporaryDirectory(prefix='cedar standalone 雨 ')
         self.addCleanup(temp.cleanup)
         self.base = Path(temp.name)
@@ -375,8 +377,8 @@ sys.stdin.buffer.read(1)
         folder = home / 'Pictures/Wallpapers/CEDAR'
         (folder / 'ridge').mkdir(parents=True)
         (folder / '.cache').mkdir()
-        (folder / 'dawn-mist.png').write_bytes(b'fixture')
-        (folder / 'ridge' / 'night_watch.jpg').write_bytes(b'fixture')
+        (folder / 'dawn-mist.png').write_bytes(b'dawn fixture')
+        (folder / 'ridge' / 'night_watch.jpg').write_bytes(b'night fixture')
         (folder / '.cache' / 'hidden.png').write_bytes(b'fixture')
         (folder / 'notes.txt').write_text('not an image')
         self.assertEqual(runtime.wallpapers()['folder'], '')
@@ -401,6 +403,63 @@ sys.stdin.buffer.read(1)
                 self.assertEqual(runtime.wallpapers()['folder'], '')
         (runtime.config() / 'settings.json').write_text('{not json')
         self.assertEqual(runtime.wallpapers()['folder'], '')
+
+    def test_wallpaper_catalog_does_not_grow_across_updates(self):
+        library = self.base / 'personal wallpapers 雨'
+        library.mkdir()
+        (library / 'ridge.png').write_bytes(b'ridge image')
+        (library / 'renamed-forest.png').write_bytes(b'forest view')
+        (library / 'other').mkdir()
+        # Same name and size, different content: this image must remain visible.
+        (library / 'other/ridge.png').write_bytes(b'other image')
+        (library / 'alias.png').symlink_to(library / 'ridge.png')
+        d.write_json(runtime.config() / 'settings.json', {'wallpaperFolder': str(library)})
+        for directory in (runtime.config() / 'wallpapers', self.base / 'data/cedar/wallpapers'):
+            directory.mkdir(parents=True)
+            (directory / 'copy.png').write_bytes(b'ridge image')
+        previous = self.base / 'release-0/themes/backgrounds'
+        previous.mkdir(parents=True)
+        selected = previous / 'ridge.png'
+        selected.write_bytes(b'ridge image')
+        d.write_json(runtime.config() / 'desktop.json', {'wallpaper': str(selected), 'keep': True})
+        for version in range(1, 4):
+            release = self.base / ('release-' + str(version))
+            bundled = release / 'themes/backgrounds'
+            bundled.mkdir(parents=True)
+            (bundled / 'ridge.png').write_bytes(b'ridge image')
+            (bundled / 'forest.png').write_bytes(b'forest view')
+            with patch.object(runtime, 'ROOT', release):
+                catalog = runtime.wallpapers()
+                self.assertEqual(len(catalog['items']), 3)
+                self.assertEqual(catalog, runtime.wallpapers())
+                paths = {row['path'] for row in catalog['items']}
+                self.assertEqual(catalog['selected'], str(selected))
+                self.assertIn(str(selected), paths)
+                self.assertIn(str(library / 'renamed-forest.png'), paths)
+                self.assertIn(str(library / 'other/ridge.png'), paths)
+                self.assertTrue((bundled / 'ridge.png').exists())
+        self.assertTrue((library / 'ridge.png').exists())
+        self.assertEqual(runtime.desktop(), {'wallpaper': str(selected), 'keep': True})
+        # Choosing the personal copy keeps that exact path selected as well.
+        d.write_json(runtime.config() / 'desktop.json', {'wallpaper': str(library / 'ridge.png')})
+        with patch.object(runtime, 'ROOT', release):
+            catalog = runtime.wallpapers()
+            self.assertEqual(len(catalog['items']), 3)
+            self.assertIn(catalog['selected'], [row['path'] for row in catalog['items']])
+
+    def test_wallpaper_comparison_failure_preserves_uncertain_entries(self):
+        first = self.base / 'first.png'; first.write_bytes(b'image')
+        second = self.base / 'second.png'; second.write_bytes(b'image')
+        missing = self.base / 'removed.png'
+        entries = [{'path': str(p), 'name': p.stem} for p in (first, second, missing)]
+        original = Path.open
+        def read(path, *args, **kwargs):
+            if path == second:
+                raise PermissionError('Image became unreadable')
+            return original(path, *args, **kwargs)
+        with patch.object(Path, 'open', read):
+            result = runtime.unique_wallpapers(entries, str(first))
+        self.assertEqual({row['path'] for row in result}, {str(first), str(second)})
 
     def test_external_wallpaper_is_preserved(self):
         image = self.base / 'wall.png'; image.touch()

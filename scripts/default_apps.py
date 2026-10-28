@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read installed desktop apps and apply explicit per-user default associations."""
-import json,os,shlex,shutil,sys,time,uuid
+import json,os,shlex,sys,time,uuid
 import distribution as storage
 from pathlib import Path
 from gi.repository import Gio, GLib
@@ -143,7 +143,7 @@ def apply(role_id,app_id):
     # Keep a private recovery copy without replacing unrelated associations.
     mime=config/'mimeapps.list'
     if pending and mime.exists():
-        backup=Path(os.environ.get('XDG_STATE_HOME',Path.home()/'.local/state'))/'cedar/default-app-backups'
+        backup=state/'default-app-backups'
         storage.private_directory(backup)
         storage.atomic(backup/(str(time.time_ns())+'-mimeapps.list'),mime.read_bytes())
         # Recovery copies are retained until explicitly reviewed and removed.
@@ -155,13 +155,13 @@ def apply(role_id,app_id):
         if role_id=='editor':
             # Desktop entries may need arguments (for example Flatpak). Preserve
             # their launch semantics and pass document paths through as argv.
-            wrapper=Path(os.environ.get('XDG_STATE_HOME', Path.home()/'.local/state'))/'cedar/default-editor'
+            wrapper=state/'default-editor'
             content=('#!/bin/sh\nexec gtk-launch '+shlex.quote(app_id)+' "$@"\n').encode()
             storage.private_directory(wrapper.parent)
             if wrapper.is_symlink(): raise ValueError('The editor wrapper is managed by another owner.')
             if not wrapper.exists() or wrapper.read_bytes()!=content: storage.atomic(wrapper,content,0o700)
             if omarchy():
-                dest=Path(os.environ.get('XDG_STATE_HOME', Path.home()/'.local/state'))/'omarchy/defaults/editor'
+                dest=state.parent/'omarchy/defaults/editor'
                 if mime_is_managed(dest): raise ValueError('The existing editor setting is managed by another owner.')
                 storage.atomic(dest,(str(wrapper)+'\n').encode())
     except Exception as e:

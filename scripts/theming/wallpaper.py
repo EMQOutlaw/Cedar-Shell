@@ -1,7 +1,6 @@
 """One-frame, bounded wallpaper palette extraction with a persistent content cache."""
 import colorsys
 import hashlib
-import json
 from pathlib import Path
 import shutil
 import subprocess

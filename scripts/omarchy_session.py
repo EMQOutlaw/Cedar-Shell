@@ -5,7 +5,7 @@ except through Omarchy's own lock-safe restart, once, while unlocked.
 The independent supervisor is installed beside distribution.py for offline recovery.
 The adapter only accepts audited upstream source and requires live provider checks.
 """
-import contextlib, copy, hashlib, json, os, re, shlex, shutil, subprocess, sys, time, uuid
+import contextlib, copy, json, os, re, shlex, shutil, subprocess, sys, time, uuid
 from pathlib import Path
 import distribution as d
 import omarchy_providers as providers

@@ -6,7 +6,6 @@ import "../services"
 // The Focus preparation card: the shared TransactionHudCard fed from the
 // Focus transaction.
 TransactionHudCard {
-    id: root
     leave: Focus.hudMode === "leave"
     settled: Focus.hudSettled
     failed: Focus.failures.length

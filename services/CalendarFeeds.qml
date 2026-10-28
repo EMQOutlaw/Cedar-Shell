@@ -14,6 +14,10 @@ Singleton {
     property string end: Qt.formatDateTime(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1), "yyyy-MM-dd")
     property bool truncated: false
     readonly property bool busy: worker.busy
+    property bool refreshPending: false
+    // Month navigation coalesces while an adapter is busy. Resume on completion
+    // instead of waking every 100 ms for the entire request timeout.
+    onBusyChanged: if (!busy && refreshPending) { refreshPending = false; load.restart(); }
     readonly property bool configured: sources.length > 0
     signal completed(string action)
     property string action: "snapshot"
@@ -49,7 +53,7 @@ Singleton {
         }
         onFailed: message => { if (!ShellState.locked) root.error = message; }
     }
-    Timer { id: load; interval: 100; onTriggered: { if (root.busy) restart(); else root.refresh(); } }
+    Timer { id: load; interval: 100; onTriggered: { if (root.busy) root.refreshPending = true; else root.refresh(); } }
     Timer {
         interval: 900000
         running: root.configured && !Config.localOnly && !Config.testMode && !ShellState.locked

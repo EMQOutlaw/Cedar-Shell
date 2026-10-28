@@ -10,8 +10,8 @@ install CEDAR, migrate intent and leave the existing session running.
 """
 from pathlib import Path
 
-HARD, SOFT, COMPATIBLE = 'hard', 'soft', 'compatible'
-VALIDATED, EXPERIMENTAL, PREVIEW = 'validated', 'experimental', 'preview'
+SOFT, COMPATIBLE = 'soft', 'compatible'
+EXPERIMENTAL, PREVIEW = 'experimental', 'preview'
 
 # Components CEDAR provides itself and quiets while it runs. Nothing here is
 # uninstalled: a soft conflict is disabled for the session and restored.

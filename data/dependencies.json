@@ -958,6 +958,42 @@
         "scripts/portable_controls.py"
       ],
       "whenUnavailable": "Trailwatch replacement unavailable; existing locker and Go remain available."
+    },
+    {
+      "command": "g++",
+      "feature": "Build the release-local CEDAR Task Manager",
+      "status": "required",
+      "archPackage": "gcc",
+      "scope": "core",
+      "autoInstall": true,
+      "whenUnavailable": "Installation stops before changing the active release. Install the native build dependencies.",
+      "consumers": [
+        "scripts/build_task_manager.py"
+      ]
+    },
+    {
+      "command": "pkg-config",
+      "feature": "Build the release-local CEDAR Task Manager",
+      "status": "required",
+      "archPackage": "pkgconf",
+      "scope": "core",
+      "autoInstall": true,
+      "whenUnavailable": "Installation stops before changing the active release. Install the native build dependencies.",
+      "consumers": [
+        "scripts/build_task_manager.py"
+      ]
+    },
+    {
+      "command": "qmake6",
+      "feature": "Build the release-local CEDAR Task Manager",
+      "status": "required",
+      "archPackage": "qt6-base",
+      "scope": "core",
+      "autoInstall": true,
+      "whenUnavailable": "Installation stops before changing the active release. Install the native build dependencies.",
+      "consumers": [
+        "scripts/build_task_manager.py"
+      ]
     }
   ],
   "modules": [
@@ -1081,8 +1117,7 @@
         "components/trailwatch/Complication.qml",
         "components/trailwatch/WatchFace.qml",
         "components/StrataButton.qml",
-        "components/StrataField.qml",
-        "modules/StationTasks.qml"
+        "components/StrataField.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1117,8 +1152,7 @@
         "modules/QuickControls.qml",
         "components/core/CoreHub.qml",
         "components/core/CoreSurface.qml",
-        "components/trailwatch/LockTerminal.qml",
-        "modules/StationTasks.qml"
+        "components/trailwatch/LockTerminal.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1180,7 +1214,6 @@
         "components/trailwatch/LockTerminal.qml",
         "components/trailwatch/Metric.qml",
         "components/trailwatch/Complication.qml",
-        "modules/StationTasks.qml",
         "modules/GoCanopy.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
@@ -1262,8 +1295,7 @@
         "services/Network.qml",
         "components/core/CoreHub.qml",
         "components/core/CoreHost.qml",
-        "components/core/CoreSurface.qml",
-        "modules/StationTasks.qml"
+        "components/core/CoreSurface.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1288,8 +1320,7 @@
         "modules/Bar.qml",
         "modules/CanopyWindow.qml",
         "services/CoreSources.qml",
-        "services/Forest.qml",
-        "modules/StationTasks.qml"
+        "services/Forest.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },
@@ -1316,8 +1347,7 @@
         "services/Forest.qml",
         "services/Go.qml",
         "services/SystemStats.qml",
-        "services/Weather.qml",
-        "modules/StationTasks.qml"
+        "services/Weather.qml"
       ],
       "verification": "QML import probe plus UI fixtures; native Wayland lock remains live test"
     },

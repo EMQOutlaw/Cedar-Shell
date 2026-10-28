@@ -15,7 +15,6 @@ import QtQuick
 // after starting every step. `launching` holds the settle back until then,
 // so a provider that answers at once cannot end the transaction early.
 QtObject {
-    id: root
     property var registry: []           // [{id, label, hud, restored, enabled}]
     property var steps: []              // [{id, label, hud, restored, state, detail}]
     property string phase: "idle"       // idle | capture | apply | active | restore

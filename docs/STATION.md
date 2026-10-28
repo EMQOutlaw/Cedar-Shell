@@ -9,7 +9,7 @@ whether that needs elevated privileges. `cedar station issues` or
 `station page log` opens a page directly. Settings › Health remains the
 quick service summary inside Settings; Station handles diagnostics and repairs.
 Live performance monitoring belongs to Field Station (the CEDAR bar mark),
-whose Tasks & performance page is linked from both Health surfaces.
+whose utility actions include the independent CEDAR Task Manager.
 
 ## What it reads, and from where
 
@@ -83,29 +83,15 @@ unknown readings produce nothing) and `tests/check_station.py` (fixture
 collectors through the service, status and counts, page requests, the
 pages at 1180 and 640 px, a clean reading restores Healthy).
 
-## Field Station tasks and performance
+## Independent Task Manager
 
-Field Station has Overview and Tasks & performance pages in the Strata dress.
-The latter collects CPU, memory, disk, temperature, a CPU trace, per-core
-activity, optional GPU/VRAM readings, processes and open application windows
-in one scrollable surface. Quick Controls and Settings no longer repeat these
-instruments. The old `canopy open system` route opens this page.
+Field Station retains its existing Overview, shared SystemStats data, widgets
+and animations. Its utility row has one **Task Manager** action alongside
+Terminal, Browser, Files and Update CEDAR. The dedicated Tasks & performance
+page and its private Python polling helper have been retired. Legacy task/system
+routes launch the standalone application; they cannot select a removed page.
 
-The process table filters by name, user or PID and sorts by CPU, resident
-memory, PID or name. CPU uses tick deltas: 100% means one logical core, and
-the first sample stays unknown. PID plus process start time prevents reused
-PIDs inheriting another process’s CPU history. Processes that exit or cannot
-be read are skipped. At most 4096 rows are rendered, with the omitted count
-shown. Applications lists compositor windows with their PID and a workspace
-shortcut. This is a read-only task monitor; it does not terminate processes.
-
-`scripts/task_monitor.py --watch` samples `/proc` every two seconds only while
-the task page is active and unlocked. Pause or closing the page stops its
-process; resuming establishes a fresh CPU baseline. GPU data reuses the
-existing provider at ten-second intervals and explicitly shows unavailable
-values. The shared SystemStats summary retains its own cadence. No command
-lines, environments or process snapshots are saved.
-
-`tests/test_task_monitor.py` covers tick deltas, PID reuse, disappearing and
-malformed processes. `tests/check_station_tasks.py` exercises production QML
-sorting, filtering, routing, lock guards and narrow layouts with fixtures.
+See [Task Manager](TASK-MANAGER.md) for native collectors, process controls,
+installation, protocol, tests and limitations. `tests/check_station_tasks.py`
+checks utility actions, routing and lock guards. `tests/test_task_manager.py`
+checks the unchanged Overview body against its pre-migration content hash.

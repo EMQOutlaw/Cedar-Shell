@@ -43,6 +43,68 @@ Singleton {
     readonly property string label: !installed ? "Not installed" : !daemon ? "Stopped" : recording ? "Listening" : transcribing ? "Transcribing" : "Ready"
     readonly property string refusal: ShellState.locked ? "error: the session is locked" : !installed ? "error: voxtype is not installed" : !daemon ? "error: the voxtype daemon is not running" : ""
 
+    // ------------------------------------------------------------ the audio
+    // While Voxtype listens, its `voxtype-audio-bridge` sidecar reads the
+    // daemon's own level socket and prints one JSON line per frame
+    // ({"peak","rms","vad","ts_ms"}). CEDAR runs it only for the length of a
+    // recording and only while the Core pill shows dictation, reads levels and
+    // the daemon's voice-activity flag from it, and nothing else: no samples,
+    // no transcript. The bridge exits with the recording; it is never restarted
+    // on its own. When the levels are missing (no bridge on PATH, an older
+    // Voxtype), `listening` stays false and the pill shows a quiet line.
+    // Who animates the filament: exactly one surface per placement. The Core
+    // pill only when it is actually hosted — Core is Strata (top-bar) only
+    // now, so a vertical bar never claims presenter even if Core is enabled;
+    // the bar's own sideways filament (UnderstoryDictation) takes over
+    // instead. shell.qml maps the bar filament from this, so the two never
+    // animate side by side.
+    readonly property string presenter: !Config.saved.coreDictation || Config.stage < 3 || ShellState.locked ? ""
+        : CoreService.enabled && !!CoreService.hostScreen && !Config.barVertical ? "core"
+        : Config.barVertical ? "understory" : ""
+    // Ownership (presenter) is not visibility. The bridge runs only while some
+    // filament is live to draw the levels: CoreDictation registers itself for
+    // as long as its host window is on screen. A covered pill (ember dot only),
+    // a legacy panel hiding the pill, or the lock leave no consumer, so the
+    // bridge exits and nothing polls for a drawing nobody sees. Dedup stays
+    // with the presenter; no second fallback appears while the pill is hidden.
+    property int levelConsumers: 0
+    function attachLevels() { levelConsumers += 1; }
+    function detachLevels() { levelConsumers = Math.max(0, levelConsumers - 1); }
+    readonly property bool levelsWanted: recording && presenter !== "" && levelConsumers > 0
+    readonly property bool wantLevels: levelsWanted && !Config.testMode
+    readonly property bool listening: levels.running && levelsFresh
+    property bool levelsFresh: false
+    property real peak: 0
+    property real rms: 0
+    property bool voice: false
+    property real startedAt: 0
+    signal frame(real peak, real rms, bool voice)
+    function feed(p, r, v) {
+        peak = Math.max(0, Math.min(1, Number(p) || 0));
+        rms = Math.max(0, Math.min(1, Number(r) || 0));
+        voice = !!v;
+        levelsFresh = true;
+        frame(peak, rms, voice);
+    }
+    function clearLevels() { peak = 0; rms = 0; voice = false; levelsFresh = false; }
+    Process {
+        id: levels
+        command: ["voxtype-audio-bridge"]
+        running: root.wantLevels
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                const line = String(data || "").trim();
+                if (!line) return;
+                let obj;
+                try { obj = JSON.parse(line); } catch (e) { return; }
+                if (typeof obj.peak === "number" && typeof obj.rms === "number") root.feed(obj.peak, obj.rms, obj.vad);
+                else if (obj.status === "disconnected") root.levelsFresh = false;
+            }
+        }
+        onRunningChanged: if (!running) root.clearLevels()
+    }
+
     // ------------------------------------------------------ Voxtype's settings
     // Flat dotted keys → values, as `voxtype config get --json` reports them for
     // the keys scripts/dictation.py exposes; empty until Settings asks.
@@ -171,7 +233,11 @@ Singleton {
                 title: "Dictation",
                 subtitle: recording ? "Listening · speak, then stop to type it" : "Transcribing…",
                 persistent: true,
-                announce: !wasActive,
+                // The user started this themself: no attention alert, so a pill
+                // covered by a fullscreen window or Gaming Mode stays covered and
+                // shows only its ember dot. The pill at rest still shows the
+                // filament inline (CoreSurface.dictationInline reads the state).
+                announce: false,
                 data: { source: "voxtype" },
                 actions: recording ? [{ id: "dictation-stop", label: "Stop and type" }, { id: "dictation-cancel", label: "Cancel" }] : [{ id: "dictation-cancel", label: "Cancel" }]
             });
@@ -182,7 +248,11 @@ Singleton {
         }
     }
     onActiveChanged: { publishRow(); cancelForLock(); }
-    onRecordingChanged: if (active) publishRow()
+    onRecordingChanged: {
+        if (recording) startedAt = Date.now();
+        else clearLevels();
+        if (active) publishRow();
+    }
     Connections { target: Config.saved; function onCoreDictationChanged() { root.publishRow(); } }
     Connections {
         target: ShellState

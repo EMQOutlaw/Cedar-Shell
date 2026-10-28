@@ -105,12 +105,19 @@ ShellRoot {
                     Config.set("forestTrails", true);
                     Forest.record("settings", "Settings / Displays", "displays");
                     window.check(Forest.trails.length > 0, "Trails opt-in records navigation");
+                    Forest.dropBreadcrumb("Harness mark");
+                    window.check(Forest.trails[0].kind === "breadcrumb", "Breadcrumbs land on the trail");
                     Canopy.open("audio");
                     Canopy.pin();
                     ShellState.open("settings");
-                    window.check(Canopy.shown && Canopy.pinned, "Pinned Canopy survives another surface");
+                    // One interactive surface: Settings takes it, and the pin
+                    // cannot keep the drop alive behind it (ShellState policy).
+                    window.check(!Canopy.shown && !Canopy.pinned && SettingsService.windowOpen, "Pinned Canopy yields to another surface");
                     Canopy.open("network");
-                    window.check(Canopy.topic === "network" && Canopy.pinned, "Only one pinned surface");
+                    window.check(Canopy.shown && !SettingsService.windowOpen, "Reopening the Canopy dismisses Settings");
+                    Canopy.pin();
+                    Canopy.open("audio");
+                    window.check(Canopy.topic === "audio" && Canopy.pinned, "Only one pinned surface; a topic switch keeps the pin");
                     Config.set("clipboardHistory", true);
                     Clipboard.clear();
                     Clipboard.accept({

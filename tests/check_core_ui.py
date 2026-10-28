@@ -14,5 +14,5 @@ with tempfile.TemporaryDirectory(prefix='cedar-core-ui-') as tmp:
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: Core stable volume' not in output or re.search(r'Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign|FAIL:',output):
         print(output);raise SystemExit(1)
-    if len(list(shots.glob('core-*.png')))<12:print(output);raise SystemExit('Missing Core screenshots')
+    if len(list(shots.glob('core-*.png')))<14:print(output);raise SystemExit('Missing Core screenshots')
     print('PASS: Core rendering, stable volume interaction, priority/stack, timer and OSD fallback')

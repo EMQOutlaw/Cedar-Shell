@@ -63,7 +63,6 @@ Singleton {
                                 : {"month-first": "MMMM d, yyyy", "day-first": "d MMMM yyyy", "iso": "yyyy-MM-dd"};
         return (saved.showWeekday ? Qt.formatDateTime(date, compact ? "ddd" : "dddd") + ", " : "") + Qt.formatDateTime(date, formats[dateStyle]);
     }
-    function barClock(date) { return (saved.barShowDate ? formatDate(date, true) + "  " : "") + formatTime(date); }
     readonly property string timeFormat: clock24 ? "HH:mm" : "h:mm AP"
     function formatTime(date) { return Qt.formatDateTime(date, timeFormat); }
     function timeDigits(date) { return formatTime(date).split(" ")[0]; }
@@ -76,6 +75,11 @@ Singleton {
     readonly property bool barDetached: false
     readonly property bool barIslands: false
     readonly property int barHeight: Math.max(40, Math.min(72, saved.barHeight))
+    // Where the bar lives: along the top, or down the left edge as the slim
+    // Understory bar that the rail grows from. The Core pill is integrated in
+    // the top bar and floats top-centre of the usable area beside the left one.
+    readonly property bool barVertical: saved.barPlacement === "understory"
+    readonly property int barWidth: barVertical ? barHeight : 0
     readonly property real barOpacity: Math.max(0.1, Math.min(1, saved.barOpacity))
     readonly property int barRadius: Math.max(0, Math.min(30, saved.barRadius))
     readonly property int barSpacing: Math.max(0, Math.min(20, saved.barSpacing))
@@ -85,7 +89,7 @@ Singleton {
     function moduleEnabled(name) { return !saved.hiddenBarModules.includes(name); }
     function setModule(name,enabled) { saved.hiddenBarModules=enabled ? saved.hiddenBarModules.filter(n=>n!==name) : [...new Set(saved.hiddenBarModules.concat([name]))]; }
     function resetBar() {
-        saved.barStyle = "cedar"; saved.barHeight = 44; saved.barOpacity = 0.94;
+        saved.barStyle = "cedar"; saved.barPlacement = "top"; saved.barHeight = 44; saved.barOpacity = 0.94;
         saved.barRadius = 16; saved.barSpacing = 6; saved.barMargin = 12; saved.hiddenBarModules = [];
     }
 
@@ -144,7 +148,7 @@ Singleton {
         try { document = JSON.parse(store.text() || "{}"); }
         catch (error) { persistenceMessage = "Preferences contain invalid JSON. Repair the file before saving."; return; }
         if (!document || typeof document !== "object" || Array.isArray(document)) return;
-        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "focusDnd", "focusWhispers", "focusTrails", "focusQuiet", "focusAllowedApps", "focusMinutes", "barHeartwood", "barRootlines", "barKinetic", "barWhispers", "barPulse", "effectIntensity", "motionPreset", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "coreDictation", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin", "notesTilt", "notesToolbar", "notesFadeToolbar", "notesSmoothing", "notesEraser", "notesClipboard", "notesExportDir", "settingsLevel"];
+        const keys = ["applicationTargets", "localOnly", "weatherEnabled", "remoteArtwork", "terminal", "browser", "editor", "files", "latitude", "longitude", "locationName", "weatherAutomatic", "temperatureUnit", "brightnessDevice", "diskPath", "idleLockSeconds", "lockPrivacy", "lockMediaDetails", "lockAgendaDetails", "lockMediaControls", "reducedMotion", "doNotDisturb", "interfaceFont", "dataFont", "fontScale", "panelOpacity", "panelRadius", "ambientIntensity", "wallpaperMode", "wallpaperFolder", "desktopSignature", "notificationsEnabled", "notificationSeconds", "focusDnd", "focusWhispers", "focusTrails", "focusQuiet", "focusAllowedApps", "focusMinutes", "barHeartwood", "barRootlines", "barKinetic", "barWhispers", "barPulse", "effectIntensity", "motionPreset", "hiddenBarModules", "goFavorites", "searchEngine", "performanceMode", "gamingDnd", "gamingIdle", "gamingPower", "gamingBlur", "gamingAnimations", "gamingAutoGameMode", "shieldDnsProvider", "shieldWatchNetwork", "canopyEnabled", "canopyPeek", "forestPulse", "forestEchoes", "forestWhispers", "whisperLedger", "whisperDevices", "whisperQuiet", "whisperBattery", "forestTrails", "clipboardHistory", "audioSpectrum", "coreEnabled", "coreMonitor", "coreVolume", "coreMedia", "coreNotifications", "coreScreenshots", "coreConnections", "corePower", "corePrivacy", "coreWorkspaces", "coreKeyboard", "coreClipboard", "coreWarnings", "coreTemperatureLimit", "coreDiskLimit", "coreDictation", "mainDisplay", "clock24", "dateStyle", "showWeekday", "barShowDate", "barStyle", "barPlacement", "barHeight", "barOpacity", "barRadius", "barSpacing", "barMargin", "notesTilt", "notesToolbar", "notesFadeToolbar", "notesSmoothing", "notesEraser", "notesClipboard", "notesExportDir", "settingsLevel"];
         keys.forEach(key => document[key] = saved[key]);
         document.barStyle = "cedar";
         store.setText(JSON.stringify(document, null, 2) + "\n");
@@ -264,6 +268,7 @@ Singleton {
             property bool showWeekday: true
             property bool barShowDate: true
             property string barStyle: "cedar"
+            property string barPlacement: "top"
             property int barHeight: 44
             property real barOpacity: 0.94
             property int barRadius: 16

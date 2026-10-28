@@ -2,7 +2,6 @@ import QtQuick
 import "../.."
 
 Canvas {
-    id: root
     // Decorative contours, not a geographic map. Draw on resize or palette change.
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()

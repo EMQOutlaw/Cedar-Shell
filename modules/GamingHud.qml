@@ -12,7 +12,6 @@ import "../services"
 // The screen is fixed when the panel is shown, so focus moving mid-way does
 // not remap the window.
 PanelWindow {
-    id: root
     screen: Quickshell.screens.find(s => s.name === Gaming.hudScreen) || Quickshell.screens.find(s => s.name === Config.saved.mainDisplay) || Quickshell.screens[0] || null
     anchors.top: true
     margins.top: Math.round((screen ? screen.height : 1080) * 0.3)

@@ -16,7 +16,7 @@ Scope {
         screen: root.output
         visible: !ShellState.locked && ShellState.panel === "" && root.output.name === ShellState.preferredOutput() && NoticeStore.popups.length > 0
         anchors { top: true; right: true }
-        margins { top: Theme.barHeight + 12; right: 12 }
+        margins { top: (Config.barVertical ? 0 : Theme.barHeight) + 12; right: 12 }
         implicitWidth: Math.min(400, root.output.width - 24)
         implicitHeight: stack.implicitHeight
         exclusionMode: ExclusionMode.Ignore

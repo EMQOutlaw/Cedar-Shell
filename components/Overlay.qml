@@ -4,7 +4,6 @@ import Quickshell.Wayland
 import ".."
 
 PanelWindow {
-    id: root
     required property var output
     required property string panelName
     screen: output

@@ -9,7 +9,6 @@ import "modules"
 import "services"
 
 ShellRoot {
-    readonly property bool applicationThemingEnabled: ApplicationTheming.enabled
     // The longest string argument the notes IPC target accepts (titles, notes and strokes are bounded further by the model).
     readonly property int notesArgumentLimit: 65536
 
@@ -124,6 +123,36 @@ ShellRoot {
         model: Canopy.screen ? [Canopy.screen] : []
         CanopyWindow {}
     }
+    // The Understory on its chosen output; the window unmaps itself once closed.
+    Variants {
+        reloadableId: "cedar-understory-host"
+        model: Understory.screen ? [Understory.screen] : []
+        UnderstoryWindow {}
+    }
+    // Dictation's filament beside the Understory bar, on the main display, while
+    // Voxtype works and the Core pill is not already presenting it (one
+    // animated presentation at a time; the service decides).
+    Variants {
+        reloadableId: "cedar-understory-dictation"
+        model: Dictation.presenter === "understory" && CoreService.hostScreen ? [CoreService.hostScreen] : []
+        UnderstoryDictation {}
+    }
+    IpcHandler {
+        target: "understory"
+        function toggle(): void {
+            if (Config.stage >= 3)
+                Understory.toggle();
+        }
+        function open(): void {
+            Understory.open();
+        }
+        function hide(): void {
+            Understory.close();
+        }
+        function status(): string {
+            return JSON.stringify(Understory.status());
+        }
+    }
     IpcHandler {
         target: "canopy"
         function show(topic: string): void {
@@ -151,8 +180,14 @@ ShellRoot {
                 Canopy.context();
         }
     }
+    // Eager handles: naming these singletons here instantiates them at shell
+    // start — Clipboard's wl-paste capture and Forest's whispers/idle
+    // monitors must run before their panels are ever opened. Not dead code.
     property var forestService: Forest
     property var clipboardService: Clipboard
+    // Convertible must probe at login: on a 2-in-1 the watcher owns the
+    // tablet-mode transition from the first fold. Not dead code.
+    property var convertibleService: Convertible
     // Disable hot reload while locked: never replace the authentication engine.
     settings.watchFiles: !Config.managedSession && !ShellState.locked
     IpcHandler {
@@ -160,6 +195,12 @@ ShellRoot {
         function toggle(): void {
             if (Config.stage >= 3 && !ShellState.locked)
                 Quickshell.execDetached(["qs", "--no-duplicate", "-p", Quickshell.shellPath("wallpaper-picker.qml")]);
+        }
+    }
+    IpcHandler {
+        target: "forest"
+        function breadcrumb(label: string): void {
+            Forest.dropBreadcrumb(String(label).slice(0, 100) || "Marked " + Config.formatTime(new Date()));
         }
     }
     IpcHandler {
@@ -458,8 +499,17 @@ ShellRoot {
         model: Quickshell.screens
         Scope {
             required property var modelData
-            Bar {
-                output: modelData
+            LazyLoader {
+                active: !Config.barVertical
+                component: Bar {
+                    output: modelData
+                }
+            }
+            LazyLoader {
+                active: Config.barVertical
+                component: UnderstoryBar {
+                    output: modelData
+                }
             }
             LazyLoader {
                 active: Config.stage >= 3 && !Config.testMode && !Config.externalBackground

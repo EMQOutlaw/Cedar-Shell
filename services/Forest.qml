@@ -60,10 +60,16 @@ Singleton {
         ledger.setText(JSON.stringify(observations));
         whisper=text;whisperType=type;whisperUntil=now+6000;lastWhisper=now;
     }
-    function silenceWhisper(){if(whisperType)Config.set("whisper"+whisperType[0].toUpperCase()+whisperType.slice(1),false);whisper="";}
     function record(kind,label,target="") {
         if(!Config.saved.forestTrails || ShellState.locked)return;
         trails=Policy.trail(trails,{key:kind+"/"+target,label:String(label).slice(0,100),kind:kind,target:target},Date.now());
+    }
+    // A mark the user drops on the trail, optionally at a past moment picked in
+    // Trail Rewind. Same opt-in and lock-privacy rules as every trail entry.
+    function dropBreadcrumb(label,at=0) {
+        if(!Config.saved.forestTrails || ShellState.locked)return;
+        const stamp=at||Date.now();
+        trails=Policy.trail(trails,{key:"breadcrumb/"+stamp,label:String(label).slice(0,100),kind:"breadcrumb",target:""},stamp);
     }
     function clearTrails(){trails=[];}
     function clearPrivateState(){trails=[];whisper="";echoes=[];lastSignal=null;}

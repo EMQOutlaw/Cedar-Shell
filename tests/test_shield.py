@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('shield', ROOT / 'scripts/shield.py')
@@ -77,6 +78,62 @@ class Dns(unittest.TestCase):
         self.assertIn('ufw --force enable', shield.firewall_commands('ufw', True)[2])
         self.assertEqual(shield.firewall_commands('firewalld', False), ['systemctl', 'disable', '--now', 'firewalld.service'])
         with self.assertRaises(RuntimeError): shield.firewall_commands('none', True)
+
+
+class DnsRecovery(unittest.TestCase):
+    def setUp(self):
+        self.connection = {'uuid': 'fixture-uuid', 'device': 'fixture0'}
+        self.before = {'connection.dns-over-tls': '-1', 'ipv4.dns': '192.0.2.53', 'ipv4.ignore-auto-dns': 'no',
+                       'ipv6.dns': '', 'ipv6.ignore-auto-dns': 'no'}
+        for name, result in [('default_device', 'fixture0'), ('active_connection', self.connection), ('nm_fields', self.before)]:
+            active = patch.object(shield, name, return_value=result)
+            active.start()
+            self.addCleanup(active.stop)
+        self.commands = []
+
+    def request(self):
+        return shield.apply_dns({'mode': 'strict', 'provider': 'cloudflare'}, {'dotSupported': True})
+
+    def test_reapply_timeout_restores_captured_profile_and_reapplies_it(self):
+        def run(argv, **kwargs):
+            self.commands.append(argv)
+            if argv[1:3] == ['device', 'reapply'] and len(self.commands) == 2:
+                raise shield.subprocess.TimeoutExpired(argv, 20)
+            return 'successfully'
+        with patch.object(shield, 'run', side_effect=run), patch.object(shield, 'dns') as verify:
+            with self.assertRaisesRegex(RuntimeError, 'saved NetworkManager DNS profile was restored') as failure:
+                self.request()
+        self.assertIn('Live resolver overrides could not be verified', str(failure.exception))
+        verify.assert_not_called()
+        self.assertEqual(len(self.commands), 4)
+        restored = dict(zip(self.commands[2][4::2], self.commands[2][5::2]))
+        self.assertEqual(restored, {**self.before, 'connection.dns-over-tls': 'default'})
+        self.assertEqual(self.commands[3][1:3], ['device', 'reapply'])
+
+    def test_verification_failure_also_restores_the_profile(self):
+        with patch.object(shield, 'run', side_effect=lambda argv, **kwargs: self.commands.append(argv) or 'successfully'), \
+             patch.object(shield, 'dns', side_effect=OSError('resolver unavailable')):
+            with self.assertRaisesRegex(RuntimeError, 'saved NetworkManager DNS profile was restored'):
+                self.request()
+        self.assertEqual(len(self.commands), 4)
+
+    def test_restore_failure_is_reported_without_claiming_success(self):
+        def run(argv, **kwargs):
+            self.commands.append(argv)
+            if len(self.commands) >= 3:
+                raise shield.subprocess.TimeoutExpired(argv, 20)
+            return 'successfully'
+        with patch.object(shield, 'run', side_effect=run), patch.object(shield, 'dns', return_value={'mode': 'off'}):
+            with self.assertRaisesRegex(RuntimeError, 'could not be restored') as failure:
+                self.request()
+        self.assertNotIn('were restored', str(failure.exception))
+
+    def test_success_does_not_write_a_restore(self):
+        expected = {'mode': 'strict', 'provider': 'cloudflare'}
+        with patch.object(shield, 'run', side_effect=lambda argv, **kwargs: self.commands.append(argv) or 'successfully'), \
+             patch.object(shield, 'dns', return_value=expected):
+            self.assertEqual(self.request(), expected)
+        self.assertEqual(len(self.commands), 2)
 
 if __name__ == '__main__':
     unittest.main()

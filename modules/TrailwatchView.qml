@@ -367,7 +367,6 @@ Rectangle {
             }
         }
         Flickable {
-            id: stack
             ScrollBar.vertical: ScrollBar {
                 policy: ScrollBar.AsNeeded
             }

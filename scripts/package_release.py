@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic complete private candidate; public release requires separate gates."""
 from pathlib import Path
-import argparse,gzip,hashlib,io,json,os,sys,tarfile
+import argparse,gzip,hashlib,io,json,os,tarfile
 from distribution import ROOT,files,Refused
 
 def package(root,destination):

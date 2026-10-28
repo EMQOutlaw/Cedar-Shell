@@ -9,7 +9,7 @@ import ".."
 //
 // Derived from Field Notes by OldJobobo (MIT, see licenses/Field-Notes-MIT.txt).
 QtObject {
-    readonly property bool nerdIcons: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    readonly property bool nerdIcons: Theme.nerdFont
 
     // Chrome: the tool island and its buttons.
     readonly property color text: Theme.text
@@ -17,7 +17,6 @@ QtObject {
     readonly property color danger: Theme.ember
     readonly property color background: Theme.glass
     readonly property color border: Qt.alpha(Theme.teal, .28)
-    readonly property int borderWidth: 1
     readonly property int radius: Theme.controlRadius
     readonly property int cut: Theme.chamfer
 

@@ -58,15 +58,15 @@ Rectangle {
     readonly property bool secondaryActive: Canopy.tabs.indexOf(topic) >= primaryTabs
     property bool moreOpen: false
     onTopicChanged: moreOpen = false
-    readonly property bool nerd: Theme.availableFonts.includes("JetBrainsMono Nerd Font")
+    readonly property bool nerd: Theme.nerdFont
     function tabLabel(value) {
         return ({ audio: "Audio", network: "Connections", bluetooth: "Bluetooth", power: "Power", system: "System", weather: "Sky", calendar: "Time",
-                  clipboard: "Clipboard", notifications: "Notes", quick: "Controls", trails: "Trails", station: "Station", go: "Apps", startup: "Startup", workspaces: "Spaces", keybinds: "Keys" })[value] || value;
+                  clipboard: "Clipboard", notifications: "Notes", quick: "Controls", trails: "Trails", rewind: "Rewind", station: "Station", go: "Apps", startup: "Startup", workspaces: "Spaces", keybinds: "Keys" })[value] || value;
     }
     function tagline(value) {
         return ({ quick: "One place. Everything close.", audio: "What is playing, and where.", bluetooth: "Nearby and paired.", system: "Readings from the station.",
                   weather: "The sky over the station.", calendar: "The days ahead.", clipboard: "What you copied, kept here.", notifications: "What asked for you.",
-                  trails: "Where you have been.", startup: "What rises with the shell.", keybinds: "Every key the station answers to." })[value] || "";
+                  trails: "Where you have been.", rewind: "Walk the day back.", startup: "What rises with the shell.", keybinds: "Every key the station answers to." })[value] || "";
     }
     function sentence(value) { const t = String(value || "").toLowerCase(); return t ? t.charAt(0).toUpperCase() + t.slice(1) + "." : ""; }
     component CanopyTab: StrataButton {
@@ -222,6 +222,7 @@ Rectangle {
                         notifications: notifications,
                         quick: quick,
                         trails: trails,
+                        rewind: rewind,
                         station: station,
                         go: go,
                         startup: startup,
@@ -311,6 +312,10 @@ Rectangle {
     Component {
         id: trails
         TrailCanopy {}
+    }
+    Component {
+        id: rewind
+        RewindCanopy {}
     }
     Component {
         id: power

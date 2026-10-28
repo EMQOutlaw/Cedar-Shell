@@ -7,6 +7,8 @@ import network_policy as policy
 
 class Distribution(unittest.TestCase):
     def setUp(self):
+        native = patch.object(d, "prepare_task_manager", return_value=None)
+        native.start(); self.addCleanup(native.stop)  # Native install is exercised by check_task_manager.py.
         self.temp=tempfile.TemporaryDirectory(prefix='cedar 雨 paths ');self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.env=patch.dict(os.environ,{'HOME':str(self.root/'home'),**{'XDG_'+k+'_HOME':str(self.root/k.lower()) for k in ['CONFIG','DATA','STATE','CACHE']}});self.env.start();self.addCleanup(self.env.stop)
     def test_backup_restore_mode_time_and_conflicts(self):
@@ -149,6 +151,27 @@ class Distribution(unittest.TestCase):
         from redaction import redact
         value=redact('token=syntheticsecret password=example 192.0.2.9 person@example.invalid')
         self.assertNotIn('syntheticsecret',value);self.assertNotIn('person@',value);self.assertNotIn('192.0.2.9',value)
+    def test_redaction_header_json_flag_url_and_ipv6_forms(self):
+        from redaction import redact
+        samples={
+            'Authorization: Bearer abc.def-ghi':'abc.def',
+            'curl -H "authorization=Basic dXNlcjpwYXNz" https://example.invalid':'dXNlcjpwYXNz',
+            'refreshed with bearer eyJhbGc.payload.sig':'eyJhbGc',
+            '{"password": "hunter 2", "api_key":"k1value"}':'hunter',
+            "{'client_secret': 'shhvalue'}":'shhvalue',
+            'run --password hunter2 --db-token abcvalue --api-key=xyzvalue':'hunter2',
+            'fetch https://alice:s3cr3tvalue@example.invalid/path':'s3cr3tvalue',
+            'peer 2001:db8::1 via fe80::1%wlan0 at [2001:db8:0:0:1:0:0:1]:443':'2001:db8',
+            'mapped ::ffff:192.0.2.1':'192.0.2.1',
+        }
+        for sample,secret in samples.items():
+            with self.subTest(sample=sample):
+                self.assertNotIn(secret,redact(sample))
+        value=redact('run --password hunter2 --db-token abcvalue --api-key=xyzvalue {"api_key":"k1value"} fe80::1%wlan0 alice@example.invalid')
+        for secret in ('abcvalue','xyzvalue','k1value','fe80','alice'):
+            self.assertNotIn(secret,value)
+        self.assertIn('--verbose',redact('--password hunter2 --verbose'))
+        self.assertEqual(redact('Oct 28 18:00:01 Foo::bar'),'Oct 28 18:00:01 Foo::bar')
     def selected_source_fixture(self):
         checkout=self.root/'local checkout';(checkout/'scripts').mkdir(parents=True)
         for name in ('shell.qml','Config.qml','scripts/distribution.py'):

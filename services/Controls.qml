@@ -20,6 +20,12 @@ Singleton {
         onResult: value => { root.data=value; root.generation++; }
         onFailed: value => { root.error=value; root.generation++; }
     }
-    Connections { target: ShellState; function onPanelChanged() { if (["control","settings","canopy"].includes(ShellState.panel)) root.refresh(); } }
-    Timer { interval: 10000; running: ["control","settings","canopy"].includes(ShellState.panel) && !Config.testMode; repeat: true; onTriggered: root.refresh() }
+    // Only the controls that display power/night-light state need polling.
+    // Settings is a separate window; ShellState.panel does not own its lifetime.
+    // Transactions and Trailwatch retain their explicit on-demand refreshes.
+    readonly property bool observed: !ShellState.locked && !Config.testMode && (
+        ShellState.panel === "control" || Understory.shown ||
+        (Canopy.shown && Canopy.topic === "quick") ||
+        (SettingsService.open && ["power", "profiles"].includes(SettingsService.page)))
+    Timer { interval: 10000; running: root.observed; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 }

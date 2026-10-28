@@ -57,8 +57,11 @@ class Telemetry(unittest.TestCase):
 
 class SessionLifecycle(unittest.TestCase):
     """CEDAR starts with Hyprland whatever the Omarchy theme; Omarchy's shell is a known overlap."""
-    def exercise(self, action='start', fox=False, normal=True, ready=True, is_locked=False, omarchy_ready=True):
-        calls=[]; running={'fox':fox,'normal':normal}
+    def exercise(self, action='start', fox=False, normal=True, ready=True, is_locked=False, omarchy_ready=True, unlock_after=None):
+        calls=[]; running={'fox':fox,'normal':normal}; lock={'on':is_locked,'sleeps':0}
+        def unlock():
+            lock['sleeps']+=1
+            if unlock_after is not None and lock['sleeps']>=unlock_after: lock['on']=False
         def instances(sel):
             if '--all' in sel: return []
             return [{'pid':1,'config_path':'/users/station/.config/quickshell/cedar/shell.qml'}] if running['fox' if '-c' in sel else 'normal'] else []
@@ -74,8 +77,9 @@ class SessionLifecycle(unittest.TestCase):
         def wait_for(predicate, seconds, step=0.2): return predicate()
         with tempfile.TemporaryDirectory() as tmp, patch.object(session,'RUNTIME',Path(tmp)), patch.object(session,'LOG',Path(tmp)/'shell.log'), \
                 patch.object(session,'selector',return_value=['-c','cedar']), patch.object(session,'omarchy_shell',return_value=Path('/usr/share/omarchy/shell')), \
-                patch.object(session,'omarchy_locked',return_value=is_locked), patch.object(session,'instances',side_effect=instances), patch.object(session,'run',side_effect=run), \
+                patch.object(session,'omarchy_locked',side_effect=lambda: lock['on']), patch.object(session,'instances',side_effect=instances), patch.object(session,'run',side_effect=run), \
                 patch.object(session,'wait_for',side_effect=wait_for), patch.object(session,'supervisors',return_value=[]), \
+                patch.object(session,'RETRY_LIMIT',3), patch.object(session.time,'sleep',side_effect=lambda s: unlock()), \
                 patch.object(session.shutil,'which',side_effect=lambda n: '/usr/bin/'+n), patch.dict(os.environ,{'WAYLAND_DISPLAY':'test'}):
             result=session.main([action])
         return result,calls,running
@@ -131,6 +135,12 @@ class SessionLifecycle(unittest.TestCase):
     def test_guard_keeps_lock_safety_when_deferring(self):
         result,calls,running=self.exercise('reconcile',fox=True,normal=True,is_locked=True)
         self.assertEqual(result,75); self.assertTrue(running['normal'])
+    def test_start_during_boot_lock_retires_omarchy_after_unlock(self):
+        result,calls,running=self.exercise(is_locked=True,unlock_after=2)
+        self.assertEqual(result,0); self.assertEqual(running,{'fox':True,'normal':False})
+    def test_start_never_retires_omarchy_while_still_locked(self):
+        result,calls,running=self.exercise(is_locked=True)
+        self.assertEqual(result,0); self.assertEqual(running,{'fox':True,'normal':True})
     def test_failed_start_gives_omarchy_back(self):
         result,calls,running=self.exercise(ready=False)
         self.assertEqual(result,1)

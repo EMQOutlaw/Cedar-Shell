@@ -1,6 +1,5 @@
 """Versioned discovery for managed shells. Not authority to kill their hosts."""
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import distribution as d

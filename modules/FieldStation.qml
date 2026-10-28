@@ -12,7 +12,7 @@ Rectangle {
     // Bare: hosted inside a surface that already paints the card and the
     // atmosphere (the bar drop), so the station draws only its instruments.
     property bool bare: false
-    readonly property string page: Canopy.stationPage
+    readonly property string page: "overview"
     readonly property bool narrow: width < 680
     readonly property int inset: narrow ? 22 : 36
     readonly property var player: Media.player
@@ -39,7 +39,7 @@ Rectangle {
         reveal = 0;
         entrance.start();
     }
-    NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: 1050 }
+    NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: VisualQuality.ms(Theme.entrance) }
     Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
     onActiveChanged: if (active) enter(); else { entrance.stop(); reveal = 1; }
     Component.onCompleted: if (active) enter()
@@ -139,15 +139,8 @@ Rectangle {
         Flow {
             Layout.fillWidth: true
             spacing: 8
-            StrataButton { text: "Overview"; checked: root.page === "overview"; onClicked: Canopy.stationPage = "overview" }
+            StrataButton { text: "Overview"; checked: root.page === "overview"; onClicked: Canopy.openStation() }
             StrataButton { text: "Desktop environment"; onClicked: { Canopy.close(); Station.openPage("desktop"); } }
-            StrataButton { text: "Tasks & performance"; checked: root.page === "tasks"; onClicked: Canopy.stationPage = "tasks" }
-        }
-        StationTasks {
-            objectName: "stationTasks"
-            Layout.fillWidth: true
-            visible: root.page === "tasks"
-            active: root.active && visible
         }
         ColumnLayout {
             Layout.fillWidth: true
@@ -395,6 +388,12 @@ Rectangle {
                         ShellState.close();
                     }
                 }
+            }
+            StrataButton {
+                objectName: "taskManagerLauncher"
+                text: "Task Manager"
+                hint: "Open the standalone CEDAR Task Manager"
+                onClicked: { TaskManager.launch(); Canopy.shown && Canopy.topic === "station" ? Canopy.close() : ShellState.close(); }
             }
             // Update opens the CEDAR Installer window directly. Its first stage
             // fetches the newest CEDAR with visible steps and turns any stop into

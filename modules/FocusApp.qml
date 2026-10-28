@@ -7,7 +7,6 @@ import "../services"
 // CEDAR Focus' window: a regular toplevel over the Focus service. Closing it
 // changes nothing; the session carries on.
 FloatingWindow {
-    id: root
     title: "CEDAR Focus"
     color: Theme.background
     implicitWidth: 900

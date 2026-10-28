@@ -35,7 +35,10 @@ Singleton {
         else if (osdOpen)
             osdTimer.restart();
     }
+    // Whoever locks (lock(), the lock screen, an external session), every
+    // surface is released here, so nothing waits behind the lock to reopen.
     onLockedChanged: if (locked) {
+        close();
         osdOpen = false;
         osdTimer.stop();
     }
@@ -106,6 +109,32 @@ Singleton {
     function shows(name, screen) {
         return !locked && panel === name && output === screen?.name;
     }
+    // One interactive surface at a time. `panel` names the bar-grown surfaces
+    // (core hub, canopy, understory, the legacy hud/power/themes/... panels);
+    // Settings is a window owned by its service but joins the same policy, so
+    // opening either side dismisses the other. The resting Core pill is not a
+    // surface here: it may stay while any of these shows.
+    function surfaceOwner() {
+        if (locked) return "";
+        if (panel !== "") return panel;
+        if (SettingsService.windowOpen) return "settings";
+        return "";
+    }
+    onPanelChanged: if (panel !== "" && SettingsService.windowOpen) SettingsService.closeApp()
+    // SettingsService watches ShellState too; attach once construction has
+    // settled (next event-loop turn) so the two singletons never instantiate
+    // each other mid-construction — that cycle left other singletons, e.g.
+    // Understory, unresolved on a named output. Nothing can open Settings
+    // before the loop runs, so no transition is missed.
+    Connections {
+        id: settingsWatch
+        target: null
+        function onWindowOpenChanged() {
+            if (SettingsService.windowOpen && root.panel !== "")
+                root.close();
+        }
+    }
+    Component.onCompleted: Qt.callLater(() => { settingsWatch.target = SettingsService; })
     function osd(kind, value, label) {
         osdKind = kind;
         osdValue = value;

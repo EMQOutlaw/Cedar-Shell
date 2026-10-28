@@ -38,8 +38,13 @@ ColumnLayout {
             StationButton { visible: BluetoothService.prompt!=="display"; text: "Reject"; onClicked: { BluetoothService.reply(false,""); code.text=""; } }
         }
     }
+    // Pairing noise: radios that never announced a name are hidden until they
+    // matter — anything paired, connected or pairing always shows, so a
+    // nameless device you own can never become unreachable.
+    readonly property var visibleDevices: BluetoothService.devices.filter(d => d.paired || d.connected || d.pairing || (d.name && d.name !== d.address))
+    readonly property int hiddenDevices: BluetoothService.devices.length - visibleDevices.length
     Repeater {
-        model: BluetoothService.devices
+        model: root.visibleDevices
         ColumnLayout {
             required property var modelData
             Layout.fillWidth: true
@@ -69,5 +74,10 @@ ColumnLayout {
                 StationButton { text: "Cancel"; onClicked: root.confirmForget="" }
             }
         }
+    }
+    GlowText {
+        visible: root.hiddenDevices > 0
+        text: root.hiddenDevices + (root.hiddenDevices === 1 ? " unnamed radio stays" : " unnamed radios stay") + " hidden — only named devices show while pairing."
+        color: Theme.muted; font.pixelSize: 10; Layout.fillWidth: true; wrapMode: Text.WordWrap
     }
 }

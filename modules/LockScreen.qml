@@ -100,7 +100,7 @@ Scope {
         }
     }
     IdleMonitor {
-        enabled: !Config.testMode && !Config.authOnly && !Config.externalIdle && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest && !Gaming.inhibitIdle
+        enabled: !Config.testMode && !Config.authOnly && !Config.externalIdle && Config.idleLockSeconds > 0 && !ShellState.locked && !ShellState.authTest && !Gaming.inhibitIdle && !Awake.held
         timeout: Config.idleLockSeconds
         respectInhibitors: true
         onIsIdleChanged: if (isIdle) ShellState.lock(false)
@@ -112,14 +112,15 @@ Scope {
         function onLockedChanged() {
             if (ShellState.locked && !Config.testMode) {
                 root.hadSecureLock = false;
-                if (Config.omarchyIntegration) fingerprintCheck.send({});
+                // Native locking can use the installed fingerprint PAM service
+                // even when the desktop is running without an Omarchy adapter.
+                fingerprintCheck.send({});
                 lock.locked = true;
                 root.clearInputs();
             }
         }
     }
     PanelWindow {
-        id: testWindow
         visible: ShellState.authTest && !ShellState.locked
         onVisibleChanged: if (visible) testPassword.forceActiveFocus()
         screen: Quickshell.screens.find(s => s.name === ShellState.preferredOutput()) || Quickshell.screens[0]

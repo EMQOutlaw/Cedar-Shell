@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CAVA's real PipeWire spectrum. Lifetime belongs to the visible instrument."""
-import os, shutil, sys, tempfile
+import os, shutil
 if not shutil.which('cava'): raise SystemExit('CAVA is unavailable')
 config='''[general]
 framerate = 30

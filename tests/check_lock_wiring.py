@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the production lock composition with fake PAM and lock transports.
 
-Only native window/lock/idle/PAM boundaries are replaced in a temporary copy.
+Only native window/lock/idle/PAM and enrollment-probe boundaries are replaced in a temporary copy.
 The actual nested delegate, controller binding, terminal and submission handlers
 are used. Nothing calls PAM, creates a Wayland lock or suspends the machine.
 Use --source FILE to verify a historical LockScreen regression.
@@ -18,13 +18,29 @@ with tempfile.TemporaryDirectory(prefix='cedar-lock-wiring-') as tmp:
     controller=re.search(r'LockAuth\s*\{\s*id:\s*(\w+)',qml).group(1)
     qml=qml.replace('import Quickshell.Wayland\n','')
     qml=qml.replace('PamContext {','FakePam {').replace('IdleMonitor {','FakeIdle {')
+    qml=qml.replace('ServiceRequest {\n        id: fingerprintCheck','FakeFingerprintCheck {\n        id: fingerprintCheck')
     qml=qml.replace('PanelWindow {','FloatingWindow {').replace('WlSessionLock {','FakeLock {').replace('WlSessionLockSurface {','Rectangle {')
     qml='\n'.join(line for line in qml.splitlines() if 'WlrLayershell.' not in line and 'exclusionMode:' not in line)
     qml=qml.replace(' && !Config.testMode','').replace('!Config.testMode && ','')
     qml=qml.replace('Quickshell.execDetached(["systemctl", "suspend"]);','throw new Error("Unexpected suspend in wiring test");')
-    qml=qml.replace('id: root','id: root\n    property alias testPam: pam\n    property alias testFingerprint: fingerprintPam\n    property alias testLock: lock\n    property alias testController: '+controller,1)
+    qml=qml.replace('id: root','id: root\n    property alias testPam: pam\n    property alias testFingerprint: fingerprintPam\n    property alias testFingerprintCheck: fingerprintCheck\n    property alias testLock: lock\n    property alias testController: '+controller,1)
     (source/'modules/LockScreen.qml').write_text(qml)
     (source/'modules/FakeIdle.qml').write_text('import QtQuick\nQtObject { property bool enabled:false; property int timeout:0; property bool respectInhibitors:false; property bool isIdle:false }')
+    (source/'modules/FakeFingerprintCheck.qml').write_text('''import QtQuick
+QtObject {
+    id: probe
+    property string script: ""
+    property int sends: 0
+    property bool automatic: true
+    signal result(var value)
+    signal failed(string message)
+    function send(request) { sends++; if (automatic) delivery.restart(); return true; }
+    property Timer delivery: Timer {
+        interval: 50
+        onTriggered: probe.result({available: true})
+    }
+}
+''')
     (source/'modules/FakePam.qml').write_text('''import QtQuick
 QtObject {
     property string config:""
@@ -51,7 +67,8 @@ Item {
     id:host
     default property Component surface
     property bool locked:false
-    readonly property bool secure:locked
+    property bool secureApproved:true
+    readonly property bool secure:locked && secureApproved
     function view(index){return loaders.objectAt(index).item.children[0];}
     property Instantiator loaders: Instantiator {
         model:host.locked ? 2:0
@@ -59,7 +76,7 @@ Item {
     }
 }
 ''')
-    for name in ('FakePam','FakeIdle','FakeLock'):
+    for name in ('FakePam','FakeIdle','FakeLock','FakeFingerprintCheck'):
         with (source/'modules/qmldir').open('a') as f:f.write('\n'+name+' 1.0 '+name+'.qml\n')
     (source/'preview.qml').write_text('''import QtQuick
 import Quickshell
@@ -81,7 +98,9 @@ ShellRoot {
             test.check(first.auth===auth && second.auth===auth,"Both dynamic surfaces receive the production controller");
             test.check(first.terminal.auth===auth && second.terminal.auth===auth,"Controller reaches both password terminals");
             test.check(auth.enabled,"Controller enabled by lock state");
-            screen.fingerprintAvailable=true;
+            test.check(!Config.omarchyIntegration,"Fingerprint detection is tested in a standalone session");
+            const probe=screen.testFingerprintCheck;
+            test.check(probe.sends===1 && screen.fingerprintAvailable,"Standalone native lock probes enrollment and consumes the asynchronous result");
             const fingerprint=screen.testFingerprint;
             test.check(fingerprint.active && fingerprint.starts===1,"Secure lock starts fingerprint PAM");
             test.check(!auth.busy,"Fingerprint scan leaves password usable");
@@ -119,12 +138,31 @@ ShellRoot {
             test.check(!ShellState.locked && !screen.testLock.locked,"Fingerprint success releases secure lock");
             test.check(!pam.active && auth.pendingResponse==="","Fingerprint success cancels password and clears secrets");
             test.check(ShellState.securedUnlocks===2,"Fingerprint unlock validates a secure cycle exactly once");
+            probe.automatic=false;
+            probe.delivery.stop();
+            probe.result({available:false});
+            screen.testLock.secureApproved=false;
+            const startsBeforeSecure=fingerprint.starts;
+            ShellState.lock(false);
+            test.check(probe.sends===3,"Every native lock refreshes enrollment");
+            probe.result({available:true});
+            test.check(!fingerprint.active && fingerprint.starts===startsBeforeSecure,"Enrollment alone cannot start PAM before the lock is secure");
+            screen.testLock.secureApproved=true;
+            test.check(fingerprint.active,"Compositor confirmation starts the detected fingerprint conversation");
+            fingerprint.finish(PamResult.Success);
+            probe.result({available:false});
+            ShellState.lock(false);
+            test.check(probe.sends===4 && !fingerprint.active,"A pending probe leaves password authentication usable");
+            auth.submit("test-response");pam.prompt();pam.finish(PamResult.Success);
+            const startsAfterUnlock=fingerprint.starts;
+            probe.result({available:true});
+            test.check(!ShellState.locked && !fingerprint.active && fingerprint.starts===startsAfterUnlock,"An enrollment result arriving after password unlock cannot start authentication");
             console.log("PASS: production lock wiring, two dynamic surfaces, Enter, failure and retry");Qt.quit();
         }
     }
 }
 ''')
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(base/'runtime'),'XDG_CONFIG_HOME':str(base/'config')}
+    env={**os.environ,'CEDAR_TEST':'1','CEDAR_ADAPTER':'hyprland','CEDAR_OMARCHY_SESSION':'0','CEDAR_EXTERNAL_LOCK':'0','CEDAR_OMARCHY_LOCK':'','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(base/'runtime'),'XDG_CONFIG_HOME':str(base/'config')}
     result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=15)
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: production lock wiring' not in output or re.search(r'FAIL:|Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|Unable to assign',output):

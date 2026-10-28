@@ -40,6 +40,7 @@ AudioCanopy 1.0 AudioCanopy.qml
 CalendarCanopy 1.0 CalendarCanopy.qml
 NotificationCanopy 1.0 NotificationCanopy.qml
 TrailCanopy 1.0 TrailCanopy.qml
+RewindCanopy 1.0 RewindCanopy.qml
 ClipboardCanopy 1.0 ClipboardCanopy.qml
 KeybindsCanopy 1.0 KeybindsCanopy.qml
 WeatherCanopy 1.0 WeatherCanopy.qml
@@ -76,7 +77,6 @@ StationApp 1.0 StationApp.qml
 StationPages 1.0 StationPages.qml
 CompatibilityPage 1.0 CompatibilityPage.qml
 WorkspaceCanopy 1.0 WorkspaceCanopy.qml
-StationTasks 1.0 StationTasks.qml
 
 ApplicationThemingSettings 1.0 ApplicationThemingSettings.qml
 CalendarConnections 1.0 CalendarConnections.qml
@@ -87,3 +87,9 @@ ProfileSettings 1.0 ProfileSettings.qml
 PrivacySettings 1.0 PrivacySettings.qml
 SecuritySettings 1.0 SecuritySettings.qml
 AdvancedSettings 1.0 AdvancedSettings.qml
+UnderstoryWindow 1.0 UnderstoryWindow.qml
+UnderstoryRail 1.0 UnderstoryRail.qml
+UnderstorySettings 1.0 UnderstorySettings.qml
+UnderstoryBar 1.0 UnderstoryBar.qml
+UnderstoryDictation 1.0 UnderstoryDictation.qml
+NurserySettings 1.0 NurserySettings.qml

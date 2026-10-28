@@ -424,9 +424,6 @@ class Engine:
     def last_log(self):
         return log_module.latest(self.state_dir / 'logs')
 
-    def previous(self):
-        return ops.describe_state(ops.load_state(self.state_path))
-
 
 # ------------------------------------------------------------------ server
 def serve(source):

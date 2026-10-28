@@ -7,7 +7,6 @@ import "../services"
 // Gaming's transaction. It reads Gaming.steps and nothing else; the words
 // below are the card's whole vocabulary for this mode.
 TransactionHudCard {
-    id: root
     readonly property bool forGame: Gaming.trigger === "gamemode" && !leave
     leave: Gaming.hudMode === "leave"
     settled: Gaming.hudSettled

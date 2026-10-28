@@ -7,7 +7,6 @@ import "../services"
 // CEDAR Profiles' window: a regular toplevel over the Profiles service. It
 // is a presentation; closing it changes no profile.
 FloatingWindow {
-    id: root
     title: "CEDAR Profiles"
     color: Theme.background
     implicitWidth: 1000

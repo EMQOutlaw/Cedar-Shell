@@ -49,7 +49,6 @@ Singleton {
     }
     function disconnect() { run({ action: "disconnect" }, "Disconnecting…"); }
     function setOption(key, value) { run({ action: "config", key: key, value: value }, "Saving…"); }
-    function signOut() { run({ action: "signout" }, "Signing out…"); }
     // Password and 2FA belong to Proton's own prompt; CEDAR never sees them.
     function signIn() {
         Quickshell.execDetached(Config.terminal.concat(["-e", "sh", "-c", "read -rp 'Proton username: ' u && protonvpn signin \"$u\"; printf '\\nPress Enter to close. '; read -r _"]));

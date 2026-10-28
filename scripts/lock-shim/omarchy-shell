@@ -1,0 +1,3 @@
+#!/bin/sh
+# Scoped to Omarchy's sleep monitor; all other IPC stays with its stock helper.
+exec python3 "$(dirname "$0")/../lock_bridge.py" "$@"

@@ -177,10 +177,9 @@ session; the development sandbox cannot access those sockets.
 Reference APIs: [Quickshell focus grabs](https://quickshell.org/docs/v0.3.0/types/Quickshell.Hyprland/HyprlandFocusGrab/),
 [Open-Meteo forecast variables](https://open-meteo.com/en/docs).
 
-Field Station owns performance monitoring: Overview and Tasks & performance
-share the Strata palette with Signals and Quick Controls. The retired System
-drop redirects to Field Station’s task page, including its existing IPC and
-menu entry. See [Station](STATION.md) for the task monitor’s data sources.
+Field Station retains its Overview and shared system summaries. The old System
+route opens the independent [CEDAR Task Manager](TASK-MANAGER.md), as does the
+single Task Manager utility action in Field Station.
 
 Calendar now supports opt-in read-only Google, Proton and Nextcloud subscription links,
 local ICS imports, day selection and a cached agenda. See [CALENDAR.md](CALENDAR.md).

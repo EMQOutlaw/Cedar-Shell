@@ -60,7 +60,7 @@ FocusScope {
     Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
     function consumeRequest() { if (Shield.requestedPage) { navigate(Shield.requestedPage); Shield.requestedPage = ""; } }
     Connections { target: Shield; function onRequestedPageChanged() { root.consumeRequest(); } }
-    Component.onCompleted: { consumeRequest(); enter(1050); }
+    Component.onCompleted: { consumeRequest(); enter(VisualQuality.ms(Theme.entrance)); }
     onPageChanged: enter(700)
     onDetailChanged: enter(700)
 
@@ -370,6 +370,64 @@ FocusScope {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop
                     Layout.preferredWidth: hero.wide ? hero.width - hero.columnSpacing - Math.round((hero.width - hero.columnSpacing) * .44) : hero.width
                     spacing: 16
+                    // The panic posture: one gesture hides the desktop in the brush.
+                    Frame {
+                        id: thicketFrame
+                        order: 2
+                        Layout.fillWidth: true
+                        topLineColor: Thicket.engaged ? Theme.ember : Theme.teal
+                        stroke: Qt.alpha(Thicket.engaged ? Theme.ember : Theme.teal, Thicket.engaged ? .45 : .25)
+                        padding: 18
+                        function holdState(id) {
+                            if (Thicket.busy) { const s = Thicket.stepState(id); return s === "active" ? "HELD" : s === "failed" ? "FAILED" : s === "restored" ? "RELEASED" : s === "unavailable" ? "UNAVAILABLE" : "…"; }
+                            return Thicket.engaged ? "HELD" : "WILL HOLD";
+                        }
+                        RowLayout { Layout.fillWidth: true
+                            SectionMark { text: "THE THICKET"; tone: Thicket.engaged ? Theme.ember : Theme.teal }
+                            Item { Layout.fillWidth: true }
+                            GlowText { visible: Thicket.engaged; text: "SHELTERED SINCE " + Config.formatTime(new Date(Thicket.engagedAt)); font.pixelSize: 9; font.letterSpacing: 1.2; color: Theme.ember } }
+                        GlowText { text: Thicket.summary; font.family: Theme.labelFont; font.pixelSize: Math.round(17 * Theme.fontScale); font.weight: Font.DemiBold; color: Thicket.engaged ? Theme.ember : Theme.text; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        ColumnLayout { Layout.fillWidth: true; spacing: 4
+                            Repeater {
+                                model: Thicket.registry
+                                RowLayout {
+                                    required property var modelData
+                                    Layout.fillWidth: true; spacing: 8
+                                    Rectangle { width: 5; height: 5; radius: 3; color: thicketFrame.holdState(modelData.id) === "HELD" ? Theme.ember : thicketFrame.holdState(modelData.id) === "FAILED" ? Theme.danger : Theme.strataMuted; opacity: thicketFrame.holdState(modelData.id) === "WILL HOLD" ? .5 : 1; Layout.alignment: Qt.AlignVCenter }
+                                    GlowText { Layout.fillWidth: true; text: modelData.label; font.pixelSize: Theme.small; color: Theme.strataText }
+                                    GlowText { text: thicketFrame.holdState(modelData.id); font.pixelSize: 9; font.letterSpacing: 1.4; color: thicketFrame.holdState(modelData.id) === "HELD" ? Theme.ember : thicketFrame.holdState(modelData.id) === "FAILED" ? Theme.danger : Theme.muted }
+                                }
+                            }
+                        }
+                        // Press-and-hold, never a bare tap: the meter fills in
+                        // 900 ms and only then does the posture change.
+                        Item {
+                            id: thicketGesture
+                            Layout.fillWidth: true; Layout.preferredHeight: 44; Layout.topMargin: 4
+                            property real holdProgress: 0
+                            Accessible.role: Accessible.Button
+                            Accessible.name: Thicket.engaged ? "Leave the Thicket: press and hold to release every hold" : "Enter the Thicket: press and hold to engage five privacy holds"
+                            ChamferFrame { anchors.fill: parent; cut: 8; fill: Qt.alpha(Thicket.engaged ? Theme.green : Theme.ember, .08); stroke: Qt.alpha(Thicket.engaged ? Theme.green : Theme.ember, .55) }
+                            Rectangle {
+                                anchors.left: parent.left; anchors.bottom: parent.bottom
+                                anchors.leftMargin: 10; anchors.bottomMargin: 4
+                                width: Math.max(0, (parent.width - 20) * thicketGesture.holdProgress); height: 2; radius: 1
+                                color: Thicket.engaged ? Theme.green : Theme.ember
+                            }
+                            GlowText { anchors.centerIn: parent; text: Thicket.busy ? "WORKING…" : Thicket.engaged ? "LEAVE THE THICKET" : "ENTER THE THICKET"; font.family: Theme.labelFont; font.pixelSize: 13; font.weight: Font.DemiBold; font.letterSpacing: 2.4; color: Thicket.engaged ? Theme.green : Theme.ember }
+                            Timer { id: thicketHold; interval: 30; repeat: true; onTriggered: { thicketGesture.holdProgress = Math.min(1, thicketGesture.holdProgress + 30 / 900); if (thicketGesture.holdProgress >= 1) { thicketHold.stop(); thicketGesture.holdProgress = 0; Thicket.toggle(); } } }
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: !Thicket.busy
+                                cursorShape: Qt.PointingHandCursor
+                                onPressed: { thicketGesture.holdProgress = 0; thicketHold.start(); }
+                                onReleased: { thicketHold.stop(); thicketGesture.holdProgress = 0; }
+                                onCanceled: { thicketHold.stop(); thicketGesture.holdProgress = 0; }
+                            }
+                        }
+                        GlowText { text: "Press and hold · one guarded transaction · failure restores the first four holds; the lock is always last and stays yours to open."; font.pixelSize: 10; color: Theme.muted; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        GlowText { visible: Thicket.error !== ""; text: Thicket.error; font.pixelSize: Theme.small; color: Theme.danger; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                    }
                     // What to do next, only while there is something to do.
                     Frame {
                         id: nextStepFrame
@@ -472,7 +530,6 @@ FocusScope {
         ColumnLayout {
             readonly property var p: Shield.protection(root.detail) || Shield.protections[0]
             readonly property string id: p.id
-            readonly property bool hasControls: !!({ firewall: 1, dns: 1, wifi: 1, ipv6: 1, discovery: 1, exposure: 1, lock: 1, idle: 1, local: 1, clipboard: 1, trails: 1 })[id]
             spacing: 20
             PageTitle {
                 crumb: "PROTECTIONS / " + p.group.toUpperCase()

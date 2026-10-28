@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """CEDAR command, guarded activation, and non-destructive recovery."""
-import argparse
 import fcntl
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -185,28 +183,6 @@ def rollback():
     journal['status']='rolled-back';write_json(candidate,journal)
     print('Previous theme and startup integration restored; CEDAR data is retained.')
 
-def main():
-    parser=argparse.ArgumentParser(description='CEDAR Shell')
-    parser.add_argument('action',nargs='?',default='status',choices=['activate','status','ipc','migrate','recover','uninstall','rollback'])
-    parser.add_argument('arguments',nargs=argparse.REMAINDER)
-    args=parser.parse_args()
-    if args.action=='activate':activate()
-    elif args.action=='rollback':rollback()
-    elif args.action=='ipc':os.execvp('qs',['qs','-c','cedar','ipc','call',*args.arguments])
-    elif args.action=='migrate':
-        from migrate import migrate
-        print('Migration journal: '+migrate()['backup']+'/journal.json')
-    elif args.action=='recover':
-        if len(args.arguments)!=1:raise RuntimeError('Usage: cedar recover PATH/TO/journal.json')
-        unlocked()
-        if instances('cedar'):raise RuntimeError('Select another theme before recovering migrated preferences.')
-        remaining=recover(args.arguments[0]);print('Recovery complete; modified files preserved: '+str(len(remaining)))
-    elif args.action=='uninstall':
-        from legacy_omarchy_install import uninstall
-        uninstall()
-    else:
-        print('CEDAR running: '+str(bool(instances('cedar'))))
-        print('Legacy shell running: '+str(bool(instances('foxfire'))))
 
 if __name__=='__main__':
     from distribution import main as distribution_main

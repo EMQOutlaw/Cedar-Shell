@@ -37,7 +37,7 @@ FocusScope {
     function enter(duration) { entrance.stop(); if (Theme.reducedMotion || Config.testMode) { reveal = 1; return; } entrance.duration = duration; reveal = 0; entrance.start(); }
     NumberAnimation { id: entrance; target: root; property: "reveal"; from: 0; to: 1; duration: 1050 }
     Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
-    Component.onCompleted: { consumeRequest(); enter(1050); }
+    Component.onCompleted: { consumeRequest(); enter(VisualQuality.ms(Theme.entrance)); }
     onPageChanged: enter(700)
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape || (event.key === Qt.Key_W && event.modifiers & Qt.ControlModifier)) { root.closed(); event.accepted = true; }
@@ -232,7 +232,7 @@ FocusScope {
                     Layout.fillWidth: true; Layout.alignment: Qt.AlignTop
                     SectionMark { text: "FIELD STATION"; tone: Theme.strataAccent }
                     GlowText { text: "Performance readings, processes and application windows live in Field Station."; Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.strataMuted }
-                    StrataButton { text: "Open tasks & performance"; onClicked: { Station.closeApp(); Canopy.openStation("tasks"); } }
+                    StrataButton { text: "Open Task Manager"; onClicked: { Station.closeApp(); TaskManager.launch(); } }
                 }
             }
             Frame {

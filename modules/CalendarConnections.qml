@@ -9,7 +9,7 @@ ColumnLayout {
     property string provider: "google"
     property bool importing: false
     property string editingId: ""
-    property string chosenColor: "#62b89a"
+    property string chosenColor: Theme.calendarColors[0]
     spacing: 10
     readonly property var providerNames: ({ google: "Google", proton: "Proton", nextcloud: "Nextcloud" })
     // Only a calendar's own address (not a public share link) needs an app password.
@@ -96,7 +96,7 @@ ColumnLayout {
         visible: !root.editingId
         GlowText { text: "Color"; color: Theme.strataMuted; font.pixelSize: Theme.small }
         Repeater {
-            model: ["#62b89a", "#79abd9", "#d7ac69", "#bb8aca"]
+            model: Theme.calendarColors
             StrataButton { required property string modelData; text: root.chosenColor === modelData ? "●" : "○"; accent: modelData; checked: root.chosenColor === modelData; Accessible.name: "Calendar color " + modelData; onClicked: root.chosenColor = modelData }
         }
     }

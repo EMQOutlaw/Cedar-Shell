@@ -150,6 +150,15 @@ ColumnLayout {
     }
 
     SettingsSection {
+        objectName: "overlay"
+        visible: root.ready
+        heading: "On screen"
+        caption: "While Voxtype listens, the Core pill becomes the microphone's filament, green in a quiet room and ember when it hears you, then carries one light along it while the words are typed. Voxtype also has an overlay of its own at the bottom of the screen; one is enough."
+        StationToggle { Layout.fillWidth: true; label: "Dictation in the Core pill"; description: "The filament, the elapsed time and a Signals row with Stop and Cancel. Off leaves the bar microphone and the keybinds."; checked: Config.saved.coreDictation && Config.saved.coreEnabled; busy: !Config.saved.coreEnabled; onToggled: value => Config.set("coreDictation", value) }
+        StationToggle { Layout.fillWidth: true; label: "Voxtype's own overlay"; description: "Voxtype's bottom-of-screen window. Turn it off when the Core pill shows dictation, so there is one indicator."; checked: root.v("osd.enabled", true) === true; busy: !root.editable; onToggled: value => Dictation.set("osd.enabled", value) }
+    }
+
+    SettingsSection {
         objectName: "notifications"
         visible: root.ready
         heading: "Notifications"

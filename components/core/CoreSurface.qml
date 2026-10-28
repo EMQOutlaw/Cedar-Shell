@@ -26,6 +26,10 @@ Item {
     readonly property bool canopyHere: !integrated && Canopy.shown && !Canopy.standalone
     // The slider owns the resting pill: label, dots, Heartwood and hint all yield to it.
     readonly property bool volumeInline: volume && !panel && !canopyHere
+    // Dictation takes the resting pill the same way: the filament replaces the
+    // label while Voxtype listens or transcribes. A slider or a panel wins, and
+    // only the presenter the service named draws it (Dictation.presenter).
+    readonly property bool dictationInline: Dictation.active && Dictation.presenter === "core" && !volumeInline && !panel && !canopyHere
     property bool hoverDismissed: false
     readonly property bool peek: hovering && !hoverDismissed && !volume && !root.canopyHere
     // A notification arriving unfolds from the pill on its own for the popup
@@ -63,7 +67,7 @@ Item {
     onDetailedChanged: if (!detailed) dismissOpening()
     // Settled background activity (e.g. media playing) leaves the pill at rest; only
     // something asking for attention, an ongoing capture, or a live control widens it.
-    readonly property bool signalling: alert || volume || CoreService.recording || CoreService.privacy.length > 0 || CoreService.timer.active || root.canopyHere || (!integrated && !!Forest.whisper)
+    readonly property bool signalling: alert || volume || dictationInline || CoreService.recording || CoreService.privacy.length > 0 || CoreService.timer.active || root.canopyHere || (!integrated && !!Forest.whisper)
     readonly property bool showNetwork: !integrated && Config.moduleEnabled("network") && !panel
     readonly property real nubWidth: showNetwork ? networkStatus.implicitWidth : 0
     readonly property real nubSpace: showNetwork ? nubWidth + 6 : 0
@@ -304,7 +308,7 @@ Item {
         hint: root.integrated ? "Signals" : "Quick Controls"
         // The hint names the resting control only; over a peek, the hub or the
         // slider it would sit on the content.
-        ToolTip.visible: header.hovered && hint !== "" && !root.panel && !root.volumeInline
+        ToolTip.visible: header.hovered && hint !== "" && !root.panel && !root.volumeInline && !root.dictationInline
         enabled: !ShellState.locked
         checked: root.integrated ? root.detailed : Canopy.shown && Canopy.topic === "quick"
         onClicked: { heartwood.pulse(); root.toggleHeader(); }
@@ -356,7 +360,7 @@ Item {
                 width: Math.min(implicitWidth, availableWidth)
                 spacing: title.visible && value.visible ? 7 : 0
                 clip: true
-                visible: !root.volumeInline
+                visible: !root.volumeInline && !root.dictationInline
                 KineticLabel {
                     id: title
                     visible: root.labelTitle !== ""
@@ -392,7 +396,7 @@ Item {
                 anchors.right: parent.right; anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
-                visible: !root.panel && !(root.volume && !root.canopyHere) && root.dots.length > 0
+                visible: !root.panel && !(root.volume && !root.canopyHere) && !root.dictationInline && root.dots.length > 0
                 Accessible.role: Accessible.StaticText
                 Accessible.name: CoreService.rows.length + " active signals"
                 Repeater {
@@ -430,6 +434,16 @@ Item {
                 PathLine { x: 0; y: 6 }
             }
         }
+    }
+    // Dictation replaces the text inside the pill while Voxtype works; the
+    // Heartwood keeps its seat at the left.
+    CoreDictation {
+        objectName: "coreDictation"
+        visible: root.dictationInline
+        x: pill.x + (Config.saved.barHeartwood ? 8 + Math.min(24, root.restingHeight - 10) + 10 : 12)
+        width: pill.x + pill.width - 12 - x
+        height: Math.min(26, root.restingHeight - 6)
+        y: (root.restingHeight - height) / 2
     }
     // Volume and brightness replace the text inside the pill; no second row.
     CoreVolume {

@@ -7,7 +7,8 @@ shell. When Omarchy is installed its shell is a known overlap: CEDAR lets it
 finish loading (stopping a Quickshell mid-incubation segfaults it), then stops
 it through its own supervisor so it exits cleanly and is not relaunched.
 
-  start      start CEDAR if it is not running; retire the Omarchy shell
+  start      start CEDAR if it is not running; retire the Omarchy shell, waiting
+             out a lock screen (the boot lock) before it does
   restart    restart CEDAR in place (after an update); never while locked
   reconcile  only retire an Omarchy shell that appeared beside CEDAR
   stop       stop CEDAR and give the Omarchy shell back when Omarchy is here
@@ -31,6 +32,9 @@ STATE = Path(os.environ.get('XDG_STATE_HOME') or HOME / '.local/state')
 RUNTIME = Path(os.environ.get('XDG_RUNTIME_DIR') or '/run/user/%d' % os.getuid())
 LOG = STATE / 'cedar/shell.log'
 UNIT = 'cedar-shell'
+# How long start keeps retrying when Omarchy's shell may not be stopped yet (locked, loading).
+RETRY_SECONDS = 5
+RETRY_LIMIT = 6 * 3600 // RETRY_SECONDS
 # Left behind by a pre-1.8 session or by the installer's own probes. CEDAR_SHELL_PATH
 # makes the old `qs` shim answer for one release path; LC_ALL=C is the installer's
 # parsing locale, not the desktop's. Neither may reach the probes or the shell.
@@ -303,9 +307,21 @@ def main(argv):
         print('No Wayland session in this environment.', file=sys.stderr)
         return 0 if action == 'reconcile' else 1
     RUNTIME.mkdir(parents=True, exist_ok=True)
+    result = locked(ACTIONS[action])
+    if action in ('start', 'restart') and result == 0:
+        # At boot Omarchy's locker can hold the session, so its shell was left running.
+        # Nothing else retries after the unlock; keep reconciling until it is retired.
+        for _ in range(RETRY_LIMIT):
+            if locked(reconcile) != 75:
+                break
+            time.sleep(RETRY_SECONDS)
+    return result
+
+
+def locked(action):
     with (RUNTIME / 'cedar-session.lock').open('w') as mutex:
         fcntl.flock(mutex, fcntl.LOCK_EX)
-        return ACTIONS[action]()
+        return action()
 
 
 if __name__ == '__main__':

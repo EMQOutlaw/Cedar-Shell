@@ -13,7 +13,7 @@ CEDAR is a complete desktop shell for Hyprland: a bar, quick controls, a calenda
   <img src="docs/images/calendar.png" alt="Calendar" width="49%">
 </p>
 
-![Settings](docs/images/settings.png)
+![CEDAR Settings — Appearance and bundled themes](docs/images/settings.png)
 
 ## Requirements
 
@@ -44,6 +44,16 @@ set, CEDAR can use its installed preferred app; kitty is the first terminal
 fallback after your selected terminal, XDG terminal provider and `$TERMINAL`.
 These apps are optional and are not downloaded automatically.
 
+## Task Manager
+
+Open **Field Station → Task Manager**, find **CEDAR Task Manager** in your
+application launcher, or run `cedar-task-manager`. It opens independently with
+live hardware metrics, searchable processes, protected process controls and
+user-service inspection. Field Station keeps its existing Overview.
+
+See [Task Manager](docs/TASK-MANAGER.md) for source builds, optional NVIDIA
+telemetry, shortcut registration and process-control limitations.
+
 ## Update
 
 Open **Field Station → Update CEDAR**, or run:
@@ -63,7 +73,7 @@ Every install leaves a backup in `~/.local/state/cedar/installations/`.
 
 ## Learn more
 
-[Installation](docs/INSTALLATION.md) · [Keybinds](docs/KEYBINDS.md) · [Calendar](docs/CALENDAR.md) · [Privacy](docs/PRIVACY.md) · [Shield](docs/SHIELD.md) · [Gaming Mode](docs/GAMING.md) · [Recovery](docs/RECOVERY.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
+[Installation](docs/INSTALLATION.md) · [Keybinds](docs/KEYBINDS.md) · [Calendar](docs/CALENDAR.md) · [Privacy](docs/PRIVACY.md) · [Shield](docs/SHIELD.md) · [Gaming Mode](docs/GAMING.md) · [Understory](docs/UNDERSTORY.md) · [Recovery](docs/RECOVERY.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 ## License
 
