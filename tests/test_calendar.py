@@ -8,6 +8,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
@@ -106,6 +107,22 @@ class CalendarParser(unittest.TestCase):
         with self.assertRaises(ical.CalendarError): self.read(feed('UID:backwards\nDTSTART:20261002T090000Z\nDTEND:20261001T090000Z'))
 
 
+    def test_quoted_parameters_keep_semicolons_and_colons(self):
+        events, _ = ical.parse(feed('UID:q\nDTSTART:20261012T140000Z\nATTENDEE;CN="Doe; Jane";ROLE=REQ-PARTICIPANT:mailto:jane@example.com\nX-LOC;LABEL="a:b;c":v'))
+        params, value = events[0]['ATTENDEE'][0]
+        self.assertEqual(params, {'CN': 'Doe; Jane', 'ROLE': 'REQ-PARTICIPANT'})
+        self.assertEqual(value, 'mailto:jane@example.com')
+        self.assertEqual(events[0]['X-LOC'][0], ({'LABEL': 'a:b;c'}, 'v'))
+
+    def test_long_semicolon_runs_and_names_fail_fast(self):
+        for line in ['X' + ';' * 1000000 + ':v', 'X' * (ical.MAX_NAME + 1) + ':v']:
+            raw = ('BEGIN:VCALENDAR\r\n' + line + '\r\nEND:VCALENDAR\r\n').encode()
+            began = time.monotonic()
+            with self.assertRaises(ical.CalendarError): ical.parse(raw)
+            self.assertLess(time.monotonic() - began, 1)
+        ical.parse(('BEGIN:VCALENDAR\r\nX' + ';A=1' * ical.MAX_PARAMS + ':v\r\nEND:VCALENDAR\r\n').encode())
+
+
 class CalendarConnections(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
@@ -145,6 +162,18 @@ class CalendarConnections(unittest.TestCase):
         self.assertEqual(result['events'][0]['title'], 'Private event')
         self.assertTrue(result['events'][0]['stale'])
         self.assertEqual(result['sources'][0]['status'], 'error')
+
+    def test_refresh_attempt_is_saved_before_fetching(self):
+        with patch.object(service, 'fetch', return_value=self.raw): source_id = self.call('connect')['sources'][0]['id']
+        path = self.cache / (source_id + '.json')
+        before = json.loads(path.read_text()).get('attemptedAt', 0)
+        seen = []
+        def hang(source):
+            seen.append(json.loads(path.read_text())['attemptedAt'])
+            raise ical.CalendarError('Provider unavailable')
+        with patch.object(service, 'fetch', side_effect=hang): self.call('refresh', force=True)
+        self.assertEqual(len(seen), 1)
+        self.assertGreater(seen[0], before)
 
     def test_offline_never_connects_and_empty_snapshot_is_supported(self):
         (self.private.parent / 'settings.json').write_text('{"localOnly":true}')

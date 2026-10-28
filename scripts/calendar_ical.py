@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 MAX_BYTES = 2 * 1024 * 1024
 MAX_EVENTS = 5000
 MAX_DAYS = 366 * 150
+MAX_NAME = 1000
+MAX_PARAMS = 64
 WEEKDAYS = {'MO': 0, 'TU': 1, 'WE': 2, 'TH': 3, 'FR': 4, 'SA': 5, 'SU': 6}
 
 
@@ -29,6 +31,19 @@ def local_zone():
 
 def text(value):
     return re.sub(r'\\([nN,;\\])', lambda m: '\n' if m[1] in 'nN' else m[1], str(value))
+
+
+def split_property(head):
+    """Split a property head on unquoted semicolons in one linear pass."""
+    bits, start, quoted = [], 0, False
+    for index, char in enumerate(head):
+        if char == '"': quoted = not quoted
+        elif char == ';' and not quoted:
+            bits.append(head[start:index]); start = index + 1
+            if len(bits) > MAX_PARAMS: raise CalendarError('Calendar property has too many parameters.')
+    bits.append(head[start:])
+    if len(bits[0]) > MAX_NAME: raise CalendarError('Calendar property name is too long.')
+    return bits
 
 
 def parse(raw):
@@ -52,7 +67,7 @@ def parse(raw):
             elif char == ':' and not quoted: separator = index; break
         if separator < 0: raise CalendarError('Malformed calendar property.')
         head, value = line[:separator], line[separator + 1:]
-        bits = re.split(r';(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)', head)
+        bits = split_property(head)
         name = bits[0].upper()
         params = {}
         for bit in bits[1:]:
