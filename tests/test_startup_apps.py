@@ -44,6 +44,23 @@ class StartupApps(unittest.TestCase):
         self.assertEqual((row['source'],row['kind'],row['removable'],row['enabled'],row['icon']),('cedar','app',True,True,'editor'))
         result=self.request({'action':'add_app','id':'missing.desktop'});self.assertFalse(result['ok'])
         result=self.request({'action':'add_app','id':'../escape.desktop'});self.assertFalse(result['ok'])
+    def test_hidden_line_breaks_cannot_smuggle_keys(self):
+        for sep in ['\r','\u2028','\u2029','\x85','\x1c','\x1e','\x0b','\x0c']:
+            (self.data/'applications/cedar-smuggle.desktop').write_bytes(('[Desktop Entry]\nType=Application\nName=Notes'+sep+'Exec=evil\nExec=/usr/bin/good\n').encode())
+            result=self.request({'action':'add_app','id':'cedar-smuggle.desktop'});self.assertTrue(result['ok'],result)
+            path=self.config/'autostart/cedar-smuggle.desktop';lines=path.read_bytes().decode().split('\n')
+            self.assertEqual([l for l in lines if l.startswith('Exec=')],['Exec=/usr/bin/good'],repr(sep))
+            self.assertNotIn('evil',path.read_text(encoding='utf-8'),repr(sep))
+            self.assertEqual(self.rows(result)['cedar-smuggle.desktop']['exec'],'/usr/bin/good',repr(sep))
+            path.unlink()
+        path=self.config/'autostart/cedar-crafted.desktop';path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(('[Desktop Entry]\r\nType=Application\r\nName=Crafted\r\nComment=x\u2028Exec=evil\r\nGenericName=y\rExec=evil\r\nExec=/usr/bin/good\r\n').encode())
+        rows=self.rows(self.request({'action':'set_enabled','id':'cedar-crafted.desktop','enabled':False}))
+        self.assertFalse(rows['cedar-crafted.desktop']['enabled']);self.assertEqual(rows['cedar-crafted.desktop']['exec'],'/usr/bin/good')
+        lines=path.read_bytes().decode().split('\n')
+        self.assertEqual([l for l in lines if l.startswith('Exec=')],['Exec=/usr/bin/good'],'Toggling never turns a hidden break into a real key')
+        self.assertIn('Comment=x\u2028Exec=evil',lines,'Unrelated lines are preserved unsplit')
+        self.assertFalse(self.request({'action':'add_command','command':'echo hi\u2028rm -rf ~'})['ok'])
     def test_add_command_quotes_and_wraps_shell_syntax(self):
         rows=self.rows(self.request({'action':'add_command','command':'echo hi && sleep 1'}))
         path=self.config/'autostart/cedar-echo.desktop';text=path.read_text()

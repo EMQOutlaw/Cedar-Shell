@@ -1,7 +1,7 @@
 { lib, stdenv, makeWrapper, pkg-config, python3, quickshell, hyprland, systemd, coreutils, qt6, src }:
 stdenv.mkDerivation {
   pname = "cedar-shell";
-  version = "1.15";
+  version = "1.17";
   inherit src;
   nativeBuildInputs = [ makeWrapper pkg-config python3 qt6.wrapQtAppsHook ];
   buildInputs = [ qt6.qtbase qt6.qtdeclarative ];

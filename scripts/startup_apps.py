@@ -13,6 +13,8 @@ import distribution as storage
 
 DESKTOP_SUFFIX = '.desktop'
 SYSTEMD_TIMEOUT = 4
+# The desktop-entry spec forbids control characters; U+2028/U+2029 are line breaks to Python but not GLib.
+UNSAFE_CHARS = re.compile('[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029]')
 
 
 def config_home():
@@ -42,16 +44,31 @@ def valid_id(value):
     return isinstance(value, str) and value.endswith(DESKTOP_SUFFIX) and '/' not in value and not value.startswith('.') and len(value) > len(DESKTOP_SUFFIX)
 
 
+def read_desktop(path):
+    # read_text() would translate a lone '\r' into a line break; GLib does not.
+    return path.read_bytes().decode('utf-8', errors='replace')
+
+
+def desktop_lines(text):
+    """Split like GLib's key-file reader: only on newline, dropping a trailing carriage return."""
+    lines = [l[:-1] if l.endswith('\r') else l for l in text.split('\n')]
+    if lines and lines[-1] == '':
+        lines.pop()
+    return lines
+
+
 def parse_desktop(path):
     """Read the [Desktop Entry] group; locale keys keep their raw form."""
     entry, group = {}, None
     try:
-        text = path.read_text(encoding='utf-8', errors='replace')
+        text = read_desktop(path)
     except OSError:
         return None
-    for line in text.splitlines():
+    for line in desktop_lines(text):
         s = line.strip()
         if not s or s.startswith('#'):
+            continue
+        if UNSAFE_CHARS.search(s):
             continue
         if s.startswith('['):
             group = s
@@ -278,7 +295,7 @@ def add_command(name, command):
     command = str(command or '').strip()
     if not command:
         raise ValueError('Type a command to run at login.')
-    if '\n' in command:
+    if '\n' in command or UNSAFE_CHARS.search(command):
         raise ValueError('A startup command is a single line.')
     try:
         words = shlex.split(command)
@@ -286,7 +303,7 @@ def add_command(name, command):
         raise ValueError('That command has unbalanced quotes: ' + str(error)) from None
     if not words:
         raise ValueError('Type a command to run at login.')
-    name = str(name or '').strip() or words[0].rsplit('/', 1)[-1]
+    name = UNSAFE_CHARS.sub(' ', str(name or '').replace('\n', ' ')).strip() or words[0].rsplit('/', 1)[-1]
     # Shell syntax runs through sh so pipes, &&, variables and redirects behave.
     needs_shell = any(ch in command for ch in '|&;<>$`*?~(){}')
     exec_line = 'sh -c ' + shlex.quote(command) if needs_shell else ' '.join(shlex.quote(w) for w in words)
@@ -296,7 +313,7 @@ def add_command(name, command):
     while target.exists():
         target = user_dir() / (base + '-' + str(n) + DESKTOP_SUFFIX)
         n += 1
-    lines = ['[Desktop Entry]', 'Type=Application', 'Name=' + name.replace('\n', ' '), 'Comment=Startup command added in CEDAR',
+    lines = ['[Desktop Entry]', 'Type=Application', 'Name=' + name, 'Comment=Startup command added in CEDAR',
              'Exec=' + exec_line, 'Icon=utilities-terminal', 'Terminal=false', 'StartupNotify=false', 'X-CEDAR-Startup=true', 'X-CEDAR-Command=true']
     write_entry(target, lines)
     return snapshot(name + ' will run at your next login.')
@@ -317,8 +334,8 @@ def set_enabled(app_id, enabled):
     if enabled and override_only and row['overrides']:
         target.unlink(missing_ok=True)
         return snapshot(row['name'] + ' will start next session.')
-    text = target.read_text(encoding='utf-8', errors='replace')
-    lines = [l for l in text.splitlines() if not re.match(r'\s*(Hidden|X-GNOME-Autostart-enabled)\s*=', l)]
+    text = read_desktop(target)
+    lines = [l for l in desktop_lines(text) if not re.match(r'\s*(Hidden|X-GNOME-Autostart-enabled)\s*=', l)]
     if not enabled:
         at = next((i for i, l in enumerate(lines) if l.strip() == '[Desktop Entry]'), -1)
         lines.insert(at + 1, 'Hidden=true')

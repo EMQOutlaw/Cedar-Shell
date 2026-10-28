@@ -201,6 +201,8 @@ def snapshot(sources, request, refresh=False, force_id=None):
         due = time.time() - cached.get('attemptedAt', 0) >= REFRESH_SECONDS
         if allowed and source.get('enabled', True) and not imported and (force_id == source['id'] or refresh and (request.get('force') or due)):
             cached['attemptedAt'] = time.time()
+            # Persist the attempt first so a feed that hangs or kills the helper is throttled.
+            atomic(path, json.dumps(cached).encode())
             try:
                 raw = fetch(source)
                 rows = expand(raw, begin, end)
