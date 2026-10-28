@@ -44,6 +44,11 @@ def valid_id(value):
     return isinstance(value, str) and value.endswith(DESKTOP_SUFFIX) and '/' not in value and not value.startswith('.') and len(value) > len(DESKTOP_SUFFIX)
 
 
+def read_desktop(path):
+    # read_text() would translate a lone '\r' into a line break; GLib does not.
+    return path.read_bytes().decode('utf-8', errors='replace')
+
+
 def desktop_lines(text):
     """Split like GLib's key-file reader: only on newline, dropping a trailing carriage return."""
     lines = [l[:-1] if l.endswith('\r') else l for l in text.split('\n')]
@@ -56,7 +61,7 @@ def parse_desktop(path):
     """Read the [Desktop Entry] group; locale keys keep their raw form."""
     entry, group = {}, None
     try:
-        text = path.read_text(encoding='utf-8', errors='replace')
+        text = read_desktop(path)
     except OSError:
         return None
     for line in desktop_lines(text):
@@ -329,7 +334,7 @@ def set_enabled(app_id, enabled):
     if enabled and override_only and row['overrides']:
         target.unlink(missing_ok=True)
         return snapshot(row['name'] + ' will start next session.')
-    text = target.read_text(encoding='utf-8', errors='replace')
+    text = read_desktop(target)
     lines = [l for l in desktop_lines(text) if not re.match(r'\s*(Hidden|X-GNOME-Autostart-enabled)\s*=', l)]
     if not enabled:
         at = next((i for i, l in enumerate(lines) if l.strip() == '[Desktop Entry]'), -1)
