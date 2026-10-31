@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-settings-window-') as tmp:
     env = {
         **os.environ,
         'CEDAR_TEST': '1',
-        'QT_QPA_PLATFORM': 'offscreen',
+        'QT_LOGGING_RULES': 'qml.debug=true', 'QT_QPA_PLATFORM': 'offscreen',
         'QT_QPA_PLATFORMTHEME': 'basic',
         'QT_QUICK_CONTROLS_STYLE': 'Basic',
         'QT_QUICK_BACKEND': 'software',

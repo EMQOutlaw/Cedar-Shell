@@ -13,7 +13,7 @@ def main():
     binaries=build_task_manager.build()
     with tempfile.TemporaryDirectory(prefix='cedar-task-check-') as tmp:
         base=Path(tmp);runtime=base/'runtime';runtime.mkdir(mode=0o700)
-        env={**os.environ,'XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state'),'QT_FORCE_STDERR_LOGGING':'1','QT_QPA_PLATFORM':'offscreen','QT_QUICK_BACKEND':'software','QT_QUICK_CONTROLS_STYLE':'Basic','QT_QPA_PLATFORMTHEME':'basic','HYPRLAND_INSTANCE_SIGNATURE':''}
+        env={**os.environ,'XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state'),'QT_FORCE_STDERR_LOGGING':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QUICK_BACKEND':'software','QT_QUICK_CONTROLS_STYLE':'Basic','QT_QPA_PLATFORMTHEME':'basic','HYPRLAND_INSTANCE_SIGNATURE':''}
         flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Core','Qt6Network'],text=True))
         subprocess.run(['g++','-std=c++20','-O1','-fPIC','-DQT_NO_KEYWORDS',str(ROOT/'native/taskmanager/collector.cpp'),str(ROOT/'native/taskmanager/collector_tests.cpp'),*flags,'-o',str(base/'unit')],check=True,capture_output=True)
         result=subprocess.run([str(base/'unit')],env=env,capture_output=True,text=True);assert result.returncode==0,result.stdout+result.stderr;print(result.stdout.strip())

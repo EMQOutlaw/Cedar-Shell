@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-surface-policy-') as tmp:
     qml = '\n'.join(line for line in qml.splitlines() if not any(token in line for token in ('WlrLayershell.', 'exclusionMode:', 'anchors.top:', 'anchors.left:', 'margins.top:', 'margins.left:')))
     assert not re.search(r'\bRegion \{', qml) and 'mask:' not in qml, 'CoreWindow mask block not rewritten for offscreen'
     core.write_text(qml)
-    env = {**os.environ, 'CEDAR_TEST': '1', 'QT_QPA_PLATFORM': 'offscreen:configfile=' + str(screens), 'QT_QPA_PLATFORMTHEME': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QSG_RHI_BACKEND': 'software', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(p / 'config'), 'XDG_STATE_HOME': str(p / 'state')}
+    env = {**os.environ, 'CEDAR_TEST': '1', 'QT_LOGGING_RULES': 'qml.debug=true', 'QT_QPA_PLATFORM': 'offscreen:configfile=' + str(screens), 'QT_QPA_PLATFORMTHEME': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QSG_RHI_BACKEND': 'software', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(p / 'config'), 'XDG_STATE_HOME': str(p / 'state')}
     env.pop('WAYLAND_DISPLAY', None)
     for name, marker in (('SurfacePolicyHarness', 'PASS: surface policy'), ('CoveredCoreHarness', 'PASS: covered core')):
         # Each harness gets fresh preferences and state: nothing one run saved leaks into the next.

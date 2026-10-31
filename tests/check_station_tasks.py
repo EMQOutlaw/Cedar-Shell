@@ -42,7 +42,7 @@ ShellRoot {
     }
 }
 ''')
-    env={**os.environ,'QT_FORCE_STDERR_LOGGING':'1','CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_BACKEND':'software','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
+    env={**os.environ,'QT_FORCE_STDERR_LOGGING':'1','CEDAR_TEST':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_BACKEND':'software','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
     try: result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=25)
     except subprocess.TimeoutExpired as error:
         raise SystemExit('Field Station harness timeout: '+str(error.stdout)+' '+str(error.stderr))

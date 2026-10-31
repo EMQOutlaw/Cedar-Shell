@@ -181,7 +181,7 @@ ShellRoot {
     }
 }
 ''')
-    env = {**os.environ, 'CEDAR_TEST': '1', 'CEDAR_INSTALLER_FIXTURE': '1', 'CEDAR_INSTALLER_SOURCE': str(source), 'QT_QPA_PLATFORM': 'offscreen', 'QT_QPA_PLATFORMTHEME': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QSG_RHI_BACKEND': 'software', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(p / 'config'), 'XDG_STATE_HOME': str(p / 'state'), 'CEDAR_SCREENSHOT_DIR': str(shots), 'QS_DISABLE_FILE_WATCHER': '1'}
+    env = {**os.environ, 'CEDAR_TEST': '1', 'CEDAR_INSTALLER_FIXTURE': '1', 'CEDAR_INSTALLER_SOURCE': str(source), 'QT_LOGGING_RULES': 'qml.debug=true', 'QT_QPA_PLATFORM': 'offscreen', 'QT_QPA_PLATFORMTHEME': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QSG_RHI_BACKEND': 'software', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(p / 'config'), 'XDG_STATE_HOME': str(p / 'state'), 'CEDAR_SCREENSHOT_DIR': str(shots), 'QS_DISABLE_FILE_WATCHER': '1'}
     result = subprocess.run(['qs', '-p', str(source / 'installer-preview.qml')], env=env, capture_output=True, text=True, timeout=60)
     output = result.stdout + result.stderr
     if result.returncode or 'PASS: CEDAR Installer stages' not in output or re.search(r'Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign|FAIL:', output):

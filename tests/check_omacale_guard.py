@@ -60,7 +60,7 @@ ShellRoot {
     }
 }
 ''')
-    env={**os.environ,'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','XDG_RUNTIME_DIR':str(runtime)}
+    env={**os.environ,'QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','XDG_RUNTIME_DIR':str(runtime)}
     result=subprocess.run(['qs','-p',str(base/'check.qml')],env=env,text=True,capture_output=True,timeout=10)
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: Omacale watcher pause' not in output or re.search(r'FAIL:|ReferenceError|TypeError|Failed to load configuration|Binding loop',output):

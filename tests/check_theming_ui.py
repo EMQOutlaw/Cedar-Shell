@@ -35,7 +35,7 @@ ShellRoot {
   Timer { interval:20000; running:true; onTriggered:{console.error("FAIL timeout: "+page.message);Qt.exit(1);} }
  }
 }''')
-    env={**os.environ,'PATH':str(bin_dir)+os.pathsep+os.environ.get('PATH',''),'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software',
+    env={**os.environ,'PATH':str(bin_dir)+os.pathsep+os.environ.get('PATH',''),'CEDAR_TEST':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software',
          'XDG_CONFIG_HOME':str(cfg),'XDG_DATA_HOME':str(p/'data'),'XDG_STATE_HOME':str(p/'state'),'XDG_RUNTIME_DIR':str(runtime)}
     r=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=25)
     output=r.stdout+r.stderr

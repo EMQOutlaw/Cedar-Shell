@@ -41,7 +41,7 @@ ShellRoot {
     }
 }
 '''.replace('STATE', json.dumps(str(state))))
-    env={**os.environ,'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','XDG_RUNTIME_DIR':str(runtime)}
+    env={**os.environ,'QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','XDG_RUNTIME_DIR':str(runtime)}
     proc=subprocess.Popen(['qs','-p',str(base/'check.qml')],env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
     output='';deadline=time.monotonic()+20
     while time.monotonic()<deadline and proc.poll() is None:

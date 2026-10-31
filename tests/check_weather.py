@@ -49,7 +49,7 @@ ShellRoot {
     }
 }
 ''')
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state'),'XDG_CACHE_HOME':str(p/'cache')}
+    env={**os.environ,'CEDAR_TEST':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state'),'XDG_CACHE_HOME':str(p/'cache')}
     result=subprocess.run(['qs','-p',str(source/'check.qml')],env=env,capture_output=True,text=True,timeout=10)
     out=result.stdout+result.stderr
     if result.returncode or 'PASS: automatic weather' not in out or re.search('FAIL:|TypeError|ReferenceError|Binding loop|Unable to assign',out):print(out);raise SystemExit(1)

@@ -43,7 +43,7 @@ ShellRoot {
     }
 }
 ''')
-    env={**os.environ,'CEDAR_TEST':'1','CEDAR_OMARCHY_SESSION':'1','CEDAR_SESSION_STATUS':str(status),'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
+    env={**os.environ,'CEDAR_TEST':'1','CEDAR_OMARCHY_SESSION':'1','CEDAR_SESSION_STATUS':str(status),'QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
     result=subprocess.run(['qs','-p',str(source/'session-check.qml')],env=env,text=True,capture_output=True,timeout=12)
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: external lock mirror' not in output or re.search(r'FAIL:|ReferenceError|TypeError|Failed to load configuration|Binding loop',output):

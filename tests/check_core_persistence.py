@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-timer-') as tmp:
     p=Path(tmp);source=p/'shell';shutil.copytree(ROOT,source,ignore=shutil.ignore_patterns('__pycache__','.git'))
     runtime=p/'runtime';runtime.mkdir(mode=0o700);(source/'preview.qml').write_text(QML)
     settings=p/'state/cedar';settings.mkdir(parents=True)
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state')}
+    env={**os.environ,'CEDAR_TEST':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state')}
     for mode in ('write','reload','elapsed'):
         if mode=='elapsed':
             data=json.loads((settings/'core-timer.json').read_text());data.update(paused=False,deadline=time.time()*1000-1000)

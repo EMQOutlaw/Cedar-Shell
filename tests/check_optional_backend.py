@@ -34,7 +34,7 @@ ShellRoot {
     } }
 }
 ''')
-    env = {**os.environ, 'CEDAR_TEST':'1', 'CEDAR_LOCAL_ONLY':'1', 'QT_QPA_PLATFORM':'offscreen',
+    env = {**os.environ, 'CEDAR_TEST':'1', 'CEDAR_LOCAL_ONLY':'1', 'QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen',
            'QT_QPA_PLATFORMTHEME':'basic', 'QT_QUICK_CONTROLS_STYLE':'Basic',
            'XDG_RUNTIME_DIR':str(runtime), 'XDG_CONFIG_HOME':str(base/'config'), 'XDG_STATE_HOME':str(base/'state')}
     result = subprocess.run(['qs','-p',str(source/'optional-check.qml')], env=env, capture_output=True, text=True, timeout=10)

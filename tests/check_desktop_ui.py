@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-ui-') as tmp:
     fixture={'roles':[{**r,'current':'zen.desktop' if r['id']=='browser' else 'dev.zed.Zed.desktop','mixed':False,'recommended':['zen.desktop','dev.zed.Zed.desktop']} for r in roles], 'apps':[{'id':'zen.desktop','label':'Zen Browser'},{'id':'dev.zed.Zed.desktop','label':'Zed'}]}
     harness=harness.replace('DEFAULT_APPS_FIXTURE',json.dumps(fixture))
     (source/'preview.qml').write_text(harness)
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic',
+    env={**os.environ,'CEDAR_TEST':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic',
          'QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software','XDG_RUNTIME_DIR':str(runtime),
          'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state'),'CEDAR_SCREENSHOT_DIR':str(shots)}
     result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=45)

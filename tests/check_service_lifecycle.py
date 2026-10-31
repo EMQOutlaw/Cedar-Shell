@@ -184,7 +184,7 @@ def main():
         for name in ("control", "calendar_service", "core_probe"):
             (base / "scripts" / f"{name}.py").write_text(HELPER)
         (base / "audit.qml").write_text(HARNESS)
-        env = {**os.environ, "QT_QPA_PLATFORM": "offscreen", "QT_QUICK_BACKEND": "software",
+        env = {**os.environ, "QT_LOGGING_RULES": "qml.debug=true", "QT_QPA_PLATFORM": "offscreen", "QT_QUICK_BACKEND": "software",
                "QSG_RENDER_LOOP": "basic", "QT_QPA_PLATFORMTHEME": "basic", "QT_QUICK_CONTROLS_STYLE": "Basic",
                "XDG_RUNTIME_DIR": str(base / "runtime"), "XDG_CONFIG_HOME": str(base / "config"),
                "XDG_STATE_HOME": str(base / "state"), "XDG_CACHE_HOME": str(base / "cache")}

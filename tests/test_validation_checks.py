@@ -26,14 +26,14 @@ class ValidationChecks(unittest.TestCase):
             '#!' + sys.executable + '\n'
             'import json, os\n'
             'print(json.dumps({key: os.environ.get(key) for key in '
-            '["QT_QUICK_BACKEND", "QSG_RHI_BACKEND", "QSG_RENDER_LOOP", "QSG_USE_SIMPLE_ANIMATION_DRIVER", "CEDAR_FIXTURE_SENTINEL"]}))\n'
+            '["QT_QUICK_BACKEND", "QSG_RHI_BACKEND", "QSG_RENDER_LOOP", "QSG_USE_SIMPLE_ANIMATION_DRIVER", "CEDAR_FIXTURE_SENTINEL", "QT_LOGGING_RULES"]}))\n'
         )
         fake_qs.chmod(0o755)
         # The shell service exports the threaded loop; a check launched from it
         # must not inherit that (the software renderer crashes in Shapes).
         inherited = {'QT_QUICK_BACKEND': 'rhi', 'QSG_RHI_BACKEND': 'software',
                      'QSG_RENDER_LOOP': 'threaded', 'QSG_USE_SIMPLE_ANIMATION_DRIVER': '1',
-                     'CEDAR_FIXTURE_SENTINEL': 'retained'}
+                     'CEDAR_FIXTURE_SENTINEL': 'retained', 'QT_LOGGING_RULES': 'qt.qpa.*=false'}
         with patch.dict(os.environ, inherited):
             for explicit_env in (None, dict(os.environ)):
                 with self.subTest(explicit_env=explicit_env is not None):
@@ -43,6 +43,8 @@ class ValidationChecks(unittest.TestCase):
                     self.assertEqual(actual['QSG_RENDER_LOOP'], 'basic')
                     self.assertIsNone(actual['QSG_USE_SIMPLE_ANIMATION_DRIVER'])
                     self.assertEqual(actual['CEDAR_FIXTURE_SENTINEL'], 'retained')
+                    # Quickshell 0.3.2 hides console.log unless the qml category is enabled; the person's own rules stay.
+                    self.assertEqual(actual['QT_LOGGING_RULES'], 'qt.qpa.*=false;qml.debug=true')
                     for key, value in inherited.items():
                         self.assertEqual(os.environ[key], value)
                     if explicit_env is not None:

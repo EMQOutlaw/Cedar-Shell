@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-calendar-ui-') as tmp:
     (source / 'preview.qml').write_text(harness)
     runtime = base / 'runtime'; runtime.mkdir(mode=0o700)
     shots = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else base / 'shots'; shots.mkdir(parents=True, exist_ok=True)
-    env = {**os.environ, 'CEDAR_TEST': '1', 'QT_QPA_PLATFORM': 'offscreen', 'QT_QPA_PLATFORMTHEME': 'basic',
+    env = {**os.environ, 'CEDAR_TEST': '1', 'QT_LOGGING_RULES': 'qml.debug=true', 'QT_QPA_PLATFORM': 'offscreen', 'QT_QPA_PLATFORMTHEME': 'basic',
            'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QSG_RHI_BACKEND': 'software', 'QSG_RENDER_LOOP': 'basic',
            'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(base / 'config'), 'XDG_STATE_HOME': str(base / 'state'), 'CEDAR_SCREENSHOT_DIR': str(shots)}
     try: result = subprocess.run(['qs', '-p', str(source / 'preview.qml')], env=env, capture_output=True, text=True, timeout=20)

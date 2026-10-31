@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-host-check-') as tmp:
     screens=p/'screens.json';screens.write_text(json.dumps({'screens':[{'name':'DP-1','width':1280,'height':720},{'name':'DP-2','x':1280,'width':1920,'height':1080}]}))
     harness=(ROOT/'tests/core/HostHarness.qml').read_text().replace('"../.."','"."').replace('"../../','"')
     (source/'preview.qml').write_text(harness)
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen:configfile='+str(screens),'QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state')}
+    env={**os.environ,'CEDAR_TEST':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen:configfile='+str(screens),'QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QSG_RHI_BACKEND':'software','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state')}
     result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=15)
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: Core host identity' not in output or re.search(r'Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|is not defined|Unable to assign|FAIL:|has crashed',output):

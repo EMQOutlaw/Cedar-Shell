@@ -67,7 +67,7 @@ def main():
         (source / "audit.qml").write_text(HARNESS)
         env = {**os.environ, "CEDAR_TEST": "1", "CEDAR_LOCAL_ONLY": "1",
                "CEDAR_FIXTURE_WIDTH": str(args.width), "CEDAR_FIXTURE_HEIGHT": str(args.height),
-               "QT_QPA_PLATFORM": "offscreen", "QT_QUICK_BACKEND": "software", "QSG_RENDER_LOOP": "basic",
+               "QT_LOGGING_RULES": "qml.debug=true", "QT_QPA_PLATFORM": "offscreen", "QT_QUICK_BACKEND": "software", "QSG_RENDER_LOOP": "basic",
                "QT_QPA_PLATFORMTHEME": "basic", "QT_QUICK_CONTROLS_STYLE": "Basic",
                "XDG_RUNTIME_DIR": str(base / "runtime"), "XDG_CONFIG_HOME": str(base / "config"),
                "XDG_CACHE_HOME": str(base / "cache"), "XDG_STATE_HOME": str(base / "state")}

@@ -57,7 +57,7 @@ def main():
             env = {
                 **os.environ, "CEDAR_TEST": "1", "CEDAR_LOCAL_ONLY": "1",
                 "CEDAR_STRATA_WIDTH": str(width), "CEDAR_SCREENSHOT_DIR": str(shots),
-                "QT_QPA_PLATFORM": "offscreen:configfile=" + str(screens),
+                "QT_LOGGING_RULES": "qml.debug=true", "QT_QPA_PLATFORM": "offscreen:configfile=" + str(screens),
                 "QT_QPA_PLATFORMTHEME": "basic", "QT_QUICK_CONTROLS_STYLE": "Basic",
                 "QT_QUICK_BACKEND": "software", "QSG_RENDER_LOOP": "basic", "XDG_RUNTIME_DIR": str(runtime),
                 "XDG_CONFIG_HOME": str(run / "config"), "XDG_STATE_HOME": str(run / "state"),

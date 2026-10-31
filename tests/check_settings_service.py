@@ -8,7 +8,7 @@ with tempfile.TemporaryDirectory(prefix='cedar-settings-service-') as tmp:
     runtime=p/'runtime';runtime.mkdir(mode=0o700)
     harness=(ROOT/'tests/core/SettingsServiceHarness.qml').read_text().replace('"../.."','"."').replace('"../../','"')
     (source/'preview.qml').write_text(harness)
-    env={**os.environ,'CEDAR_TEST':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QT_QUICK_BACKEND':'software','QSG_RENDER_LOOP':'basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state')}
+    env={**os.environ,'CEDAR_TEST':'1','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','QT_QUICK_BACKEND':'software','QSG_RENDER_LOOP':'basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(p/'config'),'XDG_STATE_HOME':str(p/'state')}
     try:
         result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=30)
     except subprocess.TimeoutExpired as error:

@@ -162,7 +162,7 @@ ShellRoot {
     }
 }
 ''')
-    env={**os.environ,'CEDAR_TEST':'1','CEDAR_ADAPTER':'hyprland','CEDAR_OMARCHY_SESSION':'0','CEDAR_EXTERNAL_LOCK':'0','CEDAR_OMARCHY_LOCK':'','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(base/'runtime'),'XDG_CONFIG_HOME':str(base/'config')}
+    env={**os.environ,'CEDAR_TEST':'1','CEDAR_ADAPTER':'hyprland','CEDAR_OMARCHY_SESSION':'0','CEDAR_EXTERNAL_LOCK':'0','CEDAR_OMARCHY_LOCK':'','QT_LOGGING_RULES':'qml.debug=true', 'QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(base/'runtime'),'XDG_CONFIG_HOME':str(base/'config')}
     result=subprocess.run(['qs','-p',str(source/'preview.qml')],env=env,capture_output=True,text=True,timeout=15)
     output=result.stdout+result.stderr
     if result.returncode or 'PASS: production lock wiring' not in output or re.search(r'FAIL:|Failed to load configuration|ReferenceError|TypeError|Binding loop|Cannot assign|Unable to assign',output):

@@ -31,7 +31,7 @@ with tempfile.TemporaryDirectory(prefix='understory-') as tmp, tempfile.Temporar
     shots = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else p / 'shots'; shots.mkdir(parents=True, exist_ok=True)
     harness = (ROOT / 'tests/core/UnderstoryHarness.qml').read_text().replace('"../.."', '"."').replace('"../../', '"')
     (source / 'preview.qml').write_text(harness)
-    env = {**os.environ, 'CEDAR_TEST': '1', 'QT_QPA_PLATFORM': 'offscreen', 'QT_QPA_PLATFORMTHEME': 'basic', 'QT_IM_MODULE': 'compose', 'QSG_RENDER_LOOP': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QSG_RHI_BACKEND': 'software', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(p / 'config'), 'XDG_STATE_HOME': str(p / 'state'), 'CEDAR_SCREENSHOT_DIR': str(shots)}
+    env = {**os.environ, 'CEDAR_TEST': '1', 'QT_LOGGING_RULES': 'qml.debug=true', 'QT_QPA_PLATFORM': 'offscreen', 'QT_QPA_PLATFORMTHEME': 'basic', 'QT_IM_MODULE': 'compose', 'QSG_RENDER_LOOP': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic', 'QSG_RHI_BACKEND': 'software', 'XDG_RUNTIME_DIR': str(runtime), 'XDG_CONFIG_HOME': str(p / 'config'), 'XDG_STATE_HOME': str(p / 'state'), 'CEDAR_SCREENSHOT_DIR': str(shots)}
     env.pop('WAYLAND_DISPLAY', None)
     result = subprocess.run(['qs', '-p', str(source / 'preview.qml')], env=env, capture_output=True, text=True, timeout=40)
     output = result.stdout + result.stderr

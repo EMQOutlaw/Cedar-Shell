@@ -86,6 +86,10 @@ def validation_command(argv,timeout=90,env=None):
     environment['QSG_RENDER_LOOP']='basic'
     environment.pop('QSG_USE_SIMPLE_ANIMATION_DRIVER',None)
     environment['QS_DISABLE_FILE_WATCHER']='1'
+    # Quickshell 0.3.2 logs QML console.log through the "qml" category at debug
+    # level, hidden by default; the checks read their PASS/OK markers from it.
+    # Inherited rules are kept; older Quickshell already prints these lines.
+    environment['QT_LOGGING_RULES']=';'.join(filter(None,[environment.get('QT_LOGGING_RULES'),'qml.debug=true']))
     process=subprocess.Popen(argv,text=True,errors='replace',stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                              env=environment,start_new_session=True)
     def stop_group():
@@ -357,7 +361,7 @@ def validate_imports(root):
         svg.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#101E19"/></svg>')
         imports='\n'.join('import '+r['name'] for r in read_json(root/'data/dependencies.json')['modules'] if r.get('status')=='required')
         probe.write_text(imports+'\nShellRoot { property var svg: Image { source: '+json.dumps(svg.as_uri())+' } Timer { interval: 200; running: true; onTriggered: { if (svg.status === Image.Ready) console.log("CEDAR_IMPORTS_OK"); else console.error("SVG image support unavailable"); Qt.quit(); } } }\n')
-        env={**os.environ,'CEDAR_TEST':'1','CEDAR_LOCAL_ONLY':'1','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
+        env={**os.environ,'CEDAR_TEST':'1','CEDAR_LOCAL_ONLY':'1','QT_LOGGING_RULES':'qml.debug=true','QT_QPA_PLATFORM':'offscreen','QT_QPA_PLATFORMTHEME':'basic','QT_QUICK_CONTROLS_STYLE':'Basic','XDG_RUNTIME_DIR':str(runtime),'XDG_CONFIG_HOME':str(base/'config'),'XDG_STATE_HOME':str(base/'state')}
         output=validation_command(['qs','-p',str(probe)],timeout=15,env=env)
         if 'CEDAR_IMPORTS_OK' not in output:
             raise Refused('Existing Quickshell/Qt lacks a required import or image plugin. Its runtime was not replaced. Review cedar doctor and the dependency manifest. Details: '+output[-1500:])

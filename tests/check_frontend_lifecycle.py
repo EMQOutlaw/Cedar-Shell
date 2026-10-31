@@ -278,7 +278,7 @@ QtObject {
     (source / 'audit.qml').write_text(HARNESS)
     env = {**os.environ, 'CEDAR_TEST': '1', 'CEDAR_LOCAL_ONLY': '1',
            'CEDAR_AUDIT_NATIVE': '1' if args.native else '0',
-           'QT_QPA_PLATFORM': 'wayland' if args.native else 'offscreen',
+           'QT_LOGGING_RULES': 'qml.debug=true', 'QT_QPA_PLATFORM': 'wayland' if args.native else 'offscreen',
            'QT_QPA_PLATFORMTHEME': 'basic', 'QT_QUICK_CONTROLS_STYLE': 'Basic',
            'XDG_CONFIG_HOME': str(base / 'config'), 'XDG_STATE_HOME': str(base / 'state'),
            'XDG_CACHE_HOME': str(base / 'cache')}
