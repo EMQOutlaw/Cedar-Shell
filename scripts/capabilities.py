@@ -135,8 +135,13 @@ def gpu():
 
 def power():
     ppd_active, _ = unit_state('power-profiles-daemon.service')
+    # Fedora 41+: tuned-ppd serves net.hadess.PowerProfiles and ships powerprofilesctl.
+    tuned_ppd_active, _ = unit_state('tuned-ppd.service')
     tuned_active, _ = unit_state('tuned.service')
-    provider = 'power-profiles-daemon' if ppd_active == 'active' and shutil.which('powerprofilesctl') else 'tuned' if tuned_active == 'active' else 'none'
+    have_ctl = bool(shutil.which('powerprofilesctl'))
+    provider = ('power-profiles-daemon' if ppd_active == 'active' and have_ctl
+                else 'tuned-ppd' if tuned_ppd_active == 'active' and have_ctl
+                else 'tuned' if tuned_active == 'active' else 'none')
     return dict(provider=provider, profiles=bool(provider != 'none'))
 
 

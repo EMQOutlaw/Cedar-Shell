@@ -390,7 +390,8 @@
         "scripts/control.py",
         "services/Go.qml"
       ],
-      "autoInstall": false
+      "autoInstall": false,
+      "fedoraNote": "Fedora 41+ installs tuned-ppd by default, which provides the same net.hadess.PowerProfiles service and powerprofilesctl and conflicts with power-profiles-daemon; the command probe accepts either, and install.sh never asks dnf for power-profiles-daemon when ppd-service is already provided."
     },
     {
       "command": "brightnessctl",

@@ -66,9 +66,19 @@ elif [ "$install_packages" = "1" ] && command -v dnf >/dev/null 2>&1 && command 
     # missing packages from the enabled repositories without a system upgrade.
     # dnf stops the whole transaction on a name no repository provides, so
     # those are set aside and named instead of taking the rest down with them.
+    # Packages another installed package stands in for. Fedora 41+ ships
+    # tuned-ppd by default: it provides the same net.hadess.PowerProfiles
+    # service and powerprofilesctl, and conflicts with power-profiles-daemon.
+    fedora_satisfied() {
+        case "$1" in
+            power-profiles-daemon) rpm -q --whatprovides ppd-service >/dev/null 2>&1 || command -v powerprofilesctl >/dev/null 2>&1 ;;
+            *) return 1 ;;
+        esac
+    }
     missing=""; unavailable=""
     for package in $fedora_packages $fedora_optional; do
         rpm -q "$package" >/dev/null 2>&1 && continue
+        fedora_satisfied "$package" && continue
         if dnf -q info "$package" >/dev/null 2>&1; then
             missing="$missing $package"
         else
