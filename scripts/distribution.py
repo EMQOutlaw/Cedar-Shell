@@ -337,6 +337,9 @@ def capabilities(root):
     for row in manifest['pythonModules']:
         r=subprocess.run([sys.executable,'-c',row.get('probe', 'import '+row['name'])],capture_output=True)
         out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
+    for row in manifest.get('pkgconfigModules', []):
+        present=bool(shutil.which('pkg-config')) and subprocess.run(row['probe'],capture_output=True).returncode==0
+        out.append({'id':row['name'],'status':'Ready' if present else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
     for row in manifest.get('fonts', []):
         family = ''
         if shutil.which('fc-match'):

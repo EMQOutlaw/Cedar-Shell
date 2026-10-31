@@ -22,6 +22,49 @@ The recipe therefore uses `custom:unlicensed`. It is not an AUR submission or
 permission to redistribute. Existing third-party notices remain in the archive.
 Only recipe syntax/metadata are checked here; no native package was installed.
 
+## Fedora
+
+`packaging/fedora/cedar-shell.spec` builds a project-owned RPM from the same
+`cedar-VERSION-x86_64.tar.gz` release archive. It is not an official Fedora
+package and there is no hosted dnf repository. The payload is the archive's
+`cedar-shell/` tree byte-for-byte under `/usr/share/cedar` (shebangs are not
+rewritten and no `.pyc` is added), plus the Task Manager compiled from the
+archive's own sources into `/usr/share/cedar/libexec/`, the `cedar` and
+`cedar-task-manager` wrappers, the Task Manager desktop entry and icon, and
+the third-party license notices. There are no scriptlets, services or login
+changes; `cedar installer`, run by the user, does the per-user activation.
+
+Build it on Fedora (or in a disposable `fedora:44` container):
+
+```bash
+sudo dnf install rpm-build gcc-c++ pkgconf-pkg-config python3 qt6-qtbase-devel qt6-qtdeclarative-devel desktop-file-utils cpio
+python3 scripts/package_release.py --release-assets /tmp/cedar-release
+mkdir -p ~/rpmbuild/SOURCES && cp /tmp/cedar-release/cedar-*-x86_64.tar.gz ~/rpmbuild/SOURCES/
+rpmbuild -bb packaging/fedora/cedar-shell.spec
+python3 tests/check_fedora_package.py ~/rpmbuild/RPMS/x86_64/cedar-shell-*.rpm /tmp/cedar-release/cedar-*-x86_64.tar.gz
+```
+
+`tests/check_fedora_package.py` extracts the RPM and checks every archive file
+against `/usr/share/cedar` (content and executable bit), that nothing but the
+two Task Manager binaries was added there, that the wrappers, desktop entry
+and licenses are present and that the package carries no scriptlets.
+`tests/test_packaging.py` keeps the spec's `Version`, the PKGBUILD's `pkgver`
+and the Nix version equal to `VERSION`, and every `Requires`/`Recommends` a
+name from `data/dependencies.json`'s `fedoraPackage` column.
+`scripts/publish_version.py` advances the spec with the other recipes.
+
+The `fedora-package` job in `.github/workflows/validate.yml` runs exactly
+that build and check in a `fedora:44` container on every push; the
+`fedora-rpm` job in `release.yml` attaches the RPM and its `.sha256` to the
+GitHub release. The RPM is an unsigned build output and its build is not
+guaranteed byte-reproducible; the installed payload is verified against the
+archive. Runtime dependencies (`hyprland`, `quickshell` 0.3 and the hypr
+tools) must come from a repository the user enabled; Fedora's own
+`quickshell` is an older snapshot than the verified runtime in
+`data/dependencies.json`. Package names were checked with `dnf repoquery` on
+Fedora 44. No native Fedora desktop session or clean-machine package
+installation has been certified by these checks.
+
 ## Nix (optional)
 
 The root flake exports a package and `homeManagerModules.default`. Nix is not

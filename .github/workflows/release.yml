@@ -2,7 +2,10 @@ name: Release assets
 # On a version tag, build the exact release archive the bootstrap downloads
 # (cedar-<version>-x86_64.tar.gz + .sha256) from the reviewed source
 # inventory, test the archive contents, and attach both to the GitHub
-# release. Nothing here installs, signs with a private key or auto-updates.
+# release; then build the project-owned Fedora RPM from that same archive in
+# a fedora:44 container, verify its payload against the archive and attach
+# it with its .sha256. Nothing here installs, signs with a private key,
+# publishes a package repository or auto-updates.
 on:
   push:
     tags: ['v*']
@@ -34,3 +37,29 @@ jobs:
             gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "CEDAR ${version}" --notes-file notes.md
           fi
           gh release upload "${GITHUB_REF_NAME}" dist/cedar-*-x86_64.tar.gz dist/cedar-*-x86_64.tar.gz.sha256 --clobber --repo "${GITHUB_REPOSITORY}"
+  fedora-rpm:
+    needs: assets
+    runs-on: ubuntu-24.04
+    container: registry.fedoraproject.org/fedora:44
+    steps:
+      - name: Provide the RPM build tools on the disposable Fedora runner
+        run: dnf -y install rpm-build gcc-c++ pkgconf-pkg-config python3 qt6-qtbase-devel qt6-qtdeclarative-devel desktop-file-utils cpio git gh
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Rebuild the deterministic archive, build the RPM from it and verify the payload
+        run: |
+          python3 -m unittest discover -s tests -p test_packaging.py
+          python3 scripts/package_release.py --release-assets dist
+          python3 tests/check_artifact.py dist/cedar-*-x86_64.tar.gz
+          mkdir -p "$HOME/rpmbuild/SOURCES"
+          cp dist/cedar-*-x86_64.tar.gz "$HOME/rpmbuild/SOURCES/"
+          rpmbuild -bb packaging/fedora/cedar-shell.spec
+          python3 tests/check_fedora_package.py "$HOME"/rpmbuild/RPMS/*/cedar-shell-*.rpm dist/cedar-*-x86_64.tar.gz
+          mkdir -p rpm
+          cp "$HOME"/rpmbuild/RPMS/*/cedar-shell-*.rpm rpm/
+          (cd rpm && sha256sum cedar-shell-*.rpm > "$(ls cedar-shell-*.rpm).sha256")
+      - name: Attach the RPM and its checksum to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" rpm/cedar-shell-*.rpm rpm/cedar-shell-*.rpm.sha256 --clobber --repo "${GITHUB_REPOSITORY}"

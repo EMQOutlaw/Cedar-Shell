@@ -1,6 +1,6 @@
 #!/bin/sh
-# CEDAR checkout installer: installs missing Arch packages, then opens the
-# CEDAR Installer from this source tree.
+# CEDAR checkout installer: installs missing Arch or Fedora packages, then
+# opens the CEDAR Installer from this source tree.
 # The curl-pipe bootstrap lives in installer/bootstrap/install.sh.
 set -eu
 here="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
@@ -14,6 +14,16 @@ brightnessctl power-profiles-daemon lm_sensors
 wl-clipboard grim slurp jq cava
 hypridle hyprsunset pacman-contrib
 ttf-jetbrains-mono-nerd"
+# The same list with Fedora names (data/dependencies.json fedoraPackage). Fedora
+# has no checkupdates and does not package the Nerd font. Hyprland, hypridle,
+# hyprsunset and a current Quickshell are not in Fedora's own repositories:
+# enable a repository that provides them first. CEDAR adds no repository.
+fedora_packages="git python3 python3-gobject python3-dbus gcc-c++ pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel
+hyprland quickshell qt6-qtdeclarative qt6-qtsvg
+NetworkManager NetworkManager-libnm pulseaudio-utils polkit xdg-utils
+brightnessctl power-profiles-daemon lm_sensors
+wl-clipboard grim slurp jq cava
+hypridle hyprsunset"
 
 # Plans, previews and information never change packages. CEDAR_SKIP_PACKAGES=1
 # skips this step for people who manage packages themselves.
@@ -42,12 +52,27 @@ if [ "$install_packages" = "1" ] && command -v pacman >/dev/null 2>&1; then
             sudo pacman -Syu --needed $missing
         fi
     fi
+elif [ "$install_packages" = "1" ] && command -v dnf >/dev/null 2>&1 && command -v rpm >/dev/null 2>&1; then
+    # Test rpm's exit status, not its translated output. dnf resolves the
+    # missing packages from the enabled repositories without a system upgrade.
+    missing="$(for package in $fedora_packages; do
+        rpm -q "$package" >/dev/null 2>&1 || printf '%s\n' "$package"
+    done)"
+    if [ -n "$missing" ]; then
+        echo "CEDAR needs these packages:"
+        echo "$missing" | sed 's/^/  /'
+        echo "Only your enabled repositories are used; CEDAR adds none. Hyprland and Quickshell need a repository you enable yourself."
+        # shellcheck disable=SC2086
+        sudo dnf install $missing
+    fi
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
     echo "CEDAR needs Python 3.11 or newer before its installer can run."
     if command -v pacman >/dev/null 2>&1; then
         echo "  sudo pacman -S --needed python"
+    elif command -v dnf >/dev/null 2>&1; then
+        echo "  sudo dnf install python3"
     fi
     echo "Install Python with your distribution's package manager, then rerun bash ./install.sh."
     exit 1

@@ -93,4 +93,26 @@ jobs:
           python3 tests/check_lock_auth.py
           python3 tests/check_lock_wiring.py
           python3 -m unittest discover -s tests -p test_default_apps.py
+  fedora-package:
+    needs: source-and-recovery
+    runs-on: ubuntu-24.04
+    container: registry.fedoraproject.org/fedora:44
+    steps:
+      - name: Provide the RPM build tools on the disposable Fedora runner
+        run: dnf -y install rpm-build rpmlint gcc-c++ pkgconf-pkg-config python3 qt6-qtbase-devel qt6-qtdeclarative-devel desktop-file-utils cpio git
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build the candidate archive, the RPM from it, and verify the installed payload against the archive
+        run: |
+          python3 -m unittest discover -s tests -p test_packaging.py
+          python3 scripts/package_release.py --release-assets dist
+          mkdir -p "$HOME/rpmbuild/SOURCES"
+          cp dist/cedar-*-x86_64.tar.gz "$HOME/rpmbuild/SOURCES/"
+          rpmbuild -bb packaging/fedora/cedar-shell.spec
+          rpmlint packaging/fedora/cedar-shell.spec "$HOME"/rpmbuild/RPMS/*/cedar-shell-*.rpm || true
+          python3 tests/check_fedora_package.py "$HOME"/rpmbuild/RPMS/*/cedar-shell-*.rpm dist/cedar-*-x86_64.tar.gz
+      - name: Record untested gates
+        run: |
+          echo 'The RPM builds and its payload matches the archive. Installing it on a Fedora desktop, the dnf transaction and a Hyprland session on Fedora are not exercised here.' >> "$GITHUB_STEP_SUMMARY"
 # No release publishing, secrets, elevated pull_request_target workflow, or user auto-update.
