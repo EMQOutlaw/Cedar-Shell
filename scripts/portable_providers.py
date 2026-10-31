@@ -143,8 +143,26 @@ def qs_instances():
     return rows
 
 
+def qs_instance_for(source):
+    """The running Quickshell instance whose config file is `source`, however it was launched.
+    Quickshell matches `-p` by the path given at launch, so a shell started as `qs -c cedar`
+    (~/.config/quickshell/cedar/shell.qml) is invisible to `-p <release realpath>/shell.qml`
+    even though both name the same file; compare real paths instead."""
+    target = Path(source).resolve()
+    for row in qs_instances():
+        try:
+            if Path(row['config_path']).resolve() == target:
+                return row['id']
+        except OSError:
+            continue
+    return None
+
+
 def qs_ipc(source, *args):
-    return d.command(['qs', 'ipc', '-p', str(source), 'call', *args], timeout=5).strip()
+    instance = qs_instance_for(source)
+    if instance is None:
+        raise d.Refused('No running Quickshell instance for ' + str(source) + '.')
+    return d.command(['qs', 'ipc', '-i', str(instance), 'call', *args], timeout=5).strip()
 
 
 def compositor_monitors():
