@@ -235,6 +235,12 @@ redacted; environment variables are never written.
 
 The package abstraction (`installer/providers/packages.py`) implements pacman
 and dnf; its apt and zypper entries say "unsupported" instead of guessing.
+Which family a machine belongs to is decided once, from `/etc/os-release`
+(`ID` and `ID_LIKE`), by `scripts/system_family.py`; `install.sh`, the
+capability list in Settings, the classic install's package step, the
+updater's "install this" guidance and the Signals update check all follow
+that answer rather than whichever package manager happens to be installed.
+`python3 scripts/system_family.py` prints the detected family.
 Each backend names the manifest column it reads package names from
 (`archPackage`, `fedoraPackage`); a null entry means that distribution has
 no equivalent, so the dependency is reported missing and never guessed.

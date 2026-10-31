@@ -28,6 +28,12 @@ import time
 
 from . import operations as ops
 
+
+def install_hint(packages):
+    """The install command for this machine's package family (pacman, dnf, or plain words), via the shipped detector."""
+    from scripts.system_family import install_hint as hint
+    return hint(list(packages))
+
 GIT_TIMEOUT = 180
 FETCH_TIMEOUT = 900
 
@@ -126,12 +132,12 @@ def classify_bootstrap(output):
                         retry=True, code='checksum')
     if 'curl or wget' in low:
         return Guidance('A download tool is missing', 'Neither curl nor wget is installed, so the release cannot be downloaded.',
-                        ['Install one: `sudo pacman -S --needed curl`.', 'Press Try again.'], retry=True, code='tools')
+                        [install_hint(['curl']).replace('Install it', 'Install one'), 'Press Try again.'], retry=True, code='tools')
     if 'tar is needed' in low or 'sha256sum' in low:
         return Guidance('A tool for unpacking is missing', 'tar or sha256sum is missing, so the release cannot be unpacked and verified.',
-                        ['Install them: `sudo pacman -S --needed tar coreutils`.', 'Press Try again.'], retry=True, code='tools')
+                        [install_hint(['tar', 'sha256sum']), 'Press Try again.'], retry=True, code='tools')
     if 'python 3.11' in low:
-        return Guidance('Python is too old', 'CEDAR needs Python 3.11 or newer.', ['Update Python: `sudo pacman -S --needed python`.', 'Press Try again.'], retry=True, code='python')
+        return Guidance('Python is too old', 'CEDAR needs Python 3.11 or newer.', [install_hint(['python']).replace('Install it', 'Update Python'), 'Press Try again.'], retry=True, code='python')
     if re.search(r'could not resolve|failed to connect|network|timed out|unable to access|curl: \(\d+\)', low):
         return Guidance('No connection to GitHub', 'CEDAR could not download the release. Nothing was changed.',
                         ['Check that this computer is online.', 'If you use a VPN or proxy, make sure it allows github.com.', 'Press Try again.'], retry=True, code='network')
@@ -375,11 +381,11 @@ class Updater:
                 missing.append('curl')
             if missing:
                 raise Guidance('Tools for the download are missing', 'The release is downloaded, verified and unpacked with ' + ', '.join(missing) + ', which ' + ('is' if len(missing) == 1 else 'are') + ' not installed.',
-                               ['Install them: `sudo pacman -S --needed ' + ' '.join('coreutils' if m == 'sha256sum' else m for m in missing) + '`.', 'Press Try again.'], retry=True, code='tools')
+                               [install_hint(missing), 'Press Try again.'], retry=True, code='tools')
             op.detail = 'Download tools present'
             return
         if not shutil.which('git'):
-            raise Guidance('Git is not installed', 'The checkout at ' + str(self.target) + ' can only be updated with Git.', ['Install it: `sudo pacman -S --needed git`.', 'Press Try again.'], retry=True, code='tools')
+            raise Guidance('Git is not installed', 'The checkout at ' + str(self.target) + ' can only be updated with Git.', [install_hint(['git']), 'Press Try again.'], retry=True, code='tools')
         self.clear_broken_scratch_ref(op)
         head = self.git('rev-parse', '--abbrev-ref', 'HEAD').stdout.strip()
         if head == 'HEAD':
@@ -561,7 +567,7 @@ class Updater:
         self.check_cancelled()
         if not shutil.which('git'):
             raise Guidance('Git is not installed', 'Branch updates need Git, including installations downloaded as an archive.',
-                           ['Install it: `sudo pacman -S --needed git`.', 'Press Try again.'], code='tools')
+                           [install_hint(['git']), 'Press Try again.'], code='tools')
         from scripts.distribution import private_directory
         private_directory(self.cache)
         if not (self.cache / 'HEAD').exists():

@@ -27,6 +27,18 @@ brightnessctl lm_sensors
 wl-clipboard grim slurp jq cava
 hypridle hyprsunset"
 
+# Which family this is comes from /etc/os-release (ID and ID_LIKE), the same
+# answer scripts/system_family.py gives the installer; a package manager that
+# merely happens to be installed never decides. Unknown families skip packages.
+family=""
+if [ -r /etc/os-release ]; then
+    ids="$(. /etc/os-release 2>/dev/null; printf '%s %s' "${ID:-}" "${ID_LIKE:-}" | tr '[:upper:]' '[:lower:]')"
+    case " $ids " in
+        *" arch "*) family=arch ;;
+        *" fedora "*) family=fedora ;;
+    esac
+fi
+
 # Plans, previews and information never change packages. CEDAR_SKIP_PACKAGES=1
 # skips this step for people who manage packages themselves.
 install_packages=1
@@ -38,7 +50,7 @@ done
 [ "${CEDAR_SKIP_PACKAGES:-}" = "1" ] && install_packages=0
 [ "$(id -u)" = "0" ] && install_packages=0
 
-if [ "$install_packages" = "1" ] && command -v pacman >/dev/null 2>&1; then
+if [ "$install_packages" = "1" ] && [ "$family" = "arch" ] && command -v pacman >/dev/null 2>&1; then
     # pacman -T prints only what is not installed, so an up-to-date system (and
     # every CEDAR update after the first install) skips straight to the installer.
     # shellcheck disable=SC2086
@@ -54,7 +66,7 @@ if [ "$install_packages" = "1" ] && command -v pacman >/dev/null 2>&1; then
             sudo pacman -Syu --needed $missing
         fi
     fi
-elif [ "$install_packages" = "1" ] && command -v dnf >/dev/null 2>&1 && command -v rpm >/dev/null 2>&1; then
+elif [ "$install_packages" = "1" ] && [ "$family" = "fedora" ] && command -v dnf >/dev/null 2>&1 && command -v rpm >/dev/null 2>&1; then
     # Test rpm's exit status, not its translated output. dnf resolves the
     # missing packages from the enabled repositories without a system upgrade.
     missing="$(for package in $fedora_packages; do
@@ -69,11 +81,15 @@ elif [ "$install_packages" = "1" ] && command -v dnf >/dev/null 2>&1 && command 
     fi
 fi
 
+if [ "$install_packages" = "1" ] && [ -z "$family" ]; then
+    echo "CEDAR has no automatic package setup for this distribution; install the packages listed at the top of install.sh yourself if the installer reports any missing."
+fi
+
 if ! command -v python3 >/dev/null 2>&1; then
     echo "CEDAR needs Python 3.11 or newer before its installer can run."
-    if command -v pacman >/dev/null 2>&1; then
+    if [ "$family" = "arch" ]; then
         echo "  sudo pacman -S --needed python"
-    elif command -v dnf >/dev/null 2>&1; then
+    elif [ "$family" = "fedora" ]; then
         echo "  sudo dnf install python3"
     fi
     echo "Install Python with your distribution's package manager, then rerun bash ./install.sh."

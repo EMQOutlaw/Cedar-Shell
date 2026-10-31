@@ -32,6 +32,14 @@ def action(req):
         launch('terminal',[sys.executable,str(Path(__file__).resolve().with_name('upgrade_system.py'))])
         return {'action':name,'message':'Topgrade opened in a terminal. Follow its prompts there.'}
     if name=='check-updates':
+        import system_family
+        if system_family.family()=='fedora':
+            # dnf check-update: 100 means updates are listed, 0 none; a read-only query of the enabled repositories.
+            p=subprocess.run(['dnf','-q','check-update'],capture_output=True,text=True,timeout=180)
+            if p.returncode not in (0,100):raise RuntimeError(p.stderr.strip() or 'Package check failed.')
+            # dnf5 prints section headers (Upgrades, Obsoleting…) between 'name.arch  version  repo' rows; keep only the rows.
+            packages=[line for line in p.stdout.splitlines() if len(line.split())>=3 and not line.startswith(' ')]
+            return {'action':name,'packages':packages[:500],'count':len(packages),'message':'Repository package check complete (dnf check-update). Only your enabled repositories are consulted.'}
         p=subprocess.run(['checkupdates','--nocolor'],capture_output=True,text=True,timeout=90)
         if p.returncode not in (0,2):raise RuntimeError(p.stderr.strip() or 'Package check failed.')
         packages=[line for line in p.stdout.splitlines() if line.strip()]

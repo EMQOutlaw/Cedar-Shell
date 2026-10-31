@@ -6,11 +6,9 @@ import distribution as d
 
 
 def package_inventory():
-    """One query per inspection, never repository refreshes or package mutation."""
-    if not shutil.which('pacman'):return {}
-    result=subprocess.run(['pacman','-Q'],capture_output=True,text=True,timeout=10)
-    if result.returncode:return {}
-    return dict(line.split(' ',1) for line in result.stdout.splitlines() if ' ' in line)
+    """One query per inspection, never repository refreshes or package mutation; pacman or rpm by family."""
+    import system_family
+    return system_family.installed_packages()
 
 
 def inspect(kind, source, packages, root=d.ROOT):
