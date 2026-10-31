@@ -58,12 +58,27 @@ that build and check in a `fedora:44` container on every push; the
 `fedora-rpm` job in `release.yml` attaches the RPM and its `.sha256` to the
 GitHub release. The RPM is an unsigned build output and its build is not
 guaranteed byte-reproducible; the installed payload is verified against the
-archive. Runtime dependencies (`hyprland`, `quickshell` 0.3 and the hypr
-tools) must come from a repository the user enabled; Fedora's own
-`quickshell` is an older snapshot than the verified runtime in
-`data/dependencies.json`. Package names were checked with `dnf repoquery` on
-Fedora 44. No native Fedora desktop session or clean-machine package
+archive. `hyprland` is in Fedora's own repositories (dist-git f39–f43).
+`quickshell` 0.3 or newer is not: Fedora 42 and 43 ship none and Fedora 44+
+ships a 0.2.1 git snapshot below the verified runtime, so the spec carries
+`Requires: quickshell >= 0.3`, the dnf backend and `install.sh` compare the
+candidate version (`dnf repoquery --qf %{version}`) with the manifest's
+`versionFloors` before installing, and the `cedar` CLI's dnf plan does the
+same. `hypridle` (Fedora 40/41 only) and `hyprsunset` (never packaged) are
+`fedoraPackage: null` with a `fedoraNote`: reported absent, installed only
+when a repository the user enabled provides them, weak dependencies in the
+spec. rpm-ostree hosts (`/run/ostree-booted`) are refused everywhere. Package
+names were checked against Fedora's package database (mdapi/dist-git,
+Fedora 43). No native Fedora desktop session or clean-machine package
 installation has been certified by these checks.
+
+Fedora runtime paths beside the Arch ones (Arch behaviour unchanged):
+`scripts/distribution.py` reads `fedoraPackage` on dnf hosts and runs
+`sudo dnf install` without a system upgrade (`--approve-system-upgrade` is
+pacman's consent only); Station's update check runs `dnf check-update`
+(exit 100 = updates) where `checkupdates` is absent; updater guidance says
+`sudo dnf install …` with Fedora names; Proton VPN's install opens Proton's
+own Fedora steps instead of `pacman`; Topgrade falls back to `cargo install`.
 
 ## Nix (optional)
 

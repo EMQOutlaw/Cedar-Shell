@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit Core actions. Paths remain argv/data, never shell programs."""
+import shutil
 import json,mimetypes,os,signal,stat,subprocess,sys
 from pathlib import Path
 from urllib.parse import unquote,urlparse
@@ -32,10 +33,19 @@ def action(req):
         launch('terminal',[sys.executable,str(Path(__file__).resolve().with_name('upgrade_system.py'))])
         return {'action':name,'message':'Topgrade opened in a terminal. Follow its prompts there.'}
     if name=='check-updates':
-        p=subprocess.run(['checkupdates','--nocolor'],capture_output=True,text=True,timeout=90)
-        if p.returncode not in (0,2):raise RuntimeError(p.stderr.strip() or 'Package check failed.')
-        packages=[line for line in p.stdout.splitlines() if line.strip()]
-        return {'action':name,'packages':packages[:500],'count':len(packages),'message':'Repository package check complete. AUR and security classifications are not included.'}
+        if shutil.which('checkupdates'):
+            # Arch: pacman-contrib's checkupdates (exit 2 = nothing to do).
+            p=subprocess.run(['checkupdates','--nocolor'],capture_output=True,text=True,timeout=90)
+            if p.returncode not in (0,2):raise RuntimeError(p.stderr.strip() or 'Package check failed.')
+            packages=[line for line in p.stdout.splitlines() if line.strip()]
+            return {'action':name,'packages':packages[:500],'count':len(packages),'message':'Repository package check complete. AUR and security classifications are not included.'}
+        if shutil.which('dnf'):
+            # Fedora: dnf check-update (exit 100 = updates available, 0 = none), read-only.
+            p=subprocess.run(['dnf','-q','check-update'],capture_output=True,text=True,timeout=180)
+            if p.returncode not in (0,100):raise RuntimeError(p.stderr.strip() or 'Package check failed.')
+            packages=[line for line in p.stdout.splitlines() if line.strip() and not line.startswith(('Obsoleting','Last metadata'))]
+            return {'action':name,'packages':packages[:500],'count':len(packages),'message':'Repository package check complete (dnf check-update). Security classifications are not included.'}
+        raise RuntimeError('No update checker found (checkupdates on Arch, dnf on Fedora).')
     if name=='stop-recording':
         current=recording()
         selected=next((r for r in current if r['pid']==req.get('pid') and r['startTicks']==req.get('startTicks')),None)

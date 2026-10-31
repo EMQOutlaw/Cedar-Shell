@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """CEDAR distribution transactions. Stdlib recovery works without Qt or a display."""
+import re
 import argparse, contextlib, fcntl, gzip, hashlib, json, os, shutil, signal, stat, subprocess, sys, tarfile, tempfile, time, uuid
 from pathlib import Path
 # The session helper imports this module. Keep one exception class when this
@@ -329,23 +330,36 @@ def session_active():
     import omarchy_session, portable_session
     return omarchy_session.active() or portable_session.active()
 
+def package_key(root):
+    """The manifest column holding this host's package names: archPackage on pacman hosts,
+    fedoraPackage on dnf hosts, archPackage when nothing matches (names are then advisory)."""
+    try: release=__import__('platform').freedesktop_os_release()
+    except OSError: release={}
+    ids=[release.get('ID','')]+release.get('ID_LIKE','').split()
+    for backend in read_json(root/'data/dependencies.json')['packageManagement']['backends']:
+        if any(i in backend['distributions'] for i in ids) and shutil.which(backend['id']):
+            return backend.get('packageKey','archPackage')
+    if 'fedora' in ids and shutil.which('dnf'):return 'fedoraPackage'
+    return 'archPackage'
+
+
 def capabilities(root):
-    manifest=read_json(root/'data/dependencies.json');out=[]
+    manifest=read_json(root/'data/dependencies.json');out=[];key=package_key(root)
     for row in manifest['commands']:
         if row.get('scope') in ('development', 'omarchy-adapter'): continue
-        out.append({'id':row['command'],'status':'Ready' if shutil.which(row['command']) else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
+        out.append({'id':row['command'],'status':'Ready' if shutil.which(row['command']) else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})
     for row in manifest['pythonModules']:
         r=subprocess.run([sys.executable,'-c',row.get('probe', 'import '+row['name'])],capture_output=True)
-        out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
+        out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})
     for row in manifest.get('pkgconfigModules', []):
         present=bool(shutil.which('pkg-config')) and subprocess.run(row['probe'],capture_output=True).returncode==0
-        out.append({'id':row['name'],'status':'Ready' if present else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get('archPackage')})
+        out.append({'id':row['name'],'status':'Ready' if present else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})
     for row in manifest.get('fonts', []):
         family = ''
         if shutil.which('fc-match'):
             family = command(['fc-match', '--format=%{family}', row['family']], timeout=5)
         out.append({'id':row['family'], 'status':'Ready' if row['family'].lower() in family.lower() else 'Needs Setup',
-                    'purpose':'Display font; readable fallback: '+row['fallback'], 'required':False, 'scope':'font', 'package':row.get('archPackage')})
+                    'purpose':'Display font; readable fallback: '+row['fallback'], 'required':False, 'scope':'font', 'package':row.get(key)})
     return out
 
 def validate_imports(root):
@@ -572,7 +586,9 @@ def missing_packages(root,include_recommended=False):
         # Never replace somebody else's working Qt/Quickshell to satisfy -Q.
         validate_imports(root)
     else:
-        packages.update(row.get('archPackage') or row.get('package') for row in manifest['modules'] + manifest.get('imageFormats', []) if row.get('archPackage') or row.get('package'))
+        key=package_key(root)
+        packages.update((row.get(key) or (row.get('package') if key=='archPackage' else None)) for row in manifest['modules'] + manifest.get('imageFormats', []) if row.get(key) or (key=='archPackage' and row.get('package')))
+        packages.discard(None)
     return sorted(packages)
 
 
@@ -590,25 +606,53 @@ def package_host(root):
 
 
 def check_package_plan(plan):
-    if plan['backend'] != 'pacman':raise Refused('Unrecognized package backend; no package changes made.')
-    if not shutil.which('pacman') or not shutil.which('sudo'):
-        raise Refused('Automatic package setup needs pacman and sudo. Install the listed dependencies through your distribution tools instead.')
-    if Path('/var/lib/pacman/db.lck').exists():raise Refused('The package manager is busy; its lock will not be removed.')
-    for package in plan['packages']:
-        try: command(['pacman','-Si',package])
-        except (Refused, subprocess.SubprocessError) as error:
-            raise Refused('Package '+package+' could not be verified in your configured repositories. '
-                          'No repositories were added or packages changed. Details: '+str(error)) from error
+    if plan['backend']=='pacman':
+        if not shutil.which('pacman') or not shutil.which('sudo'):
+            raise Refused('Automatic package setup needs pacman and sudo. Install the listed dependencies through your distribution tools instead.')
+        if Path('/var/lib/pacman/db.lck').exists():raise Refused('The package manager is busy; its lock will not be removed.')
+        for package in plan['packages']:
+            try: command(['pacman','-Si',package])
+            except (Refused, subprocess.SubprocessError) as error:
+                raise Refused('Package '+package+' could not be verified in your configured repositories. '
+                              'No repositories were added or packages changed. Details: '+str(error)) from error
+        return
+    if plan['backend']=='dnf':
+        # dnf adds only the listed packages from the enabled repositories; no system upgrade, no
+        # repository added. A name no repository provides, or a candidate below the manifest's
+        # version floor, refuses the whole plan rather than guessing.
+        if not shutil.which('dnf') or not shutil.which('sudo'):
+            raise Refused('Automatic package setup needs dnf and sudo. Install the listed dependencies through your distribution tools instead.')
+        if Path('/run/ostree-booted').exists():raise Refused('This is an rpm-ostree system; CEDAR does not layer packages. Install the listed dependencies with rpm-ostree yourself.')
+        for package in plan['packages']:
+            try: command(['dnf','-q','info',package])
+            except (Refused, subprocess.SubprocessError) as error:
+                raise Refused('Package '+package+' is not in your enabled repositories (CEDAR adds none; a current Quickshell, hypridle and hyprsunset come from a repository you enable). '
+                              'No repositories were added or packages changed. Details: '+str(error)) from error
+            floor=(plan.get('versionFloors') or {}).get(package)
+            if floor:
+                try: out=command(['dnf','-q','repoquery','--qf','%{version}\n',package])
+                except (Refused, subprocess.SubprocessError): out=''
+                candidates=[l.strip() for l in out.splitlines() if l.strip()]
+                if candidates and version_tuple(max(candidates,key=version_tuple))<version_tuple(floor):
+                    raise Refused('Your enabled repositories offer '+package+' '+candidates[-1]+'; CEDAR needs '+floor+' or newer. Enable a repository with a current build, then retry. No package changes made.')
+        return
+    raise Refused('Unrecognized package backend; no package changes made.')
+
+
+def version_tuple(text):
+    return tuple(int(n) for n in re.findall(r'\d+', str(text).split('^')[0].split('~')[0])[:4])
 
 
 def install_packages(plan,approve_upgrade=False):
     # Use the exact disclosed plan, not a fresh dependency scan after approval.
     if not plan['packages']:return
-    if not approve_upgrade:raise Refused('A full supported upgrade requires separate consent. Review and explicitly add --approve-system-upgrade, or manage dependencies yourself.')
+    upgrade=plan.get('backend')!='dnf'
+    if upgrade and not approve_upgrade:raise Refused('A full supported upgrade requires separate consent. Review and explicitly add --approve-system-upgrade, or manage dependencies yourself.')
     check_package_plan(plan)
+    argv=['dnf','install',*plan['packages']] if plan.get('backend')=='dnf' else ['pacman','-Syu','--needed',*plan['packages']]
     with exclusive():
-        tx=Transaction('packages');tx.record['packages']=[{'command':['pacman','-Syu','--needed',*plan['packages']],'result':'pending','reversible':False}];tx.save()
-        r=subprocess.run(['sudo','pacman','-Syu','--needed',*plan['packages']])
+        tx=Transaction('packages');tx.record['packages']=[{'command':argv,'result':'pending','reversible':False}];tx.save()
+        r=subprocess.run(['sudo',*argv])
         tx.record['packages'][0]['result']='succeeded' if r.returncode==0 else 'failed';tx.save()
         if r.returncode:raise Refused('Package operation failed/canceled. No desktop configuration changed.')
         tx.commit()
@@ -622,7 +666,8 @@ def package_plan(root,approve_packages=False,approve_upgrade=False,include_recom
     if packages:
         print('Missing software from the CEDAR dependency manifest: '+', '.join(packages))
         host=package_host(root)
-        plan.update(backend=host['id'],distribution=host['displayName'],source=host['source'],operation='sudo pacman -Syu --needed (includes a full system upgrade)')
+        plan.update(backend=host['id'],distribution=host['displayName'],source=host['source'],versionFloors=host.get('versionFloors') or {},
+                    operation='sudo dnf install (no system upgrade; enabled repositories only)' if host['id']=='dnf' else 'sudo pacman -Syu --needed (includes a full system upgrade)')
         # Read-only checks happen before offering an unsupported privileged plan.
         check_package_plan(plan)
     print(json.dumps(plan,indent=2))

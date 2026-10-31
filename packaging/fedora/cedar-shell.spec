@@ -8,8 +8,9 @@
 # or take the RPM attached to a GitHub release, then `dnf install ./cedar-shell-*.rpm`.
 # scripts/publish_version.py keeps Version, Release and the changelog in step with VERSION.
 #
-# Hyprland, hypridle, hyprsunset and a current Quickshell are not in Fedora's own
-# repositories; enable a repository that provides them before installing.
+# Hyprland is in Fedora's repositories. A current Quickshell (0.3 or newer; Fedora
+# 44+ ships a 0.2.1 snapshot CEDAR cannot load), hypridle on Fedora 42+ and
+# hyprsunset are not: enable a repository that provides them before installing.
 #
 # rpmlint reports env-script-interpreter, non-executable-script and
 # file-contains-current-date for the payload and arch-dependent-file-in-usr-share
@@ -46,7 +47,7 @@ BuildRequires:  qt6-qtdeclarative-devel
 BuildRequires:  desktop-file-utils
 
 Requires:       python3 >= 3.11
-Requires:       quickshell
+Requires:       quickshell >= 0.3
 Requires:       hyprland
 Requires:       qt6-qtbase
 Requires:       qt6-qtdeclarative
@@ -71,12 +72,14 @@ Recommends:     glib2
 Recommends:     jq
 Recommends:     cava
 Recommends:     lm_sensors
+# Fedora packaged hypridle for 40 and 41 only; a weak dependency is skipped when absent.
 Recommends:     hypridle
 Recommends:     grim
 Recommends:     slurp
 Recommends:     git
 Recommends:     openssl
 Recommends:     procps-ng
+# Fedora does not package hyprsunset; CEDAR reports night light absent without it.
 Suggests:       hyprsunset
 Suggests:       cliphist
 
@@ -109,6 +112,8 @@ chmod 0755 %{buildroot}%{_bindir}/cedar-task-manager
 install -D -m 0644 data/applications/cedar-task-manager.desktop %{buildroot}%{_datadir}/applications/cedar-task-manager.desktop
 install -D -m 0644 data/icons/cedar-shield.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/cedar-shield.svg
 install -D -m 0644 licenses/Omarchy-MIT.txt %{buildroot}%{_licensedir}/%{name}/Omarchy-MIT.txt
+install -D -m 0644 licenses/Field-Notes-MIT.txt %{buildroot}%{_licensedir}/%{name}/Field-Notes-MIT.txt
+install -D -m 0644 licenses/btop-Apache-2.0.txt %{buildroot}%{_licensedir}/%{name}/btop-Apache-2.0.txt
 install -D -m 0644 docs/LICENSES.md %{buildroot}%{_licensedir}/%{name}/LICENSES.md
 
 %check
@@ -121,6 +126,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/cedar-task-manager.de
 %{_datadir}/applications/cedar-task-manager.desktop
 %{_datadir}/icons/hicolor/scalable/apps/cedar-shield.svg
 %license %{_licensedir}/%{name}/Omarchy-MIT.txt
+%license %{_licensedir}/%{name}/Field-Notes-MIT.txt
+%license %{_licensedir}/%{name}/btop-Apache-2.0.txt
 %doc %{_licensedir}/%{name}/LICENSES.md
 
 %changelog

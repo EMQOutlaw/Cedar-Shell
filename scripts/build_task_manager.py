@@ -14,7 +14,7 @@ def build(root=ROOT, output=None):
     flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs',*PACKAGES],text=True))
     backend_flags=shlex.split(subprocess.check_output(['pkg-config','--cflags','--libs','Qt6Core','Qt6Network'],text=True))
     moc=Path(subprocess.check_output(['pkg-config','--variable=libexecdir','Qt6Core'],text=True).strip())/'moc'
-    if not moc.exists():raise RuntimeError('Qt development tools missing (Arch: qt6-base, qt6-declarative).')
+    if not moc.exists():raise RuntimeError('Qt development tools missing (Arch: qt6-base, qt6-declarative; Fedora: qt6-qtbase-devel, qt6-qtdeclarative-devel).')
     output.mkdir(parents=True,exist_ok=True)
     fingerprint=build_id+'\n'+subprocess.check_output(['g++','-dumpfullversion'],text=True)+subprocess.check_output(['pkg-config','--modversion',*PACKAGES],text=True)
     stamp=output/'build.json'

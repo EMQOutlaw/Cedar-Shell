@@ -54,8 +54,14 @@ Singleton {
         Quickshell.execDetached(Config.terminal.concat(["-e", "sh", "-c", "read -rp 'Proton username: ' u && protonvpn signin \"$u\"; printf '\\nPress Enter to close. '; read -r _"]));
         ShellState.close();
     }
+    // Arch: proton-vpn-cli from the repositories. Fedora: Proton ships its own dnf
+    // repository (CEDAR adds none), so the terminal shows Proton's own steps and
+    // installs only if that repository is already enabled.
     function install() {
-        Quickshell.execDetached(Config.terminal.concat(["-e", "sh", "-c", "sudo pacman -S --needed proton-vpn-cli; printf '\\nPress Enter to close. '; read -r _"]));
+        const arch = "sudo pacman -S --needed proton-vpn-cli";
+        const fedora = "if dnf -q info proton-vpn-gnome-desktop >/dev/null 2>&1; then sudo dnf install proton-vpn-gnome-desktop; else echo 'Proton VPN for Fedora comes from Proton\\'s own repository, which CEDAR does not add.'; echo 'Follow https://protonvpn.com/support/official-linux-vpn-fedora/ then open this again.'; fi";
+        const command = Capabilities.distro.packageManager === "dnf" ? fedora : arch;
+        Quickshell.execDetached(Config.terminal.concat(["-e", "sh", "-c", command + "; printf '\\nPress Enter to close. '; read -r _"]));
         ShellState.close();
     }
 

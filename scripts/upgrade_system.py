@@ -18,6 +18,13 @@ def upgrade():
         else:
             helper = next((name for name in ('yay', 'paru') if shutil.which(name)), None)
             installer = [helper, '-S', '--needed', 'topgrade-bin'] if helper else None
+        if not installer and shutil.which('dnf'):
+            # Fedora does not package Topgrade; it comes from cargo or the project's releases.
+            cargo = shutil.which('cargo')
+            installer = [cargo, 'install', 'topgrade'] if cargo else None
+            if not installer:
+                print('Fedora does not package Topgrade. Install it with `cargo install topgrade` (sudo dnf install cargo) or from https://github.com/topgrade-rs/topgrade/releases, then try again.')
+                return 1
         if not installer:
             print('Install Topgrade from https://github.com/topgrade-rs/topgrade, then try again.')
             return 1

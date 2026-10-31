@@ -166,9 +166,13 @@ def dependency_report(host, source, key='archPackage'):
             'backends': (manifest.get('packageManagement') or {}).get('backends', [])}
 
 
-def support(distro, architecture, backends):
+def support(distro, architecture, backends, ostree=False):
     """How far package setup is reviewed here. `packageKey` names the manifest column to read
-    package names from; `upgradeRequired` says whether the backend upgrades the whole system."""
+    package names from; `upgradeRequired` says whether the backend upgrades the whole system.
+    `ostree` marks an rpm-ostree host (Fedora Atomic), where dnf is not the package layer."""
+    if ostree:
+        return {'status': 'unsupported', 'backend': '', 'packageKey': 'fedoraPackage', 'upgradeRequired': False, 'label': distro['name'],
+                'note': 'This is an rpm-ostree system. CEDAR does not layer packages with rpm-ostree; install the dependencies yourself (rpm-ostree install …, then reboot) and CEDAR installs when they are present.'}
     for backend in backends:
         if distro['id'] in backend.get('distributions', {}) and architecture in backend.get('architectures', []):
             return {'status': 'supported', 'backend': backend['id'], 'packageKey': backend.get('packageKey', 'archPackage'),
@@ -297,7 +301,8 @@ def scan(host, source, state_dir=None):
         except ValueError:
             pass
     # The backend is chosen first so the dependency report reads that backend's package names.
-    facts['support'] = support(facts['distro'], facts['architecture'], manifest_backends(host, source))
+    facts['ostree'] = host.exists('/run/ostree-booted')
+    facts['support'] = support(facts['distro'], facts['architecture'], manifest_backends(host, source), facts['ostree'])
     facts['dependencies'] = dependency_report(host, source, facts['support']['packageKey'])
     detected = providers.detect(facts, host)
     provider = providers.by_id(detected['chosen'])

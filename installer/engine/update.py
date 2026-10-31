@@ -28,6 +28,16 @@ import time
 
 from . import operations as ops
 
+def install_hint(*packages):
+    """`sudo pacman -S --needed …` on pacman hosts, `sudo dnf install …` on dnf hosts, with each
+    distribution's own package names (Arch: python, coreutils; Fedora: python3, coreutils)."""
+    import shutil as _shutil
+    if _shutil.which('dnf') and not _shutil.which('pacman'):
+        fedora = {'python': 'python3'}
+        return 'sudo dnf install ' + ' '.join(fedora.get(p, p) for p in packages)
+    return 'sudo pacman -S --needed ' + ' '.join(packages)
+
+
 GIT_TIMEOUT = 180
 FETCH_TIMEOUT = 900
 
@@ -126,12 +136,12 @@ def classify_bootstrap(output):
                         retry=True, code='checksum')
     if 'curl or wget' in low:
         return Guidance('A download tool is missing', 'Neither curl nor wget is installed, so the release cannot be downloaded.',
-                        ['Install one: `sudo pacman -S --needed curl`.', 'Press Try again.'], retry=True, code='tools')
+                        ['Install one: `' + install_hint('curl') + '`.', 'Press Try again.'], retry=True, code='tools')
     if 'tar is needed' in low or 'sha256sum' in low:
         return Guidance('A tool for unpacking is missing', 'tar or sha256sum is missing, so the release cannot be unpacked and verified.',
-                        ['Install them: `sudo pacman -S --needed tar coreutils`.', 'Press Try again.'], retry=True, code='tools')
+                        ['Install them: `' + install_hint('tar', 'coreutils') + '`.', 'Press Try again.'], retry=True, code='tools')
     if 'python 3.11' in low:
-        return Guidance('Python is too old', 'CEDAR needs Python 3.11 or newer.', ['Update Python: `sudo pacman -S --needed python`.', 'Press Try again.'], retry=True, code='python')
+        return Guidance('Python is too old', 'CEDAR needs Python 3.11 or newer.', ['Update Python: `' + install_hint('python') + '`.', 'Press Try again.'], retry=True, code='python')
     if re.search(r'could not resolve|failed to connect|network|timed out|unable to access|curl: \(\d+\)', low):
         return Guidance('No connection to GitHub', 'CEDAR could not download the release. Nothing was changed.',
                         ['Check that this computer is online.', 'If you use a VPN or proxy, make sure it allows github.com.', 'Press Try again.'], retry=True, code='network')
@@ -375,11 +385,11 @@ class Updater:
                 missing.append('curl')
             if missing:
                 raise Guidance('Tools for the download are missing', 'The release is downloaded, verified and unpacked with ' + ', '.join(missing) + ', which ' + ('is' if len(missing) == 1 else 'are') + ' not installed.',
-                               ['Install them: `sudo pacman -S --needed ' + ' '.join('coreutils' if m == 'sha256sum' else m for m in missing) + '`.', 'Press Try again.'], retry=True, code='tools')
+                               ['Install them: `' + install_hint(*('coreutils' if m == 'sha256sum' else m for m in missing)) + '`.', 'Press Try again.'], retry=True, code='tools')
             op.detail = 'Download tools present'
             return
         if not shutil.which('git'):
-            raise Guidance('Git is not installed', 'The checkout at ' + str(self.target) + ' can only be updated with Git.', ['Install it: `sudo pacman -S --needed git`.', 'Press Try again.'], retry=True, code='tools')
+            raise Guidance('Git is not installed', 'The checkout at ' + str(self.target) + ' can only be updated with Git.', ['Install it: `' + install_hint('git') + '`.', 'Press Try again.'], retry=True, code='tools')
         self.clear_broken_scratch_ref(op)
         head = self.git('rev-parse', '--abbrev-ref', 'HEAD').stdout.strip()
         if head == 'HEAD':
@@ -561,7 +571,7 @@ class Updater:
         self.check_cancelled()
         if not shutil.which('git'):
             raise Guidance('Git is not installed', 'Branch updates need Git, including installations downloaded as an archive.',
-                           ['Install it: `sudo pacman -S --needed git`.', 'Press Try again.'], code='tools')
+                           ['Install it: `' + install_hint('git') + '`.', 'Press Try again.'], code='tools')
         from scripts.distribution import private_directory
         private_directory(self.cache)
         if not (self.cache / 'HEAD').exists():

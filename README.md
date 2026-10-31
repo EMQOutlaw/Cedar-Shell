@@ -18,8 +18,9 @@ CEDAR is a complete desktop shell for Hyprland: a bar, quick controls, a calenda
 ## Requirements
 
 - Arch Linux, CachyOS or Omarchy on x86_64; or Fedora Linux on x86_64
-  (experimental: Hyprland and a current Quickshell are not in Fedora's own
-  repositories, so you enable a repository that provides them first)
+  (experimental: Hyprland is in Fedora's repositories; a current Quickshell
+  (0.3 or newer), hypridle on Fedora 42+ and hyprsunset are not, so you enable
+  a repository that provides them first; Fedora Atomic is not supported)
 - A working Hyprland session
 
 ## Install

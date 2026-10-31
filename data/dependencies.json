@@ -1,5 +1,5 @@
 {
-  "supported": "Arch Linux and CachyOS with an existing Hyprland session (experimental package setup); Fedora Linux with an existing Hyprland session (experimental dnf setup using only the repositories you enabled; Hyprland and a current Quickshell come from a repository you add yourself, and no clean-machine transaction has been tested); Omarchy and Noctalia are optional desktop adapters, never CEDAR prerequisites. See compatibility.json for actual evidence.",
+  "supported": "Arch Linux and CachyOS with an existing Hyprland session (experimental package setup); Fedora Linux with an existing Hyprland session (experimental dnf setup using only the repositories you enabled; Hyprland is in Fedora's repositories; a current Quickshell, hypridle on Fedora 42+ and hyprsunset come from a repository you add yourself, and no clean-machine transaction has been tested); Omarchy and Noctalia are optional desktop adapters, never CEDAR prerequisites. See compatibility.json for actual evidence.",
   "verifiedRuntime": {
     "quickshell": "0.3.1",
     "qt": "6.11.2",
@@ -957,7 +957,7 @@
       "feature": "Optional night-light provider; reused only when running",
       "status": "feature-required",
       "archPackage": "hyprsunset",
-      "fedoraPackage": "hyprsunset",
+      "fedoraPackage": null,
       "whenUnavailable": "Night Light unavailable; do not start a competing color-temperature provider.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -972,7 +972,8 @@
       "consumers": [
         "scripts/control.py"
       ],
-      "autoInstall": false
+      "autoInstall": false,
+      "fedoraNote": "Not packaged by Fedora; a repository the person enables (for example a Hyprland COPR) provides it. Reported missing, never installed."
     },
     {
       "command": "hypridle",
@@ -980,7 +981,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "hypridle",
-      "fedoraPackage": "hypridle",
+      "fedoraPackage": null,
       "autoInstall": true,
       "source": "Configured signed repositories; never enable the global idle service",
       "architectures": [
@@ -996,7 +997,8 @@
       "consumers": [
         "scripts/portable_controls.py"
       ],
-      "whenUnavailable": "Trailwatch replacement unavailable; existing locker and Go remain available."
+      "whenUnavailable": "Trailwatch replacement unavailable; existing locker and Go remain available.",
+      "fedoraNote": "Fedora packaged hypridle for Fedora 40 and 41 only; on newer releases a repository the person enables provides it. Reported missing, never installed."
     },
     {
       "command": "g++",
@@ -1737,12 +1739,16 @@
         "status": "Experimental",
         "source": "Existing enabled dnf repositories; GPG settings unchanged; no repository, COPR or RPM Fusion is added",
         "upgradeRequired": false,
-        "verification": "Verify each requested package with dnf info before approval; validate installed Quickshell imports rather than replacing compatible local builds.",
+        "verification": "Verify each requested package with dnf info before approval, and its candidate version against versionFloors with dnf repoquery (Fedora 44+ ships a Quickshell 0.2.1 snapshot that CEDAR cannot load; Fedora 42 and 43 ship none); validate installed Quickshell imports rather than replacing compatible local builds.",
         "references": [
           "https://docs.fedoraproject.org/en-US/quick-docs/dnf/",
           "https://docs.fedoraproject.org/en-US/packaging-guidelines/"
         ],
-        "evidence": "Package names checked with dnf repoquery on Fedora 44 (Hyprland, hypridle, hyprsunset and Quickshell 0.3 came from a user-enabled COPR; Fedora itself ships an older Quickshell snapshot); the dnf transaction itself is simulated in tests, not run on a clean machine."
+        "evidence": "Package names checked against Fedora's package database (mdapi/dist-git, Fedora 43): every name resolves except hyprsunset (never packaged) and hypridle (Fedora 40/41 only), which are null; Hyprland itself is in Fedora's repositories; Quickshell appears in Fedora 44+ as a 0.2.1 git snapshot, below CEDAR's 0.3.1 floor, so a current build comes from a repository the person enables. The dnf transaction is simulated in tests, not run on a clean machine.",
+        "versionFloors": {
+          "quickshell": "0.3"
+        },
+        "ostree": "Refused on an rpm-ostree (Fedora Atomic: Silverblue, Kinoite, Bazzite…) host: packages are layered with rpm-ostree, which CEDAR does not drive."
       }
     ]
   }

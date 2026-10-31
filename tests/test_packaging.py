@@ -52,7 +52,13 @@ class Recipes(unittest.TestCase):
         self.assertIn('quickshell', declared); self.assertIn('hyprland', declared); self.assertIn('python3', declared)
         # Packages the manifest does not list are Quickshell's own Qt modules and audio stack; everything else must be a manifest name.
         allowed_extra = {'qt6-qtmultimedia', 'qt6-qt5compat', 'qt6-qtimageformats', 'wireplumber', 'cliphist'}
-        unknown = declared - manifest_fedora_names() - allowed_extra
+        # Tools Fedora does not package stay weak dependencies (skipped when absent), never Requires.
+        unpackaged = {r['command'] for r in MANIFEST['commands'] if r.get('fedoraNote') and r['fedoraPackage'] is None}
+        self.assertEqual(unpackaged, {'hypridle', 'hyprsunset'})
+        hard = set(re.findall(r'^Requires:\s+(\S+)', SPEC, flags=re.M))
+        self.assertEqual(hard & unpackaged, set())
+        self.assertIn('quickshell >= 0.3', SPEC)
+        unknown = declared - manifest_fedora_names() - allowed_extra - unpackaged
         self.assertEqual(unknown, set(), 'spec names not in data/dependencies.json fedoraPackage: ' + ', '.join(sorted(unknown)))
 
     def test_every_manifest_row_decides_its_fedora_name(self):
@@ -72,6 +78,8 @@ class Recipes(unittest.TestCase):
         fedora = install_sh_list('fedora_packages')
         self.assertEqual(len(fedora), len(set(fedora)), 'duplicates')
         self.assertEqual(set(fedora) - manifest_fedora_names(), set())
+        self.assertEqual(set(install_sh_list('fedora_optional')), {'hypridle', 'hyprsunset'})
+        self.assertNotIn('hypridle', fedora); self.assertNotIn('hyprsunset', fedora)
         for required in ('git', 'python3', 'python3-gobject', 'hyprland', 'quickshell', 'qt6-qtdeclarative', 'gcc-c++', 'pkgconf-pkg-config', 'qt6-qtbase-devel', 'qt6-qtdeclarative-devel'):
             self.assertIn(required, fedora)
         self.assertNotIn('pacman-contrib', fedora); self.assertNotIn('ttf-jetbrains-mono-nerd', fedora)

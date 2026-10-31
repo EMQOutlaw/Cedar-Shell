@@ -23,10 +23,19 @@ From a checkout, `bash ./install.sh` opens the same installer from that tree.
 
 ## Fedora
 
-Fedora support is experimental. Hyprland, hypridle, hyprsunset and a current
-Quickshell are not in Fedora's own repositories (Fedora ships an older
-Quickshell snapshot), so enable a repository that provides them before you
-start; CEDAR adds no repository, COPR or RPM Fusion. Then use either path:
+Fedora support is experimental. Hyprland is in Fedora's own repositories. A
+current Quickshell is not: Fedora 42 and 43 ship none and Fedora 44+ ships a
+0.2.1 snapshot that CEDAR cannot load (it needs 0.3 or newer, and the
+installer checks the candidate version before installing anything). hypridle
+(idle lock; Fedora packaged it for 40 and 41 only) and hyprsunset (night
+light; never packaged) are optional: without them those features report
+themselves absent. Enable a repository that provides Quickshell 0.3+ (and the
+two Hyprland tools if you want them) before you start; CEDAR adds no
+repository, COPR or RPM Fusion, and a package none of your repositories
+provides is set aside and named, never guessed. Fedora Atomic (Silverblue,
+Kinoite, Bazzite) is not supported: CEDAR does not layer packages with
+rpm-ostree; install the dependencies yourself and CEDAR installs when they
+are present. Then use either path:
 
 - the bootstrap or `bash ./install.sh` above. The installer reads Fedora
   package names from `data/dependencies.json` and, after you confirm, runs
