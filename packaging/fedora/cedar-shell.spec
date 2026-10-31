@@ -63,7 +63,8 @@ Recommends:     pulseaudio-utils
 Recommends:     wireplumber
 Recommends:     wl-clipboard
 Recommends:     brightnessctl
-Recommends:     power-profiles-daemon
+# Either power-profiles-daemon or Fedora Workstation's tuned-ppd; they conflict.
+Recommends:     ppd-service
 Recommends:     polkit
 Recommends:     xdg-utils
 Recommends:     gtk3

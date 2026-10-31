@@ -51,7 +51,7 @@ class Recipes(unittest.TestCase):
         declared = set(re.findall(r'^(?:Requires|Recommends|Suggests):\s+(\S+)', SPEC, flags=re.M))
         self.assertIn('quickshell', declared); self.assertIn('hyprland', declared); self.assertIn('python3', declared)
         # Packages the manifest does not list are Quickshell's own Qt modules and audio stack; everything else must be a manifest name.
-        allowed_extra = {'qt6-qtmultimedia', 'qt6-qt5compat', 'qt6-qtimageformats', 'wireplumber', 'cliphist'}
+        allowed_extra = {'qt6-qtmultimedia', 'qt6-qt5compat', 'qt6-qtimageformats', 'wireplumber', 'cliphist', 'ppd-service'}
         unknown = declared - manifest_fedora_names() - allowed_extra
         self.assertEqual(unknown, set(), 'spec names not in data/dependencies.json fedoraPackage: ' + ', '.join(sorted(unknown)))
 
@@ -75,6 +75,7 @@ class Recipes(unittest.TestCase):
         for required in ('git', 'python3', 'python3-gobject', 'hyprland', 'quickshell', 'qt6-qtdeclarative', 'gcc-c++', 'pkgconf-pkg-config', 'qt6-qtbase-devel', 'qt6-qtdeclarative-devel'):
             self.assertIn(required, fedora)
         self.assertNotIn('pacman-contrib', fedora); self.assertNotIn('ttf-jetbrains-mono-nerd', fedora)
+        self.assertNotIn('power-profiles-daemon', fedora, 'conflicts with tuned-ppd on Fedora Workstation')
 
 
 if __name__ == '__main__':

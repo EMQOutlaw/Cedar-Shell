@@ -374,7 +374,7 @@
       "feature": "Power profiles",
       "status": "feature-required",
       "archPackage": "power-profiles-daemon",
-      "fedoraPackage": "power-profiles-daemon",
+      "fedoraPackage": null,
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -390,7 +390,8 @@
         "scripts/control.py",
         "services/Go.qml"
       ],
-      "autoInstall": false
+      "autoInstall": false,
+      "fedoraNote": "Fedora Workstation ships tuned-ppd, which serves the same D-Bus interface (used by the shell) but not the powerprofilesctl command and conflicts with power-profiles-daemon. CEDAR never swaps a system service; run `dnf swap tuned-ppd power-profiles-daemon` yourself if you want the command."
     },
     {
       "command": "brightnessctl",

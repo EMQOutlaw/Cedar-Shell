@@ -15,13 +15,15 @@ wl-clipboard grim slurp jq cava
 hypridle hyprsunset pacman-contrib
 ttf-jetbrains-mono-nerd"
 # The same list with Fedora names (data/dependencies.json fedoraPackage). Fedora
-# has no checkupdates and does not package the Nerd font. Hyprland, hypridle,
-# hyprsunset and a current Quickshell are not in Fedora's own repositories:
-# enable a repository that provides them first. CEDAR adds no repository.
+# has no checkupdates and does not package the Nerd font, and Workstation's
+# tuned-ppd conflicts with power-profiles-daemon (it serves the same D-Bus
+# interface), so that one is left to you. Hyprland, hypridle, hyprsunset and a
+# current Quickshell are not in Fedora's own repositories: enable a repository
+# that provides them first. CEDAR adds no repository.
 fedora_packages="git python3 python3-gobject python3-dbus gcc-c++ pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel
 hyprland quickshell qt6-qtdeclarative qt6-qtsvg
 NetworkManager NetworkManager-libnm pulseaudio-utils polkit xdg-utils
-brightnessctl power-profiles-daemon lm_sensors
+brightnessctl lm_sensors
 wl-clipboard grim slurp jq cava
 hypridle hyprsunset"
 

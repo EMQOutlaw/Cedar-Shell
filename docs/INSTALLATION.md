@@ -42,7 +42,12 @@ start; CEDAR adds no repository, COPR or RPM Fusion. Then use either path:
   as your user afterwards; the package alone starts nothing.
 
 Fedora has no `checkupdates` and no packaged Nerd Font; those features report
-"Needs Setup" and the display font falls back. No clean-machine Fedora
+"Needs Setup" and the display font falls back. Fedora Workstation ships
+`tuned-ppd`, which serves the power-profiles D-Bus interface the shell reads
+but not the `powerprofilesctl` command, and it conflicts with
+`power-profiles-daemon`; CEDAR never swaps that service, so the profile
+switcher in Quick Controls reports "Needs Setup" unless you run
+`dnf swap tuned-ppd power-profiles-daemon` yourself. No clean-machine Fedora
 desktop installation has been certified; see the Support table below.
 
 ## The bootstrap
