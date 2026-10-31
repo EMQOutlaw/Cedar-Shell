@@ -139,8 +139,9 @@ def power():
     tuned_ppd_active, _ = unit_state('tuned-ppd.service')
     tuned_active, _ = unit_state('tuned.service')
     have_ctl = bool(shutil.which('powerprofilesctl'))
+    # tuned-ppd serves net.hadess.PowerProfiles over D-Bus without powerprofilesctl (control.py speaks both).
     provider = ('power-profiles-daemon' if ppd_active == 'active' and have_ctl
-                else 'tuned-ppd' if tuned_ppd_active == 'active' and have_ctl
+                else 'tuned-ppd' if tuned_ppd_active == 'active'
                 else 'tuned' if tuned_active == 'active' else 'none')
     return dict(provider=provider, profiles=bool(provider != 'none'))
 

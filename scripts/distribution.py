@@ -357,7 +357,8 @@ def capabilities(root):
     manifest=read_json(root/'data/dependencies.json');out=[];key=package_key(root)
     for row in manifest['commands']:
         if row.get('scope') in ('development', 'omarchy-adapter'): continue
-        out.append({'id':row['command'],'status':'Ready' if shutil.which(row['command']) else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})
+        present=shutil.which(row['command']) or any(Path(i).exists() if i.startswith('/') else shutil.which(i) for i in row.get('alsoSatisfiedBy',[]))
+        out.append({'id':row['command'],'status':'Ready' if present else 'Needs Setup', 'purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})
     for row in manifest['pythonModules']:
         r=subprocess.run([sys.executable,'-c',row.get('probe', 'import '+row['name'])],capture_output=True)
         out.append({'id':row['name'],'status':'Ready' if not r.returncode else 'Needs Setup','purpose':row['feature'],'required':row['status']=='required','scope':row.get('scope','feature'),'package':row.get(key)})

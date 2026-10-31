@@ -43,7 +43,7 @@ def action(req):
             # Fedora: dnf check-update (exit 100 = updates available, 0 = none), read-only.
             p=subprocess.run(['dnf','-q','check-update'],capture_output=True,text=True,timeout=180)
             if p.returncode not in (0,100):raise RuntimeError(p.stderr.strip() or 'Package check failed.')
-            packages=[line for line in p.stdout.splitlines() if line.strip() and not line.startswith(('Obsoleting','Last metadata'))]
+            packages=[line for line in p.stdout.splitlines() if line.strip() and not line.startswith(('Obsoleting','Last metadata','Upgrades','Available upgrades')) and not line.endswith(':')]
             return {'action':name,'packages':packages[:500],'count':len(packages),'message':'Repository package check complete (dnf check-update). Security classifications are not included.'}
         raise RuntimeError('No update checker found (checkupdates on Arch, dnf on Fedora).')
     if name=='stop-recording':

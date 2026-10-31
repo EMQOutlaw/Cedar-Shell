@@ -71,7 +71,7 @@ elif [ "$install_packages" = "1" ] && command -v dnf >/dev/null 2>&1 && command 
     # service and powerprofilesctl, and conflicts with power-profiles-daemon.
     fedora_satisfied() {
         case "$1" in
-            power-profiles-daemon) rpm -q --whatprovides ppd-service >/dev/null 2>&1 || command -v powerprofilesctl >/dev/null 2>&1 ;;
+            power-profiles-daemon) rpm -q --whatprovides ppd-service >/dev/null 2>&1 ;;
             *) return 1 ;;
         esac
     }

@@ -133,7 +133,7 @@ def dependency_report(host, source, key='archPackage'):
     for row in manifest.get('commands', []):
         if row.get('scope') in ('development', 'omarchy-adapter'):
             continue
-        present = bool(host.which(row['command']))
+        present = bool(host.which(row['command'])) or satisfied_otherwise(host, row)
         rows.append({'id': row['command'], 'present': present, 'required': row['status'] == 'required', 'package': row.get(key), 'feature': row.get('feature', '')})
         if not present and row['status'] in ('required', 'feature-required') and row.get('autoInstall', True) and row.get(key):
             missing.append(row[key])
@@ -164,6 +164,17 @@ def dependency_report(host, source, key='archPackage'):
             recommended.append(row[key])
     return {'rows': rows, 'missing': sorted(set(missing)), 'recommendedMissing': sorted(set(recommended)), 'packageKey': key,
             'backends': (manifest.get('packageManagement') or {}).get('backends', [])}
+
+
+def satisfied_otherwise(host, row):
+    """A row's `alsoSatisfiedBy`: other commands or absolute paths whose presence provides the
+    same capability (tuned-ppd ships net.hadess.PowerProfiles' D-Bus service file, not
+    powerprofilesctl). Observed on the host, never assumed from a package name."""
+    for item in row.get('alsoSatisfiedBy', []):
+        if item.startswith('/'):
+            if host.exists(item): return True
+        elif host.which(item): return True
+    return False
 
 
 def support(distro, architecture, backends, ostree=False):
