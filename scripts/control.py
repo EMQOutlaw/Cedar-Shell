@@ -11,11 +11,37 @@ def run(args):
     if result.returncode: raise RuntimeError(result.stderr.strip() or result.stdout.strip() or 'Command failed')
     return result.stdout.strip()
 
+# power-profiles-daemon and Fedora's tuned-ppd serve the same net.hadess.PowerProfiles
+# D-Bus interface; only the former ships powerprofilesctl. Fedora 41+ installs tuned-ppd
+# by default (no powerprofilesctl), so the same readings and the same set go over D-Bus.
+PPD=['busctl','--system','--','net.hadess.PowerProfiles','/net/hadess/PowerProfiles','net.hadess.PowerProfiles']
+PROFILES=('power-saver','balanced','performance')
+
+def have_ctl():
+    import shutil
+    return bool(shutil.which('powerprofilesctl'))
+
+def profiles_dbus():
+    listing=run(['busctl','--system','get-property',*PPD[3:],'Profiles'])
+    found=re.findall(r'"Profile"\s+s\s+"([^"]+)"',listing)
+    return [p for p in found if p in PROFILES]
+
+def profile_dbus():
+    return run(['busctl','--system','get-property',*PPD[3:],'ActiveProfile']).split('"')[1]
+
+def set_profile(value):
+    if have_ctl(): run(['powerprofilesctl','set',value])
+    else: run(['busctl','--system','set-property',*PPD[3:],'ActiveProfile','s',value])
+
 def snapshot():
     data={'profiles':[], 'profile':'', 'nightlight':None, 'errors':{}}
     try:
-        data['profiles']=re.findall(r'^\s*\*?\s*(power-saver|balanced|performance):',run(['powerprofilesctl','list']),re.M)
-        data['profile']=run(['powerprofilesctl','get'])
+        if have_ctl():
+            data['profiles']=re.findall(r'^\s*\*?\s*(power-saver|balanced|performance):',run(['powerprofilesctl','list']),re.M)
+            data['profile']=run(['powerprofilesctl','get'])
+        else:
+            data['profiles']=profiles_dbus()
+            data['profile']=profile_dbus()
     except Exception as e: data['errors']['power']=str(e)
     try:
         if omarchy(): data['nightlight']=json.loads(run(['omarchy-toggle-nightlight','--status']))['enabled']
@@ -28,7 +54,7 @@ def main():
         req=json.loads(sys.stdin.readline())
         if req.get('action')=='profile':
             if req['value'] not in snapshot()['profiles']: raise ValueError('This power profile is unavailable.')
-            run(['powerprofilesctl','set',req['value']])
+            set_profile(req['value'])
         elif req.get('action')=='nightlight':
             if omarchy(): run(['omarchy','toggle','nightlight'])
             else:

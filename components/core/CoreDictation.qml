@@ -140,7 +140,7 @@ Item {
         id: glyph
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
-        text: root.transcribing ? "󰔟" : "󰍬"
+        text: root.transcribing ? Theme.nerdGlyph("󰔟", "…") : Theme.nerdGlyph("󰍬", "M")
         textFormat: Text.PlainText
         font.family: Theme.dataFont
         font.pixelSize: Theme.small + 2

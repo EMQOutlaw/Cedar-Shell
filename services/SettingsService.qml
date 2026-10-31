@@ -110,8 +110,8 @@ Singleton {
     readonly property var entries: Schema.fields
         .concat(DefaultApps.data.roles.map(r => ({ page: "apps", key: r.id, label: r.label, description: r.description, aliases: "default applications" })))
         .concat(Schema.pages.map(p => ({ page: p.id, key: "", label: p.label, description: p.description })))
-        .concat(Schema.extras.filter(e => e.key !== "vrr" || DesktopSettings.data.monitors.some(m => "vrr" in m)))
-        .concat(Schema.inputFields.filter(f => f.key in DesktopSettings.data.input && (!f.key.startsWith("touchpad:") || DesktopSettings.data.hasTouchpad === true)).map(f => Object.assign({ page: "input" }, f)))
+        .concat(Schema.extras.filter(e => e.key !== "vrr" || (DesktopSettings.data.monitors || []).some(m => "vrr" in m)))
+        .concat(Schema.inputFields.filter(f => f.key in (DesktopSettings.data.input || {}) && (!f.key.startsWith("touchpad:") || DesktopSettings.data.hasTouchpad === true)).map(f => Object.assign({ page: "input" }, f)))
     function search(text) { return Schema.search(entries, String(text || "")); }
     function searchJson(text, limit) {
         const rows = search(text).slice(0, Math.max(1, Math.min(40, Number(limit) || 10)));

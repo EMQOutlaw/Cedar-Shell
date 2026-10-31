@@ -45,7 +45,7 @@ ColumnLayout {
         Layout.alignment: Qt.AlignHCenter
         StrataButton {
             iconOnly: true
-            text: "󰒮"
+            text: Theme.nerdGlyph("󰒮", "⏮")
             hint: "Previous track"
             enabled: root.player?.canGoPrevious ?? false
             onClicked: Media.previous()
@@ -53,14 +53,14 @@ ColumnLayout {
         StrataButton {
             iconOnly: true
             objectName: "coreMediaPlay"
-            text: root.player?.isPlaying ? "󰏤" : "󰐊"
+            text: root.player?.isPlaying ? Theme.nerdGlyph("󰏤", "⏸") : Theme.nerdGlyph("󰐊", "▶")
             hint: root.player?.isPlaying ? "Pause" : "Play"
             enabled: root.player?.canTogglePlaying ?? false
             onClicked: Media.toggle()
         }
         StrataButton {
             iconOnly: true
-            text: "󰒭"
+            text: Theme.nerdGlyph("󰒭", "⏭")
             hint: "Next track"
             enabled: root.player?.canGoNext ?? false
             onClicked: Media.next()

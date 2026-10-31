@@ -17,7 +17,7 @@ ColumnLayout {
         StrataButton {
             implicitHeight: root.compact ? 28 : Theme.controlHeight
             visible: root.volume
-            text: Audio.muted ? "󰝟" : "󰕾"
+            text: Audio.muted ? Theme.nerdGlyph("󰝟", "×♪") : Theme.nerdGlyph("󰕾", "♪")
             iconOnly: true
             hint: Audio.muted ? "Unmute" : "Mute"
             onClicked: Audio.toggleMute()

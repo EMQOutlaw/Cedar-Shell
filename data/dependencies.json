@@ -1,5 +1,5 @@
 {
-  "supported": "Arch Linux and CachyOS with an existing Hyprland session (experimental package setup); Omarchy and Noctalia are optional desktop adapters, never CEDAR prerequisites. See compatibility.json for actual evidence.",
+  "supported": "Arch Linux and CachyOS with an existing Hyprland session (experimental package setup); Fedora Linux with an existing Hyprland session (experimental dnf setup using only the repositories you enabled; Hyprland is in Fedora's repositories; a current Quickshell, hypridle on Fedora 42+ and hyprsunset come from a repository you add yourself, and no clean-machine transaction has been tested); Omarchy and Noctalia are optional desktop adapters, never CEDAR prerequisites. See compatibility.json for actual evidence.",
   "verifiedRuntime": {
     "quickshell": "0.3.1",
     "qt": "6.11.2",
@@ -12,6 +12,7 @@
       "feature": "Stable and Development branch updates",
       "status": "feature-required",
       "archPackage": "git",
+      "fedoraPackage": "git",
       "whenUnavailable": "Branch updates need Git; the installed shell continues running.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -33,6 +34,7 @@
       "feature": "QML shell and native service imports",
       "status": "required",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "core",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -65,6 +67,7 @@
       "feature": "Hyprland integration",
       "status": "required",
       "archPackage": "hyprland",
+      "fedoraPackage": "hyprland",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "core",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -92,6 +95,7 @@
       "feature": "System helpers and installation",
       "status": "required",
       "archPackage": "python",
+      "fedoraPackage": "python3",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "core",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -154,6 +158,7 @@
       "feature": "Session integration",
       "status": "feature-required",
       "archPackage": "systemd",
+      "fedoraPackage": "systemd",
       "whenUnavailable": "Preview/install only; a supervised desktop trial requires a working systemd user manager.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -183,6 +188,7 @@
       "feature": "Application launch and shell supervision",
       "status": "feature-required",
       "archPackage": "systemd",
+      "fedoraPackage": "systemd",
       "whenUnavailable": "Preview/install only; a supervised desktop trial requires a working systemd user manager.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -209,6 +215,7 @@
       "feature": "Current supported theme, session, and PAM integration",
       "status": "adapter-only",
       "archPackage": "omarchy",
+      "fedoraPackage": null,
       "whenUnavailable": "Not needed for standalone Hyprland or Noctalia. Only the explicit legacy Omarchy adapter uses this command.",
       "scope": "omarchy-adapter",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -252,6 +259,7 @@
       "feature": "Fail-closed activation guard",
       "status": "adapter-only",
       "archPackage": "omarchy",
+      "fedoraPackage": null,
       "whenUnavailable": "Not needed for standalone Hyprland or Noctalia. Only the explicit legacy Omarchy adapter uses this command.",
       "scope": "omarchy-adapter",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -275,6 +283,7 @@
       "feature": "Network controls",
       "status": "feature-required",
       "archPackage": "networkmanager",
+      "fedoraPackage": "NetworkManager",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -297,6 +306,7 @@
       "feature": "Audio routing and scenes",
       "status": "feature-required",
       "archPackage": "libpulse",
+      "fedoraPackage": "pulseaudio-utils",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -318,6 +328,7 @@
       "feature": "Clipboard actions",
       "status": "feature-required",
       "archPackage": "wl-clipboard",
+      "fedoraPackage": "wl-clipboard",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -340,6 +351,7 @@
       "feature": "Opt-in clipboard history",
       "status": "feature-required",
       "archPackage": "wl-clipboard",
+      "fedoraPackage": "wl-clipboard",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -362,6 +374,7 @@
       "feature": "Power profiles",
       "status": "feature-required",
       "archPackage": "power-profiles-daemon",
+      "fedoraPackage": "power-profiles-daemon",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -377,13 +390,18 @@
         "scripts/control.py",
         "services/Go.qml"
       ],
-      "autoInstall": false
+      "autoInstall": false,
+      "fedoraNote": "Fedora 41+ installs tuned-ppd by default: it serves the same net.hadess.PowerProfiles D-Bus interface, conflicts with power-profiles-daemon, and ships no powerprofilesctl. control.py reads and sets profiles over D-Bus (busctl) when the command is absent, and the row is satisfied by the net.hadess.PowerProfiles D-Bus service file whichever daemon ships it; install.sh never asks dnf for power-profiles-daemon when ppd-service is already provided.",
+      "alsoSatisfiedBy": [
+        "/usr/share/dbus-1/system-services/net.hadess.PowerProfiles.service"
+      ]
     },
     {
       "command": "brightnessctl",
       "feature": "Backlight",
       "status": "feature-required",
       "archPackage": "brightnessctl",
+      "fedoraPackage": "brightnessctl",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -406,6 +424,7 @@
       "feature": "Open files and URLs",
       "status": "feature-required",
       "archPackage": "xdg-utils",
+      "fedoraPackage": "xdg-utils",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -429,6 +448,7 @@
       "feature": "Default editor launcher",
       "status": "feature-required",
       "archPackage": "gtk3",
+      "fedoraPackage": "gtk3",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -452,6 +472,7 @@
       "feature": "Omarchy menu shim",
       "status": "feature-required",
       "archPackage": "jq",
+      "fedoraPackage": "jq",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -473,6 +494,7 @@
       "feature": "Desktop application associations",
       "status": "feature-required",
       "archPackage": "glib2",
+      "fedoraPackage": "glib2",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -501,6 +523,7 @@
       "feature": "System logs",
       "status": "feature-required",
       "archPackage": "systemd",
+      "fedoraPackage": "systemd",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -522,6 +545,7 @@
       "feature": "Explicit system service restart",
       "status": "feature-required",
       "archPackage": "polkit",
+      "fedoraPackage": "polkit",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -543,6 +567,7 @@
       "feature": "Opt-in audio spectrum",
       "status": "feature-required",
       "archPackage": "cava",
+      "fedoraPackage": "cava",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -565,6 +590,7 @@
       "feature": "Update count",
       "status": "feature-required",
       "archPackage": "pacman-contrib",
+      "fedoraPackage": null,
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -586,6 +612,7 @@
       "feature": "Temperature fallback",
       "status": "feature-required",
       "archPackage": "lm_sensors",
+      "fedoraPackage": "lm_sensors",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -608,6 +635,7 @@
       "feature": "NVIDIA GPU telemetry",
       "status": "feature-required",
       "archPackage": "nvidia-utils",
+      "fedoraPackage": null,
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -630,6 +658,7 @@
       "feature": "Optional X11 preferred display hint",
       "status": "feature-required",
       "archPackage": "xorg-xrandr",
+      "fedoraPackage": "xrandr",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -651,6 +680,7 @@
       "feature": "Modem information",
       "status": "feature-required",
       "archPackage": "modemmanager",
+      "fedoraPackage": "ModemManager",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -672,6 +702,7 @@
       "feature": "Screenshots (Applications › Capture)",
       "status": "feature-required",
       "archPackage": "grim",
+      "fedoraPackage": "grim",
       "whenUnavailable": "The Capture menu is hidden and `cedar:capture` reports that grim is missing; no fake capture.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -695,6 +726,7 @@
       "feature": "Region screenshots (Applications › Capture › Region)",
       "status": "feature-required",
       "archPackage": "slurp",
+      "fedoraPackage": "slurp",
       "whenUnavailable": "Capture › Region is hidden and `cedar:capture region` reports that slurp is missing; window, screen and all-screen captures still work.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -717,6 +749,7 @@
       "feature": "Developer asset renderer",
       "status": "development",
       "archPackage": "imagemagick",
+      "fedoraPackage": "ImageMagick",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "development",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -739,6 +772,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "bash",
+      "fedoraPackage": "bash",
       "source": "Configured Arch repositories",
       "architectures": [
         "x86_64"
@@ -759,6 +793,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "openssl",
+      "fedoraPackage": "openssl",
       "source": "Configured Arch repositories",
       "architectures": [
         "x86_64"
@@ -779,6 +814,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "networkmanager",
+      "fedoraPackage": "NetworkManager-tui",
       "source": "Configured Arch repositories",
       "architectures": [
         "x86_64"
@@ -796,6 +832,7 @@
       "feature": "Proton VPN card in Connections",
       "status": "feature-required",
       "archPackage": "proton-vpn-cli",
+      "fedoraPackage": null,
       "whenUnavailable": "The card offers to install Proton's CLI; the rest of Connections is unaffected.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -817,6 +854,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "procps-ng",
+      "fedoraPackage": "procps-ng",
       "source": "Configured Arch repositories",
       "architectures": [
         "x86_64"
@@ -835,6 +873,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "procps-ng",
+      "fedoraPackage": "procps-ng",
       "source": "Configured Arch repositories",
       "architectures": [
         "x86_64"
@@ -878,6 +917,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "systemd",
+      "fedoraPackage": "systemd",
       "source": "Configured signed Arch repositories",
       "architectures": [
         "x86_64"
@@ -899,6 +939,7 @@
       "feature": "Read the current editor association without changing it",
       "status": "feature-required",
       "archPackage": "xdg-utils",
+      "fedoraPackage": "xdg-utils",
       "whenUnavailable": "Feature Needs Setup; no fake readings. Core missing prevents activation.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -920,6 +961,7 @@
       "feature": "Optional night-light provider; reused only when running",
       "status": "feature-required",
       "archPackage": "hyprsunset",
+      "fedoraPackage": null,
       "whenUnavailable": "Night Light unavailable; do not start a competing color-temperature provider.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",
@@ -934,7 +976,8 @@
       "consumers": [
         "scripts/control.py"
       ],
-      "autoInstall": false
+      "autoInstall": false,
+      "fedoraNote": "Not packaged by Fedora; a repository the person enables (for example a Hyprland COPR) provides it. Reported missing, never installed."
     },
     {
       "command": "hypridle",
@@ -942,6 +985,7 @@
       "status": "feature-required",
       "scope": "feature",
       "archPackage": "hypridle",
+      "fedoraPackage": null,
       "autoInstall": true,
       "source": "Configured signed repositories; never enable the global idle service",
       "architectures": [
@@ -957,13 +1001,15 @@
       "consumers": [
         "scripts/portable_controls.py"
       ],
-      "whenUnavailable": "Trailwatch replacement unavailable; existing locker and Go remain available."
+      "whenUnavailable": "Trailwatch replacement unavailable; existing locker and Go remain available.",
+      "fedoraNote": "Fedora packaged hypridle for Fedora 40 and 41 only; on newer releases a repository the person enables provides it. Reported missing, never installed."
     },
     {
       "command": "g++",
       "feature": "Build the release-local CEDAR Task Manager",
       "status": "required",
       "archPackage": "gcc",
+      "fedoraPackage": "gcc-c++",
       "scope": "core",
       "autoInstall": true,
       "whenUnavailable": "Installation stops before changing the active release. Install the native build dependencies.",
@@ -976,6 +1022,7 @@
       "feature": "Build the release-local CEDAR Task Manager",
       "status": "required",
       "archPackage": "pkgconf",
+      "fedoraPackage": "pkgconf-pkg-config",
       "scope": "core",
       "autoInstall": true,
       "whenUnavailable": "Installation stops before changing the active release. Install the native build dependencies.",
@@ -988,6 +1035,7 @@
       "feature": "Build the release-local CEDAR Task Manager",
       "status": "required",
       "archPackage": "qt6-base",
+      "fedoraPackage": "qt6-qtbase-devel",
       "scope": "core",
       "autoInstall": true,
       "whenUnavailable": "Installation stops before changing the active release. Install the native build dependencies.",
@@ -1000,6 +1048,7 @@
     {
       "name": "QtQuick",
       "archPackage": "qt6-declarative",
+      "fedoraPackage": "qt6-qtdeclarative",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1124,6 +1173,7 @@
     {
       "name": "QtQuick.Controls",
       "archPackage": "qt6-declarative",
+      "fedoraPackage": "qt6-qtdeclarative",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1159,6 +1209,7 @@
     {
       "name": "QtQuick.Layouts",
       "archPackage": "qt6-declarative",
+      "fedoraPackage": "qt6-qtdeclarative",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1221,6 +1272,7 @@
     {
       "name": "QtQuick.Shapes",
       "archPackage": "qt6-declarative",
+      "fedoraPackage": "qt6-qtdeclarative",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1233,6 +1285,7 @@
     {
       "name": "Quickshell",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1302,6 +1355,7 @@
     {
       "name": "Quickshell.Bluetooth",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "feature-required",
       "reason": "Optional URL-loaded Bluetooth backend. A missing module leaves Bluetooth unavailable without preventing the basic shell from loading.",
       "consumers": [
@@ -1312,6 +1366,7 @@
     {
       "name": "Quickshell.Hyprland",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1327,6 +1382,7 @@
     {
       "name": "Quickshell.Io",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1354,6 +1410,7 @@
     {
       "name": "Quickshell.Services.Mpris",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1368,6 +1425,7 @@
     {
       "name": "Quickshell.Services.Notifications",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1378,6 +1436,7 @@
     {
       "name": "Quickshell.Services.Pam",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1388,6 +1447,7 @@
     {
       "name": "Quickshell.Services.Pipewire",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1400,6 +1460,7 @@
     {
       "name": "Quickshell.Services.SystemTray",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1410,6 +1471,7 @@
     {
       "name": "Quickshell.Services.UPower",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1426,6 +1488,7 @@
     {
       "name": "Quickshell.Wayland",
       "archPackage": "quickshell",
+      "fedoraPackage": "quickshell",
       "status": "required",
       "reason": "Statically referenced by the shipped complete profile; build must include this module even if hardware is absent",
       "consumers": [
@@ -1446,6 +1509,7 @@
     {
       "name": "dbus",
       "archPackage": "python-dbus",
+      "fedoraPackage": "python3-dbus",
       "status": "feature-required",
       "feature": "NetworkManager and BlueZ helpers",
       "consumers": [
@@ -1457,6 +1521,7 @@
     {
       "name": "gi",
       "archPackage": "python-gobject",
+      "fedoraPackage": "python3-gobject",
       "status": "required",
       "feature": "Shared GIO application catalog and launch semantics; event-driven NetworkManager and Bluetooth helpers",
       "consumers": [
@@ -1472,6 +1537,7 @@
     {
       "name": "tomllib",
       "archPackage": "python",
+      "fedoraPackage": "python3",
       "status": "required",
       "feature": "Safe native Noctalia configuration parsing",
       "verification": "Python >=3.11 import",
@@ -1485,6 +1551,7 @@
       "scope": "feature",
       "feature": "NetworkManager local client introspection for Connections",
       "archPackage": "libnm",
+      "fedoraPackage": "NetworkManager-libnm",
       "probe": "import gi; gi.require_version(\"NM\", \"1.0\"); from gi.repository import NM",
       "source": "Configured distribution repository",
       "version": "NM 1.0 introspection API",
@@ -1495,17 +1562,43 @@
       "verification": "Import gi.repository.NM through Python GObject introspection"
     }
   ],
+  "pkgconfigModules": [
+    {
+      "name": "Qt6Quick",
+      "feature": "Build the release-local CEDAR Task Manager (Qt Quick and Quick Controls development files)",
+      "status": "required",
+      "scope": "core",
+      "archPackage": "qt6-declarative",
+      "fedoraPackage": "qt6-qtdeclarative-devel",
+      "probe": [
+        "pkg-config",
+        "--exists",
+        "Qt6Quick",
+        "Qt6QuickControls2"
+      ],
+      "autoInstall": true,
+      "source": "Configured distribution repository",
+      "version": "Qt 6 pkg-config metadata for Quick and QuickControls2",
+      "whenUnavailable": "Installation stops before changing the active release. Arch ships these files with the runtime; Fedora splits them into the -devel package.",
+      "consumers": [
+        "scripts/build_task_manager.py"
+      ],
+      "verification": "pkg-config --exists through the host's pkg-config; absent pkg-config counts as absent"
+    }
+  ],
   "fonts": [
     {
       "family": "Rajdhani",
       "status": "recommended",
       "archPackage": null,
+      "fedoraPackage": null,
       "fallback": "sans-serif"
     },
     {
       "family": "JetBrainsMono Nerd Font",
       "status": "recommended",
       "archPackage": "ttf-jetbrains-mono-nerd",
+      "fedoraPackage": null,
       "fallback": "monospace"
     }
   ],
@@ -1566,12 +1659,14 @@
     {
       "format": "PNG",
       "provider": "QtGui",
-      "package": "qt6-base"
+      "package": "qt6-base",
+      "fedoraPackage": "qt6-qtbase"
     },
     {
       "format": "SVG",
       "provider": "Qt SVG image plugin",
-      "package": "qt6-svg"
+      "package": "qt6-svg",
+      "fedoraPackage": "qt6-qtsvg"
     }
   ],
   "serviceInterfaces": [
@@ -1635,6 +1730,29 @@
           "https://wiki.cachyos.org/configuration/post_install_setup/"
         ],
         "evidence": "Source policy review and simulated package transactions; no clean-machine or live package transaction tested."
+      },
+      {
+        "id": "dnf",
+        "distributions": {
+          "fedora": "Fedora Linux"
+        },
+        "architectures": [
+          "x86_64"
+        ],
+        "packageKey": "fedoraPackage",
+        "status": "Experimental",
+        "source": "Existing enabled dnf repositories; GPG settings unchanged; no repository, COPR or RPM Fusion is added",
+        "upgradeRequired": false,
+        "verification": "Verify each requested package with dnf info before approval, and its candidate version against versionFloors with dnf repoquery (Fedora 44+ ships a Quickshell 0.2.1 snapshot that CEDAR cannot load; Fedora 42 and 43 ship none); validate installed Quickshell imports rather than replacing compatible local builds.",
+        "references": [
+          "https://docs.fedoraproject.org/en-US/quick-docs/dnf/",
+          "https://docs.fedoraproject.org/en-US/packaging-guidelines/"
+        ],
+        "evidence": "Package names checked against Fedora's package database (mdapi/dist-git, Fedora 43): every name resolves except hyprsunset (never packaged) and hypridle (Fedora 40/41 only), which are null; Hyprland itself is in Fedora's repositories; Quickshell appears in Fedora 44+ as a 0.2.1 git snapshot, below CEDAR's 0.3.1 floor, so a current build comes from a repository the person enables. The dnf transaction is simulated in tests, not run on a clean machine.",
+        "versionFloors": {
+          "quickshell": "0.3"
+        },
+        "ostree": "Refused on an rpm-ostree (Fedora Atomic: Silverblue, Kinoite, Bazzite…) host: packages are layered with rpm-ostree, which CEDAR does not drive."
       }
     ]
   }

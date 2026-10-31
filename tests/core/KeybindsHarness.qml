@@ -18,7 +18,7 @@ ShellRoot {
             interval: 100
             running: true
             onTriggered: {
-                window.check(panel.sections.length === 7, "all reference groups load from the shared definition");
+                window.check(panel.definition.groups.length > 0 && panel.sections.length === panel.definition.groups.length, "all reference groups load from the shared definition");
                 const bindings = [];
                 for (const group of panel.definition.groups)
                     for (const entry of group.entries)

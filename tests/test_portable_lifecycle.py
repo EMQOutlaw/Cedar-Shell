@@ -121,6 +121,10 @@ keep = true
         with contextlib.redirect_stdout(io.StringIO()):
             d.install(d.ROOT, approved=True)
         self.root = d.installed()
+        # A symlinked spelling of the installed shell.qml, as ~/.config/quickshell/cedar gives the live shell.
+        link = self.root.parent / 'launch-alias'
+        if not link.exists(): link.symlink_to(self.root)
+        self.launch_path = link / 'shell.qml'
 
     def install_patch(self, item):
         item.start(); self.case.addCleanup(item.stop)
@@ -145,8 +149,10 @@ keep = true
         # Unknown commands are a test failure, never executed on the host.
         result, code, error = '', 0, ''
         if argv == ['qs', 'list', '--all', '-j']:
-            result = json.dumps([{'pid': 703, 'config_path': str(self.root/'shell.qml')}]) if self.running else 'No running instances.\n'
-        elif argv[:5] == ['qs', 'ipc', '-p', str(self.root/'shell.qml'), 'call']:
+            # Launched as the real shell is (qs -c cedar through ~/.config/quickshell/cedar), a
+            # different spelling of the same file: IPC must address the instance by id, not path.
+            result = json.dumps([{'pid': 703, 'id': 'fixt703', 'config_path': str(self.launch_path)}]) if self.running else 'No running instances.\n'
+        elif argv[:5] == ['qs', 'ipc', '-i', 'fixt703', 'call']:
             if not self.running: raise AssertionError('IPC called before the candidate started')
             if argv[5:] == ['shell', 'isLocked']: result = 'true' if self.locked or self.qs_pending_lock else 'false'
             elif argv[5:] == ['shell', 'sessionInfo']:

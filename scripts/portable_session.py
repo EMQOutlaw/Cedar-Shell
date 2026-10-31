@@ -82,7 +82,8 @@ def authenticate(root):
         raise d.Refused('The system login PAM service is unavailable. No authentication files will be created or changed.')
     print('A local password-test window will open before Trailwatch can be enabled. Canceling leaves the desktop unchanged.', flush=True)
     result = subprocess.run(['qs', '-p', str(root / 'auth-test.qml')], text=True, capture_output=True, timeout=180,
-                            env={**os.environ, 'CEDAR_AUTH_ONLY': '1', 'CEDAR_PAM_SERVICE': 'login', 'QS_DISABLE_FILE_WATCHER': '1'})
+                            env={**os.environ, 'CEDAR_AUTH_ONLY': '1', 'CEDAR_PAM_SERVICE': 'login', 'QS_DISABLE_FILE_WATCHER': '1',
+                                 'QT_LOGGING_RULES': d.qml_console_rules(os.environ.get('QT_LOGGING_RULES', ''))})
     if result.returncode or 'CEDAR_AUTH_OK' not in result.stdout + result.stderr:
         raise d.Refused('Authentication test did not succeed. Existing desktop preserved; no session lock was requested.')
 

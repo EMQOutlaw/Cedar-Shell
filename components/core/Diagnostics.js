@@ -89,7 +89,7 @@ function fromReadings(input) {
             "The hwmon sensor CEDAR already samples; it is not labelled CPU-only.", null, false));
     if (typeof input.updates === "number" && input.updates > 0)
         out.push(issue("updates", "notice", input.updates + " repository " + (input.updates === 1 ? "update" : "updates") + " available",
-            "`checkupdates` lists " + input.updates + " package" + (input.updates === 1 ? "" : "s") + " with newer versions.",
+            "The repository check lists " + input.updates + " package" + (input.updates === 1 ? "" : "s") + " with newer versions.",
             "Updates carry fixes; CEDAR never installs them for you.",
             "Repository packages only; AUR and security classification are not included.", null, false));
     const p = input.capabilities && input.capabilities.privilege;

@@ -207,6 +207,7 @@ class Planning(unittest.TestCase):
         self.assertEqual(facts['environment']['id'], 'omarchy')
         self.assertTrue(any('omarchy pkg add' in n for n in plan['packageNotes'])); self.assertFalse(any('full system upgrade' in n for n in plan['packageNotes']))
         self.assertTrue(any('Install dependencies' in r for r in plan['cedar']))
+        self.assertIn('qt6-declarative', plan['packages'], 'Qt Quick build files are probed through pkg-config, absent on this fixture')
         from installer.providers import packages
         self.assertEqual(packages.select(facts).argv(['hypridle']), ['pacman', '-S', '--needed', '--noconfirm', 'hypridle'])
         plain = packages.select({**facts, 'environment': {'id': 'hyprland'}})
@@ -220,13 +221,85 @@ class Planning(unittest.TestCase):
         self.assertEqual(packages.explain(['something new']), '')
 
     def test_unsupported_distribution_with_missing_dependencies_needs_attention(self):
-        host = arch_host(which=[w for w in arch_host().available if w not in ('qs', 'pacman')], release={'ID': 'fedora', 'PRETTY_NAME': 'Fedora 42'}, packages={})
+        host = arch_host(which=[w for w in arch_host().available if w not in ('qs', 'pacman')], release={'ID': 'debian', 'PRETTY_NAME': 'Debian GNU/Linux 13'}, packages={})
         plan_module.set_check_host(host)
         facts = facts_module.scan(host, ROOT)
         self.assertEqual(facts['support']['status'], 'unsupported')
         plan = plan_module.build(facts)
         self.assertTrue(plan['blocked'])
         self.assertIn('unsupported', [a['id'] for a in plan['attention']])
+
+    def test_fedora_reads_fedora_package_names_and_uses_dnf_without_an_upgrade(self):
+        which = [w for w in arch_host().available if w not in ('qs', 'pacman', 'checkupdates', 'omarchy')] + ['dnf', 'rpm']
+        host = arch_host(which=which, release={'ID': 'fedora', 'PRETTY_NAME': 'Fedora Linux 44 (Workstation Edition)', 'VERSION_ID': '44'}, packages={'hyprland': '0.56.2'},
+                         commands={**arch_host().commands, 'dnf -q info': (0, 'Name : ok', '')}, dirs=[d for d in arch_host().dirs if 'omarchy' not in d],
+                         files={k: v for k, v in arch_host().files.items() if 'omarchy' not in str(k)},
+                         processes=[p for p in arch_host().process_rows if p['argv'][0] != 'qs'])
+        plan_module.set_check_host(host)
+        facts = facts_module.scan(host, ROOT)
+        self.assertEqual(facts['support'], {**facts['support'], 'status': 'supported', 'backend': 'dnf', 'packageKey': 'fedoraPackage', 'upgradeRequired': False})
+        # Fedora names, never the Arch ones; a dependency Fedora does not package is reported, not guessed.
+        self.assertIn('quickshell', facts['dependencies']['missing']); self.assertIn('qt6-qtdeclarative', facts['dependencies']['missing'])
+        self.assertNotIn('qt6-declarative', facts['dependencies']['missing']); self.assertNotIn('pacman-contrib', facts['dependencies']['missing'])
+        # No pkg-config on this machine, so the Qt Quick build files count as missing and come from Fedora's -devel package.
+        self.assertIn('qt6-qtdeclarative-devel', facts['dependencies']['missing'])
+        self.assertEqual([r['package'] for r in facts['dependencies']['rows'] if r['id'] == 'checkupdates'], [None])
+        self.assertEqual(facts['dependencies']['recommendedMissing'], [])
+        plan = plan_module.build(facts)
+        self.assertEqual(plan['packageProvider'], 'dnf'); self.assertIn('quickshell', plan['packages'])
+        self.assertNotIn('unsupported', [a['id'] for a in plan['attention']])
+        self.assertTrue(any('no system upgrade' in n for n in plan['packageNotes'])); self.assertTrue(any('no repository' in n.lower() for n in plan['packageNotes']))
+        from installer.providers import packages
+        provider = packages.select(facts)
+        self.assertEqual(provider.argv(['quickshell']), ['dnf', 'install', '-y', 'quickshell'])
+        self.assertIn('no system upgrade', provider.describe(['quickshell']))
+        absent = arch_host(which=which, release={'ID': 'fedora', 'PRETTY_NAME': 'Fedora Linux 44'}, commands={**arch_host().commands, 'dnf -q info': (1, '', 'Error: No matching Packages to list')})
+        with self.assertRaises(packages.Unsupported) as stop:
+            provider.check(absent, ['quickshell'])
+        self.assertIn('enabled repositories', str(stop.exception)); self.assertIn('adds no repository', str(stop.exception))
+        self.assertIn('enabled repositories', packages.explain(['Error: Unable to find a match: quickshell', 'No match for argument: quickshell']))
+        self.assertIn('lock', packages.explain(['Waiting for process with pid 4242 to finish.']))
+        self.assertIn('dnf', packages.explain(['Error: Transaction test error:', '  file /usr/bin/x from install of a conflicts with file from package b']))
+        self.assertIn('reached', packages.explain(['Errors during downloading metadata for repository \'fedora\':', 'Error: Failed to download metadata for repo \'fedora\'']))
+        self.assertIn('key', packages.explain(['Public key for quickshell-0.3.1.rpm is not installed', 'GPG check FAILED']))
+
+    def test_fedora_refuses_an_old_quickshell_and_rpm_ostree_and_never_guesses_unpackaged_tools(self):
+        from installer.providers import packages
+        which = [w for w in arch_host().available if w not in ('qs', 'pacman', 'checkupdates', 'omarchy', 'hyprsunset', 'hypridle')] + ['dnf', 'rpm']
+        base = dict(release={'ID': 'fedora', 'PRETTY_NAME': 'Fedora Linux 44'}, dirs=[d for d in arch_host().dirs if 'omarchy' not in d],
+                    files={k: v for k, v in arch_host().files.items() if 'omarchy' not in str(k)}, processes=[p for p in arch_host().process_rows if p['argv'][0] != 'qs'])
+        # Fedora packages neither hyprsunset nor (since 42) hypridle: reported missing, never in the dnf plan.
+        host = arch_host(which=which, commands={**arch_host().commands, 'dnf -q info': (0, 'Name : ok', ''), 'dnf -q repoquery': (0, '0.3.1\n', '')}, **base)
+        plan_module.set_check_host(host)
+        facts = facts_module.scan(host, ROOT)
+        self.assertEqual([r['package'] for r in facts['dependencies']['rows'] if r['id'] in ('hyprsunset', 'hypridle')], [None, None])
+        self.assertNotIn('hyprsunset', facts['dependencies']['missing']); self.assertNotIn('hypridle', facts['dependencies']['missing'])
+        provider = packages.select(facts)
+        self.assertEqual(provider.floors, {'quickshell': '0.3'})
+        self.assertTrue(any('0.3' in n for n in provider.check(host, ['quickshell', 'jq'])))
+        # Fedora 44 ships a 0.2.1 snapshot: refused before anything is installed.
+        old = arch_host(which=which, commands={**arch_host().commands, 'dnf -q info': (0, 'Name : ok', ''), 'dnf -q repoquery': (0, '0.2.1^git20260209.dacfa9d\n', '')}, **base)
+        with self.assertRaises(packages.Unsupported) as stop:
+            provider.check(old, ['quickshell'])
+        self.assertIn('0.3 or newer', str(stop.exception)); self.assertIn('0.2.1', str(stop.exception))
+        self.assertEqual(packages.version_tuple('0.2.1^git20260209.dacfa9d'), (0, 2, 1))
+        # rpm-ostree: no automatic setup, by the facts and by the provider.
+        atomic = arch_host(which=which, commands={**arch_host().commands, 'dnf -q info': (0, 'Name : ok', '')}, **{**base, 'files': {**base['files'], '/run/ostree-booted': ''}})
+        plan_module.set_check_host(atomic)
+        facts = facts_module.scan(atomic, ROOT)
+        self.assertTrue(facts['ostree']); self.assertEqual(facts['support']['status'], 'unsupported'); self.assertIn('rpm-ostree', facts['support']['note'])
+        with self.assertRaises(packages.Unsupported):
+            packages.DnfProvider().check(atomic, ['jq'])
+
+    def test_a_fedora_derivative_is_experimental_with_dnf(self):
+        support = facts_module.support({'id': 'nobara', 'name': 'Nobara Linux', 'like': ['fedora'], 'version': '42'}, 'x86_64', facts_module.manifest_backends(arch_host(), ROOT))
+        self.assertEqual((support['status'], support['backend'], support['packageKey'], support['upgradeRequired']), ('experimental', 'dnf', 'fedoraPackage', False))
+        host = arch_host(which=[w for w in arch_host().available if w not in ('qs', 'pacman')] + ['dnf'], release={'ID': 'nobara', 'ID_LIKE': 'fedora', 'PRETTY_NAME': 'Nobara Linux'}, packages={},
+                         commands={**arch_host().commands, 'dnf -q info': (0, 'Name : ok', '')})
+        plan_module.set_check_host(host)
+        plan = plan_module.build(facts_module.scan(host, ROOT))
+        experimental = [a for a in plan['attention'] if a['id'] == 'experimental']
+        self.assertEqual(len(experimental), 1); self.assertIn('dnf', experimental[0]['detail']); self.assertIn('no repository', experimental[0]['detail'])
 
     def test_safety_states_stop_the_plan(self):
         host = arch_host(free=100 * 1024 * 1024, commands={**arch_host().commands, 'hyprctl -j monitors': json.dumps([{**LIVE[0], 'solitaryBlockedBy': ['LOCK']}])})

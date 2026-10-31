@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -11,7 +12,13 @@ ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('desktop',ROOT/'scripts/desktop.py')
 d=importlib.util.module_from_spec(spec); spec.loader.exec_module(d)
 
+# These four run the generated Lua through a real interpreter. `lua` is a test-only tool (CEDAR never
+# executes Lua itself; Hyprland does): Arch has it, Fedora needs `dnf install lua`. Skip, never guess.
+needs_lua = unittest.skipUnless(shutil.which('lua'), 'lua interpreter not installed (test-only validator)')
+
+
 class Values(unittest.TestCase):
+    @needs_lua
     def test_lua_strings_roundtrip_without_execution(self):
         value='"\\\n; os.execute("false"); -- café\x00'
         encoded=d.lua(value)
@@ -21,10 +28,12 @@ class Values(unittest.TestCase):
     def test_input_rejects_unknown_and_nonfinite(self):
         for data in [{'exec':'oops'},{'sensitivity':float('nan')},{'repeat_rate':1.5},{'numlock_by_default':'false'},{'kb_layout':'us"; evil()'}]:
             with self.assertRaises((ValueError,TypeError)): d.validate_inputs(data)
+    @needs_lua
     def test_nested_touchpad_is_valid_lua(self):
         text=d.render({'input':{'touchpad:tap-to-click':True,'kb_layout':'us'}})
         r=subprocess.run(['lua','-'],input='hl={on=function() end,exec_cmd=function() end,config=function(c) assert(c.input.touchpad["tap-to-click"]==true) end}\n'+text,text=True,capture_output=True)
         self.assertEqual(r.returncode,0,r.stderr)
+    @needs_lua
     def test_cedar_starts_with_hyprland_unless_turned_off(self):
         script='started=nil hl={config=function() end,exec_cmd=function(c) started=c end,on=function(e,f) if e=="hyprland.start" then f() end end}\n'
         r=subprocess.run(['lua','-'],input=script+d.render_lua({})+'\nassert(started:find("cedar_session.py start",1,true))',text=True,capture_output=True)
@@ -87,6 +96,7 @@ class Transactions(unittest.TestCase):
 
 class PrimaryDisplay(unittest.TestCase):
     setUp = Transactions.setUp
+    @needs_lua
     def test_primary_render_preserves_layout_and_runs_x11_only_on_login(self):
         state={**self.state,'mainDisplay':'DP-2'}
         text=d.render(state)

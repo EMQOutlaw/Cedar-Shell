@@ -21,6 +21,39 @@ curl -fsSL https://raw.githubusercontent.com/EMQOutlaw/Cedar-Shell/main/installe
 
 From a checkout, `bash ./install.sh` opens the same installer from that tree.
 
+## Fedora
+
+Fedora support is experimental. Hyprland is in Fedora's own repositories. A
+current Quickshell is not: Fedora 42 and 43 ship none and Fedora 44+ ships a
+0.2.1 snapshot that CEDAR cannot load (it needs 0.3 or newer, and the
+installer checks the candidate version before installing anything). hypridle
+(idle lock; Fedora packaged it for 40 and 41 only) and hyprsunset (night
+light; never packaged) are optional: without them those features report
+themselves absent. Enable a repository that provides Quickshell 0.3+ (and the
+two Hyprland tools if you want them) before you start; CEDAR adds no
+repository, COPR or RPM Fusion, and a package none of your repositories
+provides is set aside and named, never guessed. Fedora Atomic (Silverblue,
+Kinoite, Bazzite) is not supported: CEDAR does not layer packages with
+rpm-ostree; install the dependencies yourself and CEDAR installs when they
+are present. Then use either path:
+
+- the bootstrap or `bash ./install.sh` above. The installer reads Fedora
+  package names from `data/dependencies.json` and, after you confirm, runs
+  `dnf install` for the missing ones with the repositories you enabled and
+  no system upgrade. A package none of them provides stops the plan with
+  that reason instead of guessing.
+- the project-owned RPM: `sudo dnf install ./cedar-shell-<version>-1.fc44.x86_64.rpm`
+  from a GitHub release (unsigned; verify its `.sha256`), or built yourself
+  from `packaging/fedora/cedar-shell.spec` (see
+  [Distribution packaging](compatibility/PACKAGING.md#fedora)). It places
+  the release tree under `/usr/share/cedar` with the `cedar` and
+  `cedar-task-manager` commands and has no scriptlets. Run `cedar installer`
+  as your user afterwards; the package alone starts nothing.
+
+Fedora has no `checkupdates` and no packaged Nerd Font; those features report
+"Needs Setup" and the display font falls back. No clean-machine Fedora
+desktop installation has been certified; see the Support table below.
+
 ## The bootstrap
 
 `installer/bootstrap/install.sh` is the only thing that runs from the pipe,
@@ -141,7 +174,7 @@ check. A failed check never appears as “up to date.” In a terminal
 | --- | --- | --- |
 | System backup | copies the configuration the plan may touch into `~/.local/state/cedar/installations/<timestamp>/` with `manifest.json`, `restore.sh`, `config/`, `services.json`, `packages.json` | manifest and restore script present |
 | Hand back the desktop | only when a CEDAR session is running: `cedar restore` returns the previous desktop (applications stay open) so the release can change; the session step starts CEDAR again at the end | the session record reads restored |
-| Dependencies | `pacman -Syu --needed` for the missing manifest packages (on Omarchy `pacman -S --needed`, the way `omarchy pkg add` does, because Omarchy's pacman guard refuses a direct system upgrade and keeps those for `omarchy update`), through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer; a failed transaction is explained (guard, stale databases, lock, file conflict, mirror, dismissed prompt, signature) | each package's command present afterwards |
+| Dependencies | `pacman -Syu --needed` for the missing manifest packages (on Omarchy `pacman -S --needed`, the way `omarchy pkg add` does, because Omarchy's pacman guard refuses a direct system upgrade and keeps those for `omarchy update`), or `dnf install` on Fedora with only the enabled repositories and no system upgrade; through polkit (`pkexec`) when an agent is running or `sudo` on the terminal that started the installer; a failed transaction is explained (guard, stale databases, lock, file conflict, mirror, dismissed prompt, signature, package not in any enabled repository) | each package's command present afterwards |
 | CEDAR runtime | `scripts/distribution.py install`: the versioned copy under `~/.local/share/cedar/releases/`, the `cedar` command, offline recovery, launcher entries, all journaled; then `~/.config/quickshell/cedar` is made a link to `~/.local/share/cedar/current`, so the shell on screen is always the installed release (a link to a source checkout is replaced and recorded in the backup; a real folder there is left alone and reported) | release tree checksums; the profile link |
 | CEDAR shell | loads the required QML imports and renders five offscreen checks with the installed Quickshell and Qt | the checks pass |
 | Configuration | translates monitor rules (`monitor`, `monitorv2`, `hl.monitor`), keyboard layout, preferred applications and the wallpaper library into `~/.config/cedar/hypr/settings.json` and `settings.json`; existing CEDAR settings win; with the keybinds option, copies CEDAR's keybinds (`docs/KEYBINDS.md`) beside them and loads them through CEDAR's journaled Hyprland loader | CEDAR's own validators; `hyprctl configerrors` |
@@ -200,12 +233,15 @@ redacted; environment variables are never written.
 
 | | |
 | --- | --- |
-| Supported | Arch Linux, CachyOS, Omarchy on x86_64 (pacman; package setup experimental per `data/dependencies.json`) |
-| Experimental | other Arch-based distributions |
+| Supported | Arch Linux, CachyOS, Omarchy on x86_64 (pacman); Fedora Linux on x86_64 (dnf, with Hyprland and Quickshell from a repository you enabled). Package setup is experimental on both per `data/dependencies.json` |
+| Experimental | other Arch-based and Fedora-based distributions |
 | Unsupported | everything else: CEDAR installs when its dependencies are already present; no package automation |
 
-The package abstraction (`installer/providers/packages.py`) has apt, dnf
-and zypper entries that say "unsupported" instead of guessing.
+The package abstraction (`installer/providers/packages.py`) implements pacman
+and dnf; its apt and zypper entries say "unsupported" instead of guessing.
+Each backend names the manifest column it reads package names from
+(`archPackage`, `fedoraPackage`); a null entry means that distribution has
+no equivalent, so the dependency is reported missing and never guessed.
 
 ## Tests
 

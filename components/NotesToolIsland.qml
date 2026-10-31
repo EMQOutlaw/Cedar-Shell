@@ -191,7 +191,7 @@ Item {
 
         Button {
             text: "Select"
-            icon: "󰆿"
+            icon: Theme.nerdGlyph("󰆿", "⌖")
             fallback: "SEL"
             shortcut: "V"
             selected: root.currentTool === "select"
@@ -199,7 +199,7 @@ Item {
         }
         Button {
             text: "Pen"
-            icon: "󰲶"
+            icon: Theme.nerdGlyph("󰲶", "✎")
             fallback: "PEN"
             shortcut: "P"
             selected: root.currentTool === "pen"
@@ -207,7 +207,7 @@ Item {
         }
         Button {
             text: "Erase"
-            icon: "󰇾"
+            icon: Theme.nerdGlyph("󰇾", "⌫")
             fallback: "ERS"
             shortcut: "E"
             selected: root.currentTool === "eraser"
@@ -215,7 +215,7 @@ Item {
         }
         Button {
             text: "Text"
-            icon: "󰊄"
+            icon: Theme.nerdGlyph("󰊄", "T")
             fallback: "TXT"
             shortcut: "T"
             selected: root.currentTool === "text"
@@ -226,7 +226,7 @@ Item {
 
         Button {
             text: "Undo"
-            icon: "󰕌"
+            icon: Theme.nerdGlyph("󰕌", "↶")
             fallback: "↶"
             shortcut: "Ctrl+Z"
             enabled: root.canUndo
@@ -234,7 +234,7 @@ Item {
         }
         Button {
             text: "Redo"
-            icon: "󰑎"
+            icon: Theme.nerdGlyph("󰑎", "↷")
             fallback: "↷"
             shortcut: "Ctrl+Y"
             enabled: root.canRedo
@@ -245,7 +245,7 @@ Item {
 
         Button {
             text: "Previous sheet"
-            icon: "󰅁"
+            icon: Theme.nerdGlyph("󰅁", "‹")
             fallback: "‹"
             shortcut: "PgUp"
             enabled: root.sheetIndex > 0
@@ -268,7 +268,7 @@ Item {
         // On the last sheet, "next" becomes "new sheet".
         Button {
             text: root.lastSheet ? "New sheet" : "Next sheet"
-            icon: root.lastSheet ? "󰐕" : "󰅂"
+            icon: root.lastSheet ? Theme.nerdGlyph("󰐕", "+") : Theme.nerdGlyph("󰅂", "›")
             fallback: root.lastSheet ? "+" : "›"
             shortcut: root.lastSheet ? "N" : "PgDn"
             enabled: !root.lastSheet || root.canAddSheet
@@ -292,7 +292,7 @@ Item {
             text: root.exportState === "copied" ? (root.exportedMode === "image" ? "Image copied" : "Image path copied")
                 : root.exportState === "failed" ? "Couldn't save the image"
                 : root.copyMode === "image" ? "Copy image" : "Copy image path"
-            icon: root.exportState === "copied" ? "󰄬" : "󰆏"
+            icon: root.exportState === "copied" ? Theme.nerdGlyph("󰄬", "✓") : Theme.nerdGlyph("󰆏", "⎘")
             fallback: root.exportState === "copied" ? "OK" : "CPY"
             shortcut: root.exportState === "" ? "Ctrl+C" : ""
             selected: root.exportState !== ""
@@ -302,7 +302,7 @@ Item {
         }
         Button {
             text: root.clearArmed ? "Click again to clear" : "Clear sheet"
-            icon: "󰧧"
+            icon: Theme.nerdGlyph("󰧧", "⇱")
             fallback: "CLR"
             dangerous: true
             selected: root.clearArmed
@@ -321,14 +321,14 @@ Item {
         }
         Button {
             text: "Field Notes settings"
-            icon: "󰢻"
+            icon: Theme.nerdGlyph("󰢻", "☷")
             fallback: "SET"
             shortcut: "Ctrl+,"
             onActivated: root.settingsRequested()
         }
         Button {
             text: "Close"
-            icon: "󰅖"
+            icon: Theme.nerdGlyph("󰅖", "×")
             fallback: "×"
             shortcut: "Esc"
             onActivated: root.closeRequested()

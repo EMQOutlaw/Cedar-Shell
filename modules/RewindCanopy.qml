@@ -40,7 +40,7 @@ ColumnLayout {
     }
     function kindGlyph(kind) {
         return Theme.nerdGlyph(
-            kind === "application" ? "󰀻" : kind === "canopy" ? "󰕰" : kind === "surface" ? "󰓅" : kind === "breadcrumb" ? "󰓹" : "󰒓",
+            kind === "application" ? Theme.nerdGlyph("󰀻", "⊞") : kind === "canopy" ? Theme.nerdGlyph("󰕰", "▤") : kind === "surface" ? Theme.nerdGlyph("󰓅", "▭") : kind === "breadcrumb" ? Theme.nerdGlyph("󰓹", "›") : Theme.nerdGlyph("󰒓", "☷"),
             kind === "application" ? "A" : kind === "canopy" ? "C" : kind === "surface" ? "S" : kind === "breadcrumb" ? "!" : "·");
     }
     function when(at) { return Config.formatTime(new Date(at)); }

@@ -96,8 +96,8 @@ class Migration(unittest.TestCase):
         install.register();install.register()
         for path,target in install.links().items():self.assertEqual(path.resolve(),target)
     def test_missing_optional_dependencies_are_not_fatal(self):
-        original=install.shutil.which
-        with patch.object(install.shutil,'which',side_effect=lambda c: None if c in ('cava','nvidia-smi') else original(c)):
+        # Only the named optional tools are absent; every other manifest command is present whatever this host has.
+        with patch.object(install.shutil,'which',side_effect=lambda c: None if c in ('cava','nvidia-smi') else '/usr/bin/'+c):
             self.assertIn('cava',[x['command'] for x in install.dependencies()])
     def test_missing_required_dependencies_stop(self):
         with patch.object(install.shutil,'which',return_value=None):

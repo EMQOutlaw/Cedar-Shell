@@ -324,7 +324,7 @@ FocusScope {
             spacing: 22
             PageTitle {
                 title: "Issues"; subtitle: Station.ready ? (Station.issues.length ? "Each one says what happened, why it matters, what CEDAR verified, and what it can do." : "Nothing needs attention.") : "Reading…"
-                StationButton { text: Station.updatesChecked ? "Check updates again" : "Check updates"; hint: "checkupdates: repository packages only"; enabled: !CoreService.actionBusy; onClicked: Station.checkUpdates() }
+                StationButton { text: Station.updatesChecked ? "Check updates again" : "Check updates"; hint: "Repository packages only (checkupdates on Arch, dnf check-update on Fedora)"; enabled: !CoreService.actionBusy; onClicked: Station.checkUpdates() }
                 StationButton { text: Station.busy ? "Checking…" : "Check again"; enabled: !Station.busy; onClicked: Station.refresh() }
             }
             Repeater { model: Station.issues; IssueCard {} }

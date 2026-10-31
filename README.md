@@ -17,7 +17,10 @@ CEDAR is a complete desktop shell for Hyprland: a bar, quick controls, a calenda
 
 ## Requirements
 
-- Arch Linux, CachyOS or Omarchy on x86_64
+- Arch Linux, CachyOS or Omarchy on x86_64; or Fedora Linux on x86_64
+  (experimental: Hyprland is in Fedora's repositories; a current Quickshell
+  (0.3 or newer), hypridle on Fedora 42+ and hyprsunset are not, so you enable
+  a repository that provides them first; Fedora Atomic is not supported)
 - A working Hyprland session
 
 ## Install
@@ -28,9 +31,27 @@ cd Cedar-Shell
 ./install.sh
 ```
 
-`install.sh` installs any missing packages with yay (or pacman if you don't have yay), asking before it does, then opens the CEDAR Installer. The installer shows a plan, changes nothing until you approve it, and backs up everything it touches first.
+`install.sh` installs any missing packages with yay (or pacman if you don't have yay) on Arch-based systems, or with dnf on Fedora, asking before it does, then opens the CEDAR Installer. The installer shows a plan, changes nothing until you approve it, and backs up everything it touches first.
 
 The packages it installs are listed at the top of [install.sh](install.sh). To manage packages yourself, run `CEDAR_SKIP_PACKAGES=1 ./install.sh`.
+
+### Fedora RPM
+
+There is no dnf repository. A project-owned RPM can be built from the release
+archive with the spec in [packaging/fedora](packaging/fedora/cedar-shell.spec),
+and releases published after this change carry one built on Fedora 44:
+
+```bash
+sudo dnf install ./cedar-shell-*.rpm
+cedar installer
+```
+
+The package only places CEDAR under `/usr/share/cedar` and provides `cedar`
+and `cedar-task-manager`; it has no scriptlets and changes nothing about your
+desktop. `cedar installer`, run as your user, shows the plan and makes your
+own copy under `~/.local/share/cedar`. The RPM is an unsigned build output:
+check its `.sha256` next to it. See [Installation](docs/INSTALLATION.md#fedora)
+and [Distribution packaging](docs/compatibility/PACKAGING.md#fedora).
 
 ## Preferred applications
 
