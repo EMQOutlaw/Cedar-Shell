@@ -52,11 +52,24 @@ class FileActions(unittest.TestCase):
                 actions.action({'action':'stop-recording','pid':123,'startTicks':200})
             send.assert_not_called();close.assert_called_once_with(99)
     def test_package_count_comes_only_from_successful_check(self):
-        with patch.object(actions.subprocess,'run') as run:
+        # Arch path (checkupdates, exit 2 = nothing), pinned so the host's own PATH does not choose.
+        with patch.object(actions.shutil,'which',side_effect=lambda c: '/usr/bin/'+c if c=='checkupdates' else None), patch.object(actions.subprocess,'run') as run:
             run.return_value.returncode=2;run.return_value.stdout='';run.return_value.stderr=''
             self.assertEqual(actions.action({'action':'check-updates'})['count'],0)
+            self.assertEqual(run.call_args[0][0][0],'checkupdates')
             run.return_value.returncode=1;run.return_value.stderr='Unavailable'
             with self.assertRaisesRegex(RuntimeError,'Unavailable'):actions.action({'action':'check-updates'})
+        # Fedora path (dnf check-update, exit 100 = updates); dnf5's header line is not a package.
+        with patch.object(actions.shutil,'which',side_effect=lambda c: '/usr/bin/dnf' if c=='dnf' else None), patch.object(actions.subprocess,'run') as run:
+            run.return_value.returncode=100;run.return_value.stdout='Upgrades\nfoo.x86_64  1-1.fc44  updates\nbar.noarch  2-1.fc44  updates\n';run.return_value.stderr=''
+            result=actions.action({'action':'check-updates'})
+            self.assertEqual(run.call_args[0][0][:3],['dnf','-q','check-update']); self.assertEqual(result['count'],2); self.assertNotIn('Upgrades',result['packages'])
+            run.return_value.returncode=0;run.return_value.stdout=''
+            self.assertEqual(actions.action({'action':'check-updates'})['count'],0)
+            run.return_value.returncode=1;run.return_value.stderr='No repos'
+            with self.assertRaisesRegex(RuntimeError,'No repos'):actions.action({'action':'check-updates'})
+        with patch.object(actions.shutil,'which',return_value=None):
+            with self.assertRaisesRegex(RuntimeError,'No update checker'):actions.action({'action':'check-updates'})
     def test_keyboard_led_states_are_not_guessed(self):
         p=Path(self.tmp.name)/'brightness';p.write_text('1\n')
         self.assertEqual(probe.keyboard({'capslock':[p]}),{'capslock':True})
