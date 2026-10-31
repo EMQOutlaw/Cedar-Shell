@@ -72,6 +72,15 @@ def command(argv,timeout=30):
     if r.returncode:raise Refused('Command failed: '+argv[0]+' (exit '+str(r.returncode)+'). '+r.stderr.strip()[:300])
     return r.stdout
 
+def qml_console_rules(existing=''):
+    """Quickshell 0.3.2 (git 2026-10) no longer prints QML console.log on stdout at default
+    verbosity, only warn/error; the probes read their CEDAR_*_OK markers from console.log.
+    This rule restores them and is a no-op on 0.3.1 (seen first on Fedora 44, COPR build)."""
+    rules=[r for r in existing.split(';') if r]
+    if 'qml.debug=true' not in rules: rules.append('qml.debug=true')
+    return ';'.join(rules)
+
+
 def validation_command(argv,timeout=90,env=None):
     """Bound an offscreen check and its children, keeping actionable Qt output."""
     environment=dict(os.environ if env is None else env)
@@ -79,6 +88,7 @@ def validation_command(argv,timeout=90,env=None):
     # These settings apply to validation children, never to the desktop shell.
     environment.pop('QSG_RHI_BACKEND',None)
     environment['QT_QUICK_BACKEND']='software'
+    environment['QT_LOGGING_RULES']=qml_console_rules(environment.get('QT_LOGGING_RULES',''))
     # The desktop shell runs with QSG_RENDER_LOOP=threaded and the installer
     # launched from it inherits that. Qt's software adaptation renders Shapes
     # on the render thread while the GUI thread tears a panel down, which
