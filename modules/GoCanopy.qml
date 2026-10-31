@@ -335,7 +335,7 @@ ColumnLayout {
             anchors.leftMargin: 14; anchors.rightMargin: 14
             spacing: 12
             Text {
-                text: answer.isCalc ? "󰃬" : answer.item?.kind === "url" ? "󰌷" : "󰖟"
+                text: answer.isCalc ? Theme.nerdGlyph("󰃬", "=") : answer.item?.kind === "url" ? Theme.nerdGlyph("󰌷", "↗") : Theme.nerdGlyph("󰖟", "⌕")
                 textFormat: Text.PlainText
                 font.family: Theme.dataFont; font.pixelSize: 18
                 color: answer.current ? Theme.strataAccent : Theme.strataAccent
@@ -567,9 +567,9 @@ ColumnLayout {
             opacity: root.beat(1.6, .4) * .9
             Repeater {
                 model: [
-                    { glyph: "󰃬", example: "2+2", does: "answers, ENTER copies" },
-                    { glyph: "󰌷", example: "docs.rs", does: "opens the address" },
-                    { glyph: "󰖟", example: "anything else", does: "searches " + Compass.engine(Config.searchEngine).label }
+                    { glyph: Theme.nerdGlyph("󰃬", "="), example: "2+2", does: "answers, ENTER copies" },
+                    { glyph: Theme.nerdGlyph("󰌷", "↗"), example: "docs.rs", does: "opens the address" },
+                    { glyph: Theme.nerdGlyph("󰖟", "⌕"), example: "anything else", does: "searches " + Compass.engine(Config.searchEngine).label }
                 ]
                 Row {
                     required property var modelData
@@ -688,7 +688,7 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.catalog && root.pinned.length + root.matches.length === 0
         spacing: 6
-        GlowText { anchors.horizontalCenter: parent.horizontalCenter; text: "󰈉"; color: Theme.strataAccent; font.pixelSize: 28 }
+        GlowText { anchors.horizontalCenter: parent.horizontalCenter; text: Theme.nerdGlyph("󰈉", "⌕"); color: Theme.strataAccent; font.pixelSize: 28 }
         GlowText {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.query ? "No app named “" + root.query + "”" : DefaultApps.error ? DefaultApps.error : "Reading the application catalog…"
@@ -794,7 +794,7 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: !root.catalog && !root.inputPrompt && Go.rows.length === 0
         spacing: 6
-        GlowText { anchors.horizontalCenter: parent.horizontalCenter; text: "󰈉"; color: Theme.strataAccent; font.pixelSize: 28 }
+        GlowText { anchors.horizontalCenter: parent.horizontalCenter; text: Theme.nerdGlyph("󰈉", "⌕"); color: Theme.strataAccent; font.pixelSize: 28 }
         GlowText {
             anchors.horizontalCenter: parent.horizontalCenter
             text: field.text ? "No entry named “" + field.text + "”" : root.prompting ? "Nothing to choose from" : Go.rowsLoaded ? "Nothing here yet" : "Reading the trail map…"

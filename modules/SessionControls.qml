@@ -17,7 +17,7 @@ ColumnLayout {
     property string pending: ""
     property int selected: 0
     readonly property var actions: ["lock", "suspend", "logout", "reboot", "shutdown"]
-    readonly property var glyphs: ({ lock: "󰌾", suspend: "󰤄", logout: "󰍃", reboot: "󰜉", shutdown: "󰐥" })
+    readonly property var glyphs: Theme.nerdFont ? ({ lock: "󰌾", suspend: "󰤄", logout: "󰍃", reboot: "󰜉", shutdown: "󰐥" }) : ({ lock: "⚿", suspend: "☾", logout: "⇥", reboot: "↻", shutdown: "⏻" })
     readonly property var words: ({ lock: "Lock", suspend: "Suspend", logout: "Log out", reboot: "Reboot", shutdown: "Shut down" })
     readonly property var notes: ({ lock: "Trailwatch keeps your place", suspend: "Lock, then sleep", logout: "End this Hyprland session", reboot: "Restart the machine", shutdown: "Power off" })
     function beat(order, span = .4) { return root.embedded ? Canopy.ease(.06 * order, span) : 1; }

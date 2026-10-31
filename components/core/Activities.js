@@ -3,6 +3,13 @@
 // Pure activity policy. Display components never decide which event wins.
 var priorities = {passive:0,normal:1,high:2,critical:3};
 var icons = {volume:"󰕾",brightness:"󰃟",media:"♫",notification:"󰂚",bluetooth:"󰂯",network:"󰖩",vpn:"󰌾",recording:"●",microphone:"󰍬",camera:"󰄀",power:"ϟ",workspace:"▣",keyboard:"⇪",timer:"◷",clipboard:"✓",screenshot:"▧",file:"▤",update:"↑",warning:"!",progress:"↓",integration:"◈"};
+// Readable stand-ins for the Nerd Font glyphs above when that font is absent (Fedora ships none).
+var plainIcons = {volume:"♪",brightness:"☼",notification:"◉",bluetooth:"B",network:"W",vpn:"⚿",microphone:"M",camera:"◎"};
+function displayIcon(icon,nerdFont) {
+    if (nerdFont) return icon;
+    for (var key in icons) if (icons[key]===icon && plainIcons[key]) return plainIcons[key];
+    return icon;
+}
 function create() { return {rows:[],history:[],sequence:0}; }
 function clean(value,max) { return String(value ?? "").replace(/[\u0000-\u0008\u000b-\u001f]/g,"").slice(0,max); }
 function historyEntry(row,now) { return {id:row.id,type:row.type,title:row.title,subtitle:row.subtitle,icon:row.icon,timestamp:now,source:row.source}; }

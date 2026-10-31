@@ -94,21 +94,21 @@ Rectangle {
             StrataButton {
                 iconOnly: true
                 visible: Config.stage >= 3 && !Config.moduleEnabled("go")
-                text: "󰀻"
+                text: Theme.nerdGlyph("󰀻", "⊞")
                 hint: "Applications"
                 onClicked: Go.toggle("root")
             }
             StrataButton {
                 iconOnly: true
                 visible: Config.stage >= 3
-                text: "󰸉"
+                text: Theme.nerdGlyph("󰸉", "▣")
                 hint: "Wallpapers"
                 onClicked: ShellState.toggle("wallpapers")
             }
             StrataButton {
                 iconOnly: true
                 visible: Config.stage >= 3
-                text: "󰏘"
+                text: Theme.nerdGlyph("󰏘", "◐")
                 hint: "Themes"
                 onClicked: ShellState.toggle("themes")
             }
@@ -270,21 +270,21 @@ Rectangle {
                     spacing: 4
                     StrataButton {
                         iconOnly: true
-                        text: "󰒮"
+                        text: Theme.nerdGlyph("󰒮", "⏮")
                         hint: "Previous track"
                         enabled: root.player?.canGoPrevious ?? false
                         onClicked: root.player.previous()
                     }
                     StrataButton {
                         iconOnly: true
-                        text: root.player?.isPlaying ? "󰏤" : "󰐊"
+                        text: root.player?.isPlaying ? Theme.nerdGlyph("󰏤", "⏸") : Theme.nerdGlyph("󰐊", "▶")
                         hint: root.player?.isPlaying ? "Pause" : "Play"
                         enabled: root.player?.canTogglePlaying ?? false
                         onClicked: root.player.togglePlaying()
                     }
                     StrataButton {
                         iconOnly: true
-                        text: "󰒭"
+                        text: Theme.nerdGlyph("󰒭", "⏭")
                         hint: "Next track"
                         enabled: root.player?.canGoNext ?? false
                         onClicked: root.player.next()

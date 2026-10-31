@@ -50,7 +50,7 @@ Singleton {
             limited: "Limited internet access",
             verified: "Internet access verified"
         }[data.available ? data.status?.internet || "unknown" : "unknown"])
-    readonly property string glyph: state === "connecting" ? "󰔟" : state === "disconnected" ? "󰖪" : state !== "connected" ? "?" : kind === "wifi" ? "󰖩" : kind === "wired" ? "󰈀" : kind === "mobile" ? "󰏲" : "?"
+    readonly property string glyph: state === "connecting" ? Theme.nerdGlyph("󰔟", "…") : state === "disconnected" ? Theme.nerdGlyph("󰖪", "✕") : state !== "connected" ? "?" : kind === "wifi" ? Theme.nerdGlyph("󰖩", "W") : kind === "wired" ? Theme.nerdGlyph("󰈀", "E") : kind === "mobile" ? Theme.nerdGlyph("󰏲", "4G") : "?"
     readonly property string fallbackGlyph: state === "connecting" ? "…" : state === "disconnected" ? "×" : state !== "connected" ? "?" : ({
             wifi: "W",
             wired: "E",

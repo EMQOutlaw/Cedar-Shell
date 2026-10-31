@@ -6,6 +6,7 @@ import "../.."
 import ".."
 import "../../services"
 import "../../modules"
+import "Activities.js" as Policy
 
 // The Signals hub: the foreground signal's card, the rest of the stack, and
 // the two ledgers the pill keeps, recent system activities and the
@@ -87,7 +88,7 @@ ColumnLayout {
                 spacing: 10
                 Rectangle { implicitWidth: 5; implicitHeight: 5; radius: 3; color: modelData.priority >= 3 || ["recording", "microphone", "camera"].includes(modelData.type) ? Theme.ember : modelData.priority === 2 ? Theme.amber : Theme.strataAccent }
                 Text { Layout.fillWidth: true; text: modelData.title; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: Theme.strataText; elide: Text.ElideRight }
-                Text { text: modelData.icon || ""; textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: Theme.strataMuted }
+                Text { text: Policy.displayIcon(modelData.icon || "", Theme.nerdFont); textFormat: Text.PlainText; font.family: Theme.dataFont; font.pixelSize: Theme.small; color: Theme.strataMuted }
             }
         }
     }
@@ -144,7 +145,7 @@ ColumnLayout {
             model: root.recent ? CoreService.model.history.slice(0, 8) : []
             GlowText {
                 required property var modelData
-                text: modelData.icon + "  " + modelData.title + " · " + Math.max(0, Math.floor((CoreService.now - modelData.timestamp) / 60000)) + "m"
+                text: Policy.displayIcon(modelData.icon, Theme.nerdFont) + "  " + modelData.title + " · " + Math.max(0, Math.floor((CoreService.now - modelData.timestamp) / 60000)) + "m"
                 color: Theme.strataMuted
                 font.pixelSize: Theme.small
                 Layout.fillWidth: true
