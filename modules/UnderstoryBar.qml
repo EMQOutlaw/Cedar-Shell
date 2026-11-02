@@ -40,6 +40,10 @@ PanelWindow {
     // right side is a seam, with the pill's cut at both of its corners.
     readonly property real pad: 4
     readonly property real cut: Theme.strataCut
+    // The seam is left to a mapped drop's field across its padded extent.
+    readonly property bool gapped: Canopy.screen === root.output && Canopy.surfaceSeam.to > Canopy.surfaceSeam.from
+    readonly property real seamBreak: gapped ? Math.max(cut, Math.min(height - cut, Canopy.surfaceSeam.from)) : height - cut
+    readonly property real seamResume: gapped ? Math.max(cut, Math.min(height - cut, Canopy.surfaceSeam.to)) : height - cut
     function workspaceCapacity(totalHeight, lowerHeight) {
         return Math.max(0, totalHeight - lowerHeight - (root.width - 2 * root.pad) * 2 - Theme.spaceXxl * 2);
     }
@@ -77,6 +81,8 @@ PanelWindow {
             strokeColor: Qt.alpha(Theme.strataGrain, root.railOpen ? .5 : .28)
             startX: root.width - root.cut; startY: 0
             PathLine { x: root.width; y: root.cut }
+            PathLine { x: root.width; y: root.seamBreak }
+            PathMove { x: root.width; y: root.seamResume }
             PathLine { x: root.width; y: root.height - root.cut }
             PathLine { x: root.width - root.cut; y: root.height }
         }

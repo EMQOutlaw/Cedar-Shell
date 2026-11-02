@@ -129,16 +129,16 @@ ColumnLayout {
         ChamferFrame {
             anchors.fill: parent; anchors.bottomMargin: 26
             cut: 8
-            fill: tile.current ? Qt.alpha(Theme.green, .05) : hover.hovered ? Qt.alpha(Theme.elevated, .9) : Qt.alpha(Theme.surface, .85)
-            stroke: tile.chosen ? Theme.green : tile.current ? Qt.alpha(Theme.green, .5) : drop.containsDrag ? Qt.alpha(Theme.amber, .7) : hover.hovered ? Qt.alpha(Theme.teal, .4) : Qt.alpha(Theme.teal, .16)
+            fill: tile.current ? Qt.alpha(Theme.green, .05) : hover.hovered ? Qt.alpha(Theme.strataAccent, .05) : Qt.alpha(Theme.strataSurface, .85)
+            stroke: tile.chosen ? Theme.green : tile.current ? Qt.alpha(Theme.green, .5) : drop.containsDrag ? Qt.alpha(Theme.amber, .7) : hover.hovered ? Qt.alpha(Theme.strataAccent, .4) : Qt.alpha(Theme.strataAccent, .16)
             strokeWidth: tile.chosen ? 2 : 1
             line: tile.current; lineColor: Theme.green; lineFraction: .5
             // The empty tile is a suggestion: dashed inner outline.
             Canvas { visible: tile.empty; anchors.fill: parent; anchors.margins: 10; onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
                 // Canvas paint handlers do not track theme dependencies.
-                readonly property var paintPalette: [Theme.teal]
+                readonly property var paintPalette: [Theme.strataAccent]
                 onPaintPaletteChanged: requestPaint()
-                onPaint: { const c = getContext("2d"); c.reset(); c.strokeStyle = Qt.alpha(Theme.teal, .25); c.lineWidth = 1; c.setLineDash([4, 4]); c.strokeRect(.5, .5, width - 1, height - 1); } }
+                onPaint: { const c = getContext("2d"); c.reset(); c.strokeStyle = Qt.alpha(Theme.strataAccent, .25); c.lineWidth = 1; c.setLineDash([4, 4]); c.strokeRect(.5, .5, width - 1, height - 1); } }
             GlowText { visible: tile.empty || !tile.toplevels.length; anchors.centerIn: parent; text: tile.empty ? "EMPTY" : "NO WINDOWS"; font.pixelSize: 10; font.letterSpacing: 1.6; color: Theme.muted }
             // Windows where they sit on the monitor, scaled into the tile.
             Item {
@@ -176,7 +176,7 @@ ColumnLayout {
                             y = Qt.binding(() => win.homeY);
                         }
                         function cancelDrag() { Drag.cancel(); restorePosition(); }
-                        Rectangle { anchors.fill: parent; radius: 3; color: Qt.alpha(Theme.background, .9); border.width: modelData.activated ? 1.5 : 1; border.color: modelData.activated ? Theme.green : Qt.alpha(Theme.teal, .35) }
+                        Rectangle { anchors.fill: parent; radius: 3; color: Qt.alpha(Theme.strataFoundation, .9); border.width: modelData.activated ? 1.5 : 1; border.color: modelData.activated ? Theme.green : Qt.alpha(Theme.strataAccent, .35) }
                         // The thumbnail: captured once per revision, never live. A refused or absent capture shows the class instead.
                         ScreencopyView {
                             id: shot
@@ -194,7 +194,7 @@ ColumnLayout {
                             Timer { id: arm; interval: 160; onTriggered: if (shot.captureSource && shot.visible !== undefined) shot.captureFrame() }
                             visible: hasContent || !captureSource
                         }
-                        Rectangle { visible: !shot.hasContent; anchors.centerIn: parent; width: Math.min(parent.width - 6, classLabel.implicitWidth + 10); height: 16; radius: 3; color: Qt.alpha(Theme.surface, .9)
+                        Rectangle { visible: !shot.hasContent; anchors.centerIn: parent; width: Math.min(parent.width - 6, classLabel.implicitWidth + 10); height: 16; radius: 3; color: Qt.alpha(Theme.strataSurface, .9)
                             GlowText { id: classLabel; anchors.centerIn: parent; text: (win.klass || win.modelData.title || "window").slice(0, 24); font.pixelSize: 9; color: Theme.muted } }
                         MouseArea {
                             id: pull

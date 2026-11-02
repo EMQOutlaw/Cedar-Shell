@@ -45,6 +45,8 @@ PanelWindow {
         anchors.fill: parent
         materialOpacity: Config.barOpacity
         centerWidth: contents.centerWidth
+        gapFrom: Canopy.screen === root.output ? Canopy.surfaceSeam.from : 0
+        gapTo: Canopy.screen === root.output ? Canopy.surfaceSeam.to : 0
         eventAccent: VisualQuality.preset > 1 ? Theme.green : Theme.strataAccent
         SequentialAnimation {
             id: grainAwaken

@@ -38,7 +38,7 @@ ShellRoot {
         property bool opened: false
         property bool finished: false
         property var topics: ["quick", "audio", "network", "bluetooth", "power", "weather", "calendar", "clipboard", "notifications", "trails", "station", "go", "startup", "workspaces", "keybinds"]
-        property var extras: ["modules/FieldStation.qml", "components/core/CoreHub.qml", "modules/ShieldPages.qml", "modules/ProfilesPages.qml", "modules/StationPages.qml"]
+        property var extras: ["modules/FieldStation.qml", "components/core/CoreHub.qml", "modules/ShieldPages.qml", "modules/StationPages.qml"]
         property int baselinePulse: 0
         property int baselineWindows: 0
         Loader { id: content; anchors.fill: parent; active: false }

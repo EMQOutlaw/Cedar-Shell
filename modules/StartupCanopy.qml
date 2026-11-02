@@ -24,7 +24,9 @@ ColumnLayout {
     // act on the selected one. Typing returns the keys to the field.
     property bool browsing: false
     property var pending: null
-    readonly property bool busy: startup.running
+    property bool loadedOnce: false
+    property bool recoveryUsed: false
+    readonly property bool busy: { Requests.generation; return Requests.isBusy("startup-apps"); }
     readonly property int enabledCount: entries.filter(e => e.enabled).length
     readonly property int runningCount: entries.filter(e => e.state === "running" || e.state === "active").length
     spacing: 12
@@ -67,22 +69,57 @@ ColumnLayout {
         if (Config.testMode || ShellState.locked)
             return;
         root.error = "";
-        if (startup.running) {
+        if (root.busy) {
             root.pending = payload;
             return;
         }
-        startup.send(payload);
+        root.call(payload);
     }
     function refresh() {
-        if (!root.active || Config.testMode || startup.running)
+        if (!root.active || Config.testMode || root.busy)
             return;
-        startup.send({ action: "list" });
+        root.call({ action: "list" });
     }
     function drain() {
         if (root.pending) {
             const next = root.pending;
             root.pending = null;
-            startup.send(next);
+            // An action that waited behind a refresh must not run once locked.
+            if (!ShellState.locked)
+                root.call(next);
+        }
+    }
+    // Through Requests, not a page-owned ServiceRequest: closing the drop
+    // unloads this page, and an add, remove or toggle must still finish.
+    function call(payload) {
+        Requests.send("startup-apps", "scripts/startup_apps.py", payload, root, root.handleResult, root.handleFailed);
+    }
+    function handleResult(data) {
+        root.loadedOnce = true;
+        root.entries = Array.isArray(data.entries) ? data.entries : [];
+        if (data.hyprland)
+            root.hyprland = data.hyprland;
+        if (data.message)
+            root.message = data.message;
+        root.drain();
+    }
+    function handleFailed(text) { root.error = text; root.drain(); }
+
+    // A request started by a previous instance of this page still runs on the
+    // shared channel, but this page never receives its callback. When the
+    // channel settles, drain whatever this page queued and, if the initial
+    // load never arrived, ask again — once; later retries belong to the poll.
+    Connections {
+        target: Requests
+        function onGenerationChanged() {
+            if (!root.active || Config.testMode || Requests.isBusy("startup-apps"))
+                return;
+            if (root.pending)
+                root.drain();
+            else if (!root.loadedOnce && !root.recoveryUsed) {
+                root.recoveryUsed = true;
+                root.refresh();
+            }
         }
     }
     function toggle(entry) { if (entry) request({ action: "set_enabled", id: entry.id, enabled: !entry.enabled }); }
@@ -133,19 +170,6 @@ ColumnLayout {
         }
     }
     onEntriesChanged: root.selected = Math.max(0, Math.min(root.entries.length - 1, root.selected))
-    ServiceRequest {
-        id: startup
-        script: "scripts/startup_apps.py"
-        onResult: data => {
-            root.entries = Array.isArray(data.entries) ? data.entries : [];
-            if (data.hyprland)
-                root.hyprland = data.hyprland;
-            if (data.message)
-                root.message = data.message;
-            root.drain();
-        }
-        onFailed: text => { root.error = text; root.drain(); }
-    }
     // Unit states move while the panel is open; a slow poll keeps the pills honest.
     Timer { interval: 5000; running: root.active && !Config.testMode; repeat: true; onTriggered: root.refresh() }
 
@@ -156,7 +180,7 @@ ColumnLayout {
         SectionMark { text: "STARTUP" }
         Item { Layout.fillWidth: true }
         StatusPill { visible: root.runningCount > 0; text: root.runningCount + " running"; tone: Theme.green }
-        StatusPill { text: root.busy && !root.entries.length ? "Reading" : root.enabledCount + " on · " + (root.entries.length - root.enabledCount) + " off"; tone: Theme.teal }
+        StatusPill { text: root.busy && !root.entries.length ? "Reading" : root.enabledCount + " on · " + (root.entries.length - root.enabledCount) + " off"; tone: Theme.strataAccent }
     }
 
     // Add: the field takes an app name or a command; chips below offer the matches.
@@ -202,11 +226,11 @@ ColumnLayout {
         Item {
             Layout.fillWidth: true
             implicitHeight: 2
-            Rectangle { width: parent.width; height: 1; y: 1; color: Qt.alpha(Theme.teal, .12) }
+            Rectangle { width: parent.width; height: 1; y: 1; color: Qt.alpha(Theme.strataGrain, .28) }
             Rectangle {
                 width: parent.width * (root.query ? 1 : .55 * root.beat(1, .6))
                 height: root.query ? 2 : 1
-                color: root.query ? (root.appMatches.length ? Theme.green : Theme.amber) : Theme.teal
+                color: root.query ? (root.appMatches.length ? Theme.green : Theme.amber) : Theme.strataAccent
                 opacity: root.query ? .85 : .5
                 Behavior on width { enabled: !Theme.reducedMotion; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             }
@@ -224,7 +248,7 @@ ColumnLayout {
                     implicitHeight: 32
                     text: modelData.label
                     hint: "Start " + modelData.label + " with the session"
-                    accent: index === 0 ? Theme.green : Theme.teal
+                    accent: index === 0 ? Theme.green : Theme.strataAccent
                     onClicked: root.addApp(modelData)
                     contentItem: Row {
                         spacing: 8
@@ -237,14 +261,14 @@ ColumnLayout {
                 implicitHeight: 32
                 text: "Run “" + root.query.trim() + "” at login"
                 hint: root.appMatches.length ? "Add the text as a command instead of the matched app" : "Enter adds this command"
-                accent: root.appMatches.length ? Theme.teal : Theme.green
+                accent: root.appMatches.length ? Theme.strataAccent : Theme.green
                 onClicked: root.addCommand()
             }
         }
     }
 
     GlowText { visible: root.error !== ""; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: root.error; color: Theme.amber }
-    GlowText { visible: root.error === "" && root.message !== ""; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: root.message; color: Theme.teal; font.pixelSize: Theme.small }
+    GlowText { visible: root.error === "" && root.message !== ""; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: root.message; color: Theme.strataAccent; font.pixelSize: Theme.small }
 
     RowLayout {
         Layout.fillWidth: true
@@ -271,10 +295,10 @@ ColumnLayout {
         ChamferFrame {
             anchors.fill: parent
             cut: 7
-            fill: row.current ? Qt.alpha(Theme.green, .07) : hover.containsMouse ? Qt.alpha(Theme.teal, .05) : Qt.alpha(Theme.background, .5)
-            stroke: row.current ? Qt.alpha(Theme.green, .55) : entry.state === "failed" && entry.enabled ? Qt.alpha(Theme.ember, .4) : hover.containsMouse ? Qt.alpha(Theme.teal, .35) : Qt.alpha(Theme.teal, .13)
+            fill: row.current ? Qt.alpha(Theme.green, .07) : hover.containsMouse ? Qt.alpha(Theme.strataAccent, .05) : Qt.alpha(Theme.strataFoundation, .5)
+            stroke: row.current ? Qt.alpha(Theme.green, .55) : entry.state === "failed" && entry.enabled ? Qt.alpha(Theme.ember, .4) : hover.containsMouse ? Qt.alpha(Theme.strataAccent, .35) : Qt.alpha(Theme.strataAccent, .13)
             line: row.live || row.current
-            lineColor: row.live ? Theme.green : Theme.teal
+            lineColor: row.live ? Theme.green : Theme.strataAccent
             lineFraction: .5 * row.sweep
             lineOpacity: row.live ? .6 : .35
         }
@@ -336,7 +360,7 @@ ColumnLayout {
                 visible: row.entry.enabled
                 text: row.live ? "Stop" : "Run"
                 hint: row.live ? "Stop " + row.entry.name + " now" : "Run " + row.entry.name + " now"
-                accent: row.live ? Theme.amber : Theme.teal
+                accent: row.live ? Theme.amber : Theme.strataAccent
                 enabled: !root.busy
                 onClicked: root.run(row.entry)
             }
@@ -385,7 +409,7 @@ ColumnLayout {
                 required property var modelData
                 Layout.fillWidth: true
                 implicitHeight: 34
-                ChamferFrame { anchors.fill: parent; cut: 6; fill: Qt.alpha(Theme.background, .4); stroke: Qt.alpha(Theme.teal, .1) }
+                ChamferFrame { anchors.fill: parent; cut: 6; fill: Qt.alpha(Theme.strataFoundation, .4); stroke: Qt.alpha(Theme.strataGrain, .28) }
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
                     Text { Layout.fillWidth: true; text: modelData.command; textFormat: Text.PlainText; elide: Text.ElideMiddle; font.family: Theme.dataFont; font.pixelSize: 11; color: Theme.text }

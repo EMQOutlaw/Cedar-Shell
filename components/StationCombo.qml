@@ -24,8 +24,8 @@ ComboBox {
     onVisibleChanged: if (!visible) popup.close()
     font.family: Theme.dataFont; font.pixelSize: Theme.small
     contentItem: Text { text: root.displayText; color: root.enabled ? Theme.text : Theme.muted; font: root.font; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; leftPadding: 12; rightPadding: 24 }
-    background: Rectangle { color: Theme.surface; radius: Theme.controlRadius; border.width: root.visualFocus ? Theme.focusWidth : 1; border.color: root.visualFocus ? Theme.teal : Theme.border }
-    indicator:Text { x:root.width-width-12; anchors.verticalCenter:parent.verticalCenter; text:"⌄"; color:root.enabled ? Theme.teal:Theme.muted; font.pixelSize:16 }
+    background: Rectangle { color: Theme.strataSurface; radius: Theme.controlRadius; border.width: root.visualFocus ? Theme.focusWidth : 1; border.color: root.visualFocus ? Theme.strataAccent : Qt.alpha(Theme.strataGrain, .28) }
+    indicator:Text { x:root.width-width-12; anchors.verticalCenter:parent.verticalCenter; text:"⌄"; color:root.enabled ? Theme.strataAccent:Theme.muted; font.pixelSize:16 }
     delegate: ItemDelegate {
         width: list.width
         implicitHeight: Theme.controlHeight

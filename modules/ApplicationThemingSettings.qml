@@ -11,8 +11,10 @@ ColumnLayout {
     property var options: ({})
     property var plan: null
     property string message: "Discovering application appearance support…"
-    readonly property bool busy: service.busy
+    readonly property bool busy: { Requests.generation; return Requests.isBusy("application-theming"); }
     property string action: "status"
+    property bool statusReceived: false
+    property int statusRetries: 0
     property string selected: ""
     property bool showAll: false
     readonly property bool dirty: stateData.settings !== undefined && JSON.stringify(options) !== JSON.stringify(stateData.settings)
@@ -26,21 +28,38 @@ ColumnLayout {
         if (value === "") delete row[key]; else row[key]=value;
         overrides[selected]=row; setOption("overrides",overrides);
     }
+    // Through Requests, not a page-owned ServiceRequest: an apply, restore or
+    // reset keeps running if Settings moves to another section mid-write.
+    function call(value) {
+        Requests.send("application-theming", "scripts/application_theming.py", value, root, root.handleResult, root.handleFailed, 90000);
+    }
     function request(which) {
+        if (ShellState.locked) return;
         action=which; message="Working…";
-        service.send({action:which,options:options,previewId:plan ? plan.id:""});
+        call({action:which,options:options,previewId:plan ? plan.id:""});
     }
     Component.onCompleted: request("status")
-    ServiceRequest {
-        id: service; script:"scripts/application_theming.py"; timeoutMs:90000
-        onFailed: error => { root.message=error; root.plan=null; }
-        onResult: result => {
-            if (root.action==="refresh") { root.stateData=result; root.options=result.settings; }
-            else if (root.action==="status") { root.stateData=result; root.options=result.settings; root.message=result.interrupted ? "An interrupted update needs recovery.":(result.last.paused ? "Synchronization paused after restore. Preview and Apply to resume.":"Select applications, preview the changes, then apply."); }
-            else if (root.action==="preview") { root.plan=result; root.message=result.changes.length+" configuration changes ready for review."; }
-            else { root.plan=null; root.message=(result.changed || 0)+" changes applied. Reopen applications marked for restart."; service.send({action:"status"}); root.action="refresh"; }
-            if (root.action==="refresh" && result.applications) { root.stateData=result; root.options=result.settings; }
+    function handleFailed(error) { root.message=error; root.plan=null; }
+    // A timeout drops whatever status read this page queued behind a surviving
+    // operation. When the channel settles and the page still has no settings,
+    // retry the READ (never the timed-out write), twice at most.
+    Connections {
+        target: Requests
+        function onGenerationChanged() {
+            if (root.statusReceived || root.statusRetries >= 2 || ShellState.locked)
+                return;
+            if (Requests.isBusy("application-theming"))
+                return;
+            root.statusRetries++;
+            root.request("status");
         }
+    }
+    function handleResult(result) {
+        if (root.action==="refresh") { root.stateData=result; root.options=result.settings; }
+        else if (root.action==="status") { root.statusReceived=true; root.stateData=result; root.options=result.settings; root.message=result.interrupted ? "An interrupted update needs recovery.":(result.last.paused ? "Synchronization paused after restore. Preview and Apply to resume.":"Select applications, preview the changes, then apply."); }
+        else if (root.action==="preview") { root.plan=result; root.message=result.changes.length+" configuration changes ready for review."; }
+        else { root.plan=null; root.message=(result.changed || 0)+" changes applied. Reopen applications marked for restart."; call({action:"status"}); root.action="refresh"; }
+        if (root.action==="refresh" && result.applications) { root.stateData=result; root.options=result.settings; }
     }
     GlowText { text:"Application Theming"; font.pixelSize:24; color:Theme.green }
     StationToggle { Layout.fillWidth:true; label:"Synchronize supported applications with CEDAR"; description:"Only selected integrations are managed. Existing settings are backed up before changes."; checked:root.options.enabled===true; onToggled:value=>root.setOption("enabled",value) }
@@ -145,10 +164,10 @@ ColumnLayout {
     }
     Flow {
         Layout.fillWidth:true; spacing:8
-        StationButton { text:"Preview"; enabled:!service.busy; onClicked:root.request("preview") }
-        StationButton { text:"Apply"; enabled:!service.busy && root.plan!==null && !root.plan.reports.some(r=>r.status==="Blocked"); onClicked:root.request("apply") }
-        StationButton { text:"Restore Previous"; enabled:!service.busy && root.stateData.canRestore===true; onClicked:root.request("restore") }
-        StationButton { text:"Reset CEDAR Overrides"; enabled:!service.busy && root.stateData.ownership>0; onClicked:root.request("reset") }
-        StationButton { text:"Recover interrupted update"; visible:root.stateData.interrupted===true; enabled:!service.busy; onClicked:root.request("recover") }
+        StationButton { text:"Preview"; enabled:!root.busy; onClicked:root.request("preview") }
+        StationButton { text:"Apply"; enabled:!root.busy && root.plan!==null && !root.plan.reports.some(r=>r.status==="Blocked"); onClicked:root.request("apply") }
+        StationButton { text:"Restore Previous"; enabled:!root.busy && root.stateData.canRestore===true; onClicked:root.request("restore") }
+        StationButton { text:"Reset CEDAR Overrides"; enabled:!root.busy && root.stateData.ownership>0; onClicked:root.request("reset") }
+        StationButton { text:"Recover interrupted update"; visible:root.stateData.interrupted===true; enabled:!root.busy; onClicked:root.request("recover") }
     }
 }

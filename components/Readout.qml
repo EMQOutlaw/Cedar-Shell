@@ -14,8 +14,8 @@ Rectangle {
     Layout.preferredWidth: 200
     implicitHeight: column.implicitHeight + 28
     radius: 10
-    color: Qt.alpha(Theme.teal, .035)
-    border.color: lit ? Qt.alpha(tone, .35) : Qt.alpha(Theme.teal, .12)
+    color: Qt.alpha(Theme.strataAccent, .05)
+    border.color: lit ? Qt.alpha(tone, .35) : Qt.alpha(Theme.strataGrain, .28)
     Accessible.role: Accessible.StaticText
     Accessible.name: label + ": " + value + (detail ? ". " + detail : "")
     ColumnLayout {

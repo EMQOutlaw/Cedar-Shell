@@ -17,7 +17,7 @@ def state_path():
 def status():
     try:
         record=runtime.read_json(state_path())
-        if not isinstance(record,dict) or record.get('state') not in ('current','available','error'):
+        if not isinstance(record,dict) or record.get('state') not in ('current','available','error','checking'):
             raise ValueError('Invalid update status')
         if record.get('sourceDigest')!=content_digest(ROOT):
             return {'state':'unknown','detail':'CEDAR changed since the last check.'}
@@ -28,7 +28,10 @@ def status():
 
 def check():
     channel=os.environ.get('CEDAR_INSTALLER_CHANNEL') or installed_channel() or 'stable'
-    record={'sourceDigest':content_digest(ROOT),'channel':channel,'state':'error'}
+    # The attempt is persisted BEFORE the updater runs: a slow check killed by
+    # its timeout must still leave its cooldown anchor behind.
+    runtime.atomic(state_path(),(json.dumps({'sourceDigest':content_digest(ROOT),'channel':channel,'state':'checking','attemptedAt':time.time()})+'\n').encode())
+    record={'sourceDigest':content_digest(ROOT),'channel':channel,'state':'error','attemptedAt':time.time()}
     try:
         result=Updater(ROOT,channel=channel).run()
         record.update(state='current' if result.get('current') is True else 'available',
@@ -36,5 +39,15 @@ def check():
                       detail='Verified against '+channel+' channel.')
     except Exception as error:
         record['detail']=str(error)
+    # Announcement metadata survives a re-check of the same release, so an
+    # alert the user has already seen is not repeated within its window.
+    try:
+        previous=runtime.read_json(state_path())
+        if (isinstance(previous,dict) and previous.get('version')==record.get('version')
+                and record.get('state')=='available' and previous.get('state')=='available'):
+            for field in ('alertedAt','alertedVersion'):
+                if field in previous: record[field]=previous[field]
+    except (OSError,ValueError,TypeError):
+        pass
     runtime.atomic(state_path(),(json.dumps(record)+'\n').encode())
     return record

@@ -25,7 +25,7 @@ ColumnLayout {
             readonly property bool collapsible: modelData === "Advanced"
             heading: modelData
             caption: root.captions[modelData] || (collapsible ? "Rarely needed overrides." : "")
-            accent: collapsible ? Theme.muted : Theme.teal
+            accent: collapsible ? Theme.muted : Theme.strataAccent
             StationButton {
                 visible: section.collapsible
                 text: root.advanced ? "Hide advanced options" : "Show advanced options"; checked: root.advanced

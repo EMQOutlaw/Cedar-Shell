@@ -11,6 +11,21 @@ ColumnLayout {
     property string confirmRestart:""
     property string diagnosticPreview:""
     readonly property var services:SettingsInfo.data.services || []
+    property string aiInstalled:""
+    property bool aiChecked:false
+    property string aiProbeError:""
+    // Status is read-only and safe to die with the page; the install itself
+    // rides the persistent Nursery service so switching pages cannot kill it.
+    ServiceRequest {
+        id:aiStatus; script:"scripts/cedar_ai_update.py"
+        onResult:data=>{root.aiInstalled=data.installed || ""; root.aiProbeError=data.probe_error || ""; root.aiChecked=true;}
+        onFailed:message=>{root.aiInstalled=""; root.aiProbeError=message; root.aiChecked=true;}
+    }
+    Component.onCompleted:aiStatus.send({action:"status"})
+    Connections {
+        target: Nursery
+        function onActionBusyChanged() { if (!Nursery.actionBusy) aiStatus.send({action:"status"}) }
+    }
     function tone(status) { return status==="Healthy" ? Theme.green : status==="Failed" ? Theme.ember : status==="Unavailable" ? Theme.muted : Theme.amber; }
     spacing:16
 
@@ -77,6 +92,28 @@ ColumnLayout {
         StationButton { text:root.diagnosticPreview ? "Rebuild report":"Build report"; onClicked:root.diagnosticPreview=SettingsInfo.report() }
         TextArea { visible:root.diagnosticPreview!==""; Layout.fillWidth:true; text:root.diagnosticPreview; textFormat:TextEdit.PlainText; readOnly:true; selectByMouse:true; wrapMode:TextEdit.Wrap; color:Theme.text; font.family:Theme.dataFont; font.pixelSize:Theme.small; background:Rectangle { color:Theme.background; radius:8; border.color:Qt.alpha(Theme.teal,.12) } }
         StationButton { visible:root.diagnosticPreview!==""; text:"Copy reviewed report"; onClicked:{Quickshell.clipboardText=root.diagnosticPreview;SettingsInfo.message="Diagnostics copied.";} }
+    }
+
+    SettingsSection {
+        heading:"CEDAR Ai"; badge:"Optional"
+        caption:"The companion agent-OS: a local map of the machine, a loopback dashboard and Hermes wiring. The button pulls GitHub's most recent release and installs it for you (pipx, or a private Python environment when the system Python is externally managed); when no release is tagged, it installs the newest main and says so. Local-only until you press it."
+        SettingRow {
+            Layout.fillWidth:true; title:"Installed"; description:!root.aiChecked ? "Checking" : (root.aiInstalled!=="" ? "Version "+root.aiInstalled : (root.aiProbeError!=="" ? "The installed version could not be read: "+root.aiProbeError : "CEDAR Ai is not installed."))
+            StatusPill { text:!root.aiChecked ? "\u2026" : (root.aiInstalled || (root.aiProbeError!=="" ? "Unknown" : "Not here")); tone:root.aiInstalled!=="" ? Theme.teal : (root.aiProbeError!=="" ? Theme.amber : Theme.muted) }
+            StationButton { text:"Check again"; enabled:!aiStatus.busy; onClicked:aiStatus.send({action:"status"}) }
+        }
+        SettingRow {
+            visible:Nursery.actionOutput!=="" || Nursery.actionFailed; Layout.fillWidth:true; title:""
+            TextArea {
+                Layout.fillWidth:true; text:Nursery.actionFailed ? Nursery.message : Nursery.actionOutput; textFormat:TextEdit.PlainText; readOnly:true; selectByMouse:true; wrapMode:TextEdit.Wrap; color:Nursery.actionFailed ? Theme.amber : Theme.text; font.family:Theme.dataFont; font.pixelSize:Theme.small
+                background:Rectangle { color:Theme.background; radius:8; border.color:Qt.alpha(Theme.teal,.12) }
+            }
+        }
+        StationButton {
+            text:Nursery.actionBusy ? "Installing\u2026" : "Install / update from GitHub"
+            enabled:!Nursery.actionBusy
+            onClicked:Nursery.act("install","cedar-ai")
+        }
     }
 
     SettingsSection {

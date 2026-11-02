@@ -42,11 +42,15 @@ class SchemaIntegrity(unittest.TestCase):
         self.assertEqual(evaluate('fields.filter(function(f){return validate(f.key,f.defaultValue)!=="";}).map(function(f){return f.key;})'), [])
     def test_every_page_is_in_exactly_one_menu_category(self):
         ids=[p['id'] for p in self.schema['pages']]
+        # "core" is a search-only page: its controls are embedded in the Shell
+        # & Bar page (one home), and SettingsNavigation maps core → bar.
+        search_only={'core'}
         placed=[pid for m in self.schema['menu'] for pid in m['pages']]
-        self.assertEqual(sorted(placed),sorted(ids))
+        self.assertEqual(sorted(placed),sorted(set(ids)-search_only))
+        self.assertFalse(search_only-set(ids), 'search-only page disappeared from the schema')
         for m in self.schema['menu']:
             self.assertTrue(m['id'] and m['label'] and m['description'],m)
-        self.assertTrue(all(category for _,category in self.schema['menuOf']))
+        self.assertTrue(all(category for pid,category in self.schema['menuOf'] if pid not in search_only))
     def test_rail_highlights_stay_in_the_hidden_pages_menu_group(self):
         navigation = (ROOT/'components/SettingsNavigation.qml').read_text()
         mapping = re.search(r'checked: \(\((\{[^}]+\})\)', navigation).group(1)
@@ -57,6 +61,10 @@ class SchemaIntegrity(unittest.TestCase):
             if page.get('rail') is False:
                 target = targets[page['id']]
                 self.assertNotEqual(next(p for p in self.schema['pages'] if p['id'] == target).get('rail'), False)
+                if page['id'] == 'core':
+                    # search-only page whose controls are embedded in Shell & Bar
+                    self.assertEqual(targets[page['id']], 'bar')
+                    continue
                 self.assertEqual(evaluate('groupOf(' + json.dumps(page['id']) + ')'),
                                  evaluate('groupOf(' + json.dumps(target) + ')'))
     def test_fields_and_extras_point_at_existing_pages(self):

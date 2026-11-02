@@ -7,9 +7,9 @@ ColumnLayout {
     id:root
     function timeLabel(value){return Config.formatTime(new Date("2000-01-01T"+value));}
     spacing:12
-    GlowText {text:WeatherLocation.label || "Sky Watch";font.pixelSize:24;color:Theme.green}
+    GlowText {text:WeatherLocation.label || "Sky Watch";font.pixelSize:24;color:Theme.strataText}
     GlowText {text:Weather.temperature;font.pixelSize:42}
-    GlowText {Layout.fillWidth:true;wrapMode:Text.WordWrap;text:Weather.condition;color:Theme.teal}
+    GlowText {Layout.fillWidth:true;wrapMode:Text.WordWrap;text:Weather.condition;color:Theme.strataAccent}
     GlowText {text:Weather.wind;color:Theme.muted}
     GlowText {text:(Weather.stale?"STALE · ":"")+"Open-Meteo · "+Weather.updated;color:Weather.stale?Theme.amber:Theme.muted}
     GlowText {Layout.fillWidth:true;wrapMode:Text.WordWrap;text:Weather.sunrise?"Sunrise · "+root.timeLabel(Weather.sunrise):"Sunrise unavailable";color:Theme.muted}

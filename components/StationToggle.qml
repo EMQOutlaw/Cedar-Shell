@@ -7,7 +7,7 @@ RowLayout {
     property string label: ""
     property string accessibleLabel: label
     property string description: ""
-    property color accent: Theme.teal
+    property color accent: Theme.strataAccent
     property color focusAccent: Theme.green
     property bool checked: false
     property bool busy: false

@@ -6,7 +6,7 @@ Item {
     id: root
     property alias text: label.text
     property alias elide: label.elide
-    property color tone: Theme.teal
+    property color tone: Theme.strataAccent
     property int size: 10
     implicitWidth: 22 + label.implicitWidth
     implicitHeight: label.implicitHeight

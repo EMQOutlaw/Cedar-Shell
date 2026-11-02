@@ -17,14 +17,17 @@ ColumnLayout {
     function discard(){SettingsInfo.themePreview=null;}
     function selectTheme(name, accent=""){SettingsInfo.run({action:"theme-preview",name:name,accent:accent});}
     onHighlightKeyChanged: {
+        // "theme" is a search anchor in Schema.extras, not fields, so it must
+        // be mapped explicitly or search leaves the current tab selected.
+        if (highlightKey==="theme"){tab="Themes";return;}
         const f=Schema.fields.find(f=>f.key===highlightKey);
         if(f)tab=f.group==="Typography" ? "Typography":"Surfaces";
     }
-    SettingsTabs { tabs:["Themes","Colors","Surfaces","Typography","Living Edge","Grain"];current:root.tab;onChosen:tab=>root.tab=tab }
+    SettingsTabs { tabs:["Themes","Surfaces","Typography"];current:root.tab;onChosen:tab=>root.tab=tab }
     SettingsBarPreview { active:root.active;palette:root.preview?.palette || ({});Layout.fillWidth:true }
     SettingsSurface {
-        visible:root.tab==="Themes" || root.tab==="Colors"
-        GlowText { text:root.tab==="Themes" ? "Installed themes":"Theme accents";font.family:Theme.labelFont;font.pixelSize:Theme.title }
+        visible:root.tab==="Themes"
+        GlowText { text:"Installed themes";font.family:Theme.labelFont;font.pixelSize:Theme.title }
         GridLayout {
             objectName:"settingsThemeGrid"
             visible:root.tab==="Themes";Layout.fillWidth:true;Layout.minimumWidth:0
@@ -55,8 +58,9 @@ ColumnLayout {
             }
         }
         GlowText {visible:!root.themes.length;text:"No installed themes were found.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+        GlowText { text:"Theme accents";font.family:Theme.labelFont;font.pixelSize:Theme.title;Layout.topMargin:8 }
         Flow {
-            visible:root.tab==="Colors";Layout.fillWidth:true;spacing:8
+            Layout.fillWidth:true;spacing:8
             Repeater {
                 model:["green","teal","amber","ember"]
                 StationButton {
@@ -78,10 +82,7 @@ ColumnLayout {
     }
     SettingsFields {visible:root.tab==="Typography";page:"appearance";groups:["Typography"];highlightKey:root.highlightKey;Layout.fillWidth:true}
     SettingsFields {visible:root.tab==="Surfaces";page:"appearance";groups:["Interface"];highlightKey:root.highlightKey;Layout.fillWidth:true}
-    SettingsSurface {
-        visible:root.tab==="Living Edge" || root.tab==="Grain"
-        GlowText {text:root.tab==="Living Edge" ? "CEDAR’s living surface":"Strata grain";font.family:Theme.labelFont;font.pixelSize:Theme.title}
-        GlowText {text:root.tab==="Living Edge" ? "Edge light uses the shared Rootlines, Heartwood and morph surfaces. Adjust their activity in Animations & Effects. Independent edge intensity and global blur controls are not available in this backend.":"Grain is part of Strata’s retained surface geometry. Its contrast follows the active palette; there is no separate grain texture or intensity setting.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
-        StrataButton {visible:root.tab==="Living Edge";text:"Open Animations & Effects";onClicked:SettingsService.navigate("animations", "effectIntensity")}
-    }
+    // The old "Living Edge" and "Grain" tabs were placeholders that only said
+    // no control exists; edge light belongs to Animations & Effects and grain
+    // is part of the theme palette, so neither needs a tab here.
 }

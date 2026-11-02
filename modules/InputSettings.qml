@@ -38,7 +38,7 @@ ColumnLayout {
         title:root.field(key).label; description:root.field(key).description
         highlighted:root.highlightKey===key; enabled:!DesktopSettings.busy
     }
-    SettingsTabs { tabs:["Input","Keybinds"];current:"Input";onChosen:tab=>{if(tab!=="Input")SettingsService.navigate("keybinds", "");} }
+    SettingsTabs { tabs:["Input","Keybinds","Field Notes"];current:"Input";onChosen:tab=>{if(tab==="Keybinds")SettingsService.navigate("keybinds", "");else if(tab==="Field Notes")SettingsService.navigate("notes", "");} }
     SettingsCard {
         visible:root.externalChange; Layout.fillWidth:true; padding:14
         GlowText { text:"Input configuration changed outside this page. Reload before applying changes to the same options."; color:Theme.amber; Layout.fillWidth:true; wrapMode:Text.WordWrap; font.pixelSize:Theme.small }

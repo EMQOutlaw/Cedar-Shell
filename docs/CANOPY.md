@@ -24,6 +24,39 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   where the bar's edge bends down to become the drop's sides, the long cut
   bottom-left and the short cut bottom-right of the pill's language. The
   bar's own frame (`HudPanel`) carries the same Grain contour.
+- With effects on, the drop is one field with the bar
+  (`components/shaders/strata.frag`, shipped compiled as `strata.frag.qsb`): the
+  bar is a half-plane, the drop a chamfered box, joined by a circular
+  smooth-minimum of radius `Theme.morphSmoothing`. The fillet is a true
+  tangent arc at every size, so a drop one pixel tall is already a low
+  swell in the bar's edge, and the grow curve's overshoot stretches that
+  swell rather than a hard outline. Fill, Grain and Living Edge are three
+  isolines of the same field; the field repaints the one pixel row of the
+  bar's edge it overlaps, so the bar's line, the fillet and the drop's side
+  are a single contour in the bar's edge colour (`Theme.strataGrain` at .28)
+  and the drop's fill is the bar's material at `Config.barOpacity`. Only
+  whole pixel rows are painted over the bar: a half-covered row shows the
+  compositor's blurred backdrop through it as a tinted seam. The contour is
+  drawn once: while a drop is mapped and drawing the field, `CanopyWindow`
+  publishes `Canopy.surfaceSeam` (the frame's padded extent along the bar)
+  and `StrataBarFrame` / `UnderstoryBar` skip their edge stroke across it,
+  so no bar line ghosts through a translucent drop at any `barOpacity`;
+  `canopy status` reports the seam. Sideways the Canopy window starts one
+  pixel back over the rail's seam for the same overlap. The body also
+  yields to its own motion: a
+  spring-driven squash along the direction of travel (`Theme.morphSquash`,
+  scaled by the effect intensity, fixed at the join so it never parts from
+  the bar) that the panel's content follows through `DropFrame.deformMatrix`.
+  It samples one frame at a time only while the surface moves and rests the
+  moment it is still. Reduced Motion, Gaming, effects off, tests, the
+  software scene-graph backend (`GraphicsInfo.Software`, where a
+  ShaderEffect draws nothing and reports no error) or a shader that fails
+  to load draw the same silhouette as rigid vector paths.
+- One material throughout (owner's rule, 2026-10-29): a drop and everything
+  in it use the bar's Strata tokens. Structural colour is `strataFoundation`
+  / `strataSurface` for fills, `strataGrain` at .28 for lines, `strataAccent`
+  for headings, ticks, focus and control accents; teal is not used inside
+  drops. Green, amber and ember stay semantic only.
 - Geometry is decided, then interpolated. `components/core/StrataGeometry.js`
   computes the target rect from the bar's width, the control's screen rect,
   the panel's wanted size and the edge inset (centred on the control, clamped
@@ -125,8 +158,9 @@ so CEDAR keeps a synchronized visual seam instead and does not claim more:
   per application. Applying validates disconnected devices and gains before
   mutation. A subsequent server error can still leave a partial apply; errors
   are reported rather than claimed as success. Scene files are private (0600).
-- CAVA spectrum uses real PipeWire samples and 24 bounded bars. It is off by
-  default, stopped on close/Reduced Motion, and never synthesizes a waveform.
+- The CAVA spectrum instrument was removed from the Audio Canopy at the owner's
+  request (pinned for a possible return); `scripts/spectrum.py` remains because
+  the bar's Canopy Pulse still shares the feed.
 - Startup lists the session's autostart entries (`~/.config/autostart` over the
   system `autostart` directories) with the state of the `app-*@autostart`
   unit the systemd generator ran for each, a switch, run/stop now and remove.

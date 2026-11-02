@@ -14,12 +14,13 @@ ColumnLayout {
     spacing: 16
 
     readonly property var plugins: Nursery.plugins
+    readonly property int plantedCount: plugins.filter(p => p.planted !== false).length
     readonly property int runningCount: plugins.filter(p => p.active).length
-    readonly property int pendingCount: plugins.filter(p => p.setup_state === "pending").length
+    readonly property int pendingCount: plugins.filter(p => p.setup_state === "pending" && p.planted !== false).length
 
     function statusWord(p) {
         if (p.error) return "Unreadable";
-        if (!p.installed) return "Not installed";
+        if (!p.installed) return p.planted === false ? "Available" : "Not enabled";
         if (p.active) return "Running";
         return "Stopped";
     }
@@ -28,9 +29,9 @@ ColumnLayout {
     GridLayout {
         Layout.fillWidth: true; columns: root.width < 600 ? 1 : 3; columnSpacing: 12; rowSpacing: 12
         Readout {
-            label: "Planted"; lit: root.plugins.length > 0; tone: Theme.teal
-            value: root.plugins.length === 1 ? "1 companion" : root.plugins.length + " companions"
-            detail: "Descriptors live in ~/.config/cedar/plugins.d/."
+            label: "Planted"; lit: root.plantedCount > 0; tone: Theme.teal
+            value: root.plantedCount === 1 ? "1 companion" : root.plantedCount + " companions"
+            detail: root.plantedCount ? "Descriptors live in ~/.config/cedar/plugins.d/." : "Nothing planted yet — available companions are below."
         }
         Readout {
             label: "Running"; lit: root.runningCount > 0
@@ -47,7 +48,7 @@ ColumnLayout {
     GlowText {
         visible: Nursery.error !== "" || Nursery.message !== ""
         text: Nursery.error || Nursery.message
-        color: Nursery.error ? Theme.amber : Theme.teal
+        color: (Nursery.error || Nursery.actionFailed) ? Theme.amber : Theme.teal
         Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: Theme.small
     }
 
@@ -96,7 +97,7 @@ ColumnLayout {
                 // The first-time question, in the plugin's own words' stead:
                 // plant it at login, or leave it off. Off is the default.
                 SettingsSurface {
-                    visible: plugin.setup_state === "pending"
+                    visible: plugin.setup_state === "pending" && plugin.planted !== false
                     Layout.fillWidth: true; padding: 12; accent: Theme.amber
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 6
@@ -120,15 +121,23 @@ ColumnLayout {
 
                 Flow {
                     Layout.fillWidth: true; spacing: 8
-                    visible: plugin.setup_state !== "pending" && plugin.error === undefined
+                    visible: (plugin.setup_state !== "pending" || plugin.planted === false) && plugin.error === undefined
                     StationButton {
-                        visible: plugin.installed || (plugin.setup || "") !== ""
+                        visible: plugin.available === true && plugin.planted === false
+                        text: Nursery.actionBusy ? "Working…" : "Install from GitHub"
+                        hint: "adds the command, the descriptor and an Applications entry"
+                        accent: Theme.green
+                        enabled: !Nursery.actionBusy
+                        onClicked: Nursery.act("install", plugin.id)
+                    }
+                    StationButton {
+                        visible: plugin.planted !== false && (plugin.installed || (plugin.setup || "") !== "")
                         text: plugin.active ? "Stop and disable" : "Enable and start"
                         accent: plugin.active ? Theme.strataAccent : Theme.green
                         onClicked: Nursery.act(plugin.active ? "disable" : "enable", plugin.id)
                     }
                     StationButton {
-                        visible: (plugin.dashboard || "") !== ""
+                        visible: (plugin.dashboard || "") !== "" && plugin.planted !== false
                         text: "Open dashboard"
                         hint: plugin.dashboard_ok ? "reachable" : "not answering right now"
                         onClicked: Nursery.act("open", plugin.id)

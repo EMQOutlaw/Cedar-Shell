@@ -135,3 +135,21 @@ reopening, keyboard focus and Escape, output hotplug and mixed scaling, tray
 menus, real audio/network/power actions, privacy indicators, and reduced motion.
 Measure idle wakeups and transition frame timing on that system. No CPU, GPU,
 memory or compositor performance improvement is claimed from source checks.
+
+## The field (2026-10-29)
+
+With effects on, `StrataBarFrame` draws the plate as its band of the Strata
+field (`components/shaders/strata.frag`, shared with `DropFrame`): the plate
+is a chamfered box, and the drop growing from it (`Canopy.field`, published
+by `CanopyWindow` every frame the drop moves: rect in bar-window px, its 2x2
+deform and the join) a second one that begins inside the plate
+(`CanopyWindow.emerge` = barJoin - inset - cut). The two are joined by a
+circular smooth-minimum of `Theme.morphSmoothing`, so the plate's lower edge
+swells and opens into the drop. The bar's window paints the field up to its
+own lower edge (`paintTo`), the drop's window from there (`paintFrom`), so the
+window boundary is invisible. The fill and the edge stroke come from the
+field; the seat shading and the grain lip remain vector overlays. The top
+edge stays unstroked beneath the Core's seat (`seatGap`). Effects off,
+tests, the software backend or a shader error draw the vector plate as
+before. `flush` (no inset, no cuts, flat fill) exists on the frame but is
+off; the owner prefers the inset plate.

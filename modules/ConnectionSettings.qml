@@ -230,26 +230,55 @@ ColumnLayout {
         visible: root.hotspot && root.showHotspot
         Layout.fillWidth: true
     }
+    // VPN: one consolidated drop-down. Proton, Tailscale and the NetworkManager
+    // tunnels live behind a single header instead of three stacked sections.
+    property bool vpnOpen: false
+    readonly property string vpnSummary: [
+        Proton.data.installed && Proton.connected ? "Proton connected" : "",
+        Tailscale.installed && Tailscale.up ? "Tailscale on" : "",
+        Network.vpns.count ? Network.vpns.count + (Network.vpns.count === 1 ? " profile" : " profiles") : ""
+    ].filter(Boolean).join(" · ") || "nothing active"
+    RowLayout {
+        Layout.fillWidth: true; Layout.topMargin: 8; spacing: 8
+        opacity: root.beat(5)
+        StationButton {
+            text: root.vpnOpen ? "▾  VPN" : "▸  VPN"
+            Accessible.name: "VPN section" + (root.vpnOpen ? ", expanded" : ", collapsed") + (root.vpnSummary ? ": " + root.vpnSummary : "") + (Network.killSwitch !== null ? ", kill-switch active" : "")
+            onClicked: root.vpnOpen = !root.vpnOpen
+        }
+        GlowText {
+            Layout.fillWidth: true
+            elide: Text.ElideRight
+            text: root.vpnSummary
+            font.pixelSize: Theme.small; color: Theme.strataMuted
+        }
+        // The kill-switch warning never yields to the eliding summary.
+        StatusPill { visible: Network.killSwitch !== null; text: "kill-switch active"; tone: Theme.amber }
+    }
     ProtonCard {
+        visible: root.vpnOpen
         Layout.fillWidth: true; Layout.topMargin: 8
         opacity: root.beat(5)
         transform: Translate { x: 10 * (1 - root.beat(5)) }
     }
     // Only where Tailscale is installed; it and Proton are never run together.
     TailscaleCard {
+        visible: root.vpnOpen && Tailscale.installed
         Layout.fillWidth: true; Layout.topMargin: 8
         opacity: root.beat(5)
         transform: Translate { x: 10 * (1 - root.beat(5)) }
     }
     // VPN: the tunnels NetworkManager knows, whoever created them. A profile a
     // VPN application manages is still controllable here; the app may reconnect.
-    RowLayout {
-        Layout.fillWidth: true; Layout.topMargin: 8; spacing: 8
-        opacity: root.beat(5)
-        SectionMark { text: "VPN"; tone: Theme.strataAccent }
-        Item { Layout.fillWidth: true }
-        GlowText { text: Network.vpns.count ? Network.vpns.count + (Network.vpns.count === 1 ? " PROFILE" : " PROFILES") : "NO PROFILES"; font.pixelSize: 9; font.letterSpacing: 1.2; color: Theme.strataMuted }
-    }
+    ColumnLayout {
+        visible: root.vpnOpen
+        Layout.fillWidth: true; spacing: 2
+        RowLayout {
+            Layout.fillWidth: true; Layout.topMargin: 8; spacing: 8
+            SectionMark { text: "VPN PROFILES"; tone: Theme.strataAccent }
+            Item { Layout.fillWidth: true }
+            GlowText { text: Network.vpns.count ? Network.vpns.count + (Network.vpns.count === 1 ? " PROFILE" : " PROFILES") : "NO PROFILES"; font.pixelSize: 9; font.letterSpacing: 1.2; color: Theme.strataMuted }
+        }
     GlowText {
         visible: Network.vpns.count === 0
         text: Network.data.available ? "No VPN or WireGuard profile is saved in NetworkManager. Import one (a WireGuard file from your provider works with `nmcli connection import type wireguard file …`) and it appears here." : "NetworkManager is not reachable."
@@ -302,6 +331,7 @@ ColumnLayout {
         text: "Advanced settings (servers, keys, DNS) are the profile's own: edit them with “Advanced networks (terminal)” above or your provider's application."
         font.pixelSize: 10; color: Theme.strataMuted; Layout.fillWidth: true; wrapMode: Text.WordWrap
         opacity: root.beat(7)
+    }
     }
     SectionMark {
         tone: Theme.strataAccent

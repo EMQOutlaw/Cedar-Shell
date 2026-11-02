@@ -23,8 +23,8 @@ Rectangle {
         visible: root.framed
         anchors.fill: parent
         cut: Theme.strataCut
-        fill: Qt.alpha(Theme.strataFoundation, Math.max(.96, Config.panelOpacity))
-        stroke: Qt.alpha(Theme.strataAccent, .25)
+        fill: Qt.alpha(Theme.strataFoundation, Config.barOpacity)
+        stroke: Qt.alpha(Theme.strataGrain, .28)
     }
     // A short lit line at the top edge ties the panel to the pill above it.
     Rectangle {

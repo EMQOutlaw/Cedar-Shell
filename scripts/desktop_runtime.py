@@ -506,7 +506,7 @@ def main(args):
     elif name == 'focus':
         ipc('focus', 'start', args[1]) if len(args) == 2 else ipc('focus', 'open')
     elif name == 'profiles':
-        ipc('profiles', 'activate', args[1]) if len(args) == 2 else ipc('profiles', 'open')
+        ipc('profiles', 'activate', args[1]) if len(args) == 2 else ipc('profiles', 'status')
     elif name == 'canopy' and len(args) == 2:
         ipc('canopy', 'open', args[1])
     elif name == 'launch' and len(args) >= 2:

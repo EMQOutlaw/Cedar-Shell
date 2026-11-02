@@ -14,7 +14,7 @@ ColumnLayout {
             required property var modelData
             property bool reveal:false
             Layout.fillWidth:true
-            GlowText {Layout.fillWidth:true;wrapMode:Text.WordWrap;text:modelData.label+" · "+Config.formatTime(new Date(modelData.at))+(modelData.pinned?" · PINNED":"");color:Theme.teal}
+            GlowText {Layout.fillWidth:true;wrapMode:Text.WordWrap;text:modelData.label+" · "+Config.formatTime(new Date(modelData.at))+(modelData.pinned?" · PINNED":"");color:Theme.strataAccent}
             GlowText {visible:parent.reveal && modelData.kind==="text";Layout.fillWidth:true;wrapMode:Text.WordWrap;maximumLineCount:6;elide:Text.ElideRight;text:parent.reveal?modelData.payload:""}
             RowLayout {
                 StationButton {text:"Copy again";onClicked:Clipboard.copy(modelData)}

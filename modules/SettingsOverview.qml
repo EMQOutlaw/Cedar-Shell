@@ -41,10 +41,9 @@ ColumnLayout {
     GridLayout {
         objectName:"settingsSummaryGrid"
         Layout.fillWidth:true; columns:Math.max(1,Math.min(4,Math.floor((width+10)/(220*Math.max(1,Theme.fontScale)+10)))); columnSpacing:10; rowSpacing:10
-        Summary { heading:"Desktop Profile"; value:Profiles.current ? Profiles.currentLabel:"No profile"; detail:Profiles.anyBusy ? "Applying changes…":Profiles.settingsFailure || Profiles.failures.length || Gaming.failures.length ? "Needs attention":Profiles.current ? "Active":"Your current preferences"; symbol:"△"; destination:"profiles" }
         Summary { heading:"Appearance"; value:SettingsInfo.data.theme || "Unknown"; detail:"CEDAR palette · "+(Config.saved.reducedMotion ? "Reduced motion":"Shared materials"); symbol:"◐"; destination:"appearance" }
         Summary { heading:"System Version"; value:SettingsInfo.data.version || "Unavailable"; detail:SettingsInfo.data.channel || "Channel unavailable"; symbol:"♧"; destination:"about" }
-        Summary { heading:"Update Status"; value:SettingsInfo.action==="update-check" && SettingsInfo.busy ? "Checking…":({current:"Verified current",available:"Update available",error:"Check failed"})[SettingsInfo.data.updateStatus?.state] || "Not checked"; detail:SettingsInfo.data.updateStatus?.checkedAt ? "Checked "+Qt.formatDateTime(new Date(SettingsInfo.data.updateStatus.checkedAt*1000),"MMM d, HH:mm"):"Open Updates to verify"; symbol:"↻"; destination:"system" }
+        Summary { heading:"Update Status"; value:SettingsInfo.action==="update-check" && SettingsInfo.busy ? "Checking…":({current:"Verified current",available:"Update available",checking:"Checking…",error:"Check failed"})[SettingsInfo.data.updateStatus?.state] || "Not checked"; detail:SettingsInfo.data.updateStatus?.checkedAt ? "Checked "+Qt.formatDateTime(new Date(SettingsInfo.data.updateStatus.checkedAt*1000),"MMM d, HH:mm"):"Open Updates to verify"; symbol:"↻"; destination:"system" }
     }
     GridLayout {
         id:details

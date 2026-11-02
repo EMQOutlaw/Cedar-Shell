@@ -4,7 +4,7 @@ import ".."
 
 AbstractButton {
     id: root
-    property color accent: Theme.teal
+    property color accent: Theme.strataAccent
     property string hint: ""
     property bool iconOnly: false
     implicitWidth: Math.max(36, label.implicitWidth + 24)

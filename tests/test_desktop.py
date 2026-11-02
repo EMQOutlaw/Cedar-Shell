@@ -9,6 +9,8 @@ import unittest
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
+import sys
+sys.path.insert(0,str(ROOT/'scripts'))  # desktop.py imports sibling helpers (portable_providers)
 spec=importlib.util.spec_from_file_location('desktop',ROOT/'scripts/desktop.py')
 d=importlib.util.module_from_spec(spec); spec.loader.exec_module(d)
 
@@ -16,7 +18,101 @@ d=importlib.util.module_from_spec(spec); spec.loader.exec_module(d)
 # executes Lua itself; Hyprland does): Arch has it, Fedora needs `dnf install lua`. Skip, never guess.
 needs_lua = unittest.skipUnless(shutil.which('lua'), 'lua interpreter not installed (test-only validator)')
 
+class WindowsValues(unittest.TestCase):
+    def test_windows_rejects_unknown_out_of_range_and_bad_types(self):
+        self.assertRaises(ValueError, d.validate_windows, {'bogus': 1})
+        self.assertRaises(ValueError, d.validate_windows, {'gaps_in': 500})
+        self.assertRaises(ValueError, d.validate_windows, {'gaps_in': 2.5})
+        self.assertRaises(ValueError, d.validate_windows, {'blur_enabled': 'yes'})
+        self.assertRaises(ValueError, d.validate_windows, {'layout': 'tall'})
+        self.assertRaises(ValueError, d.validate_windows, {'rounding_power': 99})
+        out = d.validate_windows({'gaps_in': 5, 'blur_enabled': True, 'layout': 'master', 'rounding_power': 2.0})
+        self.assertEqual(out, {'gaps_in': 5, 'blur_enabled': True, 'layout': 'master', 'rounding_power': 2.0})
+    def test_windows_shadow_offset_positional_and_passthrough(self):
+        # both axes owned: a positional literal, no compositor read
+        lines = d.render_windows({'windows': {'shadow_offset_x': 4, 'shadow_offset_y': -2}})
+        self.assertEqual(lines, ['hl.config({["decoration"]={["shadow"]={["offset"]={4, -2}}}})'])
+        # one axis owned: companion resolved from live config at load time,
+        # never baked in (upstream changes to the unowned axis must survive)
+        lines = d.render_windows({'windows': {'shadow_offset_x': 4}})
+        self.assertEqual(len(lines), 1)
+        self.assertIn('hl.get_config("decoration.shadow.offset") or {0, 0}', lines[0])
+        self.assertIn('["offset"]={4, __cedar_off[2]}', lines[0])
+        lines = d.render_windows({'windows': {'shadow_offset_y': 1.75}})
+        self.assertIn('["offset"]={__cedar_off[1], 1.75}', lines[0])
+    def test_windows_color_normalization(self):
+        self.assertEqual(d.parse_color('#A1B2C3'), (['ffa1b2c3'], 0))
+        self.assertEqual(d.parse_color('rgba(a1b2c3ff)'), (['ffa1b2c3'], 0))
+        self.assertEqual(d.parse_color('rgba(161,178,195,0.5)'), (['80a1b2c3'], 0))
+        self.assertEqual(d.parse_color('ff9dffb0 ff3fe0c5 45deg'), (['ff9dffb0','ff3fe0c5'], 45))
+        self.assertEqual(d.parse_color('ee1a1a1a 0deg'), (['ee1a1a1a'], 0))
+        self.assertEqual(d.parse_color('0xA1B2C3D4'), (['a1b2c3d4'], 0))
+        self.assertRaises(ValueError, d.parse_color, 'red')
+        self.assertEqual(d.norm_color('#A1B2C3'), '0xffa1b2c3')
+        self.assertEqual(d.norm_color('ee1a1a1a 0deg'), '0xee1a1a1a')
+        self.assertEqual(d.norm_color('ff9dffb0 ff3fe0c5 45deg'),
+                         {'colors': ['0xff9dffb0','0xff3fe0c5'], 'angle': 45})
+        self.assertEqual(d.parse_color('rgba(ee1a1a1a)'), (['1aee1a1a'], 0))  # rgba() reads RRGGBBAA; stops are AARRGGBB
+    def test_windows_css_uniform(self):
+        self.assertEqual(d.css_uniform('5'), 5)
+        self.assertEqual(d.css_uniform('5 5 5 5'), 5)
+        self.assertEqual(d.css_uniform('5 10 5 10'), '5 10 5 10')
+    def test_windows_render_groups_and_shadow_merge(self):
+        state = {'windows': {'gaps_in': 5, 'blur_enabled': True, 'blur_size': 6,
+                             'shadow_offset_x': 4, 'shadow_offset_y': -2,
+                             'col_active_border': 'ff3fe0c5', 'snap_enabled': True,
+                             'animations_enabled': True, 'rounding': 8}}
+        lines = d.render_windows(state)
+        self.assertEqual(len(lines), 2)  # grouped config + positional offset line
+        text = lines[0]
+        for wanted in ['"general"', '"gaps_in"]=5', '"decoration"', '"blur"]', '"size"]=6',
+                       '"col"]', '"active_border"]="0xff3fe0c5"',
+                       '"snap"]', '"animations"]', '"rounding"]=8']:
+            self.assertIn(wanted, text, wanted)
+        self.assertNotIn('shadow_offset_x', text)
+        self.assertEqual(lines[1], 'hl.config({["decoration"]={["shadow"]={["offset"]={4, -2}}}})')
+        # gradient colours render as a table; solids as exact-byte 0xAARRGGBB
+        state2 = {'windows': {'col_active_border': {'colors': ['0xff9dffb0','0xff3fe0c5'], 'angle': 45},
+                              'shadow_color': '0xff1a1a1a'}}
+        text2 = d.render_windows(state2)[0]
+        self.assertIn('"colors"]={', text2)
+        self.assertIn('"0xff9dffb0"', text2)
+        self.assertIn('"angle"]=45', text2)
+        self.assertIn('"0xff1a1a1a"', text2)
 
+    def test_windows_live_rejects_missing_fields(self):
+        # An empty/malformed getoption reply must be an error, never a default.
+        with patch.object(d, 'command', return_value='{}'):
+            values, errors = d.windows_live()
+        self.assertEqual(values, {})
+        self.assertIn('blur_enabled', errors)
+        self.assertEqual(len(errors), len(d.WINDOWS))
+        # bool options may report as a real JSON bool rather than int
+        def fake(cmd):
+            option = cmd[-1]
+            if option == 'decoration.blur.enabled':
+                return '{"option": "decoration.blur.enabled", "bool": true, "set": true}'
+            return '{}'
+        with patch.object(d, 'command', side_effect=fake):
+            values, errors = d.windows_live()
+        self.assertEqual(values, {'blur_enabled': True})
+        self.assertNotIn('blur_enabled', errors)
+        self.assertIn('blur_size', errors)
+        # legacy int 0/1 accepted; strings, arrays, fractional ints rejected
+        def typed(cmd):
+            return {'decoration.blur.enabled': '{"bool": "false"}',
+                    'general.resize_on_border': '{"bool": []}',
+                    'decoration.blur.size': '{"int": 1.5}',
+                    'decoration.blur.vibrancy': '{"float": "high"}',
+                    'decoration.shadow.enabled': '{"int": 1}'}[cmd[-1]]
+        with patch.object(d, 'command', side_effect=typed):
+            values, errors = d.windows_live()
+        self.assertEqual(values, {'shadow_enabled': True})
+        for bad in ('blur_enabled', 'resize_on_border', 'blur_size', 'blur_vibrancy'):
+            self.assertIn(bad, errors, bad)
+    def test_windows_render_empty_state_writes_nothing(self):
+        self.assertEqual(d.render_windows({'windows': {}}), [])
+        self.assertEqual(d.render_windows({}), [])
 class Values(unittest.TestCase):
     @needs_lua
     def test_lua_strings_roundtrip_without_execution(self):

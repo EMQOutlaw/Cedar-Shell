@@ -2,7 +2,7 @@
 
 ## Implemented
 
-CEDAR Core, Canopy, Peek, Pulse, Signals, Whispers, Echoes, Trails and Field Station are real components of the inherited shell. Audio, network, Bluetooth, system, weather, calendar/timers, clipboard, notifications, quick controls and Trails have Canopy surfaces. Specialist audio routing, application streams, audio scenes, opt-in spectrum and GPU telemetry exist subject to their real backends. See CANOPY.md for detailed limitations.
+CEDAR Core, Canopy, Peek, Pulse, Signals, Whispers, Echoes, Trails and Field Station are real components of the inherited shell. Audio, network, Bluetooth, system, weather, calendar/timers, clipboard, notifications, quick controls and Trails have Canopy surfaces. Specialist audio routing, application streams, audio scenes and GPU telemetry exist subject to their real backends; the Audio Canopy's opt-in spectrum was removed at the owner's request (the bar's Pulse still uses the shared CAVA feed). See CANOPY.md for detailed limitations.
 
 The Strata bar, the Applications drop with the menu inside it, searchable Settings, default app selection, displays/input/keybind controls, real telemetry, weather, notifications, PAM session locking and explicit-state OSDs are implemented. CEDAR identity, ROOTED, complete local KJV passages, Copy Passage, font fallbacks, namespace migration and installation preparation are implemented by this migration.
 

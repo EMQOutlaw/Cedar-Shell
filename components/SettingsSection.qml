@@ -8,8 +8,8 @@ Item {
     property string heading: ""
     property string caption: ""
     property string badge: ""
-    property color badgeColor: Theme.teal
-    property color accent: Theme.teal
+    property color badgeColor: Theme.strataAccent
+    property color accent: Theme.strataAccent
     property bool emphasis: false
     property int padding: 18
     Layout.fillWidth: true

@@ -107,6 +107,7 @@ Singleton {
     readonly property int padding: 24
     readonly property int barHeight: 44
     readonly property int chamfer: 12
+    readonly property int grainInset: 2          // the Grain contour sits this far inside the Foundation's edge
     readonly property int glowRadius: 12
     readonly property int fast: 120
     readonly property int transition: 180
@@ -123,6 +124,11 @@ Singleton {
     readonly property int revealDelay: 110    // content waits until the surface is on its way
     readonly property int reveal: 220         // then settles in
     readonly property int conceal: 90         // and leaves ahead of the shrink
+    // The join: a drop is one field with the bar, blended through an arc of
+    // this radius (px), and its body yields slightly to its own motion
+    // (the squash: velocity times this, over ten thousand; 0 holds it rigid).
+    readonly property int morphSmoothing: 20
+    readonly property real morphSquash: 0.15
     readonly property int entrance: 1050      // a panel's staggered instruments
     property bool reducedMotion: false
 }

@@ -107,6 +107,7 @@ Rectangle {
         onChosen:page=>root.navigate(page)
     }
     ColumnLayout {
+        id: pageArea
         objectName: "settingsPageArea"
         visible:!root.narrow || !root.navigationOpen
         x:root.railWidth+root.pageMargin+(root.pageSpace-root.pageWidth)/2
@@ -170,7 +171,7 @@ Rectangle {
                 Loader {
                     id:loader; objectName:"settingsPageLoader"; Layout.fillWidth:true; Layout.minimumWidth:0
                     asynchronous:true; active:root.active || root.hasOpened
-                    sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,nursery:nurseryPage,about:about,animations:animations,windows:windows,profiles:profiles,privacy:privacy,security:security,advanced:advanced})[root.section] || overview
+                    sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,nursery:nurseryPage,about:about,animations:animations,windows:windows,privacy:privacy,security:security,advanced:advanced})[root.section] || overview
                     onLoaded:Qt.callLater(reveal.restart)
                 }
                 Flow {
@@ -180,8 +181,41 @@ Rectangle {
                     StrataButton { visible:root.resetConfirm; text:"Cancel"; onClicked:root.resetConfirm=false }
                     GlowText { visible:root.resetConfirm; text:"Only this page’s CEDAR preferences will reset."; color:Theme.strataMuted; font.pixelSize:Theme.small; width:Math.min(360,parent.width); wrapMode:Text.WordWrap }
                 }
+                // Dirty-draft spacer for the Windows floating commit bar: it
+                // covers the viewport's bottom edge, so the scroll content
+                // grows while the bar shows and the Reset row above can clear
+                // it. Layouts skip invisible items — the clean page is unchanged.
+                Item {
+                    objectName: "windowsBarSpacer"
+                    visible: root.section==="windows" && (DesktopSettings.windowsDirty || DesktopSettings.windowsLocked)
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: visible ? windowsApplyBar.height + 20 : 0
+                }
             }
         }
+    }
+    // Sticky confirm bar for the Windows page: a floating pill over the
+    // bottom edge of the page area. It must NOT live inside the pageArea
+    // ColumnLayout — the layout would override its position and consume
+    // scroll viewport (60px left of the 100px minimum at 480x360 once an
+    // edit was made). The windows page has no Apply section of its own;
+    // this is the one commit point (Apply, Discard, retry on a failed read).
+    SettingsSurface {
+        id:windowsApplyBar; objectName:"windowsApplyBar"
+        visible:root.section==="windows" && (DesktopSettings.windowsDirty || DesktopSettings.windowsLocked) && pageArea.visible
+        x:pageArea.x; width:pageArea.width
+        y:root.height-height-14
+        padding:10
+        Flow {
+            Layout.fillWidth:true; spacing:8
+            StationButton { text:root.narrow ? "Apply":"Apply window settings"; accent:Theme.green; checked:DesktopSettings.windowsDirty; enabled:DesktopSettings.windowsDirty && !DesktopSettings.windowsLocked; onClicked:DesktopSettings.apply({action:"apply-windows", values:DesktopSettings.windowsEdits, expected:DesktopSettings.windowsBase}) }
+            StationButton { text:root.narrow ? "Discard":"Discard edits"; enabled:DesktopSettings.windowsDirty && !DesktopSettings.windowsLocked; onClicked:DesktopSettings.loadWindows() }
+            StationButton { visible:DesktopSettings.windowsReconciling && !DesktopSettings.busy && DesktopSettings.error!==""; text:"Retry read"; accent:Theme.amber; onClicked:{ DesktopSettings.readRetries=0; DesktopSettings.refresh(); } }
+        }
+        // One compact row at narrow width while merely dirty: the ready-count
+        // yields to the buttons (the Apply button's checked state already
+        // shows it). Error and lock states still render — they show nowhere else.
+        GlowText { visible:!root.narrow || DesktopSettings.windowsLocked || DesktopSettings.error!==""; Layout.fillWidth:true; wrapMode:Text.WordWrap; text:DesktopSettings.windowsLocked ? (DesktopSettings.busy ? "Applying…" : (DesktopSettings.error!=="" ? DesktopSettings.error : "Refreshing…")) : Object.keys(DesktopSettings.windowsEdits).length+(Object.keys(DesktopSettings.windowsEdits).length===1 ? " change" : " changes")+" ready. Reset is at the page's end."; color:DesktopSettings.error!=="" ? Theme.amber : Theme.teal; font.pixelSize:Theme.small }
     }
     Component { id:overview; SettingsOverview { active:root.active } }
     Component { id:applicationTheming; ApplicationThemingSettings {} }
@@ -200,13 +234,12 @@ Rectangle {
     Component { id:power; PowerSettings { highlightKey:root.highlightKey } }
     Component { id:time; TimeSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:notesPage; FieldNotesSettings { highlightKey:root.highlightKey } }
-    Component { id:dictationPage; DictationSettings { highlightKey:root.highlightKey } }
+    Component { id:dictationPage; DictationSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:system; SystemSettings {} }
     Component { id:nurseryPage; NurserySettings { active:root.active } }
     Component { id:about; AboutSettings {} }
     Component { id:animations; AnimationSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:windows; WindowsSettings {} }
-    Component { id:profiles; ProfileSettings {} }
     Component { id:privacy; PrivacySettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:security; SecuritySettings { highlightKey:root.highlightKey } }
     Component { id:advanced; AdvancedSettings {} }

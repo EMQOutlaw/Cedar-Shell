@@ -60,7 +60,7 @@ ColumnLayout {
     SettingsSurface {
         visible:root.tab==="Screensavers"
         GlowText {text:"Screensaver controls are not available";font.family:Theme.labelFont;font.pixelSize:Theme.title;Layout.fillWidth:true;wrapMode:Text.WordWrap}
-        GlowText {text:"CEDAR has no independent screensaver backend in this version. Your existing desktop provider keeps control. Trailwatch is a secure lock screen, not a screensaver; its privacy controls are in Lock Screen & Security.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
+        GlowText {text:"CEDAR has no independent screensaver backend in this version. Your existing desktop provider keeps control. Trailwatch is a secure lock screen, not a screensaver; its privacy controls are in Lock Screen.";color:Theme.muted;Layout.fillWidth:true;wrapMode:Text.WordWrap}
     }
     SettingsFields {visible:root.tab==="Settings";page:"desktop";groups:["Background","Advanced"];highlightKey:root.highlightKey;Layout.fillWidth:true}
     WeatherLocationSettings {visible:root.tab==="Settings";highlightKey:root.highlightKey;Layout.fillWidth:true}

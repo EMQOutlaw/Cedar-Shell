@@ -16,9 +16,9 @@ ColumnLayout {
         signal moved(real value)
         signal toggled()
         Layout.fillWidth:true; spacing:14
-        Text { Layout.preferredWidth:84; text:!level.available ? "—" : level.muted ? "MUTED" : Math.round(level.value*100)+"%"; font.family:Theme.labelFont; font.pixelSize:Math.round(30*Theme.fontScale); color:level.muted || !level.available ? Theme.muted : Theme.green }
+        Text { Layout.preferredWidth:84; text:!level.available ? "—" : level.muted ? "MUTED" : Math.round(level.value*100)+"%"; font.family:Theme.labelFont; font.pixelSize:Math.round(30*Theme.fontScale); color:level.muted || !level.available ? Theme.muted : Theme.strataText }
         StationSlider { Layout.fillWidth:true; enabled:level.available; value:level.value; onMoved:level.moved(value); Accessible.name:level.name }
-        StationButton { text:level.muted ? "Unmute":"Mute"; checked:level.muted; accent:level.muted ? Theme.amber : Theme.teal; enabled:level.available; onClicked:level.toggled() }
+        StationButton { text:level.muted ? "Unmute":"Mute"; checked:level.muted; accent:level.muted ? Theme.amber : Theme.strataAccent; enabled:level.available; onClicked:level.toggled() }
     }
 
     SettingsSection {

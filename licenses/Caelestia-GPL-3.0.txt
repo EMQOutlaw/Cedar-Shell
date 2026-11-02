@@ -1,0 +1,11 @@
+caelestia-dots/shell
+https://github.com/caelestia-dots/shell
+Copyright (C) the caelestia-dots contributors (soramanew and others)
+
+Licensed under the GNU General Public License, version 3 (GPL-3.0).
+The full license text is available at https://www.gnu.org/licenses/gpl-3.0.txt
+and in the upstream repository's LICENSE file.
+
+CEDAR's components/shaders/strata.frag follows the technique of
+plugin/src/Caelestia/Blobs/shaders/blob.frag at revision
+b51fdb35ca7a14ac5a49e0d94fc5de2d79756aed; see docs/LICENSES.md.

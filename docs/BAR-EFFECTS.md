@@ -92,8 +92,10 @@ events their brighter semantic accents.
 
 Opening Connections, in order: the control brightens in cedar green for a
 moment (`BarButton.unfolding`); a Rootline light runs toward it; the bar's
-lower edge bends down through the DropFrame's concave fillets; the
-Foundation extends into the panel on the morph curve with a band of light
+lower edge swells and bends down through the DropFrame's fillets (one
+distance field with the bar, so the join is a tangent arc from the first
+pixel; `docs/CANOPY.md`); the Foundation extends into the panel on the
+morph curve, leaning slightly into its own motion, with a band of light
 along its leading edge (`DropFrame.growing`); the Grain contour follows
 eighty milliseconds later; a long bright dash traces the Living Edge once
 around the new boundary; the content reveals after the geometry; the

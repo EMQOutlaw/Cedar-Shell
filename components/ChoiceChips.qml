@@ -20,9 +20,9 @@ Flow {
             Accessible.checked: checked
             background: Rectangle {
                 radius: Theme.controlRadius
-                color: parent.down ? Qt.alpha(Theme.teal, .18) : parent.checked ? Qt.alpha(Theme.teal, .12) : parent.hovered ? Qt.alpha(Theme.teal, .05) : Theme.transparent
+                color: parent.down ? Qt.alpha(Theme.strataAccent, .18) : parent.checked ? Qt.alpha(Theme.strataAccent, .12) : parent.hovered ? Qt.alpha(Theme.strataAccent, .05) : Theme.transparent
                 border.width: parent.visualFocus ? Theme.focusWidth : 1
-                border.color: parent.visualFocus ? Theme.green : parent.checked ? Qt.alpha(Theme.teal, .55) : Qt.alpha(Theme.teal, .16)
+                border.color: parent.visualFocus ? Theme.green : parent.checked ? Qt.alpha(Theme.strataAccent, .55) : Qt.alpha(Theme.strataAccent, .16)
             }
             onClicked: root.chosen(value)
         }

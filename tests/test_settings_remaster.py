@@ -139,10 +139,10 @@ class SingleEntryPoints(unittest.TestCase):
                 'SettingsService.navigate(destination, "")',
                 'SettingsService.navigate(modelData.page, "")',
             ),
-            'AppearanceSettings': ('SettingsService.navigate("animations", "effectIntensity")',),
             'DefaultAppsSettings': ('SettingsService.navigate(tab==="Dictation" ? "dictation":"application-theming", "")',),
             'TopBarSettings': ('SettingsService.navigate("time", "")',),
-            'InputSettings': ('SettingsService.navigate("keybinds", "")',),
+            'InputSettings': ('SettingsService.navigate("keybinds", "")',
+                             'SettingsService.navigate("notes", "")'),
             'KeybindSettings': ('SettingsService.navigate("input", "")',),
         }
         for name in PAGES:
@@ -156,6 +156,13 @@ class SingleEntryPoints(unittest.TestCase):
                 self.assertEqual(text.count(route), 1, f'{name}: reviewed route changed: {route}')
                 text = text.replace(route, '')
             self.assertIsNone(pattern.search(text),f'{name} adds a second route to another place')
+    def test_bar_page_search_anchors_exist(self):
+        # The bar page merges everything onto one scroll; search results for
+        # the "modules" and "understory" anchors must land on their sections
+        # (SettingsPanel.revealSetting scrolls to a child objectName).
+        text=(ROOT/'modules'/'TopBarSettings.qml').read_text()
+        self.assertIn('objectName: "modules"', text)
+        self.assertIn('objectName: "understory"', text)
     def test_each_preference_has_one_custom_control(self):
         import re
         owners={}

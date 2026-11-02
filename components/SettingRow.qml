@@ -22,5 +22,5 @@ Item {
         }
         RowLayout { id: slot; Layout.minimumWidth:0; Layout.fillWidth: root.compact; Layout.preferredWidth: root.compact ? -1 : Math.min(320 * Theme.fontScale, root.width * .46); spacing: 8 }
     }
-    Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 12; anchors.rightMargin: 12; height: 1; color: Qt.alpha(Theme.teal,.10) }
+    Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.leftMargin: 12; anchors.rightMargin: 12; height: 1; color: Qt.alpha(Theme.strataGrain,.28) }
 }

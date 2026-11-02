@@ -877,7 +877,7 @@ def main(argv=None):
     elif args.action=='shield':os.execvp('qs',['qs',*shell_selector(),'ipc','call','shield',*(['page',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='station':os.execvp('qs',['qs',*shell_selector(),'ipc','call','station',*(['page',args.arguments[0]] if args.arguments else ['open'])])
     elif args.action=='focus':os.execvp('qs',['qs',*shell_selector(),'ipc','call','focus',*(['start',args.arguments[0]] if args.arguments else ['open'])])
-    elif args.action=='profiles':os.execvp('qs',['qs',*shell_selector(),'ipc','call','profiles',*(['activate',args.arguments[0]] if args.arguments else ['open'])])
+    elif args.action=='profiles':os.execvp('qs',['qs',*shell_selector(),'ipc','call','profiles',*(['activate',args.arguments[0]] if args.arguments else ['status'])])
     else:
         root=args.source.resolve() if (args.source/'shell.qml').exists() else installed()
         if args.action=='preview':preview(root)

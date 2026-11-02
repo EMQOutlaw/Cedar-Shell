@@ -57,3 +57,4 @@ singleton Understory 1.0 Understory.qml
 singleton Awake 1.0 Awake.qml
 singleton Nursery 1.0 Nursery.qml
 singleton Convertible 1.0 Convertible.qml
+singleton Requests 1.0 Requests.qml

@@ -16,8 +16,8 @@ ColumnLayout {
     spacing:14
     SettingsHeading {text:"On the air"}
     CoreMedia { Layout.fillWidth:true; detailed:root.active }
-    StationToggle {Layout.fillWidth:true;label:"Spectrum";description:"Real playback spectrum; active only while this instrument is visible.";checked:Config.saved.audioSpectrum;enabled:AudioInstruments.data.spectrumAvailable;onToggled:value=>Config.set("audioSpectrum",value)}
-    AudioSpectrum {Layout.fillWidth:true;visible:Config.saved.audioSpectrum && !Theme.reducedMotion;active:root.active && visible && AudioInstruments.data.spectrumAvailable}
+    // The Cava spectrum was removed at the owner's request (pinned for a
+    // possible return); its config key stays so a re-add restores the setting.
     AudioSettings {Layout.fillWidth:true}
     StationButton {objectName:"audioMore";text:root.more ? "Fewer instruments" : "More instruments";Accessible.name:(root.more ? "Hide" : "Show")+" the microphone meter, routing, equalizer and audio scenes";onClicked:root.more=!root.more}
     ColumnLayout {

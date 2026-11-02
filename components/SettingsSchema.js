@@ -13,14 +13,13 @@ var pages = [
  {id:"notifications",label:"Notifications & Signals",icon:"◈",description:"Choose what deserves your attention."},
  {id:"audio",label:"Audio & Media",icon:"♫",description:"Outputs, microphones, routing and audio scenes."},
  {id:"apps",label:"Applications & Integrations",icon:"◇",description:"Connect your everyday tools."},
- {id:"profiles",label:"Desktop Profiles",icon:"△",description:"Optimize CEDAR for your workflow."},
  {id:"power",label:"Power & Idle",icon:"⏻",description:"Balance energy, performance and inactivity."},
  {id:"connections",label:"Network & Bluetooth",icon:"⌁",description:"Your connections, in one place."},
  {id:"privacy",label:"Privacy & Shield",icon:"⬡",description:"Understand and control your protections."},
- {id:"security",label:"Lock Screen & Security",icon:"▢",description:"Privacy and controls while the desktop is locked."},
+ {id:"security",label:"Lock Screen",icon:"▢",description:"What shows and what works while the desktop is locked."},
  {id:"system",label:"Updates & Recovery",icon:"↻",description:"Review updates, diagnose problems and recover safely."},
  {id:"nursery",label:"Nursery",icon:"❀",description:"Companion services planted into the shell — CEDAR Ai first. Off until you say otherwise."},
- {id:"advanced",label:"Advanced",icon:"⌘",description:"Desktop setup and specialized CEDAR controls."},
+ {id:"advanced",label:"Advanced",icon:"⌘",advanced:true,description:"Desktop setup and specialized CEDAR controls."},
  {id:"about",label:"About CEDAR",icon:"✧",description:"Contextual Environment & Desktop Automation Runtime."},
  // Existing deep links remain stable. Their owners are available as section tabs.
  {id:"keybinds",label:"Keybinds",icon:"⌘",rail:false,description:"Search, record and manage your shortcuts."},
@@ -32,9 +31,9 @@ var pages = [
  {id:"dictation",label:"Dictation",icon:"●",rail:false,description:"Voxtype voice typing and microphone preferences."}
 ];
 var menu = [
- {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows","core"]},
+ {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows"]},
  {id:"interaction",label:"Interaction",description:"Input, attention and everyday tools.",pages:["input","keybinds","notifications","audio","apps","application-theming","dictation","time","notes"]},
- {id:"system",label:"System",description:"Profiles, power, connections and protection.",pages:["profiles","power","connections","privacy","security"]},
+ {id:"system",label:"System",description:"Power, connections and protection.",pages:["power","connections","privacy","security"]},
  {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","nursery","advanced","setup","about"]}
 ];
 function menuOf(id) {
@@ -48,7 +47,7 @@ function groupOf(id) {
 function indexOf(id) { return String(Math.max(1,pages.findIndex(p=>p.id===id)+1)).padStart(2,"0"); }
 // Rows the Simple view folds away. Everything else is basic; the "Advanced"
 // group is advanced wherever it appears. A row's own `level` wins.
-var advancedKeys = ["remoteArtwork","lockMediaDetails","lockAgendaDetails","whisperDevices","whisperQuiet","whisperBattery","forestEchoes","canopyPeek","audioSpectrum","editor","terminal","browser","files","coreScreenshots","coreConnections","coreWorkspaces","coreKeyboard","coreClipboard","coreTemperatureLimit","coreDiskLimit","panelRadius","panelOpacity","effectIntensity","barPulse","barKinetic","latitude","longitude","gamingBlur","gamingAnimations","gamingAutoGameMode","focusTrails","focusAllowedApps","notesFadeToolbar","notesSmoothing","notesExportDir"];
+var advancedKeys = ["remoteArtwork","lockMediaDetails","lockAgendaDetails","whisperDevices","whisperQuiet","whisperBattery","forestEchoes","canopyPeek","editor","terminal","browser","files","coreScreenshots","coreConnections","coreWorkspaces","coreKeyboard","coreClipboard","coreTemperatureLimit","coreDiskLimit","panelRadius","panelOpacity","effectIntensity","barPulse","barKinetic","latitude","longitude","gamingBlur","gamingAnimations","gamingAutoGameMode","focusTrails","focusAllowedApps","notesFadeToolbar","notesSmoothing","notesExportDir"];
 function levelOf(field) {
     if (!field) return "basic";
     if (field.level === "advanced" || field.level === "basic") return field.level;
@@ -103,7 +102,6 @@ var fields = [
 {"page": "core", "group": "Whisper types", "key": "whisperBattery", "label": "Battery observations", "description": "An observation when charging reaches 90%.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Privacy", "key": "forestTrails", "label": "Trails", "description": "Opt-in, session-only application identity and CEDAR navigation. Cleared on lock.", "type": "toggle", "defaultValue": false},
 {"page": "core", "group": "Privacy", "key": "clipboardHistory", "label": "Clipboard history", "description": "Opt-in session history, cleared on lock. Unmarked secrets may be captured.", "type": "toggle", "defaultValue": false},
-{"page": "core", "group": "Instruments", "key": "audioSpectrum", "label": "Audio spectrum", "description": "Real CAVA playback spectrum, only while Audio Canopy is open.", "type": "toggle", "defaultValue": false},
  {page:"apps",group:"Quick launch",key:"editor",label:"Editor command",description:"Launch command. Empty finds your default text editor.",type:"text",defaultValue:"",placeholder:"zeditor"},
 {"page": "core", "group": "Core", "key": "coreEnabled", "label": "CEDAR Core", "description": "Show one contextual surface at the center of the preferred display’s bar.", "type": "toggle", "defaultValue": true},
 {"page": "core", "group": "Activities", "key": "coreVolume", "label": "Volume & brightness", "description": "Use Core for live sliders. The existing OSD remains available when Core is hidden.", "type": "toggle", "defaultValue": true},
@@ -214,6 +212,7 @@ var extras = [
  {page:"connections",key:"wifi",label:"Wi-Fi and VPN",description:"Wireless networks and saved connections.",aliases:"internet network"},
  {page:"connections",key:"hotspot",label:"Hotspot",description:"Share this computer\u2019s connection over Wi-Fi.",aliases:"tether share access point"},
  {page:"displays",key:"mirror",label:"Mirror displays",description:"Show the same picture on more than one screen.",aliases:"duplicate clone projector"},
+ {page:"privacy",key:"sessionSecurity",label:"Trailwatch & session security",description:"The secure session-lock protocol, your system authentication and the external locker handover.",aliases:"security locker trailwatch session lock"},
  {page:"displays",key:"profiles",label:"Saved display layouts",description:"Save an arrangement and test it again later.",aliases:"profile preset docking"},
  {page:"displays",key:"detect",label:"Detect displays",description:"Read connected monitors again.",aliases:"scan monitor refresh"},
  {page:"keybinds",key:"customBinds",label:"Your custom shortcuts",description:"Shortcuts you added in CEDAR.",aliases:"bind keyboard shortcut add"},

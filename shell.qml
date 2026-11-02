@@ -81,16 +81,6 @@ ShellRoot {
         active: Config.stage >= 3 && Shield.windowOpen
         ShieldApp {}
     }
-    // Desktop Profiles: the preparation panel while a profile applies or
-    // restores, and the Profiles window while it is open.
-    LazyLoader {
-        active: Config.stage >= 3 && !Config.testMode && Profiles.hudShown
-        ProfileHud {}
-    }
-    LazyLoader {
-        active: Config.stage >= 3 && Profiles.windowOpen
-        ProfilesApp {}
-    }
     // CEDAR Focus: the preparation panel while a session starts or ends, and
     // the Focus window while it is open.
     LazyLoader {
@@ -171,7 +161,7 @@ ShellRoot {
             Canopy.toggleTopic(topic);
         }
         function status(): string {
-            return JSON.stringify({ shown: Canopy.shown, topic: Canopy.topic, state: Canopy.surfaceState, rect: Canopy.surfaceRect, anchor: Canopy.anchorRect, standalone: Canopy.standalone, pinned: Canopy.pinned, screen: Canopy.screen ? Canopy.screen.name : "" });
+            return JSON.stringify({ shown: Canopy.shown, topic: Canopy.topic, state: Canopy.surfaceState, rect: Canopy.surfaceRect, seam: Canopy.surfaceSeam, anchor: Canopy.anchorRect, standalone: Canopy.standalone, pinned: Canopy.pinned, screen: Canopy.screen ? Canopy.screen.name : "" });
         }
         function toggle(): void {
             if (Canopy.shown)
@@ -270,14 +260,14 @@ ShellRoot {
         function close(): void { Focus.closeApp(); }
         function status(): string { return JSON.stringify({ active: Focus.active, paused: Focus.paused, remaining: Math.round(Focus.remaining), planned: Focus.planned, held: Focus.held, interruptions: Focus.interruptions, busy: Focus.busy, summary: Focus.summary, steps: Focus.steps, heldKeys: Overrides.keysHeldBy("focus"), sessions: Focus.history.length }); }
     }
-    // Desktop Profiles: `profiles activate <id>|deactivate|toggle <id>|open|close|status`.
+    // Desktop Profiles: `profiles activate <id>|deactivate|toggle <id>|status`.
+    // The window routes are gone with the removed editor; headless activation
+    // and status remain (the transaction stack is shared with Gaming Mode).
     IpcHandler {
         target: "profiles"
         function activate(id: string): void { if (Config.stage >= 3) Profiles.activate(id); }
         function deactivate(): void { if (Config.stage >= 3) { if (Profiles.current === "gaming") Gaming.deactivate(); else Profiles.deactivate(); } }
         function toggle(id: string): void { if (Config.stage >= 3) Profiles.toggle(id); }
-        function open(): void { if (Config.stage >= 3) Profiles.openApp(); }
-        function close(): void { Profiles.closeApp(); }
         function status(): string { return JSON.stringify({ current: Profiles.current, active: Profiles.active, busy: Profiles.anyBusy, summary: Profiles.summary, steps: Profiles.steps, held: Overrides.keysHeldBy("profile"), profiles: Profiles.definitions.map(d => d.id) }); }
     }
     // Dictation: `dictation start|stop|toggle|cancel|status` (Super+Ctrl+X toggles,

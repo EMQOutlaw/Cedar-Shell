@@ -25,7 +25,7 @@ ColumnLayout {
     readonly property double daySpan: Math.max(3600000, dayEnd - dayStart)
     function frac(at) { return Math.max(0, Math.min(1, (at - dayStart) / daySpan)); }
     function kindColor(kind) {
-        return kind === "application" ? Theme.teal
+        return kind === "application" ? Theme.strataAccent
              : kind === "canopy"      ? Theme.green
              : kind === "surface"     ? Theme.strataAccent
              : kind === "breadcrumb"  ? Theme.danger
@@ -121,7 +121,7 @@ ColumnLayout {
             Rectangle {
                 width: root.selected ? root.frac(root.selected.at) * track.width : 0
                 height: parent.height; radius: 3
-                color: Qt.alpha(Theme.teal, .35)
+                color: Qt.alpha(Theme.strataAccent, .35)
             }
         }
 
@@ -192,7 +192,7 @@ ColumnLayout {
                 GlowText { text: root.selected ? root.when(root.selected.at) : ""; font.pixelSize: 24; font.weight: Font.DemiBold; color: Theme.text }
                 GlowText { text: root.selected ? root.selected.kind.toUpperCase() : ""; font.pixelSize: 9; font.letterSpacing: 1.6; color: root.kindColor(root.selected ? root.selected.kind : "settings") }
             }
-            Item { Layout.preferredWidth: 1; Layout.fillHeight: true; Rectangle { width: 1; height: parent.height; color: Qt.alpha(Theme.teal, .18) } }
+            Item { Layout.preferredWidth: 1; Layout.fillHeight: true; Rectangle { width: 1; height: parent.height; color: Qt.alpha(Theme.strataGrain, .28) } }
             ColumnLayout {
                 Layout.fillWidth: true; spacing: 4
                 RowLayout {

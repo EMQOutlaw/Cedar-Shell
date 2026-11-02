@@ -32,6 +32,253 @@ INPUTS = {
     'touchpad:scroll_factor': ('float', (.1, 5)),
 }
 
+# Window-manager options Settings › Windows owns, mapped onto Hyprland option
+# paths. Kinds: bool, int, float, enum, color (hex or gradient), css_int
+# (CssGap rendered uniform), vec2x/vec2y (components of a Vec2 option).
+WINDOWS = {
+    'layout': ('general.layout', 'enum', ('dwindle', 'master', 'scrolling')),
+    'gaps_in': ('general.gaps_in', 'css_int', (0, 50)),
+    'gaps_out': ('general.gaps_out', 'css_int', (0, 100)),
+    'gaps_workspaces': ('general.gaps_workspaces', 'css_int', (0, 100)),
+    'border_size': ('general.border_size', 'int', (0, 20)),
+    'resize_on_border': ('general.resize_on_border', 'bool', None),
+    'extend_border_grab_area': ('general.extend_border_grab_area', 'int', (0, 50)),
+    'hover_icon_on_border': ('general.hover_icon_on_border', 'bool', None),
+    'no_focus_fallback': ('general.no_focus_fallback', 'bool', None),
+    'resize_corner': ('general.resize_corner', 'int', (0, 4)),
+    'snap_enabled': ('general.snap.enabled', 'bool', None),
+    'allow_tearing': ('general.allow_tearing', 'bool', None),
+    'rounding': ('decoration.rounding', 'int', (0, 24)),
+    'rounding_power': ('decoration.rounding_power', 'float', (1.0, 10.0)),
+    'active_opacity': ('decoration.active_opacity', 'float', (0.0, 1.0)),
+    'inactive_opacity': ('decoration.inactive_opacity', 'float', (0.0, 1.0)),
+    'fullscreen_opacity': ('decoration.fullscreen_opacity', 'float', (0.0, 1.0)),
+    'dim_inactive': ('decoration.dim_inactive', 'bool', None),
+    'dim_strength': ('decoration.dim_strength', 'float', (0.0, 1.0)),
+    'dim_special': ('decoration.dim_special', 'float', (0.0, 1.0)),
+    'dim_around': ('decoration.dim_around', 'float', (0.0, 1.0)),
+    'dim_modal': ('decoration.dim_modal', 'bool', None),
+    'blur_enabled': ('decoration.blur.enabled', 'bool', None),
+    'blur_size': ('decoration.blur.size', 'int', (1, 30)),
+    'blur_passes': ('decoration.blur.passes', 'int', (1, 8)),
+    'blur_xray': ('decoration.blur.xray', 'bool', None),
+    'blur_vibrancy': ('decoration.blur.vibrancy', 'float', (0.0, 1.0)),
+    'blur_noise': ('decoration.blur.noise', 'float', (0.0, 1.0)),
+    'blur_contrast': ('decoration.blur.contrast', 'float', (0.0, 2.0)),
+    'blur_brightness': ('decoration.blur.brightness', 'float', (0.0, 2.0)),
+    'blur_special': ('decoration.blur.special', 'bool', None),
+    'blur_popups': ('decoration.blur.popups', 'bool', None),
+    'blur_ignore_opacity': ('decoration.blur.ignore_opacity', 'bool', None),
+    'blur_new_optimizations': ('decoration.blur.new_optimizations', 'bool', None),
+    'blur_vibrancy_darkness': ('decoration.blur.vibrancy_darkness', 'float', (0.0, 3.0)),
+    'shadow_enabled': ('decoration.shadow.enabled', 'bool', None),
+    'shadow_range': ('decoration.shadow.range', 'int', (1, 100)),
+    'shadow_offset_x': ('decoration.shadow.offset', 'vec2x', (-50, 50)),
+    'shadow_offset_y': ('decoration.shadow.offset', 'vec2y', (-50, 50)),
+    'shadow_render_power': ('decoration.shadow.render_power', 'int', (1, 4)),
+    'shadow_sharp': ('decoration.shadow.sharp', 'bool', None),
+    'shadow_scale': ('decoration.shadow.scale', 'float', (0.0, 1.0)),
+    'shadow_color': ('decoration.shadow.color', 'color', None),
+    'glow_enabled': ('decoration.glow.enabled', 'bool', None),
+    'glow_range': ('decoration.glow.range', 'int', (1, 50)),
+    'glow_render_power': ('decoration.glow.render_power', 'int', (1, 4)),
+    'glow_color': ('decoration.glow.color', 'color', None),
+    'col_active_border': ('general.col.active_border', 'color', None),
+    'col_inactive_border': ('general.col.inactive_border', 'color', None),
+    'animations_enabled': ('animations.enabled', 'bool', None),
+}
+
+
+def parse_color(value):
+    """Canonical colour: ([AARRGGBB stops lowercase], angle). Accepts the forms
+    Hyprland reads or reports: rgba(RRGGBBAA), rgba(r,g,b,a), 0xAARRGGBB, bare
+    AARRGGBB, #RGB(A), and the getoption gradient string 'AARRGGBB … Ndeg'."""
+    v = str(value).strip().lower()
+    match = re.fullmatch(r'rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)', v)
+    if match:
+        r, g, b = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        a = float(match.group(4))
+        alpha = round(a * 255) if a <= 1 else round(a)
+        if not all(0 <= c <= 255 for c in (r, g, b, alpha)):
+            raise ValueError('Invalid colour: ' + str(value))
+        return ([f'{alpha:02x}{r:02x}{g:02x}{b:02x}'], 0)
+    match = re.fullmatch(r'rgba\(([0-9a-f]{8})\)', v)
+    if match:
+        # rgba() takes RRGGBBAA; the canonical stop is AARRGGBB.
+        h = match.group(1)
+        return ([h[6:8] + h[0:6]], 0)
+    v = v.lstrip('#')
+    if re.fullmatch(r'0x[0-9a-f]{8}', v):
+        return ([v[2:]], 0)
+    if re.fullmatch(r'[0-9a-f]{6}', v):
+        return (['ff' + v], 0)
+    match = re.fullmatch(r'((?:[0-9a-f]{8}\s*)+?)(\d+)deg', v)
+    if match:
+        return (match.group(1).split(), int(match.group(2)))
+    if re.fullmatch(r'[0-9a-f]{8}', v):
+        return ([v], 0)
+    raise ValueError('Invalid colour: ' + str(value))
+
+
+def norm_color(value):
+    """Config-input form: solids as exact-byte 0xAARRGGBB (accepted by every
+    colour option probed on the running compositor; rgba(r,g,b,a) loses alpha
+    to float conversion); gradients as a {colors={0x…},angle=N} table."""
+    stops, angle = parse_color(value)
+    if len(stops) == 1 and angle == 0:
+        # Exact-byte form, accepted by every colour option probed on the
+        # running compositor; rgba(r,g,b,a) loses alpha to float conversion.
+        return '0x' + stops[0]
+    return {'colors': ['0x' + stop for stop in stops], 'angle': angle}
+
+
+def validate_windows(values):
+    output = {}
+    for key, value in values.items():
+        if key not in WINDOWS:
+            raise ValueError('Unsupported window option: ' + key)
+        kind, allowed = WINDOWS[key][1], WINDOWS[key][2]
+        if kind == 'bool':
+            if type(value) is not bool:
+                raise ValueError(key + ' requires true or false.')
+        elif kind in ('int', 'float', 'css_int', 'vec2x', 'vec2y'):
+            value = float(value)
+            if not math.isfinite(value) or not allowed[0] <= value <= allowed[1]:
+                raise ValueError(key + ' is out of range.')
+            if kind in ('int', 'css_int', 'vec2x', 'vec2y'):
+                if not value.is_integer():
+                    raise ValueError(key + ' must be an integer.')
+                value = int(value)
+        elif kind == 'enum':
+            if value not in allowed:
+                raise ValueError('Invalid ' + key)
+        elif kind == 'color':
+            value = norm_color(value)
+        output[key] = value
+    return output
+
+
+def css_uniform(text):
+    """'5' or '5 5 5 5' -> 5; anything else stays a string (per-side gaps)."""
+    parts = str(text).split()
+    try:
+        numbers = [int(p) for p in parts]
+    except ValueError:
+        return text
+    if numbers and all(n == numbers[0] for n in numbers):
+        return numbers[0]
+    return text
+
+
+def windows_live():
+    """Live values by CEDAR key. An option whose getoption reply lacks the
+    expected field is an error, never a fabricated default."""
+    values, errors = {}, {}
+    def need(data, field):
+        if field not in data:
+            raise ValueError('getoption returned no ' + field)
+        return data[field]
+    for key, (path, kind, allowed) in WINDOWS.items():
+        try:
+            data = json.loads(command(['hyprctl', '-j', 'getoption', path]))
+            if kind == 'bool':
+                raw = data.get('bool', data.get('int'))
+                if isinstance(raw, bool):
+                    values[key] = raw
+                elif isinstance(raw, int) and raw in (0, 1):
+                    values[key] = bool(raw)
+                else:
+                    raise ValueError('getoption returned a malformed bool: ' + repr(raw))
+            elif kind in ('int',):
+                raw = need(data, 'int')
+                if isinstance(raw, bool) or not isinstance(raw, int):
+                    raise ValueError('getoption returned a malformed int: ' + repr(raw))
+                values[key] = raw
+            elif kind in ('float',):
+                raw = data.get('float', data.get('int'))
+                if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+                    raise ValueError('getoption returned a malformed float: ' + repr(raw))
+                raw = float(raw)
+                if raw != raw or raw in (float('inf'), float('-inf')):
+                    raise ValueError('getoption returned a non-finite float')
+                values[key] = raw
+            elif kind == 'enum':
+                values[key] = str(need(data, 'str'))
+            elif kind == 'color':
+                raw = data.get('gradient', data.get('str'))
+                if raw is None:
+                    raise ValueError('getoption returned no gradient')
+                values[key] = str(raw)
+            elif kind == 'css_int':
+                raw = data.get('css', data.get('int'))
+                if raw is None:
+                    raise ValueError('getoption returned no css')
+                values[key] = css_uniform(raw)
+            elif kind in ('vec2x', 'vec2y'):
+                vec = need(data, 'vec2')
+                if not isinstance(vec, list) or len(vec) != 2:
+                    raise ValueError('getoption returned a malformed vec2')
+                values[key] = float(vec[0] if kind == 'vec2x' else vec[1])
+        except Exception as e:
+            errors[key] = str(e)
+    return values, errors
+
+
+def render_windows(state):
+    windows = state.get('windows', {})
+    if not windows:
+        return []
+    groups = {}
+    for key, value in windows.items():
+        path, kind, _ = WINDOWS[key]
+        if kind in ('vec2x', 'vec2y'):
+            continue  # merged below
+        if kind == 'color' and isinstance(value, str):
+            value = norm_color(value)  # idempotent; keeps hand-edited state valid too
+        node = groups
+        parts = path.split('.')
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = value
+    lines = ['hl.config(' + lua(groups) + ')'] if groups else []
+    if 'shadow_offset_x' in windows or 'shadow_offset_y' in windows:
+        # vec2 takes a positional {x, y} array (named keys are rejected). When
+        # CEDAR owns only one axis, the companion is resolved from the live
+        # config AT LOAD TIME — baking in a Python-time value would silently
+        # override upstream changes to the unowned axis on every reload.
+        if 'shadow_offset_x' in windows and 'shadow_offset_y' in windows:
+            lines.append('hl.config({["decoration"]={["shadow"]={["offset"]=' + lua([windows['shadow_offset_x'], windows['shadow_offset_y']]) + '}}})')
+        else:
+            owned_x = 'shadow_offset_x' in windows
+            literal = lua(windows['shadow_offset_x'] if owned_x else windows['shadow_offset_y'])
+            pair = ('{' + literal + ', __cedar_off[2]}') if owned_x else ('{__cedar_off[1], ' + literal + '}')
+            lines.append('do local __cedar_off = hl.get_config("decoration.shadow.offset") or {0, 0}; '
+                         'hl.config({["decoration"]={["shadow"]={["offset"]=' + pair + '}}}) end')
+    return lines
+
+
+def verify_windows(values):
+    live, live_errors = windows_live()
+    for key, wanted in values.items():
+        if key in live_errors or key not in live:
+            raise ValueError(key + ' could not be verified against the running compositor; your previous settings were restored.')
+        kind = WINDOWS[key][1]
+        effective = live.get(key)
+        if kind == 'float':
+            matches = isinstance(effective, (int, float)) and math.isclose(effective, wanted, abs_tol=1e-3)
+        elif kind == 'color':
+            try:
+                matches = parse_color(effective) == parse_color(
+                    wanted if isinstance(wanted, str) else
+                    ' '.join(stop[2:] for stop in wanted['colors']) + ' ' + str(wanted.get('angle', 0)) + 'deg')
+            except ValueError:
+                matches = False
+        else:
+            matches = effective == wanted
+        if not matches:
+            raise ValueError('A later override prevented ' + key + ' from applying. Your previous settings were restored; edit the user override first.')
+
+
 def command(argv):
     result = subprocess.run(argv, text=True, capture_output=True, timeout=10, env={**os.environ, 'LC_ALL': 'C'})
     if result.returncode:
@@ -59,6 +306,7 @@ def lua(value):
     if isinstance(value, str):
         # Lua decimal byte escapes avoid code injection and preserve UTF-8 exactly.
         return '"' + ''.join(chr(b) if 32 <= b < 127 and b not in (34, 92) else f'\\{b:03d}' for b in value.encode()) + '"'
+    if isinstance(value, list): return '{' + ', '.join(lua(v) for v in value) + '}'
     if isinstance(value, dict): return '{' + ', '.join('['+lua(k)+']='+lua(v) for k,v in value.items()) + '}'
     raise ValueError('Unsupported Lua value')
 
@@ -172,6 +420,7 @@ def render_lua(state):
             group, leaf = key.split(':',1); inputs.setdefault(group,{})[leaf] = value
         else: inputs[key] = value
     if inputs: lines.append('hl.config('+lua({'input': inputs})+')')
+    lines.extend(render_windows(state))
     if state.get('mainDisplay'):
         output = state['mainDisplay']
         lines.append('hl.config('+lua({'cursor': {'default_monitor': output}})+')')
@@ -373,7 +622,9 @@ def snapshot():
     pending = json.loads((OWN/'pending.json').read_text()) if (OWN/'pending.json').exists() else None
     try: has_touchpad = 'E: ID_INPUT_TOUCHPAD=1' in command(['udevadm', 'info', '--export-db'])
     except Exception: has_touchpad = False
-    return {'hasTouchpad':has_touchpad, 'monitors':monitors, 'bindings':bindings, 'input':inputs, 'unsupported':errors, 'owned':read_state(), 'pending': {'token':pending['token'],'deadline':pending['deadline']} if pending else None}
+    try: windows, windows_errors = windows_live()
+    except Exception as e: windows, windows_errors = {}, {'all': str(e)}
+    return {'hasTouchpad':has_touchpad, 'monitors':monitors, 'bindings':bindings, 'input':inputs, 'unsupported':errors, 'windows':windows, 'windowsUnsupported':windows_errors, 'owned':read_state(), 'pending': {'token':pending['token'],'deadline':pending['deadline']} if pending else None}
 
 @contextlib.contextmanager
 def locked():
@@ -427,6 +678,21 @@ def action(req):
             if not values:return {'status':'unchanged','message':'Input settings are already applied.'}
             state.setdefault('input',{}).update(values)
         elif name == 'reset-input': state['input']={}
+        elif name == 'apply-windows':
+            values = validate_windows(req['values'])
+            live, _ = windows_live()
+            if 'expected' in req:
+                changed = [key for key in values if live.get(key) != req['expected'].get(key)]
+                if changed: raise ValueError('Window settings changed outside Settings: '+', '.join(changed)+'. Reload before applying.')
+            values = {key: value for key, value in values.items() if live.get(key) != value}
+            if not values: return {'status':'unchanged','message':'Window settings are already applied.'}
+            state.setdefault('windows', {}).update(values)
+            result = install(state, verify=lambda: verify_windows(values))
+            return {'message': 'Applied '+str(len(values))+' window setting' + ('s' if len(values) != 1 else '') + '.', 'pending': None}
+        elif name == 'reset-windows':
+            state['windows'] = {}
+            result = install(state)
+            return {'message': 'Window settings reset; your compositor configuration is authoritative again.', 'pending': None}
         elif name == 'save-profile':
             write_state(save_profile(state, req.get('name',''), req.get('monitors',[]), req.get('mainDisplay','')))
             return {'message': 'Saved layout “'+str(req.get('name','')).strip()+'”. Load it any time to test it again.'}

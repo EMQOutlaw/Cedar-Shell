@@ -158,6 +158,43 @@ PanelWindow {
         function onAnchorRectChanged() { root.reaim(); }
     }
     Connections { target: ShellState; function onLockedChanged() { if (ShellState.locked) { closeDelay.stop(); root.mapped = false; } } }
+    // While this output's drop is mapped and drawing the field, the bar leaves
+    // its edge stroke to the drop across the frame's padded extent.
+    // Published by assignment: a Binding with `when` on the singleton did not
+    // restore the empty seam once the drop unmapped (2026-10-29).
+    readonly property var seam: mapped && frame.field ? ({ from: drop.along + (side ? 0 : sideInset) - frame.padAlong, to: drop.along + (side ? 0 : sideInset) + drop.span + frame.padAlong }) : ({ from: 0, to: 0 })
+    // Only this output's drop publishes, and only the window the singleton
+    // records as the seam's owner clears it, so an output finishing its close
+    // after another has published cannot erase the new seam.
+    onSeamChanged: publishSeam()
+    onMappedChanged: publishSeam()
+    function publishSeam() {
+        if (mapped && Canopy.screen === modelData && seam.to > seam.from) { Canopy.surfaceSeam = seam; Canopy.surfaceSeamOwner = root; }
+        else if (Canopy.surfaceSeamOwner === root) { Canopy.surfaceSeam = ({ from: 0, to: 0 }); Canopy.surfaceSeamOwner = null; }
+    }
+    Component.onDestruction: {
+        if (Canopy.surfaceSeamOwner === root) { Canopy.surfaceSeam = ({ from: 0, to: 0 }); Canopy.surfaceSeamOwner = null; }
+        if (Canopy.fieldOwner === root) { Canopy.field = null; Canopy.fieldOwner = null; }
+    }
+    // The bar's plate in drop coordinates, and how far the drop's body reaches
+    // up into it: it begins behind the plate's lower cuts, so the first pixels
+    // of growth are the plate's edge swelling, not a plate hung beneath it.
+    readonly property real plateInset: Config.barStyle === "cedar" || Config.barIslands ? Theme.strataInset : 0
+    readonly property real emerge: side ? 0 : Math.max(0, barJoin - plateInset - Theme.strataCut)
+    readonly property vector4d plateRect: side ? Qt.vector4d(-1e4, height / 2 - drop.along, 1e4, 1e5)
+                                               : Qt.vector4d(width / 2 - drop.along, (plateInset + barJoin) / 2 - barJoin, (width - 2 * plateInset) / 2, (barJoin - plateInset) / 2)
+    readonly property vector4d plateCuts: side ? Qt.vector4d(0, 0, 0, 0) : Qt.vector4d(0, Theme.strataCut, 0, Theme.strataCut)
+    // The field the bar's window draws its band of, in bar-window px.
+    readonly property var field: mapped && frame.field && !side ? ({
+        x: drop.along + sideInset, top: barJoin - emerge, width: drop.span, bottom: barJoin + drop.reach,
+        m00: frame.m00, m01: frame.m01, m11: frame.m11, ox: drop.along + sideInset + drop.span / 2, oy: barJoin,
+        lit: frame.lit
+    }) : null
+    onFieldChanged: publishField()
+    function publishField() {
+        if (field && Canopy.screen === modelData) { Canopy.field = field; Canopy.fieldOwner = root; }
+        else if (Canopy.fieldOwner === root) { Canopy.field = null; Canopy.fieldOwner = null; }
+    }
     onWidthChanged: reaim()
     onHeightChanged: reaim()
     onBarJoinChanged: reaim()
@@ -181,8 +218,9 @@ PanelWindow {
         y: root.side ? along : root.barJoin
         width: root.side ? reach : span
         height: root.side ? span : reach
-        // Sideways the panel is laid out at its full reach and uncovered as the surface grows.
-        clip: root.side
+        // Sideways the panel is laid out at its full reach and uncovered as the
+        // surface grows (the wrapper below clips it; the frame's fillets and
+        // lean reach outside the drop and must not be clipped).
         // Anchor providers can settle after the window is mapped. Never
         // interpolate that correction during a dropdown entrance: it makes
         // right-side controls sweep across the screen from the old origin.
@@ -199,17 +237,30 @@ PanelWindow {
             }
         }
         // Silhouette: the bar's lower edge bends down through concave fillets
-        // and becomes the drop's sides (components/DropFrame.qml).
+        // and becomes the drop's sides (components/DropFrame.qml). With
+        // effects on it is one field with the bar and yields to its own
+        // motion; the panel leans with it through `deformMatrix`.
         DropFrame {
+            id: frame
             anchors.fill: parent
             side: root.side
             cut: drop.cut
             join: drop.cut
-            fill: Qt.alpha(Config.barStyle === "cedar" ? Theme.strataFoundation : Theme.background, Math.max(.96, Config.panelOpacity))
-            stroke: Qt.alpha(Config.barStyle === "cedar" ? Theme.strataAccent : Forest.accent, .25)
+            // The bar's own material at the bar's opacity, so the drop is the
+            // bar continuing rather than a second surface hung under it.
+            fill: Config.barStyle === "cedar" ? Qt.alpha(Theme.strataFoundation, Config.barOpacity) : Qt.alpha(Theme.background, Math.max(.96, Config.panelOpacity))
+            // One line with the bar: the drop's contour is the bar's edge
+            // (StrataBarFrame / UnderstoryBar seam) continued.
+            stroke: Config.barStyle === "cedar" ? Qt.alpha(Theme.strataGrain, .28) : Qt.alpha(Forest.accent, .25)
+            barStroke: stroke
             grainColor: Config.barStyle === "cedar" ? Theme.strataGrain : Qt.alpha(Theme.border, .55)
             lit: Canopy.surfaceState === "opening" || Canopy.surfaceState === "retargeting"
             growing: drop.growing && (Canopy.surfaceState === "opening" || Canopy.surfaceState === "retargeting")
+            barRect: root.plateRect
+            barCuts: root.plateCuts
+            emerge: root.emerge
+            // The bar's window paints the field up to its own lower edge.
+            paintFrom: root.side ? 0 : Config.barHeight - root.barJoin
         }
         // Content fades in once the shape is on its way, and out ahead of the shrink.
         SequentialAnimation {
@@ -243,6 +294,9 @@ PanelWindow {
             ScriptAction { script: if (root.requested) root.setState("expanded") }
         }
         Behavior on reveal { enabled: root.morphing && !openReveal.running && !swap.running && !morph.running; NumberAnimation { duration: VisualQuality.ms(Theme.conceal) } }
+        Item {
+            anchors.fill: parent
+            clip: root.side
         CanopyPanel {
             id: panel
             anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left
@@ -253,7 +307,13 @@ PanelWindow {
             active: root.requested
             visible: drop.reveal > 0 || root.requested
             opacity: drop.reveal
+            // The lean is bounded (DropFrame caps the stretch) and exists only
+            // while the surface moves; the input mask stays the undeformed drop
+            // (clipping to it would cut the fillets), so a pixel of overhang
+            // mid-motion falls through to the desktop rather than mis-hitting.
+            transform: Matrix4x4 { matrix: frame.deformMatrix }
             onPreferredHeightChanged: root.reaim()
+        }
         }
     }
 }

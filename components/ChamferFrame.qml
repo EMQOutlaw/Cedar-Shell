@@ -7,17 +7,17 @@ Item {
     id: root
     property real cut: 9
     readonly property real longCut: Math.round(cut * 16 / 9)
-    property color fill: Qt.alpha(Theme.background, Math.max(.94, Config.barOpacity))
-    property color stroke: Qt.alpha(Theme.teal, .15)
+    property color fill: Qt.alpha(Theme.strataFoundation, Config.barOpacity)
+    property color stroke: Qt.alpha(Theme.strataGrain, .28)
     property real strokeWidth: 1
     property bool line: false
-    property color lineColor: Theme.teal
+    property color lineColor: Theme.strataAccent
     property real lineFraction: .7
     property real lineOpacity: .85
     // The short lit line at the top edge, where a drop meets the bar; a
     // first-party window's frames use it as their identity mark.
     property bool topLine: false
-    property color topLineColor: Theme.teal
+    property color topLineColor: Theme.strataAccent
     property real topLineFraction: .32
     property real topLineOpacity: .7
     Shape {

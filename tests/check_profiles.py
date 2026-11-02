@@ -26,11 +26,10 @@ ShellRoot {
     property int step: 0
     function check(ok, msg) { if (!ok) { console.error("FAIL: " + msg); Qt.exit(1); } }
     function state(id) { const s = Profiles.steps.find(s => s.id === id); return s ? s.state : "missing"; }
-    FloatingWindow {
-        id: win; visible: true; implicitWidth: 1100; implicitHeight: 820; color: Theme.background
-        ProfilesPages { id: pages; anchors.fill: parent }
-    }
-    function shot(name) { pages.grabToImage(r => r.saveToFile(Quickshell.env("CEDAR_SCREENSHOT_DIR") + "/" + name + ".png")); }
+    // The Profiles window UI was removed with the feature; this harness now
+    // drives the service's transaction/ownership stack directly (Gaming still
+    // rides it), so there is nothing to render and no screenshots to take.
+    Item { id: pages }
     Timer {
         interval: 500; running: true; repeat: true
         onTriggered: {
@@ -54,7 +53,6 @@ ShellRoot {
                 // The user changes a held setting by hand.
                 Config.set("forestWhispers", true);
                 window.check(Overrides.entry("forestWhispers", "profile").overridden === true, "A manual change while held is recorded as the user's");
-                window.shot("profiles-work");
                 Profiles.deactivate();
                 break;
             case 2:
@@ -98,7 +96,6 @@ ShellRoot {
                 break;
             case 9:
                 window.check(Profiles.active === "" && Config.saved.idleLockSeconds === 600 && Config.saved.ambientIntensity === .45, "Battery restored idle lock and ambience");
-                window.shot("profiles-idle");
                 break;
             case 10:
                 Profiles.activateChecked("work");

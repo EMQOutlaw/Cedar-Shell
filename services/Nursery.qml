@@ -15,6 +15,9 @@ Singleton {
     property string error: ""
     property string message: ""
     property bool busy: false
+    property bool actionBusy: false
+    property bool actionFailed: false
+    property string actionOutput: ""
 
     // Polled only while the Nursery page is actually looking.
     readonly property bool observed: !Config.testMode && !ShellState.locked
@@ -35,6 +38,8 @@ Singleton {
         actioner.verb = verb;
         actioner.pluginId = pluginId;
         root.message = "";
+        root.actionFailed = false;
+        root.actionBusy = true;
         actioner.running = true;
     }
 
@@ -71,13 +76,22 @@ Singleton {
             onStreamFinished: {
                 try {
                     const data = JSON.parse(text);
-                    root.message = data.ok ? "" : (data.error || data.output || "The action failed.");
+                    if (data.ok) {
+                        const output = (data.output || "").trim();
+                        root.actionOutput = output;
+                        root.message = output ? output.split("\n").slice(-3).join("\n") : "Done.";
+                        root.actionFailed = false;
+                    } else {
+                        root.message = data.error || data.output || "The action failed.";
+                        root.actionFailed = true;
+                    }
                 } catch (_) {
                     root.message = "";
+                    root.actionFailed = true;
                 }
             }
         }
-        onExited: (code, status) => root.refresh()
+        onExited: (code, status) => { root.actionBusy = false; root.refresh(); }
     }
 
     // Test seam: harnesses feed fixture registries without a subprocess.

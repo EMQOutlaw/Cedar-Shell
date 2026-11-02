@@ -109,7 +109,6 @@ Singleton {
         const wanted = Policy.managed(def);
         tx.registry = wanted.map(m => ({ id: m.key, label: ops[m.key].label, hud: ops[m.key].hud, restored: ops[m.key].hud, enabled: true, value: m.value }));
         tx.start("capture");
-        showHud("enter");
         prepare();
     }
     // Providers that answer lazily must have answered before anything is captured.
@@ -211,7 +210,6 @@ Singleton {
         if (!active || busy) return;
         error = "";
         const attempted = tx.steps.filter(s => s.state === "active" || s.state === "failed").map(s => s.id);
-        showHud("leave");
         tx.start("restore", attempted);
         for (const key of attempted) restoreOp(key);
         tx.launched();
@@ -259,12 +257,10 @@ Singleton {
             // A restore finished: nothing is held any more.
             Overrides.releaseAll(owner);
             active = ""; target = ""; store.setText(""); CoreService.remove("profile", false);
-            if (hudShown) hudHold.restart();
             if (queued) { const next = queued; queued = ""; Qt.callLater(() => root.activate(next)); }
             return;
         }
         persist(); announce();
-        if (hudShown) hudHold.restart();
     }
     // Gaming Mode is a profile: when it ends and one is waiting, apply it.
     Connections {
@@ -286,22 +282,7 @@ Singleton {
         function onBusyChanged() { if (!Gaming.busy && !Gaming.active && root.queued && !root.busy) { const next = root.queued; root.queued = ""; Qt.callLater(() => root.activate(next)); } }
     }
 
-    // ------------------------------------------------------------- feedback
-    property bool hudShown: false
-    property bool hudClosing: false
-    property string hudMode: "enter"
-    property string hudScreen: ""
-    property bool hudForTests: false
-    readonly property bool hudSettled: hudShown && !busy
-    function showHud(mode) {
-        if (Config.testMode && !hudForTests) return;
-        if (ShellState.locked || trigger === "restored") return;
-        hudHold.stop(); hudExit.stop();
-        hudMode = mode; hudClosing = false; hudScreen = ShellState.focusedOutput(); hudShown = true;
-    }
-    function hideHud() { hudHold.stop(); hudExit.stop(); hudClosing = false; hudShown = false; }
-    Timer { id: hudHold; interval: 1200; onTriggered: { root.hudClosing = true; hudExit.restart(); } }
-    Timer { id: hudExit; interval: Config.saved.reducedMotion ? 0 : 200; onTriggered: { root.hudShown = false; root.hudClosing = false; } }
+    // ---------------------------------------------------- crash recovery
     function announce() {
         if (!CoreService.enabled || !active) return;
         CoreService.publish({ id: "profile", type: "integration", title: currentLabel + " profile", subtitle: summary + (detail ? " · " + detail : ""),
@@ -310,15 +291,6 @@ Singleton {
     }
     onSummaryChanged: if (active && !busy) announce()
 
-    // ---------------------------------------------------------------- window
-    property bool windowOpen: false
-    readonly property bool open: windowOpen && !ShellState.locked
-    function openApp() { if (ShellState.locked) return; windowOpen = true; }
-    function closeApp() { windowOpen = false; }
-    function toggleApp() { if (windowOpen) closeApp(); else openApp(); }
-    onOpenChanged: if (open && !Config.testMode) { Controls.refresh(); if (!(AudioInstruments.data.scenes || []).length) AudioInstruments.refresh(); }
-
-    // ---------------------------------------------------- crash recovery
     FileView { id: store; path: Config.stateDir + "/profiles.json"; atomicWrites: true; printErrors: false; blockLoading: true }
     function persist() {
         const held = Overrides.keysHeldBy(owner).map(k => ({ key: k, previous: Overrides.entry(k, owner).previous }));
@@ -341,5 +313,5 @@ Singleton {
     }
     property string recoverPower: ""
     Connections { target: Controls; function onDataChanged() { if (root.recoverPower && !Controls.busy && (Controls.data.profiles || []).includes(root.recoverPower)) { const p = root.recoverPower; root.recoverPower = ""; if (Controls.data.profile !== p) Controls.run({ action: "profile", value: p }); } } }
-    Connections { target: ShellState; function onLockedChanged() { if (ShellState.locked) { root.hideHud(); root.windowOpen = false; } } }
+    
 }

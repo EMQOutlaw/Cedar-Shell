@@ -179,7 +179,6 @@ Item {
         RailButton { order: 0; text: Theme.nerdGlyph("󰂚", "S"); hint: "Signals"; visible: CoreService.enabled; onClicked: { Understory.close(); CoreService.expand(); } }
         RailButton { order: 1; text: Theme.nerdGlyph("󰒃", "⛨"); hint: Shield.ready ? "Shield · " + Shield.headline : "Shield"; accent: Shield.posture === "protected" ? Theme.green : Theme.strataAccent; checked: Shield.posture === "protected"; onClicked: { Understory.close(); Shield.openApp(); } }
         RailButton { order: 2; text: Theme.nerdGlyph("󰓅", "H"); hint: "Station · health and diagnostics"; onClicked: { Understory.close(); Station.openApp(); } }
-        RailButton { order: 3; text: Theme.nerdGlyph("󰙅", "P"); hint: Profiles.current ? "Profiles · " + Profiles.currentLabel : "Profiles"; checked: !!Profiles.current; onClicked: { Understory.close(); Profiles.openApp(); } }
         RailButton { order: 4; text: Theme.nerdGlyph("󰔛", "F"); hint: Focus.active ? "Focus · " + Focus.summary : "Focus"; checked: Focus.active; onClicked: { Understory.close(); Focus.openApp(); } }
         RailButton { order: 5; text: Theme.nerdGlyph("󱞁", "N"); hint: "Field Notes"; onClicked: { Understory.close(); FieldNotes.toggle(); } }
         RailButton { order: 6; text: Theme.nerdGlyph("󰌌", "K"); hint: "Keymap · the searchable active keymap"; onClicked: { Understory.close(); if (!Config.testMode) Quickshell.execDetached(["qs", "--no-duplicate", "-p", Quickshell.shellPath("keymap.qml")]); } }
@@ -435,32 +434,9 @@ Item {
                 }
             }
 
-            // STANCE: Desktop Profiles. A tap applies; a tap on the current one leaves it.
-            ColumnLayout {
-                Layout.fillWidth: true; spacing: 8
-                opacity: root.beat(7)
-                transform: Translate { y: 6 * (1 - root.beat(7)) }
-                Mark { text: "STANCE" + (Profiles.anyBusy ? " · " + Profiles.summary.toUpperCase() : "") }
-                GridLayout {
-                    Layout.fillWidth: true; columns: root.compact ? 1 : 3; columnSpacing: 6; rowSpacing: 6; uniformCellWidths: true
-                    Repeater {
-                        model: Profiles.definitions
-                        StrataButton {
-                            id: stance
-                            required property var modelData
-                            readonly property bool on: Profiles.current === modelData.id
-                            Layout.fillWidth: true; Layout.preferredWidth: 1; implicitHeight: 34
-                            text: modelData.label
-                            checked: on; enabled: !Profiles.anyBusy
-                            accent: on ? Profiles.accentOf(modelData.id) : Theme.strataAccent
-                            hint: modelData.line + (on ? " · tap to leave" : "")
-                            Accessible.name: "Profile " + text + (on ? ", in use" : "")
-                            onActiveFocusChanged: if (activeFocus) root.revealControl(this)
-                            onClicked: Profiles.toggle(modelData.id)
-                        }
-                    }
-                }
-            }
+            // The Desktop Profiles stance selector was removed with the feature;
+            // Gaming Mode keeps its own controls (Power & Idle, Quick Controls).
+
 
             // TRAY: the applications that would sit on the top bar, while the bar stands on its end.
             ColumnLayout {

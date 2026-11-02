@@ -181,18 +181,6 @@
       "deep work"
     ]
   },
-  "cedar.profiles": {
-    "label": "Profiles",
-    "description": "Balanced, Work, Battery, Night, Gaming and Custom desktop profiles",
-    "action": "cedar:profiles",
-    "aliases": [
-      "profile",
-      "work mode",
-      "battery mode",
-      "night mode",
-      "focus"
-    ]
-  },
   "cedar.shield": {
     "label": "Shield",
     "description": "Firewall, encrypted DNS, private Wi-Fi address, local exposure",

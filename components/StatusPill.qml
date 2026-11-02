@@ -4,7 +4,7 @@ import ".."
 Rectangle {
     id: root
     property string text: ""
-    property color tone: Theme.teal
+    property color tone: Theme.strataAccent
     implicitWidth: row.implicitWidth + 18; implicitHeight: 24
     radius: 12
     color: Qt.alpha(tone, .08); border.color: Qt.alpha(tone, .35)

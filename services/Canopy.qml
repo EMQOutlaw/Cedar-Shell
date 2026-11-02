@@ -41,6 +41,18 @@ Singleton {
     property string surfaceState: "collapsed"
     // The rect the drop last aimed at (panel-local), for status and tests.
     property var surfaceRect: ({ x: 0, width: 0, height: 0, origin: -1 })
+    // Where the mapped drop's frame draws the bar's own edge (bar-window
+    // coordinates along the bar, with the frame's padding), so the bar skips
+    // its edge stroke there and the contour is drawn once. Empty when no drop
+    // is mapped or it draws rigid vector paths (which stay inside the drop).
+    property var surfaceSeam: ({ from: 0, to: 0 })
+    // The window that published the seam; only it may clear it.
+    property var surfaceSeamOwner: null
+    // The mapped drop's body for the bar's field renderer (bar-window px,
+    // undeformed rect plus its 2x2 deform about the join), republished each
+    // frame it moves; null when no drop draws the field. Same owner rule.
+    property var field: null
+    property var fieldOwner: null
     // Entrance clock for whichever panel is showing: 0→1 over about a second,
     // started by the drop when content begins to show. Panels stagger their
     // instruments through ease(start, span). Reduced Motion and tests snap.

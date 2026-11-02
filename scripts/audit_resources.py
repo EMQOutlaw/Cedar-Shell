@@ -13,7 +13,7 @@ POLICIES = {
     'services/Network.qml': ('NetworkManager status and Connections/Core', 'One subscribed stream; detail snapshots on visible demand', 'Helper exits with shell; retry capped at 60 s', '4 MiB snapshot protocol; no packet/history accumulation'),
     'services/DefaultApps.qml': ('Go and Default Apps Settings', 'One AppInfoMonitor; read only when shown or applying an action', 'Helper exits with shell; retry capped at 60 s', '4 MiB catalog; hidden events only mark dirty'),
     'services/SystemStats.qml': ('Field Station, System, Forest, warnings', 'In-process FileView reads of /proc and hwmon: fast 2 s visible/20 s ambient; temperature 5 s visible/30 s warnings; uptime and `df` 30 s visible/300 s warnings; one timer armed for the next due topic', 'No demand stops scheduling; hwmon discovery runs once per shell lifetime', 'Bounded /proc and sysfs reads; one `df` line'),
-    'components/ServiceRequest.qml': ('Explicit service callers', 'One request, never concurrent within this owner', '45 s default timeout; caller may set a bounded operation timeout', '4 MiB character acceptance; collector checked after every incoming chunk; one chunk of overshoot possible'),
+    'components/ServiceRequest.qml': ('Explicit service callers', 'One request, never concurrent within this owner', '45 s default timeout; caller may set a bounded operation timeout; replies judged after exit and both streams close, 2 s grace', '4 MiB character acceptance; collector checked after every incoming chunk; one chunk of overshoot possible; stderr kept until exit for the failure message'),
     'services/BluetoothService.qml': ('Bluetooth Settings and Canopy', 'Native events; discovery only while its controls are visible', 'Close/lock stops scan and pairing prompt; native backend is optional', 'Native device model; one action process'),
     'services/SessionIntegration.qml': ('Authentication boundary', '1 s freshness check plus watched supervisor status', 'Kept alive for managed session; never visibility-gated', 'Latest local status only'),
     'services/CoreTimer.qml': ('Persistent user timer', 'User-started countdown', 'Persists across hidden views until canceled/completed', 'One activity'),
@@ -28,6 +28,8 @@ POLICIES = {
     'services/Focus.qml': ('Focus window, tile, pill row, HUD', '1 s tick only while the window or the expanded pill shows the seconds; 60 s tick for the pill subtitle while a session runs; one single-shot at the deadline; HUD one-shots', 'End or completion stops every timer; lock closes the window and HUD', 'Session state and 30 history entries in focus.json'),
     'services/SettingsService.qml': ('Settings window', 'Event-driven: one state-file read at startup; a write on navigation and on a settled resize', 'Nothing recurring; lock closes the window', 'Six recent pages and one window size in settings-window.json'),
     'services/Station.qml': ('Station window', 'settings_info.py and station.py once on open and on Check again; checkupdates on request', 'Nothing recurring of its own', 'One snapshot; log issues capped at 20; failed units at 40'),
+    'components/DropFrame.qml': ('Every drop from the bar (CanopyWindow)', 'Grain reveal and contour trace once per unfolding; the squash FrameAnimation samples the surface only after its geometry changes while effects are on', 'The squash stops itself the frame the surface is still and its springs settle (about 100 ms after the grow curve ends); Reduced Motion, Gaming, effects off or an unmapped surface rest it at once', 'Three spring scalars; one 2x2 matrix uniform'),
+    'components/CedarAtmosphere.qml': ('Every Canopy panel and the Understory rail', 'One Breath clock at Motion.ambientFps (12/s) drives all twenty spores while the surface is shown and the user is active', 'Hidden surface, Reduced Motion, or 120 s without input stops the clock; nothing commits per vsync', 'One sine value'),
     'modules/WorkspaceCanopy.qml': ('Workspaces Canopy topic', 'ScreencopyView captures once per open and once per focus change (300 ms debounce), each deferred 160 ms; never live', 'Closing the drop releases every view; nothing while closed', 'One frame per window while shown'),
 }
 
@@ -38,7 +40,7 @@ def ledger(root):
         if path.suffix not in ('.qml','.py','.js') or str(relative).startswith('tests/'):continue
         lines=path.read_text().splitlines()
         for index,line in enumerate(lines):
-            match=re.search(r'\b(Timer|Process|FileView|Connections|NumberAnimation|OpacityAnimator|SequentialAnimation|ParallelAnimation)\s*\{|\b(subprocess\.(?:run|Popen)|add_signal_receiver|io_add_watch|timeout_add)\s*\(',line)
+            match=re.search(r'\b(Timer|Process|FileView|Connections|NumberAnimation|OpacityAnimator|SequentialAnimation|ParallelAnimation|FrameAnimation)\s*\{|\b(subprocess\.(?:run|Popen)|add_signal_receiver|io_add_watch|timeout_add)\s*\(',line)
             if not match:continue
             known=POLICIES.get(str(relative))
             records.append({'owner':str(relative),'line':index+1,'resource':match[1] or match[2],

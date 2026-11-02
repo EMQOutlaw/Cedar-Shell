@@ -230,16 +230,8 @@ ColumnLayout {
                 hint: Shield.ready ? Shield.subline + " · opens CEDAR Shield" : "Opens CEDAR Shield"
                 onClicked: { Shield.openApp(); Canopy.close(); }
             }
-            // Desktop Profiles: the current stance and a way in.
-            Tile {
-                order: 7
-                mark: Theme.nerdGlyph("󰙅", "P")
-                label: "Profile"
-                value: Profiles.anyBusy ? "…" : Profiles.current ? Profiles.currentLabel : "None"
-                on: !!Profiles.current
-                hint: (Profiles.current ? Profiles.summary + " · " : "") + "opens CEDAR Profiles"
-                onClicked: { Profiles.openApp(); Canopy.close(); }
-            }
+            // Desktop Profiles was removed at the owner's request; Gaming keeps
+            // its own tile below (the same transaction machinery serves it).
             // Gaming Mode: the desktop quiets itself around the game. The value is
             // the transaction's real result, never an optimistic ON.
             Tile {

@@ -101,7 +101,7 @@ ColumnLayout {
     readonly property int total: sections.reduce((n, s) => n + s.rows.length, 0)
     readonly property int shown: sections.reduce((n, s) => n + s.rows.filter(r => root.matches(r)).length, 0)
     function stateWord(state) { return ({ live: "LIVE", changed: "CHANGED", conflict: "CONFLICT", off: "OFF", partial: "PARTLY" })[state] || ""; }
-    function stateTone(state) { return state === "live" ? Theme.green : ["changed", "conflict"].includes(state) ? Theme.amber : state === "off" ? Theme.muted : Theme.teal; }
+    function stateTone(state) { return state === "live" ? Theme.green : ["changed", "conflict"].includes(state) ? Theme.amber : state === "off" ? Theme.muted : Theme.strataAccent; }
 
     RowLayout {
         Layout.fillWidth: true; spacing: 10
@@ -130,7 +130,7 @@ ColumnLayout {
             readonly property var rows: modelData.rows.filter(r => root.matches(r))
             visible: rows.length > 0
             Layout.fillWidth: true; spacing: 6
-            SectionMark { Layout.topMargin: 4; text: section.modelData.title.toUpperCase(); tone: section.modelData.id === "yours" ? Theme.green : Theme.teal }
+            SectionMark { Layout.topMargin: 4; text: section.modelData.title.toUpperCase(); tone: section.modelData.id === "yours" ? Theme.green : Theme.strataAccent }
             GlowText { visible: section.modelData.note !== "" && root.needle === ""; Layout.fillWidth: true; wrapMode: Text.WordWrap; text: section.modelData.note; color: Theme.muted; font.pixelSize: Theme.small }
             Repeater {
                 model: section.rows
@@ -149,7 +149,7 @@ ColumnLayout {
                                 required property int index
                                 spacing: 6
                                 GlowText { visible: parent.index > 0; text: "or"; color: Theme.muted; font.pixelSize: Theme.small - 1; anchors.verticalCenter: parent.verticalCenter }
-                                Keycap { keys: parent.modelData; accent: row.modelData.state === "changed" ? Theme.amber : Theme.teal; opacity: row.modelData.state === "off" ? .55 : 1 }
+                                Keycap { keys: parent.modelData; accent: row.modelData.state === "changed" ? Theme.amber : Theme.strataAccent; opacity: row.modelData.state === "off" ? .55 : 1 }
                             }
                         }
                     }

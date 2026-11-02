@@ -173,6 +173,7 @@ Singleton {
         if (row.id === "focus" && action === "focus-end") { Focus.end(); collapse(); return; }
         if (row.id === "focus-complete" && action === "dismiss") { remove(row.id); return; }
         if (row.id === "shield" && action === "open") { Shield.openApp(); collapse(); return; }
+        if (row.id === "update-available" && action === "open") { SettingsService.openPage("system"); collapse(); return; }
         if (action === "timer-pause")
             timer.toggle();
         else if (action === "timer-cancel")
