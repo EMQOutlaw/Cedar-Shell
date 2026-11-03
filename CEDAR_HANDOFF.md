@@ -13,7 +13,16 @@ Owner authorized the push ("go ahead and commit it to dev"). Rebased the single 
 
 Ethan authorized finishing the Display Settings repair from Discord after being told hyprmoncfgd was overriding CEDAR. The default agent ran `systemctl --user disable --now hyprmoncfgd.service` and verified ActiveState=inactive, SubState=dead, UnitFileState=disabled, with no hyprmoncfgd process remaining. No monitor profiles or user display configuration were deleted. Undo: `systemctl --user enable --now hyprmoncfgd.service` (would restore the competing manager). Before final completion/push report, re-check daemon state and verify CEDAR's safe display trial/apply persists beyond the previously observed override window, restoring the original display settings afterward. The old 'running daemon' limitation below describes the pre-change state, not the current host.
 
-## ⚡ RESUME POINT 3 — 2026-11-02, fastfetch round 3 in gate + Displays root cause FIXED
+## ⚡ RESUME POINT 4 — 2026-11-02: Fastfetch + Displays COMMITTED and PUSHED to origin/dev (2eb0c2c)
+
+Owner authorized from Discord: finish Fastfetch + Displays and push to dev. DONE.
+- Commit 2eb0c2c on origin/dev (fast-forward from b42b0f0; ls-remote verified 2eb0c2c99ec68f687fc8436a4b4a97bf4b210a52). Discord notified (message_id 1567008263617380393, sent via `hermes -p default send` — cedarbot has no Discord token). Full report: ~/.hermes/profiles/cedarbot/cedar-resume-result.md.
+- Gates: securitybot 10 rounds → PASS; reviewbot 9 rounds → MERGE. Full discover 908 tests (6 environmental default-apps errors only); desktop_ui/responsive/service_request PASS. Live-installed from cedar-morph; IPC answers; zero QML errors.
+- Displays root causes + fixes: see RESUME POINT 3 below and the review handoffs in ~/.hermes/profiles/cedarbot/cache/scratch/ (fastfetch-security-r1..r10, final-review-r1..r9).
+- hyprmoncfg is DISABLED on this host (owner-approved via Discord). Re-enabling: `systemctl --user enable --now hyprmoncfg.service` — the Displays page will then flag it again (by design).
+- Remaining steals: Graphics & Power.
+
+## ⚡ RESUME POINT 3 — 2026-11-02, fastfetch round 3 in gate + Displays root cause FIXED (superseded by RESUME POINT 4 — kept for the per-round detail)
 
 **Owner authorization (Discord, 2026-11-02): finish Fastfetch + Displays, commit and push origin/dev. No force-push, no scope expansion.**
 
