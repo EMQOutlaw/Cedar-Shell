@@ -17,6 +17,7 @@ var pages = [
  {id:"connections",label:"Network & Bluetooth",icon:"⌁",description:"Your connections, in one place."},
  {id:"privacy",label:"Privacy & Shield",icon:"⬡",description:"Understand and control your protections."},
  {id:"security",label:"Lock Screen",icon:"▢",description:"What shows and what works while the desktop is locked."},
+ {id:"fastfetch",label:"Fastfetch",icon:"⌗",description:"The branded terminal readout: emblem, accent and info rows."},
  {id:"system",label:"Updates & Recovery",icon:"↻",description:"Review updates, diagnose problems and recover safely."},
  {id:"nursery",label:"Nursery",icon:"❀",description:"Companion services planted into the shell — CEDAR Ai first. Off until you say otherwise."},
  {id:"advanced",label:"Advanced",icon:"⌘",advanced:true,description:"Desktop setup and specialized CEDAR controls."},
@@ -31,7 +32,7 @@ var pages = [
  {id:"dictation",label:"Dictation",icon:"●",rail:false,description:"Voxtype voice typing and microphone preferences."}
 ];
 var menu = [
- {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows"]},
+ {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows","fastfetch"]},
  {id:"interaction",label:"Interaction",description:"Input, attention and everyday tools.",pages:["input","keybinds","notifications","audio","apps","application-theming","dictation","time","notes"]},
  {id:"system",label:"System",description:"Power, connections and protection.",pages:["power","connections","privacy","security"]},
  {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","nursery","advanced","setup","about"]}

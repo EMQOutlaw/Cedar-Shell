@@ -41,10 +41,15 @@ Rectangle {
     }
     Binding { target: SettingsService; property: "blocked"; value: root.dirty }
     function discardPending() {
-        if(loader.item && typeof loader.item.discard === "function") loader.item.discard();
+        // Discard must complete for the navigation to be honest: a page that
+        // refuses (a save in flight leaves its draft dirty) keeps the guard
+        // active so the user is asked again instead of silently losing edits.
+        let discarded = true;
+        if(loader.item && typeof loader.item.discard === "function") discarded = loader.item.discard() !== false;
         else if(root.section==="input") DesktopSettings.loadInput();
         else if(root.section==="displays" && loader.item) loader.item.load();
-        SettingsService.confirmPending();
+        if (discarded) SettingsService.confirmPending();
+        else SettingsService.cancelPending();
     }
     function findItem(item,name) {
         if(!item) return null;
@@ -171,7 +176,7 @@ Rectangle {
                 Loader {
                     id:loader; objectName:"settingsPageLoader"; Layout.fillWidth:true; Layout.minimumWidth:0
                     asynchronous:true; active:root.active || root.hasOpened
-                    sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,nursery:nurseryPage,about:about,animations:animations,windows:windows,privacy:privacy,security:security,advanced:advanced})[root.section] || overview
+                    sourceComponent:({setup:setupPage,overview:overview,appearance:appearance,"application-theming":applicationTheming,desktop:desktop,apps:appsPage,bar:bar,core:corePage,displays:displays,input:input,keybinds:keybinds,connections:connections,audio:audio,notifications:notifications,power:power,time:time,notes:notesPage,dictation:dictationPage,system:system,nursery:nurseryPage,about:about,animations:animations,windows:windows,fastfetch:fastfetch,privacy:privacy,security:security,advanced:advanced})[root.section] || overview
                     onLoaded:Qt.callLater(reveal.restart)
                 }
                 Flow {
@@ -240,6 +245,7 @@ Rectangle {
     Component { id:about; AboutSettings {} }
     Component { id:animations; AnimationSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:windows; WindowsSettings {} }
+    Component { id:fastfetch; FastfetchSettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:privacy; PrivacySettings { active:root.active; highlightKey:root.highlightKey } }
     Component { id:security; SecuritySettings { highlightKey:root.highlightKey } }
     Component { id:advanced; AdvancedSettings {} }

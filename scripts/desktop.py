@@ -509,18 +509,177 @@ def reload_validate():
     errors = command(['hyprctl','configerrors']).strip()
     if errors not in ('', 'ok', '[]'): raise RuntimeError(errors)
 
-def backup(paths): return {str(p): p.read_text() if p.exists() else None for p in paths}
+def backup(paths):
+    result = {}
+    for p in paths:
+        if p.exists():
+            with p.open(newline='') as handle:  # newline='' keeps \r\n intact (read_text(newline=…) needs 3.13)
+                result[str(p)] = handle.read()
+        else: result[str(p)] = None
+    return result
 
-def restore(files):
+def restore(files, main_before_relocation=None):
     for name, text in files.items():
         path = Path(name)
         if path == MAIN:
-            # We only append our loader. Preserve concurrent user edits on rollback.
-            current = path.read_text() if path.exists() else ""
+            current = ""
+            if path.exists():
+                try:
+                    with path.open(newline='') as handle:
+                        current = handle.read()
+                except OSError:
+                    current = ""  # a MAIN that vanished mid-trial: the rollback must still complete
+            if not path.exists() or not current:
+                pass  # nothing on disk to reconcile; the other files and the reload below still run
             if text is not None and marker() not in text:
-                atomic(path, current.replace(loader(), ""))
+                # Pre-CEDAR backup: MAIN comes back exactly as it was. If it
+                # vanished mid-trial it is recreated; if it exists, only our
+                # appended loader is removed (either newline form), byte-
+                # preserving everything around it.
+                if not path.exists():
+                    atomic(path, text)
+                else:
+                    without = current
+                    for variant in _loader_variants():
+                        without = without.replace(variant, "")
+                    atomic(path, without)
+            elif text is not None and marker() in text and isinstance(main_before_relocation, dict):
+                # This install moved the loader inside the trial; Revert undoes
+                # that specific move while keeping every unrelated user edit:
+                # the edits between the post-relocation file and what is on
+                # disk now are replayed onto the pre-relocation ordering.
+                # Unmappable histories leave MAIN untouched and are reported.
+                undone = _undo_loader_move(main_before_relocation, current)
+                if undone is not None:
+                    atomic(path, undone)
+                else:
+                    _rollback_warning('hyprland.lua was edited in a way that cannot be mapped back onto the pre-Apply ordering; MAIN left as the user wrote it.')
+            # else: leave MAIN untouched — concurrent user edits outrank us
         elif text is None: path.unlink(missing_ok=True)
         else: atomic(path, text)
+
+def _loader_variants():
+    """Our loader block as written, and as it lands in a CRLF file."""
+    block = loader()
+    return (block, block.replace('\n', '\r\n'))
+
+
+def _rollback_warning(message):
+    """A rollback note the user can actually find: the watchdog's stderr is
+    DEVNULL, so warnings land in the shell log directory too."""
+    print('CEDAR display rollback: ' + message, file=sys.stderr)
+    try:
+        log = OWN / 'backups' / 'rollback-warnings.log'
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open('a') as handle:
+            handle.write(time.strftime('%Y-%m-%d %H:%M:%S ') + message + '\n')
+    except OSError:
+        pass
+
+
+def _undo_loader_move(meta, current):
+    """Replay the edits between the post-relocation file and what is on disk
+    now onto the pre-relocation ordering. pre and post differ by exactly one
+    known line move (the loader block), so every post line maps to its pre
+    line; user edits are non-equal regions and are kept as written. Returns
+    the restored text, or None when the history cannot be mapped (the caller
+    keeps the user's file)."""
+    pre = meta['pre']
+    start, n = meta['insertLine'], meta['blockLines']
+    pre_lines = pre.splitlines(keepends=True)
+    if start + n > len(pre_lines):
+        return None
+    block_lines = pre_lines[start:start + n]
+    post_lines = pre_lines[:start] + pre_lines[start + n:] + block_lines
+    where = {}
+    for j in range(len(post_lines)):
+        if j < len(pre_lines) - n:
+            where[j] = j if j < start else j + n  # before the block: same; after it: shifted by the block
+        else:
+            where[j] = start + (j - (len(post_lines) - n))  # the moved block lines
+    cur_lines = current.splitlines(keepends=True)
+    import difflib
+    kept = set()          # pre line indices the user did not touch
+    edits = []            # (insert-before-this-pre-index, user line)
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, post_lines, cur_lines, autojunk=False).get_opcodes():
+        if op == 'equal':
+            for j in range(i1, i2):
+                s = where.get(j)
+                if s is None:
+                    return None
+                kept.add(s)
+        else:
+            # an edit at this point in the post ordering lands at the same
+            # relative spot in the pre ordering (after the last kept line)
+            prev = None
+            for j in range(i1 - 1, -1, -1):
+                prev = where.get(j)
+                if prev is not None:
+                    break
+            key = (prev + 1) if prev is not None else 0
+            for j in range(j1, j2):
+                line = cur_lines[j]
+                if not line.endswith('\n'):
+                    # an unterminated user line cannot be placed safely: after
+                    # the replay it could sit before retained content. Leave
+                    # MAIN untouched instead of concatenating lines.
+                    return None
+                edits.append((key, line))
+    if not kept:
+        return None  # nothing of the pre-relocation file survived: unmappable history
+    out = []
+    edits_by_key = {}
+    for key, line in edits:
+        edits_by_key.setdefault(key, []).append(line)
+    for s in range(len(pre_lines)):
+        for line in edits_by_key.pop(s, []):
+            out.append(line)
+        if s in kept:
+            out.append(pre_lines[s])
+    for key in sorted(edits_by_key):  # edits past the end of the file
+        for line in edits_by_key[key]:
+            out.append(line)
+    restored = ''.join(out)
+    # belt and braces: no unterminated line may end up before retained content
+    if any(not line.endswith('\n') for line in restored.splitlines(keepends=True)[:-1]):
+        return None
+    return restored
+
+
+def ensure_loader_last():
+    """CEDAR's loader must be the LAST thing MAIN runs. A later-loading block
+    that pins monitor rules (a display manager's generated file, seen live with
+    hyprmoncfg 2026-11-01) otherwise overrides every resolution, scale and
+    refresh change CEDAR applies — the trial passes, the screen never moves.
+
+    ONLY display transactions may call this: the move changes which monitor
+    rules win, so it belongs to the guarded trial/rollback flow, never to an
+    unrelated settings write. Returns {'pre', 'insertLine', 'blockLines'}
+    describing the exact move so restore() can undo it, or None when nothing
+    moved. A hand-edited block is refused rather than duplicated; a MAIN that
+    changes while the move is prepared is refused too."""
+    with MAIN.open(newline='') as handle:
+        text = handle.read()
+    if marker() not in text:
+        return None  # first install: the append happens inside install()'s backed-up try block
+    for variant in _loader_variants():
+        if text.endswith(variant):
+            return None
+    variant = next((v for v in _loader_variants() if v in text), None)
+    if variant is None:
+        raise RuntimeError('The CEDAR loader block in ' + str(MAIN) + ' has been edited since CEDAR wrote it. CEDAR refuses to add a second one; remove or restore that block manually, then apply again.')
+    idx0 = text.index(variant)
+    start = text[:idx0].count('\n')
+    n = variant.count('\n')
+    pre_lines = text.splitlines(keepends=True)
+    moved = ''.join(pre_lines[:start] + pre_lines[start + n:] + pre_lines[start:start + n])
+    with MAIN.open(newline='') as handle:
+        reread = handle.read()
+    if reread != text:
+        raise RuntimeError('hyprland.lua changed while the display layout was being prepared. Nothing was moved — apply again from the Displays page.')
+    atomic(MAIN, moved)
+    return {'pre': text, 'insertLine': start, 'blockLines': n}
+
 
 def install(state, display=False, verify=None):
     if not MAIN.exists(): raise RuntimeError('Hyprland configuration was not found. No files were changed.')
@@ -528,6 +687,7 @@ def install(state, display=False, verify=None):
         raise RuntimeError('Both Hyprland config formats exist; the running main config must be identified before applying settings.')
     from portable_providers import safe_target
     for target in [MAIN, generated(), OWN/'settings.json', OWN/('user.'+syntax())]: safe_target(target)
+    pre_move = None
     before = backup([OWN/'settings.json', generated(), MAIN])
     # Keep a human-readable recovery copy for every applied change.
     journal = OWN/'backups'/str(time.time_ns())
@@ -535,7 +695,11 @@ def install(state, display=False, verify=None):
     token = uuid.uuid4().hex
     pending = {'token':token, 'deadline':time.time()+20, 'files':before}
     try:
+        # The loader relocation changes which monitor rules win, so it happens
+        # ONLY inside a display transaction, guarded by the trial's rollback.
         if display:
+            pre_move = ensure_loader_last()
+            if pre_move is not None: pending['mainBeforeRelocation'] = pre_move
             atomic(OWN/'pending.json', json.dumps(pending))
             subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--watch', token], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         atomic(generated(), render(state))
@@ -547,10 +711,10 @@ def install(state, display=False, verify=None):
         reload_validate()
         if verify: verify()
     except Exception:
-        restore(before); (OWN/'pending.json').unlink(missing_ok=True)
+        restore(before, main_before_relocation=pre_move); (OWN/'pending.json').unlink(missing_ok=True)
         with contextlib.suppress(Exception): reload_validate()
         raise
-    return {'pending': {'token':token,'deadline':pending['deadline']} if display else None, 'message': 'Keep this display arrangement within 20 seconds.' if display else 'Applied and saved.'}
+    return {'pending': {'token':token,'deadline':pending['deadline']} if display else None, 'mainBeforeRelocation': pre_move, 'message': 'Keep this display arrangement within 20 seconds.' if display else 'Applied and saved.'}
 
 def verify_inputs(values):
     for key,wanted in values.items():
@@ -582,6 +746,7 @@ def apply_primary(state, output):
             raise ValueError('This display is not available to X11 yet. No defaults were changed.')
     before = backup([OWN/'settings.json', generated(), MAIN])
     state['mainDisplay'] = output
+    result = None
     try:
         result = install(state)
         effective = json.loads(command(['hyprctl', '-j', 'getoption', 'cursor:default_monitor'])).get('str')
@@ -592,7 +757,9 @@ def apply_primary(state, output):
             if x11_outputs(command(['xrandr', '--query']))[1] != output:
                 raise RuntimeError('X11 did not accept the selected main display.')
     except Exception:
-        restore(before)
+        # install() may have relocated the loader before failing its caller's
+        # checks; the rollback must undo that too, exactly like a trial revert.
+        restore(before, main_before_relocation=(result or {}).get('mainBeforeRelocation'))
         with contextlib.suppress(Exception): reload_validate()
         if has_x11:
             with contextlib.suppress(Exception):
@@ -600,6 +767,22 @@ def apply_primary(state, output):
         raise
     result['message'] = output + ' is saved as the startup display.' + (' X11 games also use it as their main display.' if has_x11 else ' X11 is unavailable in this session; its default will be applied on login when available.')
     return result
+
+
+def display_manager():
+    """An external monitor manager that re-applies its own layout (hyprmoncfgd:
+    on hotplug, lid, suspend — and observed after config reloads, 2026-11-02)
+    overrides every display change CEDAR tests. Detected honestly so the page
+    can say so instead of letting a trial silently lose."""
+    managers = [('hyprmoncfgd', 'hyprmoncfg', 'It re-applies its saved profile on hotplug, lid close, suspend and after config reloads.')]
+    for process, name, detail in managers:
+        try:
+            probe = subprocess.run(['pgrep', '-x', process], capture_output=True, text=True, check=False)
+        except OSError:
+            continue  # no process probe available; detection is best-effort and must not take down the snapshot
+        if probe.returncode == 0:
+            return {'name': name, 'active': True, 'detail': detail}
+    return {'name': '', 'active': False, 'detail': ''}
 
 
 def snapshot():
@@ -624,7 +807,7 @@ def snapshot():
     except Exception: has_touchpad = False
     try: windows, windows_errors = windows_live()
     except Exception as e: windows, windows_errors = {}, {'all': str(e)}
-    return {'hasTouchpad':has_touchpad, 'monitors':monitors, 'bindings':bindings, 'input':inputs, 'unsupported':errors, 'windows':windows, 'windowsUnsupported':windows_errors, 'owned':read_state(), 'pending': {'token':pending['token'],'deadline':pending['deadline']} if pending else None}
+    return {'hasTouchpad':has_touchpad, 'monitors':monitors, 'bindings':bindings, 'input':inputs, 'unsupported':errors, 'windows':windows, 'windowsUnsupported':windows_errors, 'owned':read_state(), 'displayManager':display_manager(), 'pending': {'token':pending['token'],'deadline':pending['deadline']} if pending else None}
 
 @contextlib.contextmanager
 def locked():
@@ -638,7 +821,7 @@ def restore_pending(token):
     if not file.exists(): return
     pending = json.loads(file.read_text())
     if pending['token'] != token: return
-    restore(pending['files']); file.unlink()
+    restore(pending['files'], main_before_relocation=pending.get('mainBeforeRelocation')); file.unlink()
     reload_validate()
 
 def watch(token):

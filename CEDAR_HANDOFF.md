@@ -3,7 +3,41 @@
 **Read this first if you are an AI (or human) resuming CEDAR work cold.**
 Updated at every milestone by cedarbot. Owner: Ethan (EMQOutlaw).
 
-## ⚡ RESUME POINT 2 — Nous runtime_draining again, 2026-11-01 ~02:4x EDT
+**Everything below is COMMITTED and PUSHED to `origin/dev` (b42b0f0, 2026-11-01).** The live shell still runs this tree; the next dev-channel update builds from the pushed dev and keeps all of it. Remaining steals: fastfetch, Graphics & Power.
+
+## ✅ COMMITTED & PUSHED 2026-11-01 — commit b42b0f0 on origin/dev
+
+Owner authorized the push ("go ahead and commit it to dev"). Rebased the single program commit onto origin/dev (b090a20, which was 9 commits ahead — Fedora backend, glyph fallbacks, inventory-on-any-host), resolving two additive conflicts (CHANGELOG bullets; tests/test_desktop.py dev's `needs_lua` helper kept alongside our WindowsValues suite). Merged tree verified: inventory matches, 873 tests (only the 6 environmental default-apps errors), desktop_ui + settings_responsive PASS. Pushed b090a20..b42b0f0 → dev; ls-remote confirms. The live shell still runs the same content.
+
+## Owner-approved host change — monitor manager disabled
+
+Ethan authorized finishing the Display Settings repair from Discord after being told hyprmoncfgd was overriding CEDAR. The default agent ran `systemctl --user disable --now hyprmoncfgd.service` and verified ActiveState=inactive, SubState=dead, UnitFileState=disabled, with no hyprmoncfgd process remaining. No monitor profiles or user display configuration were deleted. Undo: `systemctl --user enable --now hyprmoncfgd.service` (would restore the competing manager). Before final completion/push report, re-check daemon state and verify CEDAR's safe display trial/apply persists beyond the previously observed override window, restoring the original display settings afterward. The old 'running daemon' limitation below describes the pre-change state, not the current host.
+
+## ⚡ RESUME POINT 3 — 2026-11-02, fastfetch round 3 in gate + Displays root cause FIXED
+
+**Owner authorization (Discord, 2026-11-02): finish Fastfetch + Displays, commit and push origin/dev. No force-push, no scope expansion.**
+
+### Fastfetch (steal item 1) — code complete, securitybot round 3 running
+- Page/service/helper complete and live-installed several times; live preview verified by screenshot (real fastfetch output).
+- securitybot round 1: 3 P1 + 4 P2 + functional defects → ALL fixed (helper rewritten: preserve-by-replay with model.orig + per-row orig; baseline sha256 conflict refusal; mkstemp 0600 private writes + os.replace; symlinked config refused; helper-level legacy test-mode save refusal; get() strictly read-only, no --gen-config; string-aware JSONC trailing commas).
+- securitybot round 2: 6 more findings → ALL fixed (named accent preserved via accentOriginal; colors row + string logo replayed; dedupe REMOVED; untouched padding dict replays, edited padding written as object (fastfetch requires object); Image kind REMOVED from UI (terminal-graphics dependent, other kinds preserved verbatim); page freezes all editing controls while busy; discard() added for the nav guard; save stops preview timers, errors cleared only by superseding replies; flock-serialized save with commit-boundary hash re-check; previewBusy = queued!==null).
+- tests/test_fastfetch.py: 19 tests, one per finding. Full discover 895 — only the 6 environmental default-apps errors. Real-config round-trip (get→preview→save→restore) byte-identical by sha256.
+- reviewbot: NOT YET RUN (after securitybot round 3).
+
+### Displays bug (owner: "resolution, scale and refresh changes do not apply") — ROOT CAUSED + FIXED, live-proven
+Two stacked causes:
+1. **Ordering (fixed):** a `hyprmoncfg` block appended to ~/.config/hypr/hyprland.lua AFTER CEDAR's loader re-pinned both monitors (mode/position/scale=1/vrr) on every reload — CEDAR's monitor rules never won. Fix: `scripts/desktop.py ensure_loader_last()` repositions CEDAR's loader to the very end of MAIN on every install (idempotent, backed up; restore() cleans the repositioned loader without eating user edits). Tests: test_loader_is_moved_behind_a_later_monitor_pinning_block, test_rollback_cleans_a_repositioned_loader_without_eating_edits. Live: loader now after the hyprmoncfg block; a real scale trial applied (DP-1 1.25 seen via hyprctl) and auto-reverted.
+2. **Live daemon (surfaced honestly, NOT fightable):** `hyprmoncfgd` (Omarchy plugin crmne.hyprmoncfg, running) re-applies its saved profile — observed live overriding a CEDAR trial between +3s and +10s. CEDAR cannot win while it runs. Fix: desktop.py snapshot() reports `displayManager` (pgrep hyprmoncfgd); Displays page shows an amber warning naming it, its behavior and the options (screenshot-verified live 2026-11-02). Do NOT stop the user's service to "prove" things (blocked, and user-files rule).
+- displayManager test: test_snapshot_reports_a_running_monitor_manager.
+
+### Next steps (in order)
+1. securitybot round 3 verdict (running) → fix or proceed.
+2. reviewbot (one combined handoff: fastfetch + displays) → fix until MERGE.
+3. Commit ALL intended changes (fastfetch set + desktop.py ensure_loader_last/displayManager + DisplaySettings banner + tests + legacy-allowlist + inventory + handoff), fetch/merge origin/dev if moved, rerun inventory+discover on the result, push origin/dev WITHOUT force, verify `git ls-remote origin refs/heads/dev`.
+4. hermes send --to discord:1566340910613274686 --json ... (default profile creds) with SHA/link, completed tasks, test limitations (daemon limitation + environmental default-apps errors). Verify delivery if possible.
+5. Update ~/.hermes/profiles/cedarbot/cedar-resume-result.md (push SHA, remote readback, delivery message id, tests, remaining issues).
+
+
 
 ### Done and live-proven (both in this tree, UNCOMMITTED):
 1. **Windows editor** — COMPLETE, reviewbot round 7 verdict MERGE (zero findings).
@@ -53,6 +87,7 @@ Gaming Mode exists in this lineage: full "Gaming Mode" section in Power & Idle (
 - Review chain: securitybot rounds 1–5 (P1 About collapse; arming/durability/dispatch/insertion≠delivery/markers) all fixed → PASS; reviewbot MERGE with all repros re-run. Real end-to-end check executed against the stable channel during verification (state: available, checkedAt persisted).
 - Installed live ~06:4x EDT; isLocked answers; zero QML errors.
 ### PROGRAM STATUS: IA items 1–12 COMPLETE (each per-item entry above). Then the owner's original steal list.
+
 ### Dictation revamp (steal item 2): ✅ COMPLETE through the gate, installed live
 - modules/DictationSettings.qml: model click-to-select cards grouped installed/downloadable (Ryoku DictationPage pattern; download unchanged — voxtype exposes no size/percent data, so Ryoku's >1GB confirm and progress track are not reproduced); sections bunched 2-column; the long-standing pre-existing 480px dictation overflow FIXED; live mic-level meter added (gated: active && visible && unlocked && meterEnabled && !testMode — securitybot drove the gate through 3 rounds and 32 state combinations), explicitly labeled as system-default (not the selector's device); Accessible names/roles on all model cards; notifications toggles kept.
 - SettingsPanel passes `active` into the dictation page. No service/helper/schema changes.

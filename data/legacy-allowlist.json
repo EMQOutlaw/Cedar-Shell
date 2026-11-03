@@ -7,5 +7,7 @@
   "Config.qml": "Legacy environment flags and old bar ID remain explicit read-time compatibility aliases.",
   "scripts/distribution.py": "Read-only identification of legacy instances for fail-closed lock safety; no blanket replacement.",
   "scripts/omarchy_session.py": "Refuse a competing legacy shell or theme handoff rather than stopping its authentication host.",
-  "installer/engine/plan.py": "Warn before installing when a legacy-named shell already holds the display, matching the session adapter’s refusal."
+  "installer/engine/plan.py": "Warn before installing when a legacy-named shell already holds the display, matching the session adapter’s refusal.",
+  "scripts/fastfetch_settings.py": "Save refusal mirrors Config.qml's legacy test-mode environment aliases.",
+  "tests/test_fastfetch.py": "Exercises the same legacy test-mode aliases the helper refuses under."
 }

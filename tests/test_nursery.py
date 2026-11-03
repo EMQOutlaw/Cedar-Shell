@@ -19,6 +19,14 @@ import nursery  # noqa: E402
 class NurseryTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp(prefix="cedar-nursery-test-")
+        # Restore the real environment after the run: a leaked XDG_CONFIG_HOME
+        # breaks env-sensitive tools (the mise node shim) for later tests.
+        self._old_env = {k: os.environ.get(k) for k in ("XDG_CONFIG_HOME", "XDG_STATE_HOME")}
+        for key, value in self._old_env.items():
+            if value is None:
+                self.addCleanup(os.environ.pop, key, None)
+            else:
+                self.addCleanup(os.environ.__setitem__, key, value)
         os.environ["XDG_CONFIG_HOME"] = self.dir
         os.environ["XDG_STATE_HOME"] = self.dir
         self.pd = Path(self.dir) / "cedar" / "plugins.d"

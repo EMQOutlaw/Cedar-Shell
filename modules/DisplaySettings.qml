@@ -100,6 +100,12 @@ ColumnLayout {
     spacing: 16
 
     // Detect
+    SettingsSection {
+        visible: DesktopSettings.data.displayManager?.active === true; accent: Theme.amber; padding: 14
+        objectName: "displayManagerWarning"
+        GlowText { Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.amber
+            text: "The " + (DesktopSettings.data.displayManager?.name || "external") + " monitor manager is running and re-applies its own display layout automatically. " + (DesktopSettings.data.displayManager?.detail || "") + " A layout tested here will be overridden shortly after it applies. Manage displays in that tool, or pause it before using this page." }
+    }
     RowLayout {
         objectName: "detect"
         Layout.fillWidth: true; spacing: 12

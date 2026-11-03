@@ -167,6 +167,22 @@ class Transactions(unittest.TestCase):
             with self.assertRaises(RuntimeError): d.install(self.state)
         self.assertEqual(self.main.read_text(),self.original)
         self.assertFalse((self.own/'generated.lua').exists())
+    def test_snapshot_reports_a_running_monitor_manager(self):
+        """hyprmoncfgd re-applies its own layout and silently undoes CEDAR's
+        trial; the snapshot must surface it so the page can say so."""
+        from unittest.mock import Mock
+        def base(running):
+            return [patch.object(d,'hypr',return_value=[]), patch.object(d,'command',side_effect=lambda args: '' if 'udevadm' in args else '{}'),
+                    patch.object(d,'windows_live',return_value=({},{})),
+                    patch.object(d.subprocess,'run',side_effect=lambda args,**k: Mock(returncode=0 if running and 'hyprmoncfgd' in args else 1))]
+        for running in (True, False):
+            patches = base(running)
+            for p in patches: p.start()
+            try:
+                self.assertEqual(d.snapshot()['displayManager']['active'], running)
+            finally:
+                for p in patches: p.stop()
+
     def test_display_rollback_survives_shell_and_preserves_new_user_edits(self):
         with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen') as process:
             result=d.install(self.state,True)
@@ -182,16 +198,157 @@ class Transactions(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'Files'):
                 d.action({'action':'binding','keys':'SUPER + F','command':'kitty'})
         self.assertFalse((self.own/'generated.lua').exists())
+    def test_rollback_completes_when_main_vanishes_mid_trial(self):
+        """Round 9: a MAIN removed during the trial must not abort the
+        automatic rollback — MAIN is recreated from the backup, the other
+        files and pending state are restored and the reload runs."""
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
+            result = d.install(self.state, True)
+            backup_text = json.loads((self.own/'pending.json').read_text())['files'][str(self.main)]
+            self.main.unlink()
+            d.restore_pending(result['pending']['token'])
+        self.assertEqual(self.main.read_text(), backup_text)
+        self.assertFalse((self.own/'pending.json').exists())
+
     def test_keep_cannot_save_expired_trial(self):
         with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
             result=d.install(self.state,True)
             file=self.own/'pending.json'; pending=json.loads(file.read_text()); pending['deadline']=0; file.write_text(json.dumps(pending))
             d.action({'action':'keep','token':result['pending']['token']})
         self.assertFalse((self.own/'generated.lua').exists())
+    def test_trial_rollback_reproduces_the_trial_effective_config(self):
+        """Review: Revert undoes the loader move even when the user appended an
+        unrelated comment during the trial — the comment survives, the block
+        returns to the line it originally occupied."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        self.main.write_text(self.main.read_text()+'-- pinning tool block\n')
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
+            result = d.install(self.state, True)
+            self.assertTrue(self.main.read_text().rstrip().endswith(d.loader().strip()))  # the trial runs with CEDAR last
+            self.main.write_text(self.main.read_text()+'-- user comment during trial\n')
+            d.restore_pending(result['pending']['token'])
+        rolled = self.main.read_text()
+        self.assertIn('-- user comment during trial', rolled)               # the edit survives
+        self.assertIn('-- pinning tool block', rolled)
+        self.assertLess(rolled.index('-- CEDAR graphical settings'), rolled.index('-- pinning tool block'))  # original ordering restored
+
+    def test_non_display_install_never_moves_the_loader(self):
+        """Review: only display transactions may reorder MAIN — an input or
+        shortcut apply must never silently change which monitor rules win."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        self.main.write_text(self.main.read_text()+'-- pinning tool block\n')
+        with patch.object(d,'reload_validate'): d.install({**self.state,'input':{'sensitivity':.2}})
+        text = self.main.read_text()
+        self.assertLess(text.index('-- CEDAR graphical settings'), text.index('-- pinning tool block'))  # ordering untouched
+
+    def test_crlf_main_survives_a_trial_byte_exact(self):
+        """Round 8: newline-preserving reads end to end — a CRLF hyprland.lua
+        comes back byte-identical from a trial, and a newline-only concurrent
+        edit is treated as a user edit (the rollback leaves it alone)."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        crlf = self.main.read_text().replace('\n', '\r\n')
+        self.main.write_bytes(crlf.encode())
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
+            result = d.install(self.state, True)
+            self.assertTrue(any(self.main.read_bytes().endswith(v.encode()) for v in d._loader_variants()))
+            d.restore_pending(result['pending']['token'])
+        self.assertEqual(self.main.read_bytes(), crlf.encode())  # zero CRLF sequences lost
+
+    def test_crlf_conversion_during_a_trial_counts_as_a_user_edit(self):
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
+            result = d.install(self.state, True)
+            edited = self.main.read_bytes().replace(b'\n', b'\r\n')
+            self.main.write_bytes(edited)
+            d.restore_pending(result['pending']['token'])
+        self.assertEqual(self.main.read_bytes(), edited)  # the user's newline change outranks the undo
+
+    def test_rollback_replays_trial_edits_onto_the_original_ordering(self):
+        """Review: trial-time edits before/around the relocated block — a
+        deleted leading comment, a prepended Lua comment — must replay onto
+        the pre-Apply ordering without commenting the loader out."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        # an original leading comment that the trial deletes, and a pinning block after the loader
+        self.main.write_text('-- original leading comment\n' + self.main.read_text() + '-- pinning tool block\n')
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
+            result = d.install(self.state, True)
+            edited = self.main.read_text().replace('-- original leading comment\n', '') + '-- prepended\n-- lua comment\n'
+            self.main.write_text('-- prepended\n-- lua comment\n' + edited)  # delete leading comment AND prepend two lines
+            d.restore_pending(result['pending']['token'])
+        rolled = self.main.read_text()
+        self.assertIn('-- prepended\n-- lua comment\n', rolled)             # user lines survive, at the top
+        self.assertNotIn('-- original leading comment', rolled)             # their deletion survives
+        # the loader runs uncommented and in its original place (before the pinning block)
+        self.assertLess(rolled.index('-- CEDAR graphical settings'), rolled.index('-- pinning tool block'))
+        import re as _re
+        self.assertTrue(_re.search(r'(?m)^-- CEDAR graphical settings', rolled))  # uncommented
+        self.assertNotIn('-- lua comment\n-- CEDAR graphical settings', rolled)   # never swallowed by a user comment
+
+    def test_unmappable_rollback_leaves_main_and_completes(self):
+        """A trial-time rewrite that cannot be mapped back leaves MAIN as the
+        user wrote it; the rollback still completes and the warning is logged."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        self.main.write_text(self.main.read_text()+'-- pinning tool block\n')
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
+            result = d.install(self.state, True)
+            self.assertTrue(self.main.read_text().rstrip().endswith(d.loader().strip()))  # a real relocation happened
+            self.main.write_text('-- completely rewritten by the user\n')
+            d.restore_pending(result['pending']['token'])
+        self.assertEqual(self.main.read_text(), '-- completely rewritten by the user\n')
+        self.assertFalse((self.own/'pending.json').exists())
+        self.assertTrue((self.own/'backups'/'rollback-warnings.log').exists())  # the unmappable history is reported
+
+    def test_unterminated_append_during_trial_is_not_concatenated(self):
+        """Review: relocation → an append with no trailing newline → Revert.
+        The documented rejection: MAIN stays byte-identical to what the user
+        wrote (the partial line at EOF) and the warning is logged."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        self.main.write_text(self.main.read_text()+'-- pinning tool block\n')
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'):
+            result = d.install(self.state, True)
+            before_rollback = self.main.read_text() + '-- partial line without newline'
+            self.main.write_text(before_rollback)
+            d.restore_pending(result['pending']['token'])
+        self.assertEqual(self.main.read_bytes(), before_rollback.encode())  # MAIN untouched, nothing concatenated
+        self.assertFalse((self.own/'pending.json').exists())
+        self.assertTrue((self.own/'backups'/'rollback-warnings.log').exists())  # the rejection is reported
+
+    def test_loader_is_moved_behind_a_later_monitor_pinning_block(self):
+        """A tool that appends its own monitor rules after CEDAR's loader would
+        override every display change on reload (hyprmoncfg, seen live). A
+        display install leaves CEDAR's loader as the last thing MAIN runs."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        self.main.write_text(self.main.read_text()+'-- Added by hyprmoncfg: its generated monitor rules load last.\ndofile(os.getenv("HOME") .. "/.config/hypr/hyprmoncfg-monitors.lua")\n')
+        with patch.object(d,'reload_validate'),patch.object(d.subprocess,'Popen'): d.install(self.state, True)
+        text=self.main.read_text()
+        self.assertTrue(text.rstrip().endswith(d.loader().strip()),'the CEDAR loader must run last')
+        self.assertEqual(text.count('-- CEDAR graphical settings'),1)
+        self.assertIn('hyprmoncfg', text)  # the user's other tool is preserved, only outranked
+    def test_rollback_cleans_a_repositioned_loader_without_eating_edits(self):
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        self.main.write_text(self.main.read_text()+'-- Added by tool\n')
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        d.restore({str(self.main): self.original})  # a pre-CEDAR backup: the loader must go
+        text=self.main.read_text()
+        self.assertNotIn('-- CEDAR graphical settings', text)
+        self.assertIn('-- Added by tool', text)
+        self.assertEqual(text, self.original+'-- Added by tool\n')  # no separator residue
 
 
 class PrimaryDisplay(unittest.TestCase):
     setUp = Transactions.setUp
+    def test_primary_verification_failure_undoes_the_relocation(self):
+        """Round-6: a cursor/X11 verification failure AFTER install() must undo
+        the loader relocation too, exactly like a trial revert."""
+        with patch.object(d,'reload_validate'): d.install(self.state)
+        self.main.write_text(self.main.read_text()+'-- pinning tool block\n')
+        before_apply = self.main.read_text()
+        with patch.object(d,'hypr',return_value=[{'name':'DP-2'}]), patch.object(d,'command',return_value='{"str":"DP-1"}'), \
+             patch.object(d,'reload_validate'), patch.dict(d.os.environ,{'DISPLAY':''}):
+            with self.assertRaisesRegex(ValueError,'override'):
+                d.apply_primary({**self.state,'mainDisplay':'DP-2'}, 'DP-2')
+        self.assertEqual(self.main.read_text(), before_apply)
+
     @needs_lua
     def test_primary_render_preserves_layout_and_runs_x11_only_on_login(self):
         state={**self.state,'mainDisplay':'DP-2'}
