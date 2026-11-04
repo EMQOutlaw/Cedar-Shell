@@ -101,10 +101,12 @@ ColumnLayout {
 
     // Detect
     SettingsSection {
-        visible: DesktopSettings.data.displayManager?.active === true; accent: Theme.amber; padding: 14
+        visible: (DesktopSettings.data.displayManager?.active || DesktopSettings.data.displayManager?.dormant || (DesktopSettings.data.displayManager?.detail || "") !== "") === true; accent: Theme.amber; padding: 14
         objectName: "displayManagerWarning"
         GlowText { Layout.fillWidth: true; wrapMode: Text.WordWrap; color: Theme.amber
-            text: "The " + (DesktopSettings.data.displayManager?.name || "external") + " monitor manager is running and re-applies its own display layout automatically. " + (DesktopSettings.data.displayManager?.detail || "") + " A layout tested here will be overridden shortly after it applies. Manage displays in that tool, or pause it before using this page." }
+            text: DesktopSettings.data.displayManager?.active === true
+                  ? "The " + (DesktopSettings.data.displayManager?.name || "external") + " monitor manager is running and re-applies its own display layout automatically. " + (DesktopSettings.data.displayManager?.detail || "") + " A layout tested here will be overridden shortly after it applies. Manage displays in that tool, or pause it before using this page."
+                  : (DesktopSettings.data.displayManager?.detail || "") }
     }
     RowLayout {
         objectName: "detect"

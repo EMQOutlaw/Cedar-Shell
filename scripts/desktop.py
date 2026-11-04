@@ -773,7 +773,21 @@ def display_manager():
     """An external monitor manager that re-applies its own layout (hyprmoncfgd:
     on hotplug, lid, suspend — and observed after config reloads, 2026-11-02)
     overrides every display change CEDAR tests. Detected honestly so the page
-    can say so instead of letting a trial silently lose."""
+    can say so instead of letting a trial silently lose.
+
+    The daemon is not the only threat: hyprmoncfg also wires a loader line into
+    MAIN ("Added by hyprmoncfg") that dofile()s its generated monitor rules on
+    every reload. When the daemon is off the file is dormant — but if the tool
+    ever runs again it re-inserts that line after CEDAR's loader and takes the
+    layout back. Detected here in three honest states:
+      active  — the daemon is running right now: every trial loses.
+      wired   — the loader line exists and loads BEFORE CEDAR's: CEDAR
+                currently wins, but the fight resumes the moment the tool
+                runs again.
+      overriding — the loader line exists and loads AFTER CEDAR's (Lua runs
+                top to bottom: last load wins): its stale rules win today;
+                CEDAR's display page cannot apply anything.
+    """
     managers = [('hyprmoncfgd', 'hyprmoncfg', 'It re-applies its saved profile on hotplug, lid close, suspend and after config reloads.')]
     for process, name, detail in managers:
         try:
@@ -781,8 +795,36 @@ def display_manager():
         except OSError:
             continue  # no process probe available; detection is best-effort and must not take down the snapshot
         if probe.returncode == 0:
-            return {'name': name, 'active': True, 'detail': detail}
-    return {'name': '', 'active': False, 'detail': ''}
+            return {'name': name, 'active': True, 'dormant': False, 'detail': detail}
+    # Dormant wiring: the actual loader line in MAIN and its rules file. MAIN
+    # may not exist (no Hyprland config yet) — absence is reported, never
+    # invented; an unreadable MAIN is reported too, never downgraded to a
+    # clean all-clear. The match is the real dofile/io.open line, not any
+    # comment mentioning the filename, and the LAST such line decides (Lua:
+    # last load wins).
+    try:
+        text = MAIN.read_text()
+    except OSError as error:
+        return {'name': '', 'active': False, 'dormant': False,
+                'detail': 'The Hyprland config (' + str(MAIN) + ') could not be read to check for dormant hyprmoncfg wiring: ' + str(error)}
+    rules = (CONFIG / 'hypr' / 'hyprmoncfg-monitors.lua')
+    loaders = [line for line in text.splitlines() if 'hyprmoncfg-monitors.lua' in line and ('dofile' in line or 'io.open' in line)]
+    if not loaders or not rules.exists():
+        return {'name': '', 'active': False, 'dormant': False, 'detail': ''}
+    detail = ("hyprmoncfg's saved layout is still wired into your Hyprland config: "
+              + str(rules) + ' loads on every reload. ')
+    if marker() not in text:
+        detail += ("CEDAR's settings are not wired into this Hyprland config at all, so hyprmoncfg's rules win — "
+                   "every change tested on this page is overridden. Remove that block (or delete the rules file), or manage displays in hyprmoncfg.")
+        return {'name': 'hyprmoncfg', 'active': False, 'dormant': True, 'detail': detail}
+    overriding = text.rindex(loaders[-1]) > text.index(marker())
+    if overriding:
+        detail += ('Its rules load AFTER CEDAR\'s, so they win — every change tested on this page is overridden. '
+                   'Remove that block from your Hyprland config (or delete the rules file), or manage displays in hyprmoncfg.')
+    else:
+        detail += ('CEDAR\'s rules currently load after it, so this page wins — but if hyprmoncfg runs again it '
+                   're-inserts its loader last and takes the layout back. Remove it, or manage displays in hyprmoncfg.')
+    return {'name': 'hyprmoncfg', 'active': False, 'dormant': True, 'detail': detail}
 
 
 def snapshot():
