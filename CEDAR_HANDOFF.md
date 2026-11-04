@@ -164,3 +164,40 @@ Also queued from earlier (dux steals): dictation menu revamp, recording, fastfet
 - QML: never bind height→implicitHeight on wrapping text in Flow/Layouts (hangs offscreen harness). Never two same-named signal handlers. Pages need `import "../services"` for singletons.
 - Standards live in the `cedar-standards` skill; review gate (securitybot → reviewbot until MERGE) is a standing owner order.
 - Reviewer handoffs and logs: `~/.hermes/profiles/cedarbot/cache/scratch/`.
+
+
+## RESUME POINT 5 — Fastfetch presets (2026-11-04, ~12:30 EDT)
+DONE (all verified):
+- Presets feature: helper `list_presets()`/`preset_model()` (PRESETS_DIR=/usr/share/fastfetch/presets, 37 presets: neofetch/paleofetch/screenfetch/archey/ci/all + examples/2-32; traversal/unknown refused; baseline = user's live config hash; test-mode save refusal intact), service `loadPreset()` + `presets` property + preset reply branch, page Presets FCell (37 StationButtons, disabled while committing/saving). Unknown-config-key preservation and .bak backup untouched.
+- refresh() testMode guard removed (reads allowed under test — settled doctrine; helper get strictly read-only; save still refuses in QML AND helper).
+- Tests: test_fastfetch 28 OK (5 new Presets tests incl. sandbox save round-trip), test_settings_remaster 26 OK (PYTHONPATH=scripts), check_fastfetch_presets.py PASS (real button click in offscreen harness: draft loads, specimen follows, revert restores, save refused — needed `import "components"` in harness; harness ReferenceErrors abort SILENTLY, exit 0: always check for missing PASS lines, not just exit code), check_desktop_ui PASS, check_settings_responsive PASS (27 pages), inventory OK.
+- Live installed (20261102/04 logs) from cedar-morph; screenshot-verified: Presets grid renders, readout populated with real fastfetch output, 0 QML errors in shell.log.
+
+BLOCKED — reviewer gate:
+- securitybot on presets delta FAILED twice: "ChatGPT plan sharing limit reached" (Nous gateway upstream exhausted; only Ethan can pause plan sharing at portal.nousresearch.com/account-settings or wait for reset). Handoff staged: ~/.hermes/profiles/cedarbot/cache/scratch/ff-presets-securitybot.md (full diff + new check file).
+NEXT (in order):
+1. Resume gate: `cd ~/Work/cedar-morph && hermes -p securitybot chat --oneshot --query-file ~/.hermes/profiles/cedarbot/cache/scratch/ff-presets-securitybot.md`, fix findings, then reviewbot same pattern; rounds until MERGE.
+2. Commit + push presets to dev (owner-authorized: "Once you're done with the fastfetch go ahead and push it to dev"; base feature already pushed as 2eb0c2c on HEAD 662347b).
+3. Display Settings repair (owner's explicit request): resolution/scale/refresh "none of the settings would apply" — diagnose scripts/desktop.py monitor apply path with live hyprctl probes; safe/rollback-able; NO lock/logout/reboot/suspend.
+4. Update cedar-resume-result.md at each milestone.
+
+
+## RESUME POINT 6 — Display Settings diagnosed + dormant-override fix (2026-11-04, ~12:55 EDT)
+FINDINGS (owner's "resolution/scale/refresh never apply"):
+- ROOT CAUSE (historical): hyprmoncfgd was running on 2026-11-02 (documented in code comment) and re-applied its saved profile after every CEDAR config reload — every display trial silently reverted. The daemon is DISABLED today (unit exists, pgrep empty).
+- The apply pipeline WORKS today: live trial probe (1px DP-2 nudge via the page's exact action) applied (hyprctl showed 3441) and reverted cleanly (3440). Trial rollback + generated.lua hl.monitor + loader order all correct; CEDAR's loader loads after hyprmoncfg's in the live hyprland.lua.
+- RESIDUAL DEFECT FIXED: display_manager() only warned while the daemon RAN. hyprmoncfg's loader line ("Added by hyprmoncfg") + ~/.config/hypr/hyprmoncfg-monitors.lua are still wired into the live config — dormant but re-activated the moment hyprmoncfg runs again. Now three honest states: active (daemon running) / dormant+wired with load-order detail (after CEDAR = CEDAR wins today; before/absent marker = overriding, page cannot apply). DisplaySettings.qml shows the amber warning for active OR dormant.
+- Verified live: display_manager() on this machine → dormant:true, "CEDAR's rules currently load after it, so this page wins". (Visual confirm of the amber box pending — settings window is behind the owner's fullscreen browser; do not raise windows over his active work. He can see it on Displays.)
+
+TESTS: test_desktop 36/36 OK (new test_display_manager_reports_dormant_hyprmoncfg_wiring; lesson: patch.object on a Path INSTANCE attr fails+leaks — patch the module attribute; and stopping FRESH patcher objects instead of the started ones leaks mocks across test classes). check_desktop_ui PASS, check_settings_responsive PASS, installed live 0 QML errors.
+
+PENDING GATE (both change sets, single review round when the gateway recovers):
+1. fastfetch presets delta — handoff staged: ~/.hermes/profiles/cedarbot/cache/scratch/ff-presets-securitybot.md
+2. display dormant-override fix — diff: scripts/desktop.py display_manager() + modules/DisplaySettings.qml warning + tests/test_desktop.py. Stage handoff like the presets one (git diff + note).
+Gate command: `cd ~/Work/cedar-morph && hermes -p securitybot chat --oneshot --query-file <handoff>` (last attempts failed: "ChatGPT plan sharing limit reached" — Ethan must pause plan sharing at portal.nousresearch.com/account-settings or wait for reset).
+After MERGE: commit + push both to dev (owner-authorized for fastfetch; base feature already pushed as 2eb0c2c on HEAD 662347b).
+
+
+## RESUME POINT 7 — gate still blocked after Ethan's toggle (2026-11-04, ~13:20 EDT)
+Ethan paused plan sharing ("Done") but securitybot STILL fails with "ChatGPT plan sharing limit reached" (3 attempts). Cedarbot's own session works — the gateway serves THIS profile, so the block is specific to the reviewer profiles' model routing (they ride the exhausted shared plan; cedarbot draws credits). I may not modify other bots' config (owner rule).
+NEXT: Ethan sets the model/provider for the securitybot and reviewbot profiles himself (e.g. `hermes -p securitybot` then /model, or the profile's config), OR waits for shared-plan reset. Then run the two gates per RESUME POINT 6.
