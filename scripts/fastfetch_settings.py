@@ -449,7 +449,67 @@ def get():
         return {'installed': False, 'model': None, 'catalog': CATALOG, 'configPath': str(CONFIG)}
     model, error = load_model()
     return {'installed': True, 'model': model, 'catalog': CATALOG, 'configPath': str(CONFIG),
+            'presets': list_presets(),
             **({'error': error} if error else {})}
+
+
+# fastfetch ships curated presets with the package itself; they are the
+# community's popular configurations, already on disk — nothing to download.
+PRESETS_DIR = Path('/usr/share/fastfetch/presets')
+PRESET_NOTES = {
+    'neofetch': 'The classic Neofetch layout',
+    'paleofetch': 'Paleofetch: the bare-minimum readout',
+    'screenfetch': 'The Screenfetch layout',
+    'archey': 'The Archey layout',
+    'ci': 'A minimal one-line summary',
+    'all': 'Every module fastfetch offers',
+}
+
+
+def list_presets():
+    """The presets fastfetch installed: the named ones plus the numbered
+    community examples. Empty when the package carries none. Entries outside
+    the resolved base (a symlinked preset file) are skipped — preset_model
+    would refuse them, so listing them would offer a button that errors."""
+    out = []
+    if not PRESETS_DIR.is_dir():
+        return out
+    base = PRESETS_DIR.resolve()
+    for path in sorted(PRESETS_DIR.glob('*.jsonc')):
+        if base not in path.resolve().parents:
+            continue
+        out.append({'name': path.stem, 'note': PRESET_NOTES.get(path.stem, 'Fastfetch preset')})
+    examples = PRESETS_DIR / 'examples'
+    if examples.is_dir():
+        for path in sorted(examples.glob('*.jsonc'), key=lambda p: (len(p.stem), p.stem)):
+            if base not in path.resolve().parents:
+                continue
+            out.append({'name': 'examples/' + path.stem, 'note': 'Community example ' + path.stem})
+    return out
+
+
+def preset_model(name):
+    """A preset as an editable model. `orig` is the preset config (so the save
+    starts from the preset, not the user's file); `baseline` is the hash of the
+    user's live config.jsonc, so the save's conflict check still guards the
+    file that will actually be replaced."""
+    if not isinstance(name, str) or not name:
+        raise ValueError('A preset name is required.')
+    if not PRESETS_DIR.is_dir():
+        raise RuntimeError('This machine has no fastfetch presets directory.')
+    base = PRESETS_DIR.resolve()  # a symlinked presets dir must not fail the containment check below
+    target = (base / (name + '.jsonc')).resolve()
+    if base not in target.parents or not target.is_file():
+        raise ValueError('Unknown fastfetch preset: ' + name)
+    config = json.loads(strip_comments(target.read_text(encoding='utf-8')))
+    try:
+        raw = CONFIG.read_bytes()
+    except OSError:  # missing OR unreadable: the preset still loads; save's hash check guards the real file
+        raw = None
+    model = normalize(config, raw if raw is not None else 'absent')
+    if raw is None:
+        model['baseline'] = 'absent'  # save() checks the same sentinel
+    return model
 
 
 @contextlib.contextmanager
@@ -526,6 +586,9 @@ def action(req):
     name = req.get('action', 'get')
     if name == 'get':
         return get()
+    if name == 'preset':
+        return {'preset': req.get('name'), 'model': preset_model(req.get('name')),
+                'catalog': CATALOG, 'configPath': str(CONFIG), 'presets': list_presets()}
     if name == 'preview':
         return preview(req.get('model'))
     if name == 'save':

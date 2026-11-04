@@ -87,6 +87,24 @@ ColumnLayout {
             GlowText { visible: Fastfetch.previewText === "" && !Fastfetch.previewBusy; text: "Edit below; the specimen refreshes as you do."; color: Theme.muted; font.pixelSize: Theme.small; Layout.fillWidth: true; wrapMode: Text.WordWrap }
         }
         FCell {
+            objectName: "fastfetchPresets"
+            heading: "Presets"; caption: "Popular configurations shipped with fastfetch itself — the community's layouts plus Neofetch, Screenfetch and friends. Picking one loads it into the draft; the specimen above shows it live, and Save writes it (the current config is kept as config.jsonc.bak). Nothing is written until Save."
+            visible: Fastfetch.presets.length > 0
+            Flow {
+                Layout.fillWidth: true; spacing: Theme.spaceSm
+                Repeater {
+                    model: Fastfetch.presets
+                    StationButton {
+                        required property var modelData
+                        text: modelData.name
+                        hint: modelData.note
+                        enabled: root.editable
+                        onClicked: Fastfetch.loadPreset(modelData.name)
+                    }
+                }
+            }
+        }
+        FCell {
             heading: "Emblem"; caption: "The art beside the readout: an ASCII art file, the built-in logo, or none. Image-emblem configs CEDAR cannot edit are kept exactly as they are."
             GlowText {
                 visible: Fastfetch.draft?.logo?.kind === "other"

@@ -23,6 +23,7 @@ Singleton {
     property string previewError: ""  // a failed preview, kept apart from persistent save/get failures
     property int previewGeneration: 0  // bumped by discard(): older specimens are stale
     property var catalog: []
+    property var presets: []       // fastfetch's shipped community presets
     readonly property bool dirty: ready && draft !== null && JSON.stringify(draft) !== JSON.stringify(model)
     readonly property var rows: draft ? draft.rows : []
     property double lastRead: 0
@@ -33,7 +34,9 @@ Singleton {
 
     readonly property bool busy: worker ? worker.busy : false
     function refresh(force) {
-        if (busy || Config.testMode) return;
+        // Reads are allowed under test mode (the helper's get is strictly
+        // read-only, so harnesses verify the real render); only writes refuse.
+        if (busy) return;
         if (!force && Date.now() - lastRead < 15000) return;
         lastRead = Date.now();
         commitLock = true;
@@ -56,6 +59,19 @@ Singleton {
             if (m.rows.some(r => r.key === key)) return;  // fastfetch would print it twice
             m.rows.push({ kind: "module", key: key, label: key.toUpperCase() });
         });
+    }
+    // A community preset becomes the draft: the specimen shows it live, the
+    // Save bar appears (the draft no longer matches config.jsonc), and Save
+    // writes it with the previous config kept as config.jsonc.bak. Nothing is
+    // written until Save — a preset is an edit, not a commit.
+    function loadPreset(name) {
+        if (!ready || !installed || commitLock || saving) return;
+        // A preset reply replaces the draft wholesale: edits made while the
+        // request runs would be silently discarded, so the draft is locked
+        // exactly like a save (commitLock clears in the reply/failure paths).
+        commitLock = true;
+        error = ""; errorKind = ""; message = "Loading preset " + name + "…";
+        worker.send({action: "preset", name: name}, "preset");
     }
     function revert() {
         if (commitLock || saving) return;
@@ -105,7 +121,18 @@ Singleton {
         onResult: result => {
             // Errors are cleared only by the reply that supersedes them: a
             // successful preview must never wash away a save failure.
-            if (result.model !== undefined || result.installed !== undefined) {  // a "get" reply
+            if (result.preset !== undefined) {  // a "preset" reply: the draft becomes the preset
+                root.error = ""; root.errorKind = ""; root.message = "";
+                root.previewError = "";  // the abandoned draft's specimen error is stale
+                root.commitLock = false;
+                root.catalog = result.catalog || root.catalog;
+                root.presets = result.presets || root.presets;
+                root.draft = result.model ? JSON.parse(JSON.stringify(result.model)) : null;
+                // the in-flight specimen is of the old draft: invalidate, then
+                // show the preset's own readout
+                root.previewGeneration++;
+                requestPreviewNow();
+            } else if (result.model !== undefined || result.installed !== undefined) {  // a "get" reply
                 root.error = ""; root.errorKind = "";
                 root.commitLock = false;
                 root.installed = result.installed === true;
@@ -116,6 +143,7 @@ Singleton {
                 root.configErrorText = result.error || "";
                 root.configPath = result.configPath || "";
                 root.catalog = result.catalog || [];
+                root.presets = result.presets || [];
                 requestPreviewNow();
             } else if (result.preview !== undefined) {
                 if (worker.tag !== "preview:" + root.previewGeneration) {
@@ -142,7 +170,8 @@ Singleton {
                 return;  // stale preview failure: suppress the text, not the cleanup
             }
             root.error = value;
-            root.errorKind = worker.tag === "save" ? "save" : "get";
+            // a preset failure is a draft-replacing read, not a save: label it honestly
+            root.errorKind = worker.tag === "save" ? "save" : worker.tag === "preset" ? "preset" : "get";
             root.saving = false; root.commitLock = false; root.message = "";
         }
     }

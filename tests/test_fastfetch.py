@@ -48,6 +48,72 @@ class Base(unittest.TestCase):
         return model
 
 
+class Presets(Base):
+    """The community presets fastfetch ships: listing, loading as a draft, and
+    saving one over the user's config with the baseline guard intact."""
+
+    def setUp(self):
+        super().setUp()
+        self.presets_dir = self.dir / "presets" / "examples"
+        self.presets_dir.mkdir(parents=True)
+        (self.dir / "presets" / "neofetch.jsonc").write_text(
+            '{"logo": {"type": "none"}, "modules": ["title", "os"]}')
+        (self.presets_dir / "13.jsonc").write_text(
+            '{"modules": [{"type": "custom", "format": "PRESET_KEEP"}, "os"]}')
+        self._old_presets = ff.PRESETS_DIR
+        ff.PRESETS_DIR = self.dir / "presets"
+        self.addCleanup(lambda: setattr(ff, "PRESETS_DIR", self._old_presets))
+
+    def test_listing_covers_named_and_example_presets(self):
+        names = [p["name"] for p in ff.list_presets()]
+        self.assertIn("neofetch", names)
+        self.assertIn("examples/13", names)
+
+    def test_preset_model_keeps_custom_modules_and_uses_live_baseline(self):
+        self.write('{"modules": ["uptime"]}')
+        model = ff.preset_model("examples/13")
+        self.assertEqual(model["baseline"], ff._current_hash())  # guards the user's file, not the preset
+        keys = [row["key"] for row in model["rows"]]
+        self.assertIn("custom", keys)
+        self.assertEqual(model["orig"]["modules"][0]["format"], "PRESET_KEEP")
+
+    def test_preset_save_round_trips_and_backs_up(self):
+        self.write('{"modules": ["os", "kernel"]}')
+        model = ff.preset_model("neofetch")
+        ff.save(model)
+        saved = json.loads(ff.strip_comments(self.config.read_text()))
+        self.assertEqual(saved["logo"]["type"], "none")
+        self.assertIn("title", saved["modules"])
+        self.assertEqual(self.config.with_name("config.jsonc.bak").read_text(),
+                         '{"modules": ["os", "kernel"]}')
+
+    def test_traversal_and_unknown_names_are_refused(self):
+        self.write('{"modules": ["os"]}')
+        for name in ("../../config", "examples/../../secrets", "missing", ""):
+            with self.assertRaises((ValueError, RuntimeError)):
+                ff.preset_model(name)
+
+    def test_symlinked_presets_dir_still_lists_and_loads(self):
+        """securitybot P1: the containment check compares against the RESOLVED
+        base, so a symlinked presets dir (distro packaging) does not fail
+        closed and hide every preset."""
+        real = self.dir / "real-presets"
+        real.mkdir()
+        (real / "arch.jsonc").write_text('{"modules": ["os"]}')
+        link = self.dir / "link-presets"
+        link.symlink_to(real)
+        ff.PRESETS_DIR = link
+        self.assertEqual([p["name"] for p in ff.list_presets()], ["arch"])
+        model = ff.preset_model("arch")
+        self.assertEqual([row["key"] for row in model["rows"]], ["os"])
+
+    def test_preset_save_refused_under_test_mode(self):
+        os.environ["CEDAR_TEST"] = "1"
+        self.write('{"modules": ["os"]}')
+        with self.assertRaises(RuntimeError):
+            ff.save(ff.preset_model("neofetch"))
+
+
 class Preserve(Base):
     def test_unknown_module_options_and_formats_survive_a_save(self):
         """P1: saving may not destroy fields CEDAR does not manage."""
