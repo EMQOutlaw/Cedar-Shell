@@ -291,3 +291,32 @@ console.log(JSON.stringify(results));
         self.assertNotIn('toggle("themes")',(ROOT/'modules/WallpaperPicker.qml').read_text())
         station=(ROOT/'modules/FieldStation.qml').read_text()
         self.assertNotIn('toggle("settings")',station);self.assertIn('!Config.moduleEnabled("go")',station)
+    def test_search_extras_keys_are_anchors_on_their_pages(self):
+        """securitybot+reviewbot: a moved extras key (powerProfile, power→gpu)
+        without a matching objectName on the NEW page makes revealSetting fall
+        back to the page top — the searched-for row stays invisible while the
+        search still hits. The key must exist as an objectName (or a
+        SettingsFields-rendered key) inside the page's own module, resolved
+        through SettingsPanel's sourceComponent map like the shell resolves
+        it. A bare substring across ALL modules passes the old incident state
+        (stale anchor in the previous file) and proves nothing."""
+        import re
+        panel = (ROOT/'modules/SettingsPanel.qml').read_text()
+        # Page id → component id: Component { id:power; PowerSettings {...} }
+        components = dict(re.findall(r'Component\s*\{\s*id:(\w+);\s*(\w+)\s*\{', panel))
+        # The sourceComponent map: gpu:gpuPower inside the section ternary.
+        routes = dict(re.findall(r'(\w+):(\w+)(?=[,}])', panel.split('sourceComponent:')[1].split(')')[0]))
+        schema = (ROOT/'components/SettingsSchema.js').read_text()
+        for match in re.finditer(r'\{page:"([^"]+)",key:"([^"]+)"', schema):
+            page, key = match.group(1), match.group(2)
+            component = routes.get(page) or page
+            module = components.get(component)
+            self.assertIsNotNone(module, f'page {page} routes to unknown component {component}')
+            body = (ROOT/'modules'/f'{module}.qml').read_text()
+            anchored = re.search(r'objectName\s*:\s*"' + re.escape(key) + '"', body)
+            # SettingsFields-rendered groups surface keys via SettingControl's
+            # objectName: spec.key, so the QUOTED key text in the page is its
+            # anchor — an unquoted substring would pass a rename like
+            # powerProfileV2 that matches nothing.
+            self.assertTrue(anchored is not None or ('"' + key + '"') in body,
+                            f'extras key {key!r} (page {page}) has no anchor in {module}.qml')

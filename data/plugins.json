@@ -307,6 +307,7 @@
         "modules/TimeSettings.qml",
         "modules/TopBarSettings.qml",
         "modules/WeatherLocationSettings.qml",
+        "modules/GpuPowerSettings.qml",
         "modules/WindowsSettings.qml",
         "scripts/control.py",
         "scripts/default_apps.py",
@@ -409,6 +410,7 @@
         "modules/TimeSettings.qml",
         "modules/TopBarSettings.qml",
         "modules/WeatherLocationSettings.qml",
+        "modules/GpuPowerSettings.qml",
         "modules/WindowsSettings.qml",
         "scripts/control.py",
         "scripts/default_apps.py",
@@ -692,6 +694,8 @@
       "files": [
         "scripts/audit_resources.py",
         "scripts/measure_resources.py",
+        "scripts/gpu_power.py",
+        "scripts/cedar-gpu-apply",
         "scripts/performance.py",
         "scripts/telemetry.py",
         "services/Brightness.qml",
@@ -760,6 +764,8 @@
       "releaseArtifacts": [
         "scripts/audit_resources.py",
         "scripts/measure_resources.py",
+        "scripts/gpu_power.py",
+        "scripts/cedar-gpu-apply",
         "scripts/performance.py",
         "scripts/telemetry.py",
         "services/Brightness.qml",

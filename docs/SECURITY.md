@@ -67,3 +67,18 @@ display with exclusive keyboard focus; the response travels to
 polkit-agent-helper over D-Bus inside the process. Nothing about a request
 is logged, and a locked session cancels any open request. Under the Omarchy
 adapter the Omarchy shell remains the agent.
+
+### The privileged apply helper
+
+Settings › Graphics & Power writes driver and CPU state through
+`/usr/local/sbin/cedar-gpu-apply` (`scripts/cedar-gpu-apply`), run as root
+via pkexec — CEDAR's own prompt is the authorization surface, and a locked
+session cancels it. The wrapper is narrow by construction: NVIDIA power
+limit and persistence through fixed `nvidia-smi -i …` argv, and three
+cpufreq files under `/sys/devices/system/cpu/*/cpufreq/`, with every value
+re-validated as root against what the driver and kernel report. It must be
+root-owned and unwritable by group/other (pkexec does not check; the
+unprivileged helper stats it before every escalation and refuses otherwise)
+and must hash-match the current release (a stale helper would apply rules
+this code no longer stands behind). The page installs it with one command
+and says so while it is missing. Removing the file revokes the capability.

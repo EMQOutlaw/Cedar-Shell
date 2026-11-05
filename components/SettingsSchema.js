@@ -14,6 +14,7 @@ var pages = [
  {id:"audio",label:"Audio & Media",icon:"♫",description:"Outputs, microphones, routing and audio scenes."},
  {id:"apps",label:"Applications & Integrations",icon:"◇",description:"Connect your everyday tools."},
  {id:"power",label:"Power & Idle",icon:"⏻",description:"Balance energy, performance and inactivity."},
+ {id:"gpu",label:"Graphics & Power",icon:"⚡",description:"The machine: live graphics and processor readings, the system power profile."},
  {id:"connections",label:"Network & Bluetooth",icon:"⌁",description:"Your connections, in one place."},
  {id:"privacy",label:"Privacy & Shield",icon:"⬡",description:"Understand and control your protections."},
  {id:"security",label:"Lock Screen",icon:"▢",description:"What shows and what works while the desktop is locked."},
@@ -34,7 +35,7 @@ var pages = [
 var menu = [
  {id:"environment",label:"Environment",description:"The shape and character of your desktop.",pages:["overview","appearance","bar","animations","desktop","displays","windows","fastfetch"]},
  {id:"interaction",label:"Interaction",description:"Input, attention and everyday tools.",pages:["input","keybinds","notifications","audio","apps","application-theming","dictation","time","notes"]},
- {id:"system",label:"System",description:"Power, connections and protection.",pages:["power","connections","privacy","security"]},
+ {id:"system",label:"System",description:"Power, connections and protection.",pages:["power","gpu","connections","privacy","security"]},
  {id:"management",label:"Management",description:"Updates, recovery and advanced setup.",pages:["system","nursery","advanced","setup","about"]}
 ];
 function menuOf(id) {
@@ -219,7 +220,7 @@ var extras = [
  {page:"keybinds",key:"customBinds",label:"Your custom shortcuts",description:"Shortcuts you added in CEDAR.",aliases:"bind keyboard shortcut add"},
  {page:"input",key:"repeatTest",label:"Try key repeat",description:"Hold a key to feel the applied repeat rate and delay.",aliases:"typing"},
  {page:"connections",key:"bluetooth",label:"Bluetooth",description:"Discover, pair, and manage nearby devices."},
- {page:"power",key:"powerProfile",label:"System power profile",description:"Choose from profiles supported by this computer.",aliases:"performance balanced battery saver"},
+ {page:"gpu",key:"powerProfile",label:"System power profile",description:"Choose from profiles supported by this computer.",aliases:"performance balanced battery saver power profile"},
  {page:"power",key:"brightness",label:"Brightness",description:"Adjust a supported backlight."},
  {page:"power",key:"authentication",label:"Test authentication",description:"Test local password authentication without locking the session.",aliases:"lock password pam"}
 ];

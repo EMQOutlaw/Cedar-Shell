@@ -1,0 +1,223 @@
+#!/usr/bin/python3
+"""cedar-gpu-apply — the privileged half of Settings › Graphics & Power.
+
+Installed root-owned at /usr/local/sbin/cedar-gpu-apply and invoked ONLY
+through `pkexec` by CEDAR's unprivileged helper (scripts/gpu_power.py).
+One JSON object on stdin, one {"ok":true,…} / {"ok":false,"error":…} object
+on stdout.
+
+The contract is narrow on purpose: this program can write exactly three
+things, and every value is re-validated HERE as root — the request on stdin
+is never trusted:
+
+  1. NVIDIA power limit   — `nvidia-smi -i <uuid> -pl <watts>`, watts an
+                            integer (bools refused) re-checked against the
+                            limits nvidia-smi reports for that exact GPU.
+  2. NVIDIA persistence   — `nvidia-smi -i <uuid> -pm 0|1` (bools refused).
+  3. CPU cpufreq state    — governor / energy preference / max frequency,
+                            written ONLY to /sys/devices/system/cpu/cpu*/
+                            cpufreq/ files, with values validated against the
+                            available_* lists and the HARDWARE ranges
+                            (cpuinfo_min_freq / cpuinfo_max_freq — never the
+                            user-set scaling ceiling, which would make a
+                            lowered max a one-way ratchet).
+
+Unknown keys fail the whole request at every level (top, gpu, cpu): the root
+side enforces its own contract, it does not inherit the caller's. There is no
+shell, no path from the request reaches a subprocess argv except the fixed
+nvidia-smi form above. Remove this file to revoke the capability entirely.
+"""
+import json
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+CPUFREQ = Path('/sys/devices/system/cpu')
+NVIDIA_FIELDS = ('uuid', 'power.min_limit', 'power.max_limit', 'persistence_mode')
+GPU_KEYS = {'uuid', 'powerLimit', 'persistence'}
+CPU_KEYS = {'governor', 'epp', 'maxFreqKHz'}
+TOP_KEYS = {'gpu', 'cpu'}
+
+
+def fail(error):
+    print(json.dumps({'ok': False, 'error': error}))
+    sys.exit(0)
+
+
+def num(text):
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def strict_keys(obj, allowed, label):
+    unknown = set(obj) - allowed
+    if unknown:
+        raise ValueError('Unknown %s keys: %s' % (label, ', '.join(sorted(unknown))))
+
+
+def whole(value, label):
+    """An integer that is really an integer: True/False are not 1/0 here."""
+    if type(value) is not int:
+        raise ValueError(label + ' must be a whole number.')
+    return value
+
+
+def nvidia_limits(uuid):
+    """The limits nvidia-smi reports as root for exactly this GPU, plus the
+    current persistence state. Any read failure is an error, not a guess: an
+    unknown uuid fails the -i query itself, so no separate listing pass."""
+    if not shutil.which('nvidia-smi'):
+        raise RuntimeError('nvidia-smi is not installed.')
+    p = subprocess.run(['nvidia-smi', '-i', uuid,
+                        '--query-gpu=' + ','.join(NVIDIA_FIELDS),
+                        '--format=csv,noheader,nounits'],
+                       capture_output=True, text=True, timeout=5, check=False)
+    if p.returncode:
+        raise RuntimeError((p.stderr or p.stdout).strip() or 'That GPU is not present.')
+    v = [s.strip() for s in p.stdout.splitlines()[0].split(',')] if p.stdout.strip() else []
+    if len(v) != len(NVIDIA_FIELDS):
+        raise RuntimeError('nvidia-smi returned an unexpected row.')
+    low, high = num(v[1]), num(v[2])
+    if low is None or high is None or high < low:
+        raise RuntimeError('nvidia-smi reported unusable power limits.')
+    return low, high, v[3].lower()
+
+
+def apply_gpu(request):
+    strict_keys(request, GPU_KEYS, 'gpu')
+    uuid = request.get('uuid')
+    if not isinstance(uuid, str) or not re.fullmatch(r'GPU-[0-9a-fA-F-]{8,80}', uuid):
+        raise ValueError('A GPU UUID is required (as nvidia-smi reports it).')
+    # Refuse malformed values BEFORE reading anything: a bool or a string is
+    # never an argument to nvidia-smi, no matter what the driver reports.
+    watts = request.get('powerLimit')
+    if watts is not None:
+        watts = whole(watts, 'Power limit')
+    persistence = request.get('persistence')
+    if persistence is not None:
+        persistence = whole(persistence, 'Persistence')
+        if persistence not in (0, 1):
+            raise ValueError('Persistence is 0 or 1.')
+    low, high, current_persistence = nvidia_limits(uuid)
+    applied = {}
+    if watts is not None:
+        if not low <= watts <= high:
+            raise ValueError('Power limit must be a whole number between %d and %d W.' % (low, high))
+        p = subprocess.run(['nvidia-smi', '-i', uuid, '-pl', str(watts)],
+                           capture_output=True, text=True, timeout=15, check=False)
+        if p.returncode:
+            raise RuntimeError((p.stderr or p.stdout).strip() or 'nvidia-smi refused the power limit.')
+        applied['powerLimit'] = watts
+    if persistence is not None:
+        if current_persistence == ('enabled' if persistence else 'disabled'):
+            applied['persistence'] = persistence  # already the state: skip the write
+        else:
+            p = subprocess.run(['nvidia-smi', '-i', uuid, '-pm', str(persistence)],
+                               capture_output=True, text=True, timeout=15, check=False)
+            if p.returncode:
+                raise RuntimeError((p.stderr or p.stdout).strip() or 'nvidia-smi refused the persistence change.')
+            applied['persistence'] = persistence
+    return applied
+
+
+def cpu_request(request):
+    """The validated CPU write set. Only three cpufreq files, only values the
+    kernel itself offers. None of the keys is required — an absent key simply
+    means 'leave it'. The max-frequency ceiling is validated against the
+    HARDWARE max (cpuinfo_max_freq): scaling_max_freq is a user-set ceiling,
+    and validating a raise against it would make one lower permanent."""
+    out = {}
+    governor = request.get('governor')
+    if governor is not None:
+        if not isinstance(governor, str):
+            raise ValueError('Governor must be a string.')
+        available = (CPUFREQ / 'cpu0/cpufreq/scaling_available_governors')
+        try:
+            known = available.read_text().split()
+        except OSError as error:
+            raise RuntimeError('This kernel does not expose cpufreq governors: ' + str(error))
+        if governor not in known:
+            raise ValueError('Governor %r is not offered by this kernel.' % governor)
+        out['scaling_governor'] = governor
+    epp = request.get('epp')
+    if epp is not None:
+        if not isinstance(epp, str):
+            raise ValueError('Energy preference must be a string.')
+        available = (CPUFREQ / 'cpu0/cpufreq/energy_performance_available_preferences')
+        try:
+            known = available.read_text().split()
+        except OSError as error:
+            raise RuntimeError('This kernel does not expose energy preferences: ' + str(error))
+        if epp not in known:
+            raise ValueError('Energy preference %r is not offered by this kernel.' % epp)
+        out['energy_performance_preference'] = epp
+    max_freq = request.get('maxFreqKHz')
+    if max_freq is not None:
+        max_freq = whole(max_freq, 'Max frequency')
+        policy = CPUFREQ / 'cpu0/cpufreq'
+        try:
+            low = int((policy / 'cpuinfo_min_freq').read_text())
+            high = int((policy / 'cpuinfo_max_freq').read_text())
+        except OSError as error:
+            raise RuntimeError('This kernel does not expose the CPU hardware ranges: ' + str(error))
+        if not low <= max_freq <= high:
+            raise ValueError('Max frequency must be between %d and %d kHz (the hardware range).' % (low, high))
+        out['scaling_max_freq'] = max_freq
+    return out
+
+
+def apply_cpu(request):
+    strict_keys(request, CPU_KEYS, 'cpu')
+    writes = cpu_request(request)
+    applied = {}
+    for policy in sorted(CPUFREQ.glob('cpu[0-9]*/cpufreq')):
+        if not re.fullmatch(r'cpu\d+', policy.parent.name):
+            continue
+        for name, value in writes.items():
+            target = policy / name
+            try:
+                target.write_text(str(value))
+            except OSError as error:
+                raise RuntimeError('Writing %s failed: %s' % (target, error))
+            applied[name] = value
+    if not applied and writes:
+        raise RuntimeError('No cpufreq policies found on this machine.')
+    return applied
+
+
+def main():
+    try:
+        raw = sys.stdin.readline() or '{}'
+        request = json.loads(raw)
+        if not isinstance(request, dict):
+            raise ValueError('The request is not an object.')
+        strict_keys(request, TOP_KEYS, 'request')
+        applied = {}
+        if 'gpu' in request:
+            if not isinstance(request['gpu'], dict):
+                raise ValueError('The gpu request is not an object.')
+            strict_keys(request['gpu'], GPU_KEYS, 'gpu')
+            applied['gpu'] = apply_gpu(request['gpu'])
+            if not applied['gpu']:
+                raise ValueError('The gpu request carries no knob.')
+        if 'cpu' in request:
+            if not isinstance(request['cpu'], dict):
+                raise ValueError('The cpu request is not an object.')
+            strict_keys(request['cpu'], CPU_KEYS, 'cpu')
+            applied['cpu'] = apply_cpu(request['cpu'])
+            if not applied['cpu']:
+                raise ValueError('The cpu request carries no knob.')
+        if not applied:
+            raise ValueError('Nothing to apply: the request carries neither gpu nor cpu.')
+        print(json.dumps({'ok': True, 'data': {'applied': applied}}))
+    except Exception as error:  # noqa: BLE001 — the protocol is the contract
+        message = str(error) or error.__class__.__name__
+        fail(message)
+
+
+if __name__ == '__main__':
+    main()

@@ -126,6 +126,8 @@
         "scripts/theme-sync.py",
         "scripts/audio_instruments.py",
         "scripts/clipboard_item.py",
+        "scripts/gpu_power.py",
+        "scripts/cedar-gpu-apply",
         "scripts/performance.py",
         "scripts/spectrum.py",
         "scripts/telemetry.py",
@@ -648,6 +650,8 @@
         "feature-runtime-test"
       ],
       "consumers": [
+        "scripts/gpu_power.py",
+        "scripts/cedar-gpu-apply",
         "scripts/performance.py",
         "scripts/trailwatch.py"
       ],
@@ -899,6 +903,8 @@
         "scripts/default_apps.py",
         "scripts/audio_instruments.py",
         "scripts/clipboard_item.py",
+        "scripts/gpu_power.py",
+        "scripts/cedar-gpu-apply",
         "scripts/performance.py",
         "scripts/telemetry.py",
         "scripts/migrate.py",
