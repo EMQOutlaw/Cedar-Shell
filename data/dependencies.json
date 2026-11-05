@@ -1037,6 +1037,26 @@
       "consumers": [
         "scripts/build_task_manager.py"
       ]
+    },
+    {
+      "command": "squeekboard",
+      "feature": "On-screen keyboard for convertible tablet mode",
+      "status": "recommended",
+      "archPackage": "squeekboard",
+      "whenUnavailable": "The Convertible service still owns the fold/unfold transition; entering tablet mode simply keeps the physical keyboard usable and the state verb reports an empty osk path. No fake keyboard is shown and nothing degrades.",
+      "scope": "feature",
+      "source": "Configured signed Arch repositories; never auto-add repositories",
+      "architectures": [
+        "x86_64"
+      ],
+      "testedRange": "squeekboard 1.43.1 on Hyprland 0.56 (observed)",
+      "verification": [
+        "command-presence"
+      ],
+      "consumers": [
+        "scripts/convertible.py"
+      ],
+      "autoInstall": false
     }
   ],
   "modules": [
