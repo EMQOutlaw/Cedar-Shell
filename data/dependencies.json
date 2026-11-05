@@ -1043,6 +1043,7 @@
       "feature": "On-screen keyboard for convertible tablet mode",
       "status": "recommended",
       "archPackage": "squeekboard",
+      "fedoraPackage": "squeekboard",
       "whenUnavailable": "The Convertible service still owns the fold/unfold transition; entering tablet mode simply keeps the physical keyboard usable and the state verb reports an empty osk path. No fake keyboard is shown and nothing degrades.",
       "scope": "feature",
       "source": "Configured signed Arch repositories; never auto-add repositories",

@@ -57,7 +57,10 @@ class Family(unittest.TestCase):
         self.assertEqual(caps['python3'], 'python'); self.assertEqual(caps['checkupdates'], 'pacman-contrib')
         sys.path.insert(0, str(ROOT))
         from installer.engine import update
-        with patch.object(sf, 'family', return_value='fedora'):
+        # update.py imports through the scripts package, which is a SECOND
+        # module object of this same file — patch that one or the patch misses.
+        import scripts.system_family as sf_scripts
+        with patch.object(sf_scripts, 'family', return_value='fedora'):
             self.assertEqual(update.install_hint(['git']), 'Install it: `sudo dnf install git`.')
 
 
