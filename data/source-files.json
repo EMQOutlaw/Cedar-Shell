@@ -636,6 +636,7 @@
   "tests/qml/DesktopHarness.qml",
   "tests/qml/LockAuthHarness.qml",
   "tests/qml/TrailwatchHarness.qml",
+  "tests/test_audit_public.py",
   "tests/test_bootstrap_security.py",
   "tests/test_calendar.py",
   "tests/test_cedar.py",
