@@ -52,7 +52,7 @@ PanelWindow {
     function sideAnchor(item) {
         return () => { const p = item.mapToItem(null, 0, 0); return { x: p.y, width: item.height }; };
     }
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    WallClock { id: clock; precision: WallClock.Minutes }
 
     // ---- material ----------------------------------------------------------
     Shape {

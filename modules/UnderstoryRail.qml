@@ -43,7 +43,7 @@ Item {
     }
     function beat(order, span = .4) { return Understory.ease(.05 * order, span); }
     onActiveChanged: if (active) { Controls.refresh(); Brightness.drain(); }
-    SystemClock { id: clock; enabled: root.active; precision: SystemClock.Minutes }
+    WallClock { id: clock; enabled: root.active; precision: WallClock.Minutes }
 
     // A rail button: an instrument on the screen edge. Lit when its surface is open.
     component RailButton: StrataButton {

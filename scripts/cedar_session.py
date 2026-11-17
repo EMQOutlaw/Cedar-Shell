@@ -31,6 +31,7 @@ DATA = Path(os.environ.get('XDG_DATA_HOME') or HOME / '.local/share')
 STATE = Path(os.environ.get('XDG_STATE_HOME') or HOME / '.local/state')
 RUNTIME = Path(os.environ.get('XDG_RUNTIME_DIR') or '/run/user/%d' % os.getuid())
 LOG = STATE / 'cedar/shell.log'
+LOG_MAX_BYTES = 16 * 1024 * 1024
 UNIT = 'cedar-shell'
 # How long start keeps retrying when Omarchy's shell may not be stopped yet (locked, loading).
 RETRY_SECONDS = 5
@@ -207,11 +208,27 @@ def session_env():
     return ['--setenv=' + k + '=' + os.environ[k] for k in keys if '\n' not in os.environ[k]]
 
 
+def rotate_log():
+    """Keep one previous shell.log and cap the live one at launch.
+
+    The shell's stdout is appended by systemd for the life of the unit, so a
+    runaway warning loop (the 2026-11-01 clock storm wrote 891 MB) has no
+    natural ceiling. Rotation at launch bounds the NEXT session; the previous
+    file is kept as shell.log.1 and is itself uncapped, so the worst case is one
+    storm plus a 16 MiB live log."""
+    try:
+        if LOG.exists() and LOG.stat().st_size > LOG_MAX_BYTES:
+            LOG.replace(LOG.with_name(LOG.name + '.1'))
+    except OSError as error:
+        print(f'CEDAR could not rotate {LOG}: {error}', file=sys.stderr)
+
+
 def launch(unit, command, quickshell=True):
     env = session_env()
     if quickshell:
         env += ['--setenv=QSG_RENDER_LOOP=threaded', '--setenv=QSG_USE_SIMPLE_ANIMATION_DRIVER=1']
     LOG.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    rotate_log()
     if shutil.which('systemd-run'):
         # Its own cgroup: the hook or terminal that started it can exit freely.
         result = run(['systemd-run', '--user', '--collect', '--quiet', '--unit=' + unit, '--property=Restart=on-failure',

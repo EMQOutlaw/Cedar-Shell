@@ -286,10 +286,10 @@ Item {
         onTriggered: if (!hover.hovered)
             root.hovering = false
     }
-    SystemClock {
+    WallClock {
         id: clock
         enabled: root.active
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
     function toggleHeader() {
         if (root.integrated) {

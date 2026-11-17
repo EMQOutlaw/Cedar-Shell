@@ -18,10 +18,10 @@ ColumnLayout {
     property bool recent: false
     property bool notices: false
     spacing: 12
-    SystemClock {
+    WallClock {
         id: clock
         enabled: CoreService.expanded
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
     ColumnLayout {
         visible: !root.activity

@@ -11,7 +11,7 @@ ColumnLayout {
     property string highlightKey: ""
     function spec(key) { return Schema.fields.find(f => f.key === key); }
     spacing: 16
-    SystemClock { id: clock; precision: SystemClock.Minutes; enabled: root.active }
+    WallClock { id: clock; precision: WallClock.Minutes; enabled: root.active }
 
     Rectangle {
         Layout.fillWidth: true; implicitHeight: hero.implicitHeight + 40; radius: Theme.cardRadius

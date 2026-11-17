@@ -43,9 +43,9 @@ Rectangle {
     Connections { target: Theme; function onReducedMotionChanged() { if (Theme.reducedMotion) { entrance.stop(); root.reveal = 1; } } }
     onActiveChanged: if (active) enter(); else { entrance.stop(); reveal = 1; }
     Component.onCompleted: if (active) enter()
-    SystemClock {
+    WallClock {
         id: clock
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
         enabled: root.active
     }
     CedarAtmosphere {

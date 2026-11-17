@@ -62,10 +62,10 @@ Rectangle {
     Component.onCompleted: { syncHold(); if (active) enter(); }
     Component.onDestruction: if (held)
         Trailwatch.viewers--
-    SystemClock {
+    WallClock {
         id: systemClock
         enabled: root.active
-        precision: Theme.reducedMotion ? SystemClock.Minutes : SystemClock.Seconds
+        precision: Theme.reducedMotion ? WallClock.Minutes : WallClock.Seconds
     }
     Keys.onPressed: event => {
         if (!root.auth.busy && event.text && /^[^\x00-\x1F\x7F-\x9F]+$/.test(event.text) && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {

@@ -17,7 +17,7 @@ ColumnLayout {
     readonly property var month: new Date(clock.date.getFullYear(), clock.date.getMonth() + offset, 1)
     readonly property int days: new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
     spacing: 16
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    WallClock { id: clock; precision: WallClock.Minutes }
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 4

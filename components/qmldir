@@ -24,6 +24,7 @@ AudioSpectrum 1.0 AudioSpectrum.qml
 ReadingText 1.0 ReadingText.qml
 NetworkIndicator 1.0 NetworkIndicator.qml
 Breath 1.0 Breath.qml
+WallClock 1.0 WallClock.qml
 Keycap 1.0 Keycap.qml
 ChoiceChips 1.0 ChoiceChips.qml
 SettingsSection 1.0 SettingsSection.qml

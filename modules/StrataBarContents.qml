@@ -98,7 +98,7 @@ Item {
         else { ShellState.settingsPage = "time"; ShellState.open("settings"); }
     }
 
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    WallClock { id: clock; precision: WallClock.Minutes }
     TextMetrics { id: centerClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small + 1; text: Config.formatTime(clock.date) }
     TextMetrics { id: compactClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: root.calendarCompactText }
     TextMetrics { id: normalClockMetrics; font.family: Theme.dataFont; font.pixelSize: Theme.small; text: root.calendarDateText }

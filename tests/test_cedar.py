@@ -331,4 +331,32 @@ class Plugins(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in dotfiles.parent.iterdir()), ['shell.json'])
             self.assertEqual(sorted(p.name for p in link.parent.iterdir()), ['shell.json'])
 
+class RotateLog(unittest.TestCase):
+    """A runaway log is capped at the next launch; the previous run is kept."""
+
+    def test_rotation_keeps_one_previous_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            live, previous = Path(tmp) / 'shell.log', Path(tmp) / 'shell.log.1'
+            storm = 'storm\n' * 2000
+            live.write_text(storm); previous.write_text('older\n')
+            with patch.object(session, 'LOG', live), patch.object(session, 'LOG_MAX_BYTES', 1024):
+                session.rotate_log()
+            self.assertFalse(live.exists())
+            self.assertEqual(previous.read_text(), storm)
+
+    def test_small_log_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            live, previous = Path(tmp) / 'shell.log', Path(tmp) / 'shell.log.1'
+            live.write_text('quiet\n'); previous.write_text('older\n')
+            with patch.object(session, 'LOG', live), patch.object(session, 'LOG_MAX_BYTES', 1024 * 1024):
+                session.rotate_log()
+            self.assertEqual(live.read_text(), 'quiet\n')
+            self.assertEqual(previous.read_text(), 'older\n')
+
+    def test_missing_log_is_not_an_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(session, 'LOG', Path(tmp) / 'shell.log'), patch.object(session, 'LOG_MAX_BYTES', 1):
+                session.rotate_log()   # must not raise: a desktop start never waits on log housekeeping
+
+
 if __name__ == '__main__': unittest.main()
