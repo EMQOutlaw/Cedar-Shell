@@ -947,7 +947,7 @@ class ProfileAdoption(unittest.TestCase):
 class MigrationAssets(unittest.TestCase):
     """The wallpaper library is imported without being an option."""
 
-    def migrate(self, settings=None, folder='/home/u/Pictures/Wallpapers'):
+    def migrate(self, settings=None, folder='/users/station/Pictures/Wallpapers'):
         import types
         from installer.engine import steps
         host = arch_host()
@@ -967,11 +967,11 @@ class MigrationAssets(unittest.TestCase):
             return json.loads((config / 'settings.json').read_text())
 
     def test_the_detected_library_is_pointed_at_without_an_option(self):
-        self.assertEqual(self.migrate()['wallpaperFolder'], '/home/u/Pictures/Wallpapers')
+        self.assertEqual(self.migrate()['wallpaperFolder'], '/users/station/Pictures/Wallpapers')
 
     def test_a_chosen_folder_and_unknown_keys_survive(self):
-        settings = self.migrate(settings={'wallpaperFolder': '/mine', 'custom': {'keep': True}})
-        self.assertEqual(settings['wallpaperFolder'], '/mine')
+        settings = self.migrate(settings={'wallpaperFolder': '/srv/wallpapers', 'custom': {'keep': True}})
+        self.assertEqual(settings['wallpaperFolder'], '/srv/wallpapers')
         self.assertEqual(settings['custom'], {'keep': True})
 
 
