@@ -13,7 +13,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Native Task Manager build and runtime dependencies
-        run: sudo apt-get update && sudo apt-get install -y g++ pkg-config qt6-base-dev qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript
+        run: sudo apt-get update && sudo apt-get install -y g++ pkg-config qt6-base-dev qt6-declarative-dev qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtquick-shapes qml6-module-qtqml-workerscript
       - name: Native collectors, process safety, IPC and standalone window
         run: |
           CEDAR_TASK_REQUIRE_IPC=1 python3 tests/check_task_manager.py
