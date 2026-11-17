@@ -101,7 +101,8 @@ test("the bar, Applications, the keybind set and Settings each reach the notes o
   assert.match(read("modules/SettingsPanel.qml"), /notes:notesPage/)
   const harness = read("tests/qml/DesktopHarness.qml")
   assert.match(harness, /readonly property var sections:\s*Schema\.pages\.map\(p\s*=>\s*p\.id\)/, "the desktop harness includes every schema page, including Field Notes")
-  assert.match(harness, /settings\.navigate\(window\.sections\[window\.step%count\]\)/, "the desktop harness visits the schema pages")
+  assert.match(harness, /const wanted=window\.sections\[window\.step%count\]/, "the desktop harness walks every schema page")
+  assert.match(harness, /settings\.navigate\(wanted\)/, "the desktop harness visits the schema pages")
 })
 
 test("every preference is a schema descriptor with a Config default that is saved", () => {
