@@ -228,7 +228,6 @@ def main(argv=None):
     parser.add_argument('--no-session', action='store_true', help='install without starting CEDAR in this session')
     parser.add_argument('--cedar-launcher', action='store_true', help='also point the application-launcher shortcut at CEDAR Applications')
     parser.add_argument('--trailwatch', action='store_true', help='also select CEDAR Trailwatch as the locker, with its password and lock tests')
-    parser.add_argument('--fonts', action='store_true', help='also install the recommended fonts')
     parser.add_argument('--keybinds', dest='keybinds', action='store_true', default=None, help='install CEDAR’s keybinds into the Hyprland configuration')
     parser.add_argument('--no-keybinds', dest='keybinds', action='store_false', help='leave the Hyprland keybinds untouched')
     parser.add_argument('--source', type=Path, default=SOURCE, help=argparse.SUPPRESS)
@@ -287,7 +286,7 @@ def main(argv=None):
         if not args.yes:
             return 3
         args.resume = True
-    options = {'launcher': args.cedar_launcher, 'fonts': args.fonts}
+    options = {'launcher': args.cedar_launcher}
     if args.trailwatch:
         options['trailwatch'] = True
     if args.keybinds is not None:

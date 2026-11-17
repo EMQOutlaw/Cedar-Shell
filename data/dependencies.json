@@ -1714,7 +1714,7 @@
   ],
   "packageManagement": {
     "schemaVersion": 1,
-    "defaultSelection": "Required and feature-required dependencies eligible for automatic installation. Recommended fonts are explicitly opt-in and use readable fallbacks.",
+    "defaultSelection": "Required and feature-required dependencies eligible for automatic installation, plus the recommended font when a configured repository provides it. Rajdhani and the Fedora font have no package and fall back to readable faces.",
     "backends": [
       {
         "id": "pacman",

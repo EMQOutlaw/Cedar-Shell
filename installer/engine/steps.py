@@ -419,7 +419,7 @@ def migrate_run(ctx, op):
                     continue
                 value = 'gtk-launch ' + value
             settings[key] = value; imported.append(key)
-    if ctx.options.get('wallpapers') and facts['wallpapers'] and 'wallpaperFolder' not in settings:
+    if facts['wallpapers'] and 'wallpaperFolder' not in settings:
         settings['wallpaperFolder'] = facts['wallpapers'][0]['path']; imported.append('wallpaper library')
     write_private_json(settings_path, settings)
     if backup:

@@ -111,7 +111,6 @@ Item {
                     StationToggle { Layout.fillWidth: true; label: "Start CEDAR in this session after installing"; description: "Off: install only, then cedar try when you are ready."; checked: root.model.options.session; onToggled: v => root.model.setOption("session", v) }
                     StationToggle { Layout.fillWidth: true; label: "Point the application-launcher shortcut at CEDAR Applications"; checked: root.model.options.launcher; onToggled: v => root.model.setOption("launcher", v) }
                     StationToggle { Layout.fillWidth: true; label: "Use CEDAR Trailwatch as the locker"; description: "Only after a local password test and one real lock/unlock test."; checked: root.model.options.trailwatch === true; onToggled: v => root.model.setOption("trailwatch", v) }
-                    StationToggle { Layout.fillWidth: true; label: "Also install the recommended fonts"; checked: root.model.options.fonts; onToggled: v => root.model.setOption("fonts", v) }
                 }
                 ColumnLayout {
                     Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 36; spacing: 2
@@ -310,9 +309,8 @@ Item {
                         StationToggle { Layout.fillWidth: true; visible: !!root.env.adapter; label: "Start CEDAR in this session"; description: "Keep it after a health check and enable it at login; cedar restore returns your previous desktop."; checked: root.model.options.session; onToggled: v => root.model.setOption("session", v) }
                         StationToggle { Layout.fillWidth: true; visible: root.env.adapter === "hyprland" || root.env.adapter === "noctalia"; label: "Point the application-launcher shortcut at CEDAR Applications"; checked: root.model.options.launcher; onToggled: v => root.model.setOption("launcher", v) }
                         StationToggle { Layout.fillWidth: true; visible: !!root.env.adapter; label: "Use CEDAR Trailwatch as the locker"; description: "After a local password test and one real lock/unlock test."; checked: root.model.options.trailwatch; onToggled: v => root.model.setOption("trailwatch", v) }
-                        StationToggle { Layout.fillWidth: true; visible: (root.facts.wallpapers || []).length > 0; label: "Point CEDAR at your wallpaper library"; checked: root.model.options.wallpapers; onToggled: v => root.model.setOption("wallpapers", v) }
                         StationToggle { Layout.fillWidth: true; visible: (root.facts.compositor || {}).name === "hyprland"; label: "Use CEDAR’s keybinds"; description: "Super+T terminal, Super+W browser, Super+Q close, Super+1…0 workspaces, Super+K keybind reference, Super+L lock. Loaded through CEDAR’s journaled Hyprland loader; your other bindings stay."; checked: !!root.model.options.keybinds; onToggled: v => root.model.setOption("keybinds", v) }
-                        StationToggle { Layout.fillWidth: true; label: "Also install the recommended fonts"; description: "Readable fallbacks are used otherwise."; checked: root.model.options.fonts; onToggled: v => root.model.setOption("fonts", v) }
+                        Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; text: "Included: JetBrainsMono Nerd Font (installed when missing), Rajdhani where it is already present" + ((root.facts.wallpapers || []).length > 0 ? ", and your wallpaper library (" + root.facts.wallpapers[0].path + ")" : "") + ". Readable fallbacks are used only if a package is unavailable."; color: Theme.muted; font.family: Theme.labelFont; font.pixelSize: Theme.small }
                     }
                     ExpandableDetails {
                         Layout.fillWidth: true; Layout.topMargin: 8; label: "Show technical details"

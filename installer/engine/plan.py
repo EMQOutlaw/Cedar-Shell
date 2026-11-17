@@ -23,7 +23,10 @@ def default_options(facts):
     can_handoff = bool(env.get('adapter')) and facts['compositor']['name'] == 'hyprland' and facts['compositor']['running']
     # CEDAR's keybinds by default where no shell binding set exists; environments with their own keep theirs unless asked.
     keybinds = env.get('id') in ('plain-hyprland', 'waybar', 'generic-quickshell') and facts['compositor']['name'] == 'hyprland'
-    return {'session': can_handoff, 'launcher': False, 'trailwatch': bool(facts['existingCedar'].get('trailwatch')), 'fonts': False, 'wallpapers': bool(facts['wallpapers']), 'migrate': True, 'keybinds': keybinds}
+    # The recommended fonts and the wallpaper library are not choices: they are
+    # part of what CEDAR is (its type comes from those families) and the library
+    # is the user's own folder, only pointed at. Neither is an option any more.
+    return {'session': can_handoff, 'launcher': False, 'trailwatch': bool(facts['existingCedar'].get('trailwatch')), 'migrate': True, 'keybinds': keybinds}
 
 
 def profile_shell_running(facts):
@@ -75,6 +78,11 @@ def attention(facts, options):
     if not facts['dataWritable']:
         add('readonly', 'The data directory is read-only', facts['configPaths']['data'] + ' cannot be written. Check the filesystem and permissions.')
     missing = facts['dependencies']['missing']
+    # What the plan will actually install: required packages plus the recommended
+    # font when it is absent. The offline and privilege gates must judge the same
+    # set, or a missing font turns a clean plan into a mid-run failure after the
+    # backup and handoff have already happened.
+    packages = sorted(set(missing + facts['dependencies']['recommendedMissing']))
     if missing:
         if facts['support']['status'] == 'unsupported':
             add('unsupported', 'Dependencies are missing on an unsupported distribution',
@@ -86,9 +94,14 @@ def attention(facts, options):
             add('experimental', 'Experimental package setup on ' + facts['distro']['name'],
                 'This Arch-based distribution is not individually reviewed. pacman will be used with your configured repositories after you confirm; or install the packages yourself first: ' + ', '.join(missing) + '.', 'warn')
         if facts['online'] is False:
-            add('offline', 'No network connection', 'Packages have to be downloaded: ' + ', '.join(missing) + '. Connect to a network, or install them yourself first.')
+            add('offline', 'No network connection', 'Packages have to be downloaded: ' + ', '.join(packages) + '. Connect to a network, or install them yourself first.')
         if facts['packageManager'] in ('pacman', 'dnf') and facts['support']['status'] != 'unsupported' and not privilege.method_name(facts):
-            add('privilege', 'No way to ask for your password', privilege.describe('') + ' Packages to install: ' + ', '.join(missing) + '.')
+            add('privilege', 'No way to ask for your password', privilege.describe('') + ' Packages to install: ' + ', '.join(packages) + '.')
+    elif packages:
+        if facts['online'] is False:
+            add('offline', 'No network connection', 'Packages have to be downloaded: ' + ', '.join(packages) + '. Connect to a network, or install them yourself first.')
+        if facts['packageManager'] in ('pacman', 'dnf') and facts['support']['status'] != 'unsupported' and not privilege.method_name(facts):
+            add('privilege', 'No way to ask for your password', privilege.describe('') + ' Packages to install: ' + ', '.join(packages) + '.')
     if facts['gpu']['vendor'] == 'NVIDIA' and facts['secureBoot'] == 'enabled' and facts['gpu']['driver'] not in ('nvidia', 'nouveau'):
         add('nvidia', 'NVIDIA with Secure Boot and no loaded driver', 'Secure Boot can keep an unsigned NVIDIA kernel module from loading. CEDAR does not install drivers; a desktop without a loaded GPU driver may not start after a reboot.', 'warn',
             'https://wiki.archlinux.org/title/NVIDIA#Secure_Boot')
@@ -102,8 +115,10 @@ def build(facts, options=None):
     provider = providers.by_id(facts['environment']['chosen'])
     env = facts['environment']
     missing = list(facts['dependencies']['missing'])
-    if options.get('fonts'):
-        missing = sorted(set(missing + facts['dependencies']['recommendedMissing']))
+    # The recommended fonts are installed whenever they are absent: CEDAR sets
+    # its type in them and falls back to plainer faces without them, so asking
+    # would only produce a worse desktop.
+    missing = sorted(set(missing + facts['dependencies']['recommendedMissing']))
     package_provider = package_providers.select(facts)
     notes = []
     package_error = ''

@@ -106,7 +106,7 @@ output to guess progress.
 | `--repair` | verify the installed copy and reinstall what does not match |
 | `--last-log` | print the most recent installer log |
 | `--update` | the Update stage in the installer window (or terminal with `--no-gui`): find the newest CEDAR (fast-forward of the checkout when one exists, else the latest verified release), fetch it with visible steps, explain any stop with what to do, then run its installer; an active CEDAR session is handed back and re-entered by the plan itself. See Updating below |
-| `--no-session`, `--cedar-launcher`, `--trailwatch`, `--fonts`, `--keybinds` / `--no-keybinds` | plan options |
+| `--no-session`, `--cedar-launcher`, `--trailwatch`, `--keybinds` / `--no-keybinds` | plan options; the recommended font (where the distribution provides it) and the wallpaper library are always applied |
 
 After installation the same tool is available as `cedar installer …`.
 

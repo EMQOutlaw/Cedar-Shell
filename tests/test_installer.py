@@ -196,6 +196,27 @@ class Planning(unittest.TestCase):
         text = plan_module.render(plan)
         self.assertIn('MIGRATION', text); self.assertIn('Plan digest', text)
 
+    def test_fonts_and_the_wallpaper_library_are_not_options(self):
+        """CEDAR's type and the user's own wallpaper folder are what you get, not choices."""
+        options = plan_module.default_options(self.facts)
+        self.assertNotIn('fonts', options)
+        self.assertNotIn('wallpapers', options)
+        facts = {**self.facts, 'dependencies': {**self.facts['dependencies'], 'missing': [],
+                                                'recommendedMissing': ['ttf-jetbrains-mono-nerd']}}
+        plan = plan_module.build(facts, {'fonts': False, 'wallpapers': False})
+        self.assertIn('ttf-jetbrains-mono-nerd', plan['packages'])
+        self.assertTrue(any('ttf-jetbrains-mono-nerd' in row for row in plan['cedar']))
+
+    def test_a_missing_font_stops_the_plan_when_it_could_not_be_installed(self):
+        """Offline and no-password gates judge what will actually be installed, font included."""
+        facts = {**self.facts, 'online': False,
+                 'dependencies': {**self.facts['dependencies'], 'missing': [],
+                                  'recommendedMissing': ['ttf-jetbrains-mono-nerd']}}
+        plan = plan_module.build(facts)
+        rows = {row['id']: row['detail'] for row in plan['attention']}
+        self.assertIn('offline', rows)
+        self.assertIn('ttf-jetbrains-mono-nerd', rows['offline'])
+
     def test_missing_dependencies_use_pacman_with_notes(self):
         host = arch_host(which=[w for w in arch_host().available if w != 'qs'])
         plan_module.set_check_host(host)
@@ -921,6 +942,37 @@ class ProfileAdoption(unittest.TestCase):
                 self.adopt(tmp, prepare)
             self.assertIn('folder', str(caught.exception))
             self.assertEqual((Path(tmp) / 'config/quickshell/cedar/shell.qml').read_text(), 'mine')
+
+
+class MigrationAssets(unittest.TestCase):
+    """The wallpaper library is imported without being an option."""
+
+    def migrate(self, settings=None, folder='/home/u/Pictures/Wallpapers'):
+        import types
+        from installer.engine import steps
+        host = arch_host()
+        facts = facts_module.scan(host, ROOT)
+        facts['hyprland'] = {**facts['hyprland'], 'config': None, 'monitors': []}
+        facts['wallpapers'] = [{'path': folder, 'images': 12}]
+        ctx = steps.Context(host, ROOT, facts, {}, {'migrate': True}, None, lambda event, data: None)
+        ctx._modules['desktop'] = types.SimpleNamespace(INPUTS=set(), validate_monitors=lambda *a: [],
+                                                        validate_inputs=lambda keys: {}, install=lambda state: None)
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / 'cedar'
+            config.mkdir(parents=True)
+            ctx.config_dir = lambda: config   # the fake host's home is a virtual path
+            if settings is not None:
+                (config / 'settings.json').write_text(json.dumps(settings))
+            steps.migrate_run(ctx, ops.Operation('migrate', 'Configuration', '', None))
+            return json.loads((config / 'settings.json').read_text())
+
+    def test_the_detected_library_is_pointed_at_without_an_option(self):
+        self.assertEqual(self.migrate()['wallpaperFolder'], '/home/u/Pictures/Wallpapers')
+
+    def test_a_chosen_folder_and_unknown_keys_survive(self):
+        settings = self.migrate(settings={'wallpaperFolder': '/mine', 'custom': {'keep': True}})
+        self.assertEqual(settings['wallpaperFolder'], '/mine')
+        self.assertEqual(settings['custom'], {'keep': True})
 
 
 if __name__ == '__main__':
